@@ -15,6 +15,18 @@ namespace MyDongari.Movement
 
         public override void Update()
         {
+            if (StateMachine.InputReader.QuickTurnInput)
+            {
+                StateMachine.ChangeState(StateMachine.QuickTurnState);
+                return;
+            }
+
+            if (StateMachine.InputReader.SideStepDirection != 0)
+            {
+                StateMachine.ChangeState(StateMachine.SideStepState);
+                return;
+            }
+
             if (StateMachine.InputReader.MoveInput.sqrMagnitude >= 0.64f)
             {
                 StateMachine.ChangeState(StateMachine.WalkState);

@@ -16,9 +16,11 @@ namespace MyDongari.Movement
         public SprintState SprintState { get; private set; }
         public BrakeState BrakeState { get; private set; }
         public SlideState SlideState { get; private set; }
-
+        public SideStepState SideStepState { get; private set; }
+        public QuickTurnState QuickTurnState { get; private set; }
 
         public Vector3 LastMoveDirection { get; set; }
+
         private void Awake()
         {
             InputReader = GetComponent<InputReader>();
@@ -30,6 +32,8 @@ namespace MyDongari.Movement
             SprintState = new SprintState(this);
             BrakeState = new BrakeState(this);
             SlideState = new SlideState(this);
+            SideStepState = new SideStepState(this);
+            QuickTurnState = new QuickTurnState(this);
         }
 
         private void Start()

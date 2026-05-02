@@ -13,9 +13,20 @@ namespace MyDongari.Movement
             Debug.Log("Run 진입");
         }
 
-
         public override void Update()
         {
+            if (StateMachine.InputReader.QuickTurnInput)
+            {
+                StateMachine.ChangeState(StateMachine.QuickTurnState);
+                return;
+            }
+
+            if (StateMachine.InputReader.SideStepDirection != 0)
+            {
+                StateMachine.ChangeState(StateMachine.SideStepState);
+                return;
+            }
+
             if (StateMachine.InputReader.MoveInput.sqrMagnitude < 0.64f)
             {
                 StateMachine.ChangeState(StateMachine.IdleState);
@@ -42,7 +53,6 @@ namespace MyDongari.Movement
 
             rb.AddForce(moveDir * StateMachine.MechController.RunSpeed, ForceMode.Acceleration);
             StateMachine.MechController.ClampVelocity(StateMachine.MechController.MaxRunSpeed);
-            
         }
 
         public override void Exit()
@@ -50,5 +60,4 @@ namespace MyDongari.Movement
             Debug.Log("Run 탈출");
         }
     }
-
 }
