@@ -29,6 +29,11 @@ namespace MyDongari.Movement
 
         public override void FixedUpdate()
         {
+            Vector2 input = StateMachine.InputReader.MoveInput;
+            Vector3 moveDir = new Vector3(input.x, 0f, input.y).normalized;
+            Rigidbody rb = StateMachine.MechController.Rb;
+
+            rb.AddForce(moveDir * StateMachine.MechController.WalkSpeed, ForceMode.Acceleration);
         }
 
         public override void Exit()

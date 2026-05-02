@@ -13,6 +13,7 @@ namespace MyDongari.Movement
             Debug.Log("Run 진입");
         }
 
+
         public override void Update()
         {
             if (StateMachine.InputReader.MoveInput.sqrMagnitude < 0.64f)
@@ -35,6 +36,11 @@ namespace MyDongari.Movement
 
         public override void FixedUpdate()
         {
+            Vector2 input = StateMachine.InputReader.MoveInput;
+            Vector3 moveDir = new Vector3(input.x, 0f, input.y).normalized;
+            Rigidbody rb = StateMachine.MechController.Rb;
+
+            rb.AddForce(moveDir * StateMachine.MechController.RunSpeed, ForceMode.Acceleration);
         }
 
         public override void Exit()
@@ -42,4 +48,5 @@ namespace MyDongari.Movement
             Debug.Log("Run 탈출");
         }
     }
+
 }

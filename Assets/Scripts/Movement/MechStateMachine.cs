@@ -6,6 +6,7 @@ namespace MyDongari.Movement
     public class MechStateMachine : MonoBehaviour
     {
         public InputReader InputReader { get; private set; }
+        public MechController MechController { get; private set; }
 
         private MechState _currentState;
 
@@ -18,6 +19,7 @@ namespace MyDongari.Movement
         private void Awake()
         {
             InputReader = GetComponent<InputReader>();
+            MechController = GetComponent<MechController>();
 
             IdleState = new IdleState(this);
             WalkState = new WalkState(this);
