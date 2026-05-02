@@ -15,6 +15,22 @@ namespace MyDongari.Movement
 
         public override void Update()
         {
+            if (StateMachine.InputReader.MoveInput.sqrMagnitude < 0.64f)
+            {
+                StateMachine.ChangeState(StateMachine.IdleState);
+                return;
+            }
+
+            if (!StateMachine.InputReader.RunInput)
+            {
+                StateMachine.ChangeState(StateMachine.WalkState);
+                return;
+            }
+
+            if (StateMachine.InputReader.SprintInput)
+            {
+                StateMachine.ChangeState(StateMachine.SprintState);
+            }
         }
 
         public override void FixedUpdate()

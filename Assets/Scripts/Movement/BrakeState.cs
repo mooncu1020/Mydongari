@@ -4,6 +4,9 @@ namespace MyDongari.Movement
 {
     public class BrakeState : MechState
     {
+        private float _brakeTimer = 0f;
+        private const float BrakeDuration = 1.0f;
+
         public BrakeState(MechStateMachine stateMachine) : base(stateMachine)
         {
         }
@@ -11,10 +14,24 @@ namespace MyDongari.Movement
         public override void Enter()
         {
             Debug.Log("Brake 진입");
+            _brakeTimer = 0f;
         }
 
         public override void Update()
         {
+            _brakeTimer += Time.deltaTime;
+
+            if (_brakeTimer >= BrakeDuration)
+            {
+                if (StateMachine.InputReader.MoveInput.sqrMagnitude >= 0.64f)
+                {
+                    StateMachine.ChangeState(StateMachine.WalkState);
+                }
+                else
+                {
+                    StateMachine.ChangeState(StateMachine.IdleState);
+                }
+            }
         }
 
         public override void FixedUpdate()
