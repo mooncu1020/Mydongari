@@ -5,7 +5,9 @@ namespace MyDongari.Movement
     public class BrakeState : MechState
     {
         private float _brakeTimer = 0f;
-        private const float BrakeDuration = 0.3f;
+        private const float BrakeDuration = 1.0f;
+        private const float SlideWindowDuration = 0.2f;
+        private bool _slideWindowOpen = true;
 
         public BrakeState(MechStateMachine stateMachine) : base(stateMachine)
         {
@@ -15,11 +17,27 @@ namespace MyDongari.Movement
         {
             Debug.Log("Brake 진입");
             _brakeTimer = 0f;
+            _slideWindowOpen = true;
         }
 
         public override void Update()
         {
             _brakeTimer += Time.deltaTime;
+
+            if (_slideWindowOpen)
+            {
+                if (_brakeTimer <= SlideWindowDuration &&
+                    StateMachine.InputReader.SlideInput)
+                {
+                    StateMachine.ChangeState(StateMachine.SlideState);
+                    return;
+                }
+
+                if (_brakeTimer > SlideWindowDuration)
+                {
+                    _slideWindowOpen = false;
+                }
+            }
 
             if (_brakeTimer >= BrakeDuration)
             {

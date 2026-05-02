@@ -15,7 +15,10 @@ namespace MyDongari.Movement
         public RunState RunState { get; private set; }
         public SprintState SprintState { get; private set; }
         public BrakeState BrakeState { get; private set; }
+        public SlideState SlideState { get; private set; }
 
+
+        public Vector3 LastMoveDirection { get; set; }
         private void Awake()
         {
             InputReader = GetComponent<InputReader>();
@@ -26,6 +29,7 @@ namespace MyDongari.Movement
             RunState = new RunState(this);
             SprintState = new SprintState(this);
             BrakeState = new BrakeState(this);
+            SlideState = new SlideState(this);
         }
 
         private void Start()
@@ -36,6 +40,10 @@ namespace MyDongari.Movement
         public void ChangeState(MechState newState)
         {
             _currentState?.Exit();
+            if (newState is SlideState)
+            {
+                newState = new SlideState(this);
+            }
             _currentState = newState;
             _currentState.Enter();
         }

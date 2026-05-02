@@ -22,6 +22,13 @@ namespace MyDongari.Movement
         {
             _tackleChargeTimer += Time.deltaTime;
 
+            Vector2 input = StateMachine.InputReader.MoveInput;
+            Vector3 moveDir = new Vector3(input.x, 0f, input.y).normalized;
+            if (moveDir != Vector3.zero)
+            {
+                StateMachine.LastMoveDirection = moveDir;
+            }
+
             if (StateMachine.InputReader.MoveInput.sqrMagnitude < 0.25f ||
                 !StateMachine.InputReader.SprintInput)
             {
@@ -37,7 +44,7 @@ namespace MyDongari.Movement
 
             rb.AddForce(moveDir * StateMachine.MechController.SprintSpeed, ForceMode.Acceleration);
             StateMachine.MechController.ClampVelocity(StateMachine.MechController.MaxSprintSpeed);
-            StateMachine.MechController.RotateTowards(moveDir);
+            
         }
 
         public override void Exit()
