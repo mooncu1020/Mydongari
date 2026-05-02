@@ -5,7 +5,7 @@ namespace MyDongari.Movement
     public class BrakeState : MechState
     {
         private float _brakeTimer = 0f;
-        private const float BrakeDuration = 1.0f;
+        private const float BrakeDuration = 0.3f;
 
         public BrakeState(MechStateMachine stateMachine) : base(stateMachine)
         {

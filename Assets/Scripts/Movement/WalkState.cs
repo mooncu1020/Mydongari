@@ -34,6 +34,8 @@ namespace MyDongari.Movement
             Rigidbody rb = StateMachine.MechController.Rb;
 
             rb.AddForce(moveDir * StateMachine.MechController.WalkSpeed, ForceMode.Acceleration);
+            StateMachine.MechController.ClampVelocity(StateMachine.MechController.MaxWalkSpeed);
+        
         }
 
         public override void Exit()
