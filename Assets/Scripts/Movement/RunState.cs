@@ -48,11 +48,21 @@ namespace MyDongari.Movement
         public override void FixedUpdate()
         {
             Vector2 input = StateMachine.InputReader.MoveInput;
-            Vector3 moveDir = new Vector3(input.x, 0f, input.y).normalized;
+            Vector3 camForward = StateMachine.MechController.CameraTransform.forward;
+            Vector3 camRight = StateMachine.MechController.CameraTransform.right;
+
+            camForward.y = 0f;
+            camRight.y = 0f;
+            camForward.Normalize();
+            camRight.Normalize();
+
+            Vector3 moveDir = (camForward * input.y + camRight * input.x).normalized;
             Rigidbody rb = StateMachine.MechController.Rb;
 
             rb.AddForce(moveDir * StateMachine.MechController.RunSpeed, ForceMode.Acceleration);
             StateMachine.MechController.ClampVelocity(StateMachine.MechController.MaxRunSpeed);
+
+            StateMachine.MechController.RotateToCamera();
         }
 
         public override void Exit()

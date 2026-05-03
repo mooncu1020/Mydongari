@@ -1,5 +1,6 @@
-using UnityEngine;
+using MyDongari.Camera;
 using MyDongari.Input;
+using UnityEngine;
 
 namespace MyDongari.Movement
 {
@@ -30,6 +31,11 @@ namespace MyDongari.Movement
         public InputReader InputReader { get; private set; }
         public MechStateMachine StateMachine { get; private set; }
 
+        [Header("카메라")]
+        [SerializeField] private Transform cameraTransform;
+        [SerializeField] private MechCamera mechCamera;
+        public MechCamera MechCamera => mechCamera;
+        public Transform CameraTransform => cameraTransform;
         private void Awake()
         {
             Rb = GetComponent<Rigidbody>();
@@ -51,6 +57,16 @@ namespace MyDongari.Movement
         {
             if (direction == Vector3.zero) return;
             Quaternion targetRot = Quaternion.LookRotation(direction, Vector3.up);
+            Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, rotationSpeed * Time.fixedDeltaTime));
+        }
+
+        public void RotateToCamera()
+        {
+            if (CameraTransform == null) return;
+            Vector3 camForward = CameraTransform.forward;
+            camForward.y = 0f;
+            if (camForward == Vector3.zero) return;
+            Quaternion targetRot = Quaternion.LookRotation(camForward);
             Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, rotationSpeed * Time.fixedDeltaTime));
         }
     }

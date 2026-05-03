@@ -16,11 +16,7 @@ namespace MyDongari.Movement
         {
             Debug.Log("QuickTurn 진입");
             _quickTurnTimer = 0f;
-            _targetRotation = Quaternion.Euler(
-                0f,
-                StateMachine.MechController.transform.eulerAngles.y + 180f,
-                0f
-            );
+            StateMachine.MechController.MechCamera.QuickTurn();
         }
 
         public override void Update()
@@ -42,19 +38,24 @@ namespace MyDongari.Movement
 
         public override void FixedUpdate()
         {
-            float t = _quickTurnTimer / QuickTurnDuration;
-            StateMachine.MechController.Rb.MoveRotation(
-                Quaternion.Slerp(StateMachine.MechController.Rb.rotation, _targetRotation, t)
-            );
-
             Vector2 input = StateMachine.InputReader.MoveInput;
-            Vector3 moveDir = new Vector3(input.x, 0f, input.y).normalized;
+            Vector3 camForward = StateMachine.MechController.CameraTransform.forward;
+            Vector3 camRight = StateMachine.MechController.CameraTransform.right;
+            camForward.y = 0f;
+            camRight.y = 0f;
+            camForward.Normalize();
+            camRight.Normalize();
+
+            Vector3 moveDir = (camForward * input.y + camRight * input.x).normalized;
             if (moveDir != Vector3.zero)
             {
                 StateMachine.MechController.Rb.AddForce(moveDir * StateMachine.MechController.WalkSpeed, ForceMode.Acceleration);
                 StateMachine.MechController.ClampVelocity(StateMachine.MechController.MaxWalkSpeed);
             }
+
+            StateMachine.MechController.RotateToCamera();
         }
+
         public override void Exit()
         {
             Debug.Log("QuickTurn 탈출");

@@ -35,7 +35,9 @@ namespace MyDongari.Movement
 
         public override void FixedUpdate()
         {
+            StateMachine.MechController.RotateToCamera();
         }
+
 
         public override void Exit()
         {

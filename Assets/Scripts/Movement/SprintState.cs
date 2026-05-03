@@ -23,7 +23,14 @@ namespace MyDongari.Movement
             _tackleChargeTimer += Time.deltaTime;
 
             Vector2 input = StateMachine.InputReader.MoveInput;
-            Vector3 moveDir = new Vector3(input.x, 0f, input.y).normalized;
+            Vector3 camForward = StateMachine.MechController.CameraTransform.forward;
+            Vector3 camRight = StateMachine.MechController.CameraTransform.right;
+            camForward.y = 0f;
+            camRight.y = 0f;
+            camForward.Normalize();
+            camRight.Normalize();
+
+            Vector3 moveDir = (camForward * input.y + camRight * input.x).normalized;
             if (moveDir != Vector3.zero)
             {
                 StateMachine.LastMoveDirection = moveDir;
@@ -39,12 +46,25 @@ namespace MyDongari.Movement
         public override void FixedUpdate()
         {
             Vector2 input = StateMachine.InputReader.MoveInput;
-            Vector3 moveDir = new Vector3(input.x, 0f, input.y).normalized;
-            Rigidbody rb = StateMachine.MechController.Rb;
+            Vector3 camForward = StateMachine.MechController.CameraTransform.forward;
+            Vector3 camRight = StateMachine.MechController.CameraTransform.right;
 
+            camForward.y = 0f;
+            camRight.y = 0f;
+            camForward.Normalize();
+            camRight.Normalize();
+
+            Vector3 moveDir = (camForward * input.y + camRight * input.x).normalized;
+            if (moveDir != Vector3.zero)
+            {
+                StateMachine.LastMoveDirection = moveDir;
+            }
+
+            Rigidbody rb = StateMachine.MechController.Rb;
             rb.AddForce(moveDir * StateMachine.MechController.SprintSpeed, ForceMode.Acceleration);
             StateMachine.MechController.ClampVelocity(StateMachine.MechController.MaxSprintSpeed);
-            
+
+            StateMachine.MechController.RotateToCamera();
         }
 
         public override void Exit()

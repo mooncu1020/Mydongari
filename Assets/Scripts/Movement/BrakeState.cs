@@ -18,13 +18,6 @@ namespace MyDongari.Movement
             Debug.Log("Brake 진입");
             _brakeTimer = 0f;
             _slideWindowOpen = true;
-
-            Vector2 input = StateMachine.InputReader.MoveInput;
-            Vector3 moveDir = new Vector3(input.x, 0f, input.y).normalized;
-            if (moveDir != Vector3.zero)
-            {
-                StateMachine.LastMoveDirection = moveDir;
-            }
         }
 
         public override void Update()
