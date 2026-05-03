@@ -19,6 +19,8 @@ namespace MyDongari.Movement
         public SideStepState SideStepState { get; private set; }
         public QuickTurnState QuickTurnState { get; private set; }
 
+        public bool IsSprinting => _currentState is SprintState;
+
         public Vector3 LastMoveDirection { get; set; }
 
         private void Awake()

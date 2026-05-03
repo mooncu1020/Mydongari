@@ -16,6 +16,7 @@ namespace MyDongari.Movement
         {
             Debug.Log("Sprint 진입");
             _tackleChargeTimer = 0f;
+            StateMachine.MechController.MechCamera.LockToForward();
         }
 
         public override void Update()

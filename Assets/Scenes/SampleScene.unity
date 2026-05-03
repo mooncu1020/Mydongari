@@ -543,8 +543,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Camera.MechCamera
   target: {fileID: 775153504}
   offset: {x: 0, y: 1.5, z: 0}
-  mouseSensitivity: 0.5
+  mouseSensitivity: 0.1
   verticalClamp: 60
+  quickTurnDuration: 0.2
+  baseFov: 70
+  sprintFov: 90
+  fovLerpSpeed: 5
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -777,6 +781,7 @@ MonoBehaviour:
   maxSprintSpeed: 20
   rotationSpeed: 30
   cameraTransform: {fileID: 405262798}
+  mechCamera: {fileID: 405262802}
 --- !u!114 &775153498
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -826,7 +831,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 80
+  m_Constraints: 112
   m_CollisionDetection: 0
 --- !u!136 &775153501
 CapsuleCollider:
@@ -835,7 +840,7 @@ CapsuleCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 775153495}
-  m_Material: {fileID: 13400000, guid: e0745398e6d3e894aad65e85e1d785ad, type: 2}
+  m_Material: {fileID: 13400000, guid: 092e89b9864787f4c9c02dec7f83e23b, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
