@@ -15,6 +15,14 @@ namespace MyDongari.Movement
         public override void Enter()
         {
             Debug.Log("Slide 진입");
+
+            if (!StateMachine.MechController.BoostGauge.TryConsume(
+                StateMachine.MechController.BoostGauge.GetSlideCost()))
+            {
+                StateMachine.ChangeState(StateMachine.IdleState);
+                return;
+            }
+
             _slideTimer = 0f;
             StateMachine.MechController.Rb.linearDamping = 0f;
         }

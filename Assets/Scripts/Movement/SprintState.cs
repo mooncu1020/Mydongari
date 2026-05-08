@@ -21,6 +21,12 @@ namespace MyDongari.Movement
 
         public override void Update()
         {
+            if (StateMachine.MechController.BoostGauge.IsOverheated)
+            {
+                StateMachine.ChangeState(StateMachine.BrakeState);
+                return;
+            }
+
             _tackleChargeTimer += Time.deltaTime;
 
             Vector2 input = StateMachine.InputReader.MoveInput;

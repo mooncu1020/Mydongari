@@ -16,6 +16,14 @@ namespace MyDongari.Movement
         public override void Enter()
         {
             Debug.Log("SideStep 진입");
+
+            if (!StateMachine.MechController.BoostGauge.TryConsume(
+                StateMachine.MechController.BoostGauge.GetSideStepCost()))
+            {
+                StateMachine.ChangeState(StateMachine.WalkState);
+                return;
+            }
+
             _sideStepTimer = 0f;
             StateMachine.MechController.Rb.linearDamping = 0f;
 

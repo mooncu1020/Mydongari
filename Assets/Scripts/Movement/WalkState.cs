@@ -15,14 +15,15 @@ namespace MyDongari.Movement
 
         public override void Update()
         {
-
-            if (StateMachine.InputReader.QuickTurnInput)
+            if (StateMachine.InputReader.QuickTurnInput &&
+                !StateMachine.MechController.BoostGauge.IsOverheated)
             {
                 StateMachine.ChangeState(StateMachine.QuickTurnState);
                 return;
             }
 
-            if (StateMachine.InputReader.SideStepDirection != 0)
+            if (StateMachine.InputReader.SideStepDirection != 0 &&
+                !StateMachine.MechController.BoostGauge.IsOverheated)
             {
                 StateMachine.ChangeState(StateMachine.SideStepState);
                 return;
@@ -34,7 +35,8 @@ namespace MyDongari.Movement
                 return;
             }
 
-            if (StateMachine.InputReader.RunInput)
+            if (StateMachine.InputReader.RunInput &&
+                !StateMachine.MechController.BoostGauge.IsOverheated)
             {
                 StateMachine.ChangeState(StateMachine.RunState);
             }
@@ -56,7 +58,6 @@ namespace MyDongari.Movement
 
             rb.AddForce(moveDir * StateMachine.MechController.WalkSpeed, ForceMode.Acceleration);
             StateMachine.MechController.ClampVelocity(StateMachine.MechController.MaxWalkSpeed);
-
             StateMachine.MechController.RotateToCamera();
         }
 

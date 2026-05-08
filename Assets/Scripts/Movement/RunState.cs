@@ -15,6 +15,12 @@ namespace MyDongari.Movement
 
         public override void Update()
         {
+            if (StateMachine.MechController.BoostGauge.IsOverheated)
+            {
+                StateMachine.ChangeState(StateMachine.WalkState);
+                return;
+            }
+
             if (StateMachine.InputReader.QuickTurnInput)
             {
                 StateMachine.ChangeState(StateMachine.QuickTurnState);

@@ -15,7 +15,16 @@ namespace MyDongari.Movement
         public override void Enter()
         {
             Debug.Log("QuickTurn 진입");
+
+            if (!StateMachine.MechController.BoostGauge.TryConsume(
+                StateMachine.MechController.BoostGauge.GetQuickTurnCost()))
+            {
+                StateMachine.ChangeState(StateMachine.IdleState);
+                return;
+            }
+
             _quickTurnTimer = 0f;
+            StateMachine.MechController.MechCamera.LockToForward();
             StateMachine.MechController.MechCamera.QuickTurn();
         }
 

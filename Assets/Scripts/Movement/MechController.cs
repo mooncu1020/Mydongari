@@ -1,6 +1,7 @@
 using MyDongari.Camera;
 using MyDongari.Input;
 using UnityEngine;
+using MyDongari.Mech;
 
 namespace MyDongari.Movement
 {
@@ -31,7 +32,12 @@ namespace MyDongari.Movement
         public InputReader InputReader { get; private set; }
         public MechStateMachine StateMachine { get; private set; }
 
+        
+
         [Header("카메라")]
+        [SerializeField] private BoostGauge boostGauge;
+        public BoostGauge BoostGauge => boostGauge;
+
         [SerializeField] private Transform cameraTransform;
         [SerializeField] private MechCamera mechCamera;
         public MechCamera MechCamera => mechCamera;
