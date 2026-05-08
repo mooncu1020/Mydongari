@@ -42,8 +42,6 @@ namespace MyDongari.Mech
             bool canRecover = _stateMachine.IsWalking || _stateMachine.IsIdle;
             HandleRecovery(canRecover);
             CheckOverheat();
-
-            Debug.Log("부스트: " + CurrentBoost + " 오버히트: " + IsOverheated);
         }
 
         private void HandleRecovery(bool canRecover)

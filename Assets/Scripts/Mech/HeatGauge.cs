@@ -1,5 +1,6 @@
-using UnityEngine;
 using MyDongari.Movement;
+using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace MyDongari.Mech
 {
@@ -26,27 +27,45 @@ namespace MyDongari.Mech
         {
             if (_stateMachine == null) return;
 
+            if (Keyboard.current.fKey.isPressed)
+            {
+                AddHeat(60f * Time.deltaTime);
+            }
+
             HandleCooling();
             CheckOverheat();
+
+            Debug.Log("히트: " + CurrentHeat + " 과열: " + IsOverheated);
         }
 
         private void HandleCooling()
         {
             if (IsSkillActive) return;
 
-            float currentCoolingRate = coolingRate;
+            if (IsOverheated)
+            {
+                float currentCoolingRate = coolingRate;
+                if (_stateMachine.IsSprinting)
+                {
+                    currentCoolingRate *= (1f - sprintCoolingPenalty);
+                }
+                CurrentHeat = Mathf.Max(CurrentHeat - currentCoolingRate * Time.deltaTime, 0f);
+                if (CurrentHeat <= 0f)
+                {
+                    IsOverheated = false;
+                }
+                return;
+            }
 
+            if (CurrentHeat >= maxHeat) return;
+
+            float normalCoolingRate = coolingRate;
             if (_stateMachine.IsSprinting)
             {
-                currentCoolingRate *= (1f - sprintCoolingPenalty);
+                normalCoolingRate *= (1f - sprintCoolingPenalty);
             }
 
-            CurrentHeat = Mathf.Max(CurrentHeat - currentCoolingRate * Time.deltaTime, 0f);
-
-            if (CurrentHeat <= 0f)
-            {
-                IsOverheated = false;
-            }
+            CurrentHeat = Mathf.Max(CurrentHeat - normalCoolingRate * Time.deltaTime, 0f);
         }
 
         private void CheckOverheat()
@@ -60,9 +79,9 @@ namespace MyDongari.Mech
 
         public void AddHeat(float amount)
         {
-            if (IsOverheated) return;
             CurrentHeat = Mathf.Min(CurrentHeat + amount, maxHeat);
         }
+
 
         public bool CanFire() => !IsOverheated;
     }
