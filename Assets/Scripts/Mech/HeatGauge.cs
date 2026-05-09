@@ -35,7 +35,6 @@ namespace MyDongari.Mech
             HandleCooling();
             CheckOverheat();
 
-            Debug.Log("히트: " + CurrentHeat + " 과열: " + IsOverheated);
         }
 
         private void HandleCooling()
