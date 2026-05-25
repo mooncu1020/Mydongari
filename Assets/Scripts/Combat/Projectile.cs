@@ -77,9 +77,17 @@ namespace MyDongari.Combat
             if (other.CompareTag("Enemy"))
             {
                 Health health = other.GetComponent<Health>();
+                MeleeSystem meleeSystem = other.GetComponent<MeleeSystem>();
+
+                float finalDamage = damage;
+                if (meleeSystem != null)
+                {
+                    finalDamage = meleeSystem.ApplyDamage(damage);
+                }
+
                 if (health != null)
                 {
-                    health.TakeDamage(damage);
+                    health.TakeDamage(finalDamage);
                 }
                 Destroy(gameObject);
             }

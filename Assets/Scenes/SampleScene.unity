@@ -631,6 +631,7 @@ GameObject:
   - component: {fileID: 775153505}
   - component: {fileID: 775153507}
   - component: {fileID: 775153508}
+  - component: {fileID: 775153509}
   m_Layer: 0
   m_Name: Mech
   m_TagString: Untagged
@@ -681,13 +682,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Movement.MechController
   walkSpeed: 10
-  runSpeed: 15
-  sprintSpeed: 20
-  maxWalkSpeed: 5
-  maxRunSpeed: 10
-  maxSprintSpeed: 20
+  runSpeed: 20
+  sprintSpeed: 30
+  maxWalkSpeed: 10
+  maxRunSpeed: 20
+  maxSprintSpeed: 30
   rotationSpeed: 30
   boostGauge: {fileID: 775153505}
+  meleeSystem: {fileID: 775153509}
   cameraTransform: {fileID: 405262798}
   mechCamera: {fileID: 405262802}
 --- !u!114 &775153498
@@ -903,6 +905,30 @@ MonoBehaviour:
   firePoint: {fileID: 329237979}
   heatPerShot: 10
   fireRate: 0.3
+--- !u!114 &775153509
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 775153495}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b9205617e1f1b94429f74bcd400de019, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Combat.MeleeSystem
+  meleeRange: 3
+  meleeDamage: 25
+  meleeCooldown: 0.5
+  guardBoostDrain: 15
+  guardDamageReduction: 0.7
+  parryWindow: 0.15
+  tackleDamage: 10
+  tackleKnockback: 8
+  tackleRange: 5
+  tackleCooldown: 1
+  attackerStunDuration: 0.5
+  victimStunDuration: 1.7
 --- !u!1 &790466230
 GameObject:
   m_ObjectHideFlags: 0
@@ -997,6 +1023,7 @@ GameObject:
   - component: {fileID: 1143339536}
   - component: {fileID: 1143339535}
   - component: {fileID: 1143339539}
+  - component: {fileID: 1143339540}
   m_Layer: 0
   m_Name: DummyTarget
   m_TagString: Enemy
@@ -1011,7 +1038,7 @@ CapsuleCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1143339534}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: 092e89b9864787f4c9c02dec7f83e23b, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -1112,6 +1139,33 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Combat.Health
   maxHealth: 100
+--- !u!54 &1143339540
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1143339534}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 5
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 112
+  m_CollisionDetection: 0
 --- !u!1 &2115654792
 GameObject:
   m_ObjectHideFlags: 0

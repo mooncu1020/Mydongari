@@ -20,7 +20,7 @@ namespace MyDongari.Combat
 
         private void Update()
         {
-            Debug.Log("카메라 forward: " + _camera.forward);
+            
             DetectTarget();
         }
         private void DetectTarget()
@@ -44,7 +44,7 @@ namespace MyDongari.Combat
             }
 
             Target = bestTarget;
-            Debug.Log("락온 타겟: " + (Target != null ? Target.name : "없음"));
+            
         }
     }
 }

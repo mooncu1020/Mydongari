@@ -20,6 +20,8 @@ namespace MyDongari.Movement
         public QuickTurnState QuickTurnState { get; private set; }
 
         public bool IsSprinting => _currentState is SprintState;
+
+        public bool IsStunned => MechController.MeleeSystem != null && MechController.MeleeSystem.IsStunned;
         public bool IsWalking => _currentState is WalkState;
         public bool IsIdle => _currentState is IdleState;
 

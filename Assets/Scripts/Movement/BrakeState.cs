@@ -54,6 +54,10 @@ namespace MyDongari.Movement
 
         public override void FixedUpdate()
         {
+            if (StateMachine.IsStunned)
+            {
+                StateMachine.MechController.Rb.linearVelocity = Vector3.zero;
+            }
         }
 
         public override void Exit()

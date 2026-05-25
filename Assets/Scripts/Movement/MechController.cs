@@ -1,3 +1,4 @@
+using MyDongari.Combat;
 using MyDongari.Camera;
 using MyDongari.Input;
 using UnityEngine;
@@ -37,6 +38,9 @@ namespace MyDongari.Movement
         [Header("카메라")]
         [SerializeField] private BoostGauge boostGauge;
         public BoostGauge BoostGauge => boostGauge;
+
+        [SerializeField] private MeleeSystem meleeSystem;
+        public MeleeSystem MeleeSystem => meleeSystem;
 
         [SerializeField] private Transform cameraTransform;
         [SerializeField] private MechCamera mechCamera;
