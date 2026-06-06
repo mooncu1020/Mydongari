@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using MyDongari.Mech;
 using MyDongari.Combat;
+using MyDongari.Movement;
 using UnityCamera = UnityEngine.Camera;
 
 namespace MyDongari.UI
@@ -18,11 +19,15 @@ namespace MyDongari.UI
         [Header("락온")]
         [SerializeField] private RectTransform lockOnMarker;
 
+        [Header("태클 차지")]
+        [SerializeField] private Image tackleChargeIndicator;
+
         [Header("참조")]
         [SerializeField] private HeatGauge heatGauge;
         [SerializeField] private BoostGauge boostGauge;
         [SerializeField] private Health playerHealth;
         [SerializeField] private LockOnSystem lockOnSystem;
+        [SerializeField] private MechStateMachine mechStateMachine;
 
         private UnityCamera _camera;
 
@@ -37,6 +42,7 @@ namespace MyDongari.UI
             UpdateBoost();
             UpdateHP();
             UpdateLockOn();
+            UpdateTackleCharge();
         }
 
         private void UpdateHeat()
@@ -76,6 +82,28 @@ namespace MyDongari.UI
             lockOnMarker.gameObject.SetActive(true);
             Vector3 screenPos = _camera.WorldToScreenPoint(lockOnSystem.Target.position);
             lockOnMarker.position = screenPos;
+        }
+
+        private void UpdateTackleCharge()
+        {
+            if (tackleChargeIndicator == null || mechStateMachine == null) return;
+
+            if (!mechStateMachine.IsSprinting)
+            {
+                tackleChargeIndicator.fillAmount = 0f;
+                Color c = tackleChargeIndicator.color;
+                c.a = 0f;
+                tackleChargeIndicator.color = c;
+                return;
+            }
+
+            SprintState sprintState = mechStateMachine.SprintState;
+            float chargeAmount = sprintState.TackleChargePower;
+
+            Color col = tackleChargeIndicator.color;
+            col.a = sprintState.IsTackleCharged ? 1f : 0.5f;
+            tackleChargeIndicator.color = col;
+            tackleChargeIndicator.fillAmount = chargeAmount;
         }
     }
 }
