@@ -957,8 +957,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 775153495}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 0.36404425, z: -0, w: -0.9313817}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0.000032564574, y: 0.0047938954, z: -0.0018580568, w: 0.9999868}
+  m_LocalPosition: {x: -0.0055694603, y: 0.000010728836, z: 0.00012432528}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -966,7 +966,7 @@ Transform:
   - {fileID: 790466231}
   - {fileID: 329237979}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 317.302, z: 0}
+  m_LocalEulerAnglesHint: {x: -0.003, y: 360.549, z: 359.787}
 --- !u!114 &775153505
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1031,6 +1031,7 @@ MonoBehaviour:
   firePoint: {fileID: 329237979}
   heatPerShot: 10
   fireRate: 0.3
+  meleeAutoRange: 5
 --- !u!114 &775153509
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1093,7 +1094,7 @@ Transform:
   m_GameObject: {fileID: 790466230}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.5, z: 0}
+  m_LocalPosition: {x: 0, y: 1.5, z: 0.2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -2146,7 +2147,7 @@ MonoBehaviour:
   thickness: 12
   segments: 64
   isBackground: 0
-  reverseDirection: 0
+  reverseDirection: 1
   backgroundColor: {r: 1, g: 1, b: 1, a: 0.15}
 --- !u!1 &1518488151
 GameObject:
@@ -2322,7 +2323,7 @@ MonoBehaviour:
   thickness: 12
   segments: 64
   isBackground: 0
-  reverseDirection: 0
+  reverseDirection: 1
   backgroundColor: {r: 1, g: 1, b: 1, a: 0.15}
 --- !u!1 &1604249579
 GameObject:
