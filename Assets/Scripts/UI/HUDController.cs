@@ -10,17 +10,17 @@ namespace MyDongari.UI
     public class HUDController : MonoBehaviour
     {
         [Header("게이지")]
-        [SerializeField] private Image heatGaugeFill;
-        [SerializeField] private Image boostGaugeFill;
+        [SerializeField] private ArcGauge heatGaugeArc;
+        [SerializeField] private ArcGauge boostGaugeArc;
 
         [Header("HP")]
-        [SerializeField] private Slider hpSlider;
+        [SerializeField] private LinearGauge hpBarFill;
+
+        [Header("태클 차지")]
+        [SerializeField] private LinearGauge tackleBarFill;
 
         [Header("락온")]
         [SerializeField] private RectTransform lockOnMarker;
-
-        [Header("태클 차지")]
-        [SerializeField] private Image tackleChargeIndicator;
 
         [Header("참조")]
         [SerializeField] private HeatGauge heatGauge;
@@ -41,32 +41,52 @@ namespace MyDongari.UI
             UpdateHeat();
             UpdateBoost();
             UpdateHP();
-            UpdateLockOn();
             UpdateTackleCharge();
+            UpdateLockOn();
         }
 
         private void UpdateHeat()
         {
-            if (heatGaugeFill == null || heatGauge == null) return;
-            heatGaugeFill.fillAmount = heatGauge.CurrentHeat / 100f;
-            heatGaugeFill.color = heatGauge.IsOverheated
+            if (heatGaugeArc == null || heatGauge == null) return;
+            heatGaugeArc.SetFill(heatGauge.CurrentHeat / 100f);
+            heatGaugeArc.SetColor(heatGauge.IsOverheated
                 ? Color.red
-                : new Color(1f, 0.6f, 0f);
+                : new Color(1f, 0.6f, 0f));
         }
 
         private void UpdateBoost()
         {
-            if (boostGaugeFill == null || boostGauge == null) return;
-            boostGaugeFill.fillAmount = boostGauge.CurrentBoost / boostGauge.MaxBoost;
-            boostGaugeFill.color = boostGauge.IsOverheated
+            if (boostGaugeArc == null || boostGauge == null) return;
+            boostGaugeArc.SetFill(boostGauge.CurrentBoost / boostGauge.MaxBoost);
+            boostGaugeArc.SetColor(boostGauge.IsOverheated
                 ? Color.red
-                : new Color(0.3f, 0.7f, 1f);
+                : new Color(0.3f, 0.7f, 1f));
         }
 
         private void UpdateHP()
         {
-            if (hpSlider == null || playerHealth == null) return;
-            hpSlider.value = playerHealth.CurrentHealth / 100f;
+            if (hpBarFill == null || playerHealth == null) return;
+            hpBarFill.SetFill(playerHealth.CurrentHealth / 100f);
+        }
+
+        private void UpdateTackleCharge()
+        {
+            if (tackleBarFill == null || mechStateMachine == null) return;
+
+            if (!mechStateMachine.IsSprinting)
+            {
+                tackleBarFill.SetFill(0f);
+                tackleBarFill.SetColor(new Color(1f, 0.9f, 0f, 0f));
+                return;
+            }
+
+            SprintState sprintState = mechStateMachine.SprintState;
+            float chargeAmount = sprintState.TackleChargePower;
+            Color col = sprintState.IsTackleCharged
+                ? new Color(1f, 0.9f, 0f, 1f)
+                : new Color(1f, 0.9f, 0f, 0.5f);
+            tackleBarFill.SetColor(col);
+            tackleBarFill.SetFill(chargeAmount);
         }
 
         private void UpdateLockOn()
@@ -82,28 +102,6 @@ namespace MyDongari.UI
             lockOnMarker.gameObject.SetActive(true);
             Vector3 screenPos = _camera.WorldToScreenPoint(lockOnSystem.Target.position);
             lockOnMarker.position = screenPos;
-        }
-
-        private void UpdateTackleCharge()
-        {
-            if (tackleChargeIndicator == null || mechStateMachine == null) return;
-
-            if (!mechStateMachine.IsSprinting)
-            {
-                tackleChargeIndicator.fillAmount = 0f;
-                Color c = tackleChargeIndicator.color;
-                c.a = 0f;
-                tackleChargeIndicator.color = c;
-                return;
-            }
-
-            SprintState sprintState = mechStateMachine.SprintState;
-            float chargeAmount = sprintState.TackleChargePower;
-
-            Color col = tackleChargeIndicator.color;
-            col.a = sprintState.IsTackleCharged ? 1f : 0.5f;
-            tackleChargeIndicator.color = col;
-            tackleChargeIndicator.fillAmount = chargeAmount;
         }
     }
 }
