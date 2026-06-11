@@ -73,9 +73,20 @@ namespace MyDongari.Combat
                 }
                 IsGuarding = true;
                 _boostGauge.TryConsume(guardBoostDrain * Time.deltaTime);
+
+                Rigidbody rb = GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    rb.linearDamping = 8f;
+                }
             }
             else
             {
+                if (IsGuarding)
+                {
+                    Rigidbody rb = GetComponent<Rigidbody>();
+                    if (rb != null) rb.linearDamping = 2f;
+                }
                 IsGuarding = false;
             }
         }
@@ -87,7 +98,7 @@ namespace MyDongari.Combat
                 _parryActive = true;
                 _parryTimer = 0f;
                 IsParrying = true;
-                Debug.Log("패리 윈도우 활성화");
+                Debug.Log("가드 활성화");
             }
 
             if (_parryActive)
@@ -161,31 +172,14 @@ namespace MyDongari.Combat
                 if (enemyMelee != null) enemyMelee.ApplyStun(victimStunDuration);
                 Debug.Log("태클 히트: " + damage);
 
-                StartCoroutine(TackleDash(hit.transform.position));
+
                 return;
             }
 
             ApplyStun(attackerStunDuration);
         }
 
-        private System.Collections.IEnumerator TackleDash(Vector3 targetPos)
-        {
-            Rigidbody rb = GetComponent<Rigidbody>();
-            Vector3 dashDir = (targetPos - transform.position).normalized;
-            float dashDuration = 0.3f;
-            float dashSpeed = 40f;
-            float elapsed = 0f;
-
-            while (elapsed < dashDuration)
-            {
-                elapsed += Time.deltaTime;
-                rb.linearVelocity = dashDir * dashSpeed;
-                yield return null;
-            }
-
-            rb.linearVelocity = Vector3.zero;
-            ApplyStun(attackerStunDuration);
-        }
+        
 
         public void TryMeleeAttack()
         {

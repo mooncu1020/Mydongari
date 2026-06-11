@@ -43,15 +43,7 @@ namespace MyDongari.Movement
 
             _tackleChargeTimer += Time.deltaTime;
 
-            if (_isDashing)
-            {
-                _dashTimer += Time.deltaTime;
-                if (_dashTimer >= DashDuration)
-                {
-                    StateMachine.ChangeState(StateMachine.BrakeState);
-                }
-                return;
-            }
+           
 
             if (StateMachine.InputReader.MoveInput.sqrMagnitude < 0.25f ||
                 !StateMachine.InputReader.SprintInput)
@@ -62,11 +54,7 @@ namespace MyDongari.Movement
 
         public override void FixedUpdate()
         {
-            if (_isDashing)
-            {
-                StateMachine.MechController.Rb.linearVelocity = _dashDir * DashSpeed;
-                return;
-            }
+            
 
             Vector2 input = StateMachine.InputReader.MoveInput;
             Vector3 camForward = StateMachine.MechController.CameraTransform.forward;
@@ -94,11 +82,11 @@ namespace MyDongari.Movement
                 foreach (Collider hit in hits)
                 {
                     if (!hit.CompareTag("Enemy")) continue;
-                    _dashDir = (hit.transform.position -
-                                StateMachine.MechController.transform.position).normalized;
-                    _isDashing = true;
-                    _dashTimer = 0f;
+
+                    StateMachine.MechController.Rb.linearVelocity = Vector3.zero;
                     StateMachine.MechController.MeleeSystem.TryTackle(TackleChargePower);
+                    StateMachine.MechController.MeleeSystem.ApplyStun(0.5f);
+                    StateMachine.ChangeState(StateMachine.IdleState);
                     return;
                 }
             }

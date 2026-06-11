@@ -20,7 +20,7 @@ namespace MyDongari.Combat
 
         private void Update()
         {
-            
+
             DetectTarget();
         }
         private void DetectTarget()
@@ -33,18 +33,23 @@ namespace MyDongari.Combat
             {
                 if (!hit.CompareTag("Enemy")) continue;
 
-                Vector3 dirToTarget = (hit.transform.position - _camera.position).normalized;
+                Vector3 targetCenter = hit.bounds.center;
+                Vector3 dirToTarget = (targetCenter - _camera.position).normalized;
                 float angle = Vector3.Angle(_camera.forward, dirToTarget);
 
-                if (angle < bestAngle)
+                if (angle >= bestAngle) continue;
+
+                RaycastHit rayHit;
+                if (Physics.Raycast(_camera.position, dirToTarget, out rayHit, lockOnRange))
                 {
-                    bestAngle = angle;
-                    bestTarget = hit.transform;
+                    if (!rayHit.collider.CompareTag("Enemy")) continue;
                 }
+
+                bestAngle = angle;
+                bestTarget = hit.transform;
             }
 
             Target = bestTarget;
-            
         }
     }
 }

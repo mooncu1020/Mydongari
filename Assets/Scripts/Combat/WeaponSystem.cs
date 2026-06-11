@@ -1,5 +1,6 @@
 using UnityEngine;
 using MyDongari.Mech;
+using MyDongari.Combat;
 
 namespace MyDongari.Combat
 {
@@ -10,15 +11,18 @@ namespace MyDongari.Combat
         [SerializeField] private Transform firePoint;
         [SerializeField] private float heatPerShot = 10f;
         [SerializeField] private float fireRate = 0.3f;
+        [SerializeField] private float meleeAutoRange = 5f;
 
         private LockOnSystem _lockOnSystem;
         private HeatGauge _heatGauge;
+        private MeleeSystem _meleeSystem;
         private float _fireTimer = 0f;
 
         private void Awake()
         {
             _lockOnSystem = GetComponent<LockOnSystem>();
             _heatGauge = GetComponent<HeatGauge>();
+            _meleeSystem = GetComponent<MeleeSystem>();
         }
 
         private void Update()
@@ -27,8 +31,25 @@ namespace MyDongari.Combat
 
             if (UnityEngine.InputSystem.Mouse.current.leftButton.isPressed)
             {
-                TryFire();
+                if (IsEnemyInMeleeRange())
+                {
+                    _meleeSystem.TryMeleeAttack();
+                }
+                else
+                {
+                    TryFire();
+                }
             }
+        }
+
+        private bool IsEnemyInMeleeRange()
+        {
+            Collider[] hits = Physics.OverlapSphere(transform.position, meleeAutoRange);
+            foreach (Collider hit in hits)
+            {
+                if (hit.CompareTag("Enemy")) return true;
+            }
+            return false;
         }
 
         private void TryFire()
