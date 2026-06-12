@@ -27,6 +27,8 @@ namespace MyDongari.Combat
         public bool IsGuarding { get; private set; }
         public bool IsParrying { get; private set; }
         public bool IsStunned { get; private set; }
+        public float MeleeTimer => _meleeTimer;
+        public float MeleeCooldown => meleeCooldown;
 
         private float _meleeTimer = 0f;
         private float _parryTimer = 0f;
@@ -64,6 +66,8 @@ namespace MyDongari.Combat
 
         private void HandleGuard()
         {
+            if (_boostGauge == null) return;
+
             if (UnityEngine.InputSystem.Mouse.current.rightButton.isPressed)
             {
                 if (_boostGauge.IsOverheated)
@@ -75,10 +79,7 @@ namespace MyDongari.Combat
                 _boostGauge.TryConsume(guardBoostDrain * Time.deltaTime);
 
                 Rigidbody rb = GetComponent<Rigidbody>();
-                if (rb != null)
-                {
-                    rb.linearDamping = 8f;
-                }
+                if (rb != null) rb.linearDamping = 8f;
             }
             else
             {
@@ -98,7 +99,7 @@ namespace MyDongari.Combat
                 _parryActive = true;
                 _parryTimer = 0f;
                 IsParrying = true;
-                Debug.Log("가드 활성화");
+                Debug.Log("패리 윈도우 활성화");
             }
 
             if (_parryActive)
@@ -171,15 +172,11 @@ namespace MyDongari.Combat
 
                 if (enemyMelee != null) enemyMelee.ApplyStun(victimStunDuration);
                 Debug.Log("태클 히트: " + damage);
-
-
                 return;
             }
 
             ApplyStun(attackerStunDuration);
         }
-
-        
 
         public void TryMeleeAttack()
         {
@@ -189,14 +186,34 @@ namespace MyDongari.Combat
             Collider[] hits = Physics.OverlapSphere(transform.position, meleeRange);
             foreach (Collider hit in hits)
             {
-                if (!hit.CompareTag("Enemy")) continue;
+                if (hit.gameObject == gameObject) continue;
+                if (!hit.CompareTag("Enemy") && !hit.CompareTag("Player")) continue;
+
+                MeleeSystem enemyMelee = hit.GetComponent<MeleeSystem>();
                 Health health = hit.GetComponent<Health>();
+
+                if (enemyMelee != null && enemyMelee.MeleeTimer < enemyMelee.MeleeCooldown * 0.5f)
+                {
+                    Debug.Log("크래시 발생");
+                    Rigidbody myRb = GetComponent<Rigidbody>();
+                    Rigidbody enemyRb = hit.GetComponent<Rigidbody>();
+
+                    Vector3 knockDir = (hit.transform.position - transform.position).normalized;
+                    if (myRb != null) myRb.AddForce(-knockDir * 10f, ForceMode.Impulse);
+                    if (enemyRb != null) enemyRb.AddForce(knockDir * 10f, ForceMode.Impulse);
+                    return;
+                }
+
+                float damage = meleeDamage;
+                if (enemyMelee != null)
+                {
+                    damage = enemyMelee.ApplyDamage(meleeDamage);
+                }
+
                 if (health != null)
                 {
-                    health.TakeDamage(meleeDamage);
-                    Debug.Log("근접 히트: " + meleeDamage);
-                    Debug.Log("태클 범위 내 콜라이더 수: " + Physics.OverlapSphere(transform.position, tackleRange).Length);
-
+                    health.TakeDamage(damage);
+                    Debug.Log("근접 히트: " + damage);
                 }
             }
         }

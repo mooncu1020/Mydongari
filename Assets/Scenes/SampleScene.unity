@@ -760,7 +760,7 @@ GameObject:
   - component: {fileID: 775153510}
   m_Layer: 0
   m_Name: Mech
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1045,7 +1045,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Combat.MeleeSystem
   meleeRange: 3
-  meleeDamage: 25
+  meleeDamage: 10
   meleeCooldown: 0.5
   guardBoostDrain: 15
   guardDamageReduction: 0.7
@@ -1718,6 +1718,8 @@ GameObject:
   - component: {fileID: 1143339535}
   - component: {fileID: 1143339539}
   - component: {fileID: 1143339540}
+  - component: {fileID: 1143339541}
+  - component: {fileID: 1143339542}
   m_Layer: 0
   m_Name: DummyTarget
   m_TagString: Enemy
@@ -1860,6 +1862,47 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 112
   m_CollisionDetection: 0
+--- !u!114 &1143339541
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1143339534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b31b10deb5bf5474cbaabb1b8983abb5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Combat.MeleeDummy
+  detectionRange: 5
+  attackRange: 3
+  attackCooldown: 1
+  attackDamage: 5
+  moveSpeed: 5
+--- !u!114 &1143339542
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1143339534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b9205617e1f1b94429f74bcd400de019, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Combat.MeleeSystem
+  meleeRange: 3
+  meleeDamage: 5
+  meleeCooldown: 1
+  guardBoostDrain: 15
+  guardDamageReduction: 0.7
+  parryWindow: 0.15
+  tackleDamage: 30
+  tackleKnockback: 8
+  tackleRange: 5
+  tackleCooldown: 1
+  attackerStunDuration: 0.5
+  victimStunDuration: 1.7
 --- !u!1 &1178358904
 GameObject:
   m_ObjectHideFlags: 0
