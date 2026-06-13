@@ -1,6 +1,7 @@
 using UnityEngine;
 using MyDongari.Mech;
-using MyDongari.Combat;
+using MyDongari.Combat.Skills;
+using MyDongari.Input;
 
 namespace MyDongari.Combat
 {
@@ -16,6 +17,9 @@ namespace MyDongari.Combat
         private LockOnSystem _lockOnSystem;
         private HeatGauge _heatGauge;
         private MeleeSystem _meleeSystem;
+        private AnchorClaw _anchorClaw;
+        private ImpactSlam _impactSlam;
+        private InputReader _inputReader;
         private float _fireTimer = 0f;
 
         private void Awake()
@@ -23,15 +27,38 @@ namespace MyDongari.Combat
             _lockOnSystem = GetComponent<LockOnSystem>();
             _heatGauge = GetComponent<HeatGauge>();
             _meleeSystem = GetComponent<MeleeSystem>();
+            _anchorClaw = GetComponent<AnchorClaw>();
+            _impactSlam = GetComponent<ImpactSlam>();
+            _inputReader = GetComponent<InputReader>();
         }
 
         private void Update()
         {
             _fireTimer += Time.deltaTime;
 
+            if (_inputReader.Skill1Input)
+            {
+                if (_anchorClaw != null)
+                {
+                    _anchorClaw.TryActivate();
+                }
+            }
+
+            if (_inputReader.Skill2Input)
+            {
+                if (_impactSlam != null)
+                {
+                    _impactSlam.TryActivate();
+                }
+            }
+
             if (UnityEngine.InputSystem.Mouse.current.leftButton.isPressed)
             {
-                if (IsEnemyInMeleeRange())
+                if (_anchorClaw != null && _anchorClaw.IsPileDriverReady)
+                {
+                    _anchorClaw.TryPileDriver();
+                }
+                else if (IsEnemyInMeleeRange())
                 {
                     _meleeSystem.TryMeleeAttack();
                 }
