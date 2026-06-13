@@ -758,6 +758,8 @@ GameObject:
   - component: {fileID: 775153508}
   - component: {fileID: 775153509}
   - component: {fileID: 775153510}
+  - component: {fileID: 775153511}
+  - component: {fileID: 775153512}
   m_Layer: 0
   m_Name: Mech
   m_TagString: Player
@@ -1069,6 +1071,40 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Combat.Health
   maxHealth: 100
+--- !u!114 &775153511
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 775153495}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98cafb7853d1bd340bab281155fc7f96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Combat.Skills.AnchorClaw
+  anchorRange: 20
+  pullSpeed: 15
+  pullDuration: 1.5
+  pileDriverDamage: 50
+  cooldown: 5
+--- !u!114 &775153512
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 775153495}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 523243e60dee87b47a951f331b3b9490, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Combat.Skills.ImpactSlam
+  slamRange: 8
+  slamAngle: 90
+  slamDamage: 10
+  slamKnockback: 15
+  cooldown: 2
 --- !u!1 &790466230
 GameObject:
   m_ObjectHideFlags: 0
