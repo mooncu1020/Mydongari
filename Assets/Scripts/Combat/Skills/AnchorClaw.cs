@@ -7,7 +7,6 @@ namespace MyDongari.Combat.Skills
     public class AnchorClaw : MonoBehaviour
     {
         [Header("앵커 설정")]
-        [SerializeField] private float anchorRange = 20f;
         [SerializeField] private float pullSpeed = 15f;
         [SerializeField] private float pullDuration = 1.5f;
         [SerializeField] private float pileDriverDamage = 50f;

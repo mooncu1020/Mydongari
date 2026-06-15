@@ -20,8 +20,6 @@ namespace MyDongari.Combat.Skills
 
         public void TryActivate()
         {
-            Debug.Log("슬램 발동 / 쿨다운: " + _cooldownTimer + "/" + cooldown);
-
             if (_cooldownTimer < cooldown) return;
             _cooldownTimer = 0f;
 

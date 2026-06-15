@@ -2,6 +2,7 @@ using UnityEngine;
 using MyDongari.Mech;
 using MyDongari.Combat.Skills;
 using MyDongari.Input;
+using MyDongari.Core;
 
 namespace MyDongari.Combat
 {
@@ -34,6 +35,8 @@ namespace MyDongari.Combat
 
         private void Update()
         {
+            if (GameManager.Instance != null && !GameManager.Instance.IsRoundActive) return;
+
             _fireTimer += Time.deltaTime;
 
             if (_inputReader.Skill1Input)

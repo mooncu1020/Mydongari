@@ -7,7 +7,6 @@ namespace MyDongari.Combat
         [SerializeField] private float detectionRange = 5f;
         [SerializeField] private float attackRange = 3f;
         [SerializeField] private float attackCooldown = 1f;
-        [SerializeField] private float attackDamage = 15f;
         [SerializeField] private float moveSpeed = 5f;
 
         private Transform _player;
