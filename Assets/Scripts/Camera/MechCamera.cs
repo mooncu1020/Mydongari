@@ -136,6 +136,22 @@ namespace MyDongari.Camera
 
                     _pitch = Mathf.Clamp(_pitch, -verticalClamp, verticalClamp);
                 }
+                else if (!isSprinting)
+                {
+                    _yaw += _inputReader.LookInput.x * mouseSensitivity;
+                    _pitch -= _inputReader.LookInput.y * mouseSensitivity;
+                    _pitch = Mathf.Clamp(_pitch, -verticalClamp, verticalClamp);
+                }
+                else if (_mechController != null)
+                {
+                    Vector3 velocity = _mechController.Rb.linearVelocity;
+                    velocity.y = 0f;
+                    if (velocity.sqrMagnitude > 0.1f)
+                    {
+                        float targetYaw = Mathf.Atan2(velocity.x, velocity.z) * Mathf.Rad2Deg;
+                        _yaw = Mathf.LerpAngle(_yaw, targetYaw, 5f * Time.deltaTime);
+                    }
+                }
             }
 
             transform.position = target.position + offset;

@@ -27,6 +27,8 @@ namespace MyDongari.Movement
 
         public bool IsRunning => _currentState is RunState;
 
+        public string CurrentStateName => _currentState != null ? _currentState.GetType().Name : "None";
+
         public Vector3 LastMoveDirection { get; set; }
 
         private void Awake()
