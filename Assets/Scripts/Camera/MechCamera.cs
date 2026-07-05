@@ -28,6 +28,8 @@ namespace MyDongari.Camera
         private MechController _mechController;
         private UnityEngine.Camera _camera;
         private bool _isQuickTurning = false;
+        private Transform _hardLockTarget;
+        private float _hardLockTrackSpeed;
 
         public void LockToForward()
         {
@@ -73,6 +75,17 @@ namespace MyDongari.Camera
             _isQuickTurning = false;
         }
 
+        public void TrackTarget(Transform lockTarget, float speed)
+        {
+            _hardLockTarget = lockTarget;
+            _hardLockTrackSpeed = speed;
+        }
+
+        public void StopTracking()
+        {
+            _hardLockTarget = null;
+        }
+
         private void Start()
         {
             Cursor.lockState = CursorLockMode.Locked;
@@ -101,21 +114,27 @@ namespace MyDongari.Camera
 
             if (!_isQuickTurning)
             {
-                if (!isSprinting)
+                if (_hardLockTarget != null)
                 {
-                    _yaw += _inputReader.LookInput.x * mouseSensitivity;
-                    _pitch -= _inputReader.LookInput.y * mouseSensitivity;
-                    _pitch = Mathf.Clamp(_pitch, -verticalClamp, verticalClamp);
-                }
-                else if (_mechController != null)
-                {
-                    Vector3 velocity = _mechController.Rb.linearVelocity;
-                    velocity.y = 0f;
-                    if (velocity.sqrMagnitude > 0.1f)
+                    Vector3 dir = (_hardLockTarget.position - transform.position).normalized;
+                    float targetYaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
+                    float targetPitch = -Mathf.Asin(dir.y) * Mathf.Rad2Deg;
+
+                    float yawDiff = Mathf.Abs(Mathf.DeltaAngle(_yaw, targetYaw));
+                    float pitchDiff = Mathf.Abs(targetPitch - _pitch);
+
+                    if (yawDiff < 1f && pitchDiff < 1f)
                     {
-                        float targetYaw = Mathf.Atan2(velocity.x, velocity.z) * Mathf.Rad2Deg;
-                        _yaw = Mathf.LerpAngle(_yaw, targetYaw, 5f * Time.deltaTime);
+                        _yaw = targetYaw;
+                        _pitch = targetPitch;
                     }
+                    else
+                    {
+                        _yaw = Mathf.LerpAngle(_yaw, targetYaw, _hardLockTrackSpeed * Time.deltaTime);
+                        _pitch = Mathf.Lerp(_pitch, targetPitch, _hardLockTrackSpeed * Time.deltaTime);
+                    }
+
+                    _pitch = Mathf.Clamp(_pitch, -verticalClamp, verticalClamp);
                 }
             }
 
