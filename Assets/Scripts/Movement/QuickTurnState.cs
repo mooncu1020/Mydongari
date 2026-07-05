@@ -14,8 +14,6 @@ namespace MyDongari.Movement
 
         public override void Enter()
         {
-            Debug.Log("QuickTurn 진입");
-
             if (!StateMachine.MechController.BoostGauge.TryConsume(
                 StateMachine.MechController.BoostGauge.GetQuickTurnCost()))
             {
@@ -67,7 +65,6 @@ namespace MyDongari.Movement
 
         public override void Exit()
         {
-            Debug.Log("QuickTurn 탈출");
         }
     }
 }

@@ -22,9 +22,6 @@ namespace MyDongari.Combat.Skills
         {
             if (_cooldownTimer < cooldown) return;
             _cooldownTimer = 0f;
-
-            Debug.Log("임팩트 슬램 발동");
-
             Collider[] hits = Physics.OverlapSphere(transform.position, slamRange);
             foreach (Collider hit in hits)
             {
@@ -41,7 +38,6 @@ namespace MyDongari.Combat.Skills
                 if (health != null)
                 {
                     health.TakeDamage(slamDamage);
-                    Debug.Log("슬램 히트: " + slamDamage);
                 }
 
                 if (rb != null)

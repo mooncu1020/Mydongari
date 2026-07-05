@@ -10,7 +10,6 @@ namespace MyDongari.Movement
 
         public override void Enter()
         {
-            Debug.Log("Idle 진입");
         }
 
         public override void Update()
@@ -41,7 +40,6 @@ namespace MyDongari.Movement
 
         public override void Exit()
         {
-            Debug.Log("Idle 탈출");
         }
     }
 }

@@ -130,7 +130,6 @@ namespace MyDongari.Core
         {
             if (_sb == null || _sb.Length == 0) return;
             File.WriteAllText(_filePath, _sb.ToString());
-            Debug.Log("플레이 로그 저장: " + _filePath);
             _sb.Clear();
         }
     }

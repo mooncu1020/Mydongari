@@ -49,8 +49,6 @@ namespace MyDongari.Combat.Skills
             _pullTimer = 0f;
             _pileDriverReady = true;
             _cooldownTimer = 0f;
-
-            Debug.Log("앵커 클로 발사");
         }
 
         private void HandlePull()
@@ -71,7 +69,6 @@ namespace MyDongari.Combat.Skills
             {
                 _isPulling = false;
                 _targetRb.linearVelocity = Vector3.zero;
-                Debug.Log("앵커 클로 도달");
             }
         }
 
@@ -97,7 +94,6 @@ namespace MyDongari.Combat.Skills
             if (health != null)
             {
                 health.TakeDamage(damage);
-                Debug.Log("파일드라이버: " + damage);
             }
 
             _target = null;

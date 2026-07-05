@@ -10,7 +10,6 @@ namespace MyDongari.Movement
 
         public override void Enter()
         {
-            Debug.Log("Walk 진입");
         }
 
         public override void Update()
@@ -69,7 +68,6 @@ namespace MyDongari.Movement
 
         public override void Exit()
         {
-            Debug.Log("Walk 탈출");
         }
     }
 }

@@ -25,7 +25,6 @@ namespace MyDongari.Combat
         private void Start()
         {
             _player = GameObject.FindWithTag("Player").transform;
-            Debug.Log("플레이어 찾음: " + (_player != null ? _player.name : "없음"));
         }
 
         private void Update()

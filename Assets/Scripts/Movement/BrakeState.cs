@@ -15,7 +15,6 @@ namespace MyDongari.Movement
 
         public override void Enter()
         {
-            Debug.Log("Brake 진입");
             _brakeTimer = 0f;
             _slideWindowOpen = true;
         }
@@ -62,7 +61,6 @@ namespace MyDongari.Movement
 
         public override void Exit()
         {
-            Debug.Log("Brake 탈출");
         }
     }
 }

@@ -31,7 +31,6 @@ namespace MyDongari.Combat
 
         private void OnDeath()
         {
-            Debug.Log(gameObject.name + " 사망");
             if (_stateMachine != null)
             {
                 _stateMachine.ChangeState(_stateMachine.IdleState);

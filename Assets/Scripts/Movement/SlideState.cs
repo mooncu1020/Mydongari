@@ -14,8 +14,6 @@ namespace MyDongari.Movement
 
         public override void Enter()
         {
-            Debug.Log("Slide 진입");
-
             if (!StateMachine.MechController.BoostGauge.TryConsume(
                 StateMachine.MechController.BoostGauge.GetSlideCost()))
             {
@@ -63,7 +61,6 @@ namespace MyDongari.Movement
 
         public override void Exit()
         {
-            Debug.Log("Slide 탈출");
             StateMachine.MechController.Rb.linearDamping = 2f;
         }
     }

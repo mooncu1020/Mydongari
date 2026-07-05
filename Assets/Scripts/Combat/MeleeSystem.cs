@@ -99,7 +99,6 @@ namespace MyDongari.Combat
                 _parryActive = true;
                 _parryTimer = 0f;
                 IsParrying = true;
-                Debug.Log("패리 윈도우 활성화");
             }
 
             if (_parryActive)
@@ -123,7 +122,6 @@ namespace MyDongari.Combat
         {
             if (IsParrying)
             {
-                Debug.Log("패리 성공");
                 return 0f;
             }
             if (IsGuarding)
@@ -149,7 +147,6 @@ namespace MyDongari.Combat
                 MeleeSystem enemyMelee = hit.GetComponent<MeleeSystem>();
                 if (enemyMelee != null && enemyMelee.IsParrying)
                 {
-                    Debug.Log("태클 패리당함");
                     ApplyStun(attackerStunDuration);
                     return;
                 }
@@ -171,7 +168,6 @@ namespace MyDongari.Combat
                 }
 
                 if (enemyMelee != null) enemyMelee.ApplyStun(victimStunDuration);
-                Debug.Log("태클 히트: " + damage);
                 return;
             }
 
@@ -194,7 +190,6 @@ namespace MyDongari.Combat
 
                 if (enemyMelee != null && enemyMelee.MeleeTimer < enemyMelee.MeleeCooldown * 0.5f)
                 {
-                    Debug.Log("크래시 발생");
                     Rigidbody myRb = GetComponent<Rigidbody>();
                     Rigidbody enemyRb = hit.GetComponent<Rigidbody>();
 
@@ -213,7 +208,6 @@ namespace MyDongari.Combat
                 if (health != null)
                 {
                     health.TakeDamage(damage);
-                    Debug.Log("근접 히트: " + damage);
                 }
             }
         }

@@ -20,7 +20,6 @@ namespace MyDongari.Movement
 
         public override void Enter()
         {
-            Debug.Log("Sprint 진입");
             _tackleChargeTimer = 0f;
             _isDashing = false;
             _dashTimer = 0f;
@@ -94,7 +93,6 @@ namespace MyDongari.Movement
 
         public override void Exit()
         {
-            Debug.Log("Sprint 탈출");
         }
     }
 }

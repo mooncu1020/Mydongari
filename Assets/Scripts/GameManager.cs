@@ -77,8 +77,6 @@ namespace MyDongari.Core
                 Health h = player2.GetComponent<Health>();
                 if (h != null) h.ResetHealth();
             }
-
-            Debug.Log("라운드 시작");
         }
 
         private void RoundEnd(int winner)
@@ -87,16 +85,11 @@ namespace MyDongari.Core
 
             if (winner == 1) _player1Wins++;
             else _player2Wins++;
-
-            Debug.Log($"라운드 종료 — P{winner} 승리 / P1: {_player1Wins} P2: {_player2Wins}");
-
             if (_player1Wins >= roundsToWin)
             {
-                Debug.Log("Player 1 WIN");
             }
             else if (_player2Wins >= roundsToWin)
             {
-                Debug.Log("Player 2 WIN");
             }
             else
             {
