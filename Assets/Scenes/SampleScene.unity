@@ -1048,6 +1048,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Combat.LockOnSystem
   lockOnRange: 50
   lockOnAngle: 30
+  hardLockEnterRange: 40
+  hardLockExitRange: 60
+  hardLockMaxAngle: 120
+  hardLockTrackSpeed: 10
 --- !u!114 &775153508
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1064,7 +1068,7 @@ MonoBehaviour:
   firePoint: {fileID: 329237979}
   heatPerShot: 10
   fireRate: 0.3
-  meleeAutoRange: 5
+  meleeAutoRange: 50
 --- !u!114 &775153509
 MonoBehaviour:
   m_ObjectHideFlags: 0
