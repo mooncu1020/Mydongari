@@ -23,7 +23,6 @@ namespace MyDongari.Movement
             }
 
             _sideStepTimer = 0f;
-            StateMachine.MechController.Rb.linearDamping = 0f;
 
             _stepDirection = StateMachine.InputReader.SideStepDirection == 1
                 ? StateMachine.MechController.transform.right
@@ -56,12 +55,12 @@ namespace MyDongari.Movement
         public override void FixedUpdate()
         {
             float t = _sideStepTimer / SideStepDuration;
-            StateMachine.MechController.Rb.linearDamping = Mathf.Lerp(0f, 8f, t);
+            StateMachine.MechController.RequestDamping(Mathf.Lerp(0f, 8f, t), priority: 5);
         }
 
         public override void Exit()
         {
-            StateMachine.MechController.Rb.linearDamping = 2f;
+            StateMachine.MechController.SetBaselineDamping(2f);
         }
     }
 }

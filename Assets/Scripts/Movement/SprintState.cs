@@ -8,12 +8,6 @@ namespace MyDongari.Movement
         public bool IsTackleCharged => _tackleChargeTimer >= 1.5f;
         public float TackleChargePower => Mathf.Clamp01((_tackleChargeTimer - 1.5f) / 1.5f);
 
-        private bool _isDashing = false;
-        private float _dashTimer = 0f;
-        private const float DashDuration = 0.15f;
-        private const float DashSpeed = 50f;
-        private Vector3 _dashDir;
-
         public SprintState(MechStateMachine stateMachine) : base(stateMachine)
         {
         }
@@ -21,8 +15,6 @@ namespace MyDongari.Movement
         public override void Enter()
         {
             _tackleChargeTimer = 0f;
-            _isDashing = false;
-            _dashTimer = 0f;
             StateMachine.MechController.MechCamera.LockToForward();
         }
 
@@ -42,7 +34,7 @@ namespace MyDongari.Movement
 
             _tackleChargeTimer += Time.deltaTime;
 
-           
+
 
             if (StateMachine.InputReader.MoveInput.sqrMagnitude < 0.25f ||
                 !StateMachine.InputReader.SprintInput)
@@ -53,7 +45,7 @@ namespace MyDongari.Movement
 
         public override void FixedUpdate()
         {
-            
+
 
             Vector2 input = StateMachine.InputReader.MoveInput;
             Vector3 camForward = StateMachine.MechController.CameraTransform.forward;
@@ -70,9 +62,10 @@ namespace MyDongari.Movement
                 StateMachine.LastMoveDirection = moveDir;
             }
 
-            Rigidbody rb = StateMachine.MechController.Rb;
-            rb.AddForce(moveDir * StateMachine.MechController.SprintSpeed, ForceMode.Acceleration);
-            StateMachine.MechController.ClampVelocity(StateMachine.MechController.MaxSprintSpeed);
+            StateMachine.MechController.ApplyMoveForce(
+                moveDir,
+                StateMachine.MechController.SprintSpeed,
+                StateMachine.MechController.MaxSprintSpeed);
 
             if (IsTackleCharged)
             {

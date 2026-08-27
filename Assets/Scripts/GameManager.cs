@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using MyDongari.Combat;
@@ -7,6 +8,13 @@ namespace MyDongari.Core
     public class GameManager : MonoBehaviour
     {
         public static GameManager Instance { get; private set; }
+
+        /// <summary>매치(전체 승부)가 끝났을 때 발생. 인자는 승리한 플레이어 번호(1 또는 2).
+        /// HUD/게임오버 화면 등은 여기 구독해서 처리하면 됨.</summary>
+        public event Action<int> OnMatchOver;
+
+        public bool IsMatchOver { get; private set; }
+        public int MatchWinner { get; private set; }
 
         [Header("라운드 설정")]
         [SerializeField] private int roundsToWin = 2;
@@ -62,6 +70,8 @@ namespace MyDongari.Core
 
         private void StartRound()
         {
+            if (IsMatchOver) return;
+
             _roundActive = true;
 
             if (player1 != null && player1SpawnPoint != null)
@@ -85,11 +95,13 @@ namespace MyDongari.Core
 
             if (winner == 1) _player1Wins++;
             else _player2Wins++;
-            if (_player1Wins >= roundsToWin)
+
+            if (_player1Wins >= roundsToWin || _player2Wins >= roundsToWin)
             {
-            }
-            else if (_player2Wins >= roundsToWin)
-            {
+                IsMatchOver = true;
+                MatchWinner = _player1Wins >= roundsToWin ? 1 : 2;
+                Debug.Log($"[GameManager] 매치 종료. 승자: Player{MatchWinner}");
+                OnMatchOver?.Invoke(MatchWinner);
             }
             else
             {

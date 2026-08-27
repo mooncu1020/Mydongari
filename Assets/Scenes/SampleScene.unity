@@ -851,6 +851,8 @@ MonoBehaviour:
   meleeSystem: {fileID: 775153509}
   cameraTransform: {fileID: 405262798}
   mechCamera: {fileID: 405262802}
+  turnResistance: 0.6
+  spinUpTime: 0.25
 --- !u!114 &775153498
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1049,7 +1051,7 @@ MonoBehaviour:
   lockOnRange: 50
   lockOnAngle: 30
   hardLockEnterRange: 20
-  hardLockExitRange: 25
+  hardLockExitRange: 22
   hardLockMaxAngle: 120
   hardLockTrackSpeed: 10
 --- !u!114 &775153508
@@ -1122,6 +1124,9 @@ MonoBehaviour:
   pullDuration: 1.5
   pileDriverDamage: 50
   cooldown: 5
+  hookImpactSpeed: 32
+  hookEaseTime: 0.2
+  hookImpactStun: 0.25
 --- !u!114 &775153512
 MonoBehaviour:
   m_ObjectHideFlags: 0

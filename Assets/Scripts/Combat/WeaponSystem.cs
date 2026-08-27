@@ -61,7 +61,7 @@ namespace MyDongari.Combat
                 {
                     _anchorClaw.TryPileDriver();
                 }
-                else if (IsEnemyInMeleeRange())
+                else if (_lockOnSystem != null && _lockOnSystem.IsHardLocked && IsEnemyInMeleeRange())
                 {
                     _meleeSystem.TryMeleeAttack();
                 }

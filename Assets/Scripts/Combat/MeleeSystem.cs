@@ -68,7 +68,10 @@ namespace MyDongari.Combat
         {
             if (_boostGauge == null) return;
 
-            if (UnityEngine.InputSystem.Mouse.current.rightButton.isPressed)
+            // 전력질주 중엔 가드 자체를 못 건다 (질주=공격적 상태, 방어자세 병행 불가)
+            bool sprinting = _stateMachine != null && _stateMachine.IsSprinting;
+
+            if (UnityEngine.InputSystem.Mouse.current.rightButton.isPressed && !sprinting)
             {
                 if (_boostGauge.IsOverheated)
                 {
@@ -78,15 +81,15 @@ namespace MyDongari.Combat
                 IsGuarding = true;
                 _boostGauge.TryConsume(guardBoostDrain * Time.deltaTime);
 
-                Rigidbody rb = GetComponent<Rigidbody>();
-                if (rb != null) rb.linearDamping = 8f;
+                // priority 10: Slide/SideStep(우선순위 5)보다 높음 —
+                // 방어 자세는 플레이어가 의도적으로 유지 중인 상태라 대시 감속 램프보다 우선한다.
+                _stateMachine.MechController.RequestDamping(8f, priority: 10);
             }
             else
             {
                 if (IsGuarding)
                 {
-                    Rigidbody rb = GetComponent<Rigidbody>();
-                    if (rb != null) rb.linearDamping = 2f;
+                    _stateMachine.MechController.SetBaselineDamping(2f);
                 }
                 IsGuarding = false;
             }

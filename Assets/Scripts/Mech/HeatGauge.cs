@@ -1,6 +1,5 @@
 using MyDongari.Movement;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace MyDongari.Mech
 {
@@ -27,14 +26,8 @@ namespace MyDongari.Mech
         {
             if (_stateMachine == null) return;
 
-            if (Keyboard.current.fKey.isPressed)
-            {
-                AddHeat(60f * Time.deltaTime);
-            }
-
             HandleCooling();
             CheckOverheat();
-
         }
 
         private void HandleCooling()

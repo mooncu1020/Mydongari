@@ -1,3 +1,4 @@
+using MyDongari.Core;
 using UnityEngine;
 
 namespace MyDongari.Combat
@@ -14,12 +15,14 @@ namespace MyDongari.Combat
         private Health _health;
         private float _attackTimer = 0f;
         private Rigidbody _rb;
+        private ExternalControlLock _controlLock;
 
         private void Awake()
         {
             _health = GetComponent<Health>();
             _meleeSystem = GetComponent<MeleeSystem>();
             _rb = GetComponent<Rigidbody>();
+            _controlLock = GetComponent<ExternalControlLock>();
         }
 
         private void Start()
@@ -46,6 +49,7 @@ namespace MyDongari.Combat
         {
             if (_health != null && _health.IsDead) return;
             if (_player == null) return;
+            if (_controlLock != null && _controlLock.IsLocked) return; // 앵커클로 등에 잡혀있으면 양보
 
             float dist = Vector3.Distance(transform.position, _player.position);
 

@@ -22,7 +22,6 @@ namespace MyDongari.Movement
             }
 
             _slideTimer = 0f;
-            StateMachine.MechController.Rb.linearDamping = 0f;
         }
 
         public override void Update()
@@ -56,12 +55,12 @@ namespace MyDongari.Movement
 
             float t = _slideTimer / SlideDuration;
             float damping = Mathf.Lerp(0f, 8f, t);
-            StateMachine.MechController.Rb.linearDamping = damping;
+            StateMachine.MechController.RequestDamping(damping, priority: 5);
         }
 
         public override void Exit()
         {
-            StateMachine.MechController.Rb.linearDamping = 2f;
+            StateMachine.MechController.SetBaselineDamping(2f);
         }
     }
 }

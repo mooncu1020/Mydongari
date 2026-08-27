@@ -59,10 +59,11 @@ namespace MyDongari.Movement
             camRight.Normalize();
 
             Vector3 moveDir = (camForward * input.y + camRight * input.x).normalized;
-            Rigidbody rb = StateMachine.MechController.Rb;
 
-            rb.AddForce(moveDir * StateMachine.MechController.WalkSpeed, ForceMode.Acceleration);
-            StateMachine.MechController.ClampVelocity(StateMachine.MechController.MaxWalkSpeed);
+            StateMachine.MechController.ApplyMoveForce(
+                moveDir,
+                StateMachine.MechController.WalkSpeed,
+                StateMachine.MechController.MaxWalkSpeed);
             StateMachine.MechController.RotateToCamera();
         }
 
