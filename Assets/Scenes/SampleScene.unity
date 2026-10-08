@@ -1050,8 +1050,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Combat.LockOnSystem
   lockOnRange: 50
   lockOnAngle: 30
-  hardLockEnterRange: 20
-  hardLockExitRange: 22
+  hardLockEnterRange: 6
+  hardLockExitRange: 7
   hardLockMaxAngle: 120
   hardLockTrackSpeed: 10
 --- !u!114 &775153508
