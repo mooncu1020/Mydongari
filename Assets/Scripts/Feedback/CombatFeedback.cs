@@ -112,7 +112,7 @@ namespace MyDongari.Feedback
 
             if (fb.Melee != null)
             {
-                Action<HitInfo, HitResult> onHit = (info, result) => OnHitResolved(fb, info, result);
+                Action<HitInfo, HitResult> onHit = (info, result) => ErrorLog.Run(() => OnHitResolved(fb, info, result), "CombatFeedback.onHit");
                 fb.Melee.OnHitResolved += onHit;
                 MeleeSystem melee = fb.Melee;
                 _unsubscribers.Add(() => melee.OnHitResolved -= onHit);
@@ -121,7 +121,7 @@ namespace MyDongari.Feedback
             ThrusterLunge lunge = mech.GetComponent<ThrusterLunge>();
             if (lunge != null)
             {
-                Action onLunge = () => Play(lungeStartClip);
+                Action onLunge = () => ErrorLog.Run(() => Play(lungeStartClip), "CombatFeedback.onLunge");
                 lunge.OnLungeStarted += onLunge;
                 _unsubscribers.Add(() => lunge.OnLungeStarted -= onLunge);
             }
@@ -131,11 +131,11 @@ namespace MyDongari.Feedback
             if (claw != null)
             {
                 MechTuning tuning = mech.GetComponent<MechTuning>();
-                Action<GameObject> onGrab = target =>
+                Action<GameObject> onGrab = target => ErrorLog.Run(() =>
                 {
                     BernardTuning values = tuning != null ? tuning.Values : BernardTuning.Fallback;
                     if (values.AnchorClaw.hookImpactStun > 0f) OnGrabbed(target);
-                };
+                }, "CombatFeedback.onGrab");
                 claw.OnGrabbed += onGrab;
                 _unsubscribers.Add(() => claw.OnGrabbed -= onGrab);
             }
@@ -201,6 +201,19 @@ namespace MyDongari.Feedback
         }
 
         private void Update()
+        {
+            // 예외가 나도 게임(과 이 이벤트를 부른 전투 코드)이 멈추지 않게 기록만 하고 넘어간다
+            try
+            {
+                UpdateLogic();
+            }
+            catch (Exception e)
+            {
+                ErrorLog.Report(e, "CombatFeedback.Update");
+            }
+        }
+
+        private void UpdateLogic()
         {
             foreach (MechFeedback fb in _mechs)
             {

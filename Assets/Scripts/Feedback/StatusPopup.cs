@@ -1,3 +1,5 @@
+using System;
+using MyDongari.Core;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -106,6 +108,19 @@ namespace MyDongari.Feedback
 
         private void Update()
         {
+            // 예외가 나도 게임(과 이 이벤트를 부른 전투 코드)이 멈추지 않게 기록만 하고 넘어간다
+            try
+            {
+                UpdateLogic();
+            }
+            catch (Exception e)
+            {
+                ErrorLog.Report(e, "StatusPopup.Update");
+            }
+        }
+
+        private void UpdateLogic()
+        {
             _age += Time.unscaledDeltaTime;
             if (_follow == null || _age >= _style.lifetime)
             {
@@ -135,6 +150,19 @@ namespace MyDongari.Feedback
 
         /// <summary>렌더 직전 카메라 하나에 대해 모든 팝업을 그 카메라 정면으로 돌린다.</summary>
         private static void FaceCamera(UnityEngine.Camera cam)
+        {
+            // 예외가 나도 게임(과 이 이벤트를 부른 전투 코드)이 멈추지 않게 기록만 하고 넘어간다
+            try
+            {
+                FaceCameraLogic(cam);
+            }
+            catch (Exception e)
+            {
+                ErrorLog.Report(e, "StatusPopup.FaceCamera");
+            }
+        }
+
+        private static void FaceCameraLogic(UnityEngine.Camera cam)
         {
             if (cam == null) return;
             Transform camTransform = cam.transform;

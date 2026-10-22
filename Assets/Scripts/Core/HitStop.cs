@@ -36,7 +36,7 @@ namespace MyDongari.Core
 
             // 히트스톱은 GameManager에 하나뿐이라, 맞은 기체의 튜닝 에셋에서 길이를 읽는다
             MechTuning tuning = mech.GetComponent<MechTuning>();
-            Action<HitInfo, HitResult> onHit = (info, result) => OnHitResolved(tuning, info, result);
+            Action<HitInfo, HitResult> onHit = (info, result) => ErrorLog.Run(() => OnHitResolved(tuning, info, result), "HitStop.onHit");
             melee.OnHitResolved += onHit;
             _unsubscribers.Add(() => melee.OnHitResolved -= onHit);
         }

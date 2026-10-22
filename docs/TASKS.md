@@ -169,7 +169,7 @@
 - 피벗이 관절에 있다고 가정, 슬롯마다 회전 보정 값을 인스펙터에서.
 - `docs/MODEL_IMPORT.md`: Blender 내보내기 설정(1단위=1m, Apply Transform, 전방 -Z, 위쪽 Y), 콜라이더 높이·폭, 부품 이름 목록, 피벗 규칙.
 
-### [ ] E3. 안정화
+### [x] E3. 안정화
 - 빌드에서 예외가 나도 멈추지 않게 PlayLogger·피드백·비주얼 코드 방어 처리. 예외는 `Logs/PlayLogs/errors.txt`에 기록.
 - 2분 무입력 시 타이틀 복귀 옵션(기본 꺼짐).
 - `docs/RELEASE_CHECKLIST.md`: 10/27 최종 빌드 전 확인 항목(메뉴 실행, 튜닝 값, Player Settings, 패드 2개, 로그 생성, 3판 2선승 완주, 타이틀 복귀).
@@ -207,3 +207,4 @@
 - **C5** (정리, TASKS 외 추가 작업) 완료. 바뀐 파일: `MechController`, `BoostGauge`, `HeatGauge`, `MeleeSystem`, `ThrusterLunge`, `LockOnSystem`, `AnchorClaw`, `ImpactSlam`, `HitStop`(숨긴 예전 필드 블록 삭제), `Editor/TuningSetup`(복사 메뉴·필드 대응표 삭제, 생성·연결 메뉴만 남김), `BUILD.md`. 위험: 낮음. 씬 YAML의 예전 값은 다음 저장 때 Unity가 정리.
 - **E1** 완료. 바뀐 파일: 신규 `Visual/MechVisualRig`(슬롯 10개, 감쇠 스프링, 이벤트 구독 + 상태 읽기, 쉴 때 자세 위에 오프셋, 슬롯별 회전 보정), 신규 `Editor/VisualRigSetup`(임시 상자 메뉴, 슬롯 연결 함수 — E2에서 재사용), `BernardTuning`(`Visual` 묶음), `AnchorClaw`(`OnPileDriverStarted`), `ImpactSlam`(`OnSlamStarted`). 전투 판정 변경 없음. 위험: 동작 방향(각도 부호)은 상자 기준으로 맞췄고 화면 확인 전 — 어색하면 Visual 묶음 각도로 조정. 과열 파티클 생략.
 - **E2** 완료. 바뀐 파일: 신규 `Editor/ModelImportSetup`(`Apply Model To Mechs` — FBX 선택, `VisualModel` 인스턴스, 이름으로 슬롯 연결, 못 찾은 이름 경고, 임시 상자 끔, 모델 콜라이더 끔, 재실행 시 교체), 신규 `docs/MODEL_IMPORT.md`(크기·이름·계층·피벗·축·Blender/Unity 설정·문제 해결). 위험: Blender 축 설정에 따라 정면이 뒤집힐 수 있어 문서에 확인 단계를 넣음. 실제 모델로는 아직 확인 안 됨.
+- **E3** 완료. 바뀐 파일: 신규 `Core/ErrorLog`(잡은 예외·처리 안 된 예외를 `errors.txt`에, 반복은 2의 거듭제곱 번째만), `PlayLogger`·`HitStop`·`CombatFeedback`·`StatusPopup`·`MechVisualRig`·`MeleeDummy`(이벤트 처리·매 프레임 처리 try/catch — 구독 쪽 예외가 전투 코드로 번지지 않게), `GameManager`(`ErrorLog.Hook`, 무입력 타이틀 복귀 옵션), `InputReader`(`AnyInputThisFrame`), 신규 `docs/RELEASE_CHECKLIST.md`. 위험: 낮음. 예외가 나면 해당 기능만 조용히 빠지므로 빌드 확인 때 `errors.txt`를 꼭 본다.

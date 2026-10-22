@@ -1,3 +1,4 @@
+using MyDongari.Core;
 using System;
 using UnityEngine;
 using MyDongari.Combat;
@@ -187,6 +188,19 @@ namespace MyDongari.Visual
 
         private void OnAttackStarted(AttackType type)
         {
+            // 예외가 나도 게임(과 이 이벤트를 부른 전투 코드)이 멈추지 않게 기록만 하고 넘어간다
+            try
+            {
+                OnAttackStartedLogic(type);
+            }
+            catch (Exception e)
+            {
+                ErrorLog.Report(e, "MechVisualRig.OnAttackStarted");
+            }
+        }
+
+        private void OnAttackStartedLogic(AttackType type)
+        {
             switch (type)
             {
                 case AttackType.Punch:
@@ -203,6 +217,19 @@ namespace MyDongari.Visual
         }
 
         private void OnHitResolved(HitInfo info, HitResult result)
+        {
+            // 예외가 나도 게임(과 이 이벤트를 부른 전투 코드)이 멈추지 않게 기록만 하고 넘어간다
+            try
+            {
+                OnHitResolvedLogic(info, result);
+            }
+            catch (Exception e)
+            {
+                ErrorLog.Report(e, "MechVisualRig.OnHitResolved");
+            }
+        }
+
+        private void OnHitResolvedLogic(HitInfo info, HitResult result)
         {
             BernardTuning.VisualValues v = V;
             if (result == HitResult.Parried)
@@ -233,6 +260,19 @@ namespace MyDongari.Visual
         // ---------------- 매 프레임 ----------------
 
         private void LateUpdate()
+        {
+            // 예외가 나도 게임(과 이 이벤트를 부른 전투 코드)이 멈추지 않게 기록만 하고 넘어간다
+            try
+            {
+                LateUpdateLogic();
+            }
+            catch (Exception e)
+            {
+                ErrorLog.Report(e, "MechVisualRig.LateUpdate");
+            }
+        }
+
+        private void LateUpdateLogic()
         {
             if (!animate || _joints == null) return;
 

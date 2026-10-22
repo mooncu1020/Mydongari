@@ -333,6 +333,19 @@ namespace MyDongari.Combat
         /// <summary>상대가 펀치·대시 어택·태클을 냈다. 발동과 명중이 같은 프레임이라 "읽었다" 치고 확률로 즉시 누른다.</summary>
         private void OnOpponentAttackStarted(AttackType type)
         {
+            // 예외가 나도 게임(과 이 이벤트를 부른 전투 코드)이 멈추지 않게 기록만 하고 넘어간다
+            try
+            {
+                OnOpponentAttackStartedLogic(type);
+            }
+            catch (Exception e)
+            {
+                ErrorLog.Report(e, "MeleeDummy.OnOpponentAttackStarted");
+            }
+        }
+
+        private void OnOpponentAttackStartedLogic(AttackType type)
+        {
             if (!ParrierActive) return;
             if (type != AttackType.Punch && type != AttackType.DashAttack && type != AttackType.Tackle) return;
             if (Random.value >= parryChance) return;
@@ -341,6 +354,19 @@ namespace MyDongari.Combat
 
         /// <summary>상대가 런지 돌진을 시작했다. 반응 시간 뒤, 예상 도착에 패리 창이 걸치도록 누른다.</summary>
         private void OnOpponentLungeStarted()
+        {
+            // 예외가 나도 게임(과 이 이벤트를 부른 전투 코드)이 멈추지 않게 기록만 하고 넘어간다
+            try
+            {
+                OnOpponentLungeStartedLogic();
+            }
+            catch (Exception e)
+            {
+                ErrorLog.Report(e, "MeleeDummy.OnOpponentLungeStarted");
+            }
+        }
+
+        private void OnOpponentLungeStartedLogic()
         {
             if (!ParrierActive || _player == null) return;
             if (Random.value >= parryChance) return;
@@ -355,6 +381,19 @@ namespace MyDongari.Combat
         }
 
         private void OnOwnHitResolved(HitInfo info, HitResult result)
+        {
+            // 예외가 나도 게임(과 이 이벤트를 부른 전투 코드)이 멈추지 않게 기록만 하고 넘어간다
+            try
+            {
+                OnOwnHitResolvedLogic(info, result);
+            }
+            catch (Exception e)
+            {
+                ErrorLog.Report(e, "MeleeDummy.OnOwnHitResolved");
+            }
+        }
+
+        private void OnOwnHitResolvedLogic(HitInfo info, HitResult result)
         {
             if (result == HitResult.Parried && counterAfterParry && _active == BotMode.Parrier)
             {

@@ -83,6 +83,8 @@ namespace MyDongari.Core
 
             string timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
             string folder = LogFolder();
+            // 예외 기록(errors.txt)도 같은 폴더에
+            ErrorLog.Folder = folder;
             _filePath = Path.Combine(folder, fileName + "_" + timestamp + ".csv");
             _eventFilePath = Path.Combine(folder, eventFileName + "_" + timestamp + ".csv");
             _summaryFilePath = Path.Combine(folder, summaryFileName + "_" + timestamp + ".csv");
@@ -136,8 +138,8 @@ namespace MyDongari.Core
             MeleeSystem melee = mech.GetComponent<MeleeSystem>();
             if (melee != null)
             {
-                Action<AttackType> onStart = type => OnAttackStarted(index, type);
-                Action<HitInfo, HitResult> onHit = (info, result) => OnHitResolved(index, info, result);
+                Action<AttackType> onStart = type => ErrorLog.Run(() => OnAttackStarted(index, type), "PlayLogger.onStart");
+                Action<HitInfo, HitResult> onHit = (info, result) => ErrorLog.Run(() => OnHitResolved(index, info, result), "PlayLogger.onHit");
                 melee.OnAttackStarted += onStart;
                 melee.OnHitResolved += onHit;
                 _unsubscribers.Add(() => { melee.OnAttackStarted -= onStart; melee.OnHitResolved -= onHit; });
@@ -146,8 +148,8 @@ namespace MyDongari.Core
             ThrusterLunge lunge = mech.GetComponent<ThrusterLunge>();
             if (lunge != null)
             {
-                Action onLungeStart = () => Count(index, "lunge_start");
-                Action<HitResult?> onLungeEnd = result => OnLungeEnded(index, result);
+                Action onLungeStart = () => ErrorLog.Run(() => Count(index, "lunge_start"), "PlayLogger.onLungeStart");
+                Action<HitResult?> onLungeEnd = result => ErrorLog.Run(() => OnLungeEnded(index, result), "PlayLogger.onLungeEnd");
                 lunge.OnLungeStarted += onLungeStart;
                 lunge.OnLungeEnded += onLungeEnd;
                 _unsubscribers.Add(() => { lunge.OnLungeStarted -= onLungeStart; lunge.OnLungeEnded -= onLungeEnd; });
@@ -156,7 +158,7 @@ namespace MyDongari.Core
             AnchorClaw claw = mech.GetComponent<AnchorClaw>();
             if (claw != null)
             {
-                Action<GameObject> onGrab = _ => Count(index, "anchor_hit");
+                Action<GameObject> onGrab = _ => ErrorLog.Run(() => Count(index, "anchor_hit"), "PlayLogger.onGrab");
                 claw.OnGrabbed += onGrab;
                 _unsubscribers.Add(() => claw.OnGrabbed -= onGrab);
             }
@@ -164,10 +166,10 @@ namespace MyDongari.Core
             MechStateMachine sm = mech.GetComponent<MechStateMachine>();
             if (sm != null)
             {
-                Action<MechState> onState = state =>
+                Action<MechState> onState = state => ErrorLog.Run(() =>
                 {
                     if (state is SideStepState) Count(index, "sidestep");
-                };
+                }, "PlayLogger.onState");
                 sm.OnStateChanged += onState;
                 _unsubscribers.Add(() => sm.OnStateChanged -= onState);
             }
@@ -177,16 +179,16 @@ namespace MyDongari.Core
         {
             if (gm == null) return;
 
-            Action<int> onRoundStarted = round => LogEvent(0, "round_start", round.ToString());
-            Action onFight = () => LogEvent(0, "fight", "");
-            Action<int> onRoundOver = winner => LogEvent(0, "round_over", winner == 0 ? "draw" : "P" + winner);
-            Action<int> onMatchOver = winner =>
+            Action<int> onRoundStarted = round => ErrorLog.Run(() => LogEvent(0, "round_start", round.ToString()), "PlayLogger.onRoundStarted");
+            Action onFight = () => ErrorLog.Run(() => LogEvent(0, "fight", ""), "PlayLogger.onFight");
+            Action<int> onRoundOver = winner => ErrorLog.Run(() => LogEvent(0, "round_over", winner == 0 ? "draw" : "P" + winner), "PlayLogger.onRoundOver");
+            Action<int> onMatchOver = winner => ErrorLog.Run(() =>
             {
                 LogEvent(0, "match_over", "P" + winner);
                 WriteMatchSummary(false);
                 SaveLog();
-            };
-            Action onMatchStarted = () =>
+            }, "PlayLogger.onMatchOver");
+            Action onMatchStarted = () => ErrorLog.Run(() =>
             {
                 // 첫 매치는 Start에서 이미 준비됨. 재매치 때만 카운트를 비우고 매치 번호를 올린다
                 if (_matchSummaryWritten)
@@ -197,8 +199,8 @@ namespace MyDongari.Core
                 player2 = gm.Player2;
                 _matchMode = gm.Mode == GameMode.Practice ? "practice" : "versus";
                 LogEvent(0, "match_start", _matchIndex + " " + _matchMode);
-            };
-            Action onReturnedToTitle = () =>
+            }, "PlayLogger.onMatchStarted");
+            Action onReturnedToTitle = () => ErrorLog.Run(() =>
             {
                 // 매치 도중에 나갔거나 연습을 끝냈으면 지금까지를 요약으로 남긴다 (2인 매치 도중이면 미완료 표시)
                 if (!_matchSummaryWritten && HasAnyStats())
@@ -207,7 +209,7 @@ namespace MyDongari.Core
                     SaveLog();
                 }
                 LogEvent(0, "title", "");
-            };
+            }, "PlayLogger.onReturnedToTitle");
 
             gm.OnRoundStarted += onRoundStarted;
             gm.OnFight += onFight;
@@ -335,6 +337,19 @@ namespace MyDongari.Core
         }
 
         private void Update()
+        {
+            // 예외가 나도 게임(과 이 이벤트를 부른 전투 코드)이 멈추지 않게 기록만 하고 넘어간다
+            try
+            {
+                UpdateLogic();
+            }
+            catch (Exception e)
+            {
+                ErrorLog.Report(e, "PlayLogger.Update");
+            }
+        }
+
+        private void UpdateLogic()
         {
             if (!_isLogging) return;
             // 현재 상대(모드 전환으로 바뀔 수 있음)
@@ -478,8 +493,8 @@ namespace MyDongari.Core
             }
             catch (Exception e)
             {
-                // 쓰기 권한 없는 폴더(예: Program Files)에 빌드를 두면 여기로 온다. 게임은 계속 돌게 하고 경고만
-                Debug.LogWarning($"[PlayLogger] 로그 저장 실패: {_filePath}\n{e.Message}");
+                // 쓰기 권한 없는 폴더(예: Program Files)에 빌드를 두면 여기로 온다. 게임은 계속 돌게 하고 기록만
+                ErrorLog.Report(e, "PlayLogger.SaveLog " + _filePath);
             }
         }
 

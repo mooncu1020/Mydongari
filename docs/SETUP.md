@@ -95,3 +95,6 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 62. (E1) `MechVisualRig`: `Animate` 끄면 정지. 슬롯 10개(부품 + `Rotation Correction`). 동작 크기·속도는 `BernardTuning` → **Visual** 묶음(스프링 8Hz·감쇠 0.6, 예비 동작 0.033초·25°, 펀치, 가드·패리, 런지, 태클, 클로, 파일드라이버·슬램, 스턴, 가드 깨짐, 이동). 플레이 중 바꾸면 바로 반영(에셋에 남음).
 63. (E1) `AnchorClaw`에 `OnPileDriverStarted`, `ImpactSlam`에 `OnSlamStarted` 이벤트를 추가했다(외형용, 판정 변화 없음).
 64. (E2) 모델이 오면 `docs/MODEL_IMPORT.md` 순서대로: FBX를 `Assets/Models/`에 넣고 → (기체 선택, 또는 아무것도 선택 안 하면 전체) **`Mydongari/Visual/Apply Model To Mechs`** → FBX 선택. `VisualModel`로 붙고 부품 10개가 리그에 연결되며 임시 상자는 꺼진다. 못 찾은 부품 이름은 다이얼로그에 나온다. 축이 다른 부품은 `MechVisualRig` → 슬롯 → `Rotation Correction`.
+65. (E3) 예외 기록: PlayLogger·CombatFeedback·StatusPopup·HitStop·MechVisualRig·연습 봇의 이벤트 처리와 매 프레임 처리를 감쌌다. 예외가 나도 게임과 전투 판정은 계속되고, 내용은 `Logs/PlayLogs/errors.txt`(빌드는 실행 파일 옆)에 쌓인다(같은 예외는 1·2·4·8…번째만). 처리 안 된 다른 예외도 같은 파일에. 에디터에선 Console에도 보인다.
+66. (E3) `GameManager` → `Idle Return To Title`(기본 끔), `Idle Timeout`(120초): 켜면 타이틀이 아닌 화면에서 2분 동안 아무 플레이어 입력이 없을 때 타이틀로 돌아간다.
+67. (E3) 10/27 최종 빌드 전 확인은 `docs/RELEASE_CHECKLIST.md`.

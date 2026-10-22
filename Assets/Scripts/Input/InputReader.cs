@@ -58,6 +58,8 @@ namespace MyDongari.Input
         public bool PracticeResetPressed { get; private set; }
         /// <summary>히트 프리셋: 키보드 1~4 → 0~3, 안 눌렀으면 -1.</summary>
         public int HeatPresetPressed { get; private set; } = -1;
+        /// <summary>이번 프레임에 이 플레이어 장치로 무엇이든 입력했는지 (잠금 중에도 읽힌다). 무입력 타이틀 복귀용.</summary>
+        public bool AnyInputThisFrame { get; private set; }
         public bool IsInputLocked => _inputLocked;
 
         /// <summary>
@@ -149,6 +151,7 @@ namespace MyDongari.Input
         {
             MoveInput = _moveAction.ReadValue<Vector2>();
             LookInput = _lookAction.ReadValue<Vector2>();
+            AnyInputThisFrame = DetectAnyInput();
 
             // 히트스톱(timeScale 0) 중에도 입력 타이밍은 실제 시간으로 잰다
             Vector2 stick = _moveStickAction.ReadValue<Vector2>();
@@ -181,6 +184,16 @@ namespace MyDongari.Input
             UpdateMenuInput();
             UpdatePracticeInput();
             if (_inputLocked) ClearGameplayInput();
+        }
+
+        private bool DetectAnyInput()
+        {
+            // 이 플레이어에게 배정된 장치로 들어온 액션만 본다 (페어링 덕분에 다른 사람 패드는 안 섞인다)
+            foreach (InputAction action in _playerInput.actions)
+            {
+                if (action.enabled && action.IsPressed()) return true;
+            }
+            return false;
         }
 
         private void UpdateMenuInput()

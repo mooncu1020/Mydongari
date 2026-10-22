@@ -74,6 +74,12 @@ namespace MyDongari.Core
         [Tooltip("연습 모드에서 한쪽이 쓰러진 뒤 두 기체를 되살릴 때까지(초). 카운트다운 없이 바로 이어진다")]
         [SerializeField] private float practiceRespawnDelay = 1f;
 
+        [Header("무입력 타이틀 복귀 (로케 전시용)")]
+        [Tooltip("켜면 아무 플레이어도 입력하지 않은 채 아래 시간이 지나면 타이틀로 돌아간다 (타이틀 화면 제외)")]
+        [SerializeField] private bool idleReturnToTitle = false;
+        [Tooltip("무입력 대기 시간(초, 실제 시간)")]
+        [SerializeField] private float idleTimeout = 120f;
+
         [Header("라운드 설정")]
         [SerializeField] private int roundsToWin = 2;
 
@@ -110,6 +116,7 @@ namespace MyDongari.Core
 
         private float _phaseTimer = 0f;
         private float _fightBannerTimer = 0f;
+        private float _lastInputTime;
 
         public int RoundsToWin => roundsToWin;
         public int Player1Wins => _player1Wins;
@@ -174,6 +181,8 @@ namespace MyDongari.Core
                 return;
             }
             Instance = this;
+            // 빌드에서 처리 안 된 예외도 Logs/PlayLogs/errors.txt에 남긴다
+            ErrorLog.Hook();
 
             _versusPlayer2 = player2;
             if (player1Camera != null) _player1VersusRect = player1Camera.rect;
@@ -311,6 +320,8 @@ namespace MyDongari.Core
 
         private void Update()
         {
+            CheckIdle();
+
             switch (Phase)
             {
                 case MatchPhase.Title:
@@ -345,6 +356,34 @@ namespace MyDongari.Core
                     else StartRound();
                     break;
             }
+        }
+
+        /// <summary>무입력 타이틀 복귀: 타이틀이 아닌 곳에서 idleTimeout 동안 아무 입력이 없으면 타이틀로.</summary>
+        private void CheckIdle()
+        {
+            float now = Time.unscaledTime;
+            if (!idleReturnToTitle || Phase == MatchPhase.Title || AnyPlayerInput())
+            {
+                _lastInputTime = now;
+                return;
+            }
+            if (now - _lastInputTime >= idleTimeout)
+            {
+                _lastInputTime = now;
+                CloseMenu();
+                EnterTitle();
+            }
+        }
+
+        private bool AnyPlayerInput()
+        {
+            foreach (GameObject mech in new[] { player1, player2 })
+            {
+                if (mech == null || !mech.activeInHierarchy) continue;
+                InputReader input = mech.GetComponent<InputReader>();
+                if (input != null && input.AnyInputThisFrame) return true;
+            }
+            return false;
         }
 
         private void CheckRoundEnd()
