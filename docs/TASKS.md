@@ -155,6 +155,27 @@
 
 ---
 
+## Phase E — 외형·안정화 (10/27 최종 빌드 확정, 10/29 로케테스트. 확정 후엔 버그 수정만)
+
+### [ ] E1. 절차적 애니메이션 (MechVisualRig)
+- 기체 루트 아래 시각 전용 부품 계층: Body, Head, Arm_L_Upper/Arm_L_Lower/Fist_L, Arm_R_Upper/Arm_R_Lower/Fist_R, Leg_L, Leg_R. 콜라이더·물리는 루트 그대로, 부품은 보이기만.
+- 모델이 오기 전까지 쓸 임시 상자 부품을 만드는 에디터 메뉴 (두 기체, 더미 포함).
+- 이벤트 구독으로 부품을 움직인다(전투 코드 의존 금지): 펀치(오른팔 뻗기, 원투면 좌우 교대), 가드(양팔 올림, 패리 성공 시 튕김), 런지(상체 숙이고 양팔 뒤로), 대시 어택·태클(어깨 앞으로), 앵커 클로(왼팔 뻗기), 파일드라이버(오른팔 내리찍기), 슬램(양팔 내리찍기), 스턴(흔들림), 가드 깨짐(팔이 튕겨 벌어짐), 이동(속도에 따라 상체 기울기, 걷기에 맞춰 다리 교차·몸통 상하), 과열 김 파티클(선택).
+- 모든 동작은 위치·회전 보간(스프링·감쇠), 크기와 속도는 튜닝 에셋에 묶음 하나.
+- 공격 직전 1~2프레임 예비 동작(팔을 살짝 뒤로). 판정 타이밍은 바꾸지 않는다.
+
+### [ ] E2. 모델 교체 메뉴
+- FBX를 고르면 위 이름의 부품을 찾아 슬롯에 연결하고 임시 상자를 끄는 에디터 메뉴. 이름이 없는 부품은 목록으로 경고.
+- 피벗이 관절에 있다고 가정, 슬롯마다 회전 보정 값을 인스펙터에서.
+- `docs/MODEL_IMPORT.md`: Blender 내보내기 설정(1단위=1m, Apply Transform, 전방 -Z, 위쪽 Y), 콜라이더 높이·폭, 부품 이름 목록, 피벗 규칙.
+
+### [ ] E3. 안정화
+- 빌드에서 예외가 나도 멈추지 않게 PlayLogger·피드백·비주얼 코드 방어 처리. 예외는 `Logs/PlayLogs/errors.txt`에 기록.
+- 2분 무입력 시 타이틀 복귀 옵션(기본 꺼짐).
+- `docs/RELEASE_CHECKLIST.md`: 10/27 최종 빌드 전 확인 항목(메뉴 실행, 튜닝 값, Player Settings, 패드 2개, 로그 생성, 3판 2선승 완주, 타이틀 복귀).
+
+---
+
 ## 작업 메모 (Claude Code가 태스크마다 추가)
 
 - **A0** 완료. 바뀐 파일: `InputSystem_Actions.inputactions`(Guard/StepLeft/StepRight 액션 + 패드 바인딩 추가), `InputReader`, 신규 `Core/MechIdentity`·`Input/ICombatInputSource`, `MeleeSystem`, `WeaponSystem`, `Projectile`(Init 시그니처), `LockOnSystem`, `ImpactSlam`, `SprintState`, `MechController`(Identity), `MeleeDummy`, `HUDController`, `MechCamera`, `GameManager`(LinkOpponents). 위험: `MechIdentity`는 런타임 자동 부착이라 GameManager의 Player1/2가 비어 있으면 상대가 없어 아무 공격도 안 맞는다. 패드 판별(`IsLookFromGamepad`)은 Look 액션의 activeControl 기준.
