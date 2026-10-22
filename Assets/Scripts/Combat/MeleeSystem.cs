@@ -14,7 +14,6 @@ namespace MyDongari.Combat
         [SerializeField] private float meleeCooldown = 0.5f;
 
         [Header("가드 설정")]
-        [SerializeField] private float guardBoostDrain = 15f;
         [SerializeField] private float guardDamageReduction = 0.7f;
         [SerializeField] private float parryWindow = 0.15f;
 
@@ -38,14 +37,12 @@ namespace MyDongari.Combat
         private float _stunTimer = 0f;
         private bool _parryActive = false;
 
-        private BoostGauge _boostGauge;
         private MechStateMachine _stateMachine;
         private ICombatInputSource _input;
         private MechIdentity _identity;
 
         private void Awake()
         {
-            _boostGauge = GetComponent<BoostGauge>();
             _stateMachine = GetComponent<MechStateMachine>();
             // 입력 소스가 없는 기체(더미 AI)는 가드 입력이 항상 false
             _input = GetComponent<ICombatInputSource>();
@@ -73,21 +70,14 @@ namespace MyDongari.Combat
 
         private void HandleGuard()
         {
-            if (_boostGauge == null) return;
-
             // 전력질주 중엔 가드 자체를 못 건다 (질주=공격적 상태, 방어자세 병행 불가)
             bool sprinting = _stateMachine != null && _stateMachine.IsSprinting;
 
             bool guardHeld = _input != null && _input.GuardHeld;
             if (guardHeld && !sprinting)
             {
-                if (_boostGauge.IsOverheated)
-                {
-                    IsGuarding = false;
-                    return;
-                }
+                // 가드는 부스트를 쓰지 않는다. 탈진이어도 가드 가능.
                 IsGuarding = true;
-                _boostGauge.TryConsume(guardBoostDrain * Time.deltaTime);
 
                 // priority 10: Slide/SideStep(우선순위 5)보다 높음 —
                 // 방어 자세는 플레이어가 의도적으로 유지 중인 상태라 대시 감속 램프보다 우선한다.

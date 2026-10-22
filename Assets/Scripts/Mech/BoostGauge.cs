@@ -1,5 +1,6 @@
 using UnityEngine;
 using MyDongari.Movement;
+using MyDongari.Combat;
 
 namespace MyDongari.Mech
 {
@@ -10,6 +11,9 @@ namespace MyDongari.Mech
         [SerializeField] private float recoveryDelay = 0.5f;
         [SerializeField] private float recoveryRate = 25f;
         [SerializeField] private float sprintDrainRate = 5f;
+        [Tooltip("탈진(0%) 후 걷기/정지로 회복해 최대치의 이 비율에 도달하면 탈진 해제")]
+        [Range(0f, 1f)]
+        [SerializeField] private float exhaustRecoverRatio = 0.5f;
 
         [Header("소모량")]
         [SerializeField] private float sideStepCost = 10f;
@@ -18,16 +22,18 @@ namespace MyDongari.Mech
 
         public float CurrentBoost { get; private set; }
         public float MaxBoost => maxBoost;
-        public bool IsOverheated { get; private set; }
+        public bool IsExhausted { get; private set; }
 
         private float _recoveryDelayTimer = 0f;
         private bool _isRecovering = false;
         private MechStateMachine _stateMachine;
+        private MeleeSystem _meleeSystem;
 
         private void Awake()
         {
             CurrentBoost = maxBoost;
             _stateMachine = GetComponent<MechStateMachine>();
+            _meleeSystem = GetComponent<MeleeSystem>();
         }
 
         private void Update()
@@ -39,9 +45,11 @@ namespace MyDongari.Mech
                 Drain(sprintDrainRate * Time.deltaTime);
             }
 
-            bool canRecover = _stateMachine.IsWalking || _stateMachine.IsIdle;
+            // 가드를 올리고 있으면 걷기/정지여도 회복하지 않는다 (가드 유지에 대가를 주기 위함)
+            bool guarding = _meleeSystem != null && _meleeSystem.IsGuarding;
+            bool canRecover = (_stateMachine.IsWalking || _stateMachine.IsIdle) && !guarding;
             HandleRecovery(canRecover);
-            CheckOverheat();
+            CheckExhaust();
         }
 
         private void HandleRecovery(bool canRecover)
@@ -63,19 +71,20 @@ namespace MyDongari.Mech
             if (_isRecovering)
             {
                 CurrentBoost = Mathf.Min(CurrentBoost + recoveryRate * Time.deltaTime, maxBoost);
-                if (CurrentBoost >= maxBoost)
-                {
-                    IsOverheated = false;
-                }
             }
         }
 
-        private void CheckOverheat()
+        private void CheckExhaust()
         {
             if (CurrentBoost <= 0f)
             {
                 CurrentBoost = 0f;
-                IsOverheated = true;
+                IsExhausted = true;
+            }
+            else if (IsExhausted && CurrentBoost >= maxBoost * exhaustRecoverRatio)
+            {
+                // 끝까지 다 채울 때까지 묶어 두면 너무 길어서, 절반 정도에서 풀어 준다
+                IsExhausted = false;
             }
         }
 
@@ -86,7 +95,7 @@ namespace MyDongari.Mech
 
         public bool TryConsume(float amount)
         {
-            if (IsOverheated) return false;
+            if (IsExhausted) return false;
             if (CurrentBoost < amount) return false;
             CurrentBoost -= amount;
             return true;

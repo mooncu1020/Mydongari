@@ -30,7 +30,7 @@
 - 근접 전환 판정(`WeaponSystem.IsEnemyInMeleeRange`의 5m)을 하드 락온 상태 하나로 통일한다. 거리 값이 두 군데 있으면 안 된다.
 - 소프트 락온 탐지도 Opponent 하나만 검사하도록 단순화(원뿔·거리·레이캐스트 조건 유지).
 
-### [ ] A2. 부스트 규칙
+### [x] A2. 부스트 규칙
 - 탈진 해제 기준: `CurrentBoost >= maxBoost * exhaustRecoverRatio`(기본 0.5).
 - 가드 중(`MeleeSystem.IsGuarding`)에는 회복 정지(회복 지연 타이머도 리셋).
 - 가드가 부스트를 소모하던 코드(`guardBoostDrain`) 제거. 탈진이어도 가드는 가능.
@@ -117,3 +117,4 @@
 
 - **A0** 완료. 바뀐 파일: `InputSystem_Actions.inputactions`(Guard/StepLeft/StepRight 액션 + 패드 바인딩 추가), `InputReader`, 신규 `Core/MechIdentity`·`Input/ICombatInputSource`, `MeleeSystem`, `WeaponSystem`, `Projectile`(Init 시그니처), `LockOnSystem`, `ImpactSlam`, `SprintState`, `MechController`(Identity), `MeleeDummy`, `HUDController`, `MechCamera`, `GameManager`(LinkOpponents). 위험: `MechIdentity`는 런타임 자동 부착이라 GameManager의 Player1/2가 비어 있으면 상대가 없어 아무 공격도 안 맞는다. 패드 판별(`IsLookFromGamepad`)은 Look 액션의 activeControl 기준.
 - **A1** 완료. 바뀐 파일: `LockOnSystem`(Opponent 단일 검사, 기체 기준 거리, 목표 상실 시 카메라 추적 해제), `WeaponSystem`(`meleeAutoRange` 삭제 — 펀치 조건은 `IsHardLocked`만). 위험: 레이캐스트가 트리거를 무시하도록 바뀜, 상대 중심은 루트 콜라이더 bounds 기준(없으면 위치).
+- **A2** 완료. 바뀐 파일: `BoostGauge`(`IsOverheated`→`IsExhausted`, `exhaustRecoverRatio` 0.5, 가드 중 회복 정지), `MeleeSystem`(`guardBoostDrain`·탈진 가드 금지 제거), `WalkState`·`RunState`·`SprintState`·`HUDController`(이름 변경 반영). 위험: 낮음. 걷기 중 "탈진 이동 속도 저하"는 기존대로 달리기 이상 봉쇄로만 구현돼 있음(걷기 속도 자체는 그대로).

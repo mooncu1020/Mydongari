@@ -20,7 +20,7 @@ namespace MyDongari.Movement
                 return;
             }
 
-            if (StateMachine.MechController.BoostGauge.IsOverheated)
+            if (StateMachine.MechController.BoostGauge.IsExhausted)
             {
                 StateMachine.ChangeState(StateMachine.WalkState);
                 return;

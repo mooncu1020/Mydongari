@@ -21,14 +21,14 @@ namespace MyDongari.Movement
             }
 
             if (StateMachine.InputReader.QuickTurnInput &&
-                !StateMachine.MechController.BoostGauge.IsOverheated)
+                !StateMachine.MechController.BoostGauge.IsExhausted)
             {
                 StateMachine.ChangeState(StateMachine.QuickTurnState);
                 return;
             }
 
             if (StateMachine.InputReader.SideStepDirection != 0 &&
-                !StateMachine.MechController.BoostGauge.IsOverheated)
+                !StateMachine.MechController.BoostGauge.IsExhausted)
             {
                 StateMachine.ChangeState(StateMachine.SideStepState);
                 return;
@@ -41,7 +41,7 @@ namespace MyDongari.Movement
             }
 
             if (StateMachine.InputReader.RunInput &&
-                !StateMachine.MechController.BoostGauge.IsOverheated)
+                !StateMachine.MechController.BoostGauge.IsExhausted)
             {
                 StateMachine.ChangeState(StateMachine.RunState);
             }

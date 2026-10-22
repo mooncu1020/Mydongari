@@ -67,7 +67,7 @@ namespace MyDongari.UI
         {
             if (boostGaugeArc == null || boostGauge == null) return;
             boostGaugeArc.SetFill(boostGauge.CurrentBoost / boostGauge.MaxBoost);
-            boostGaugeArc.SetColor(boostGauge.IsOverheated
+            boostGaugeArc.SetColor(boostGauge.IsExhausted
                 ? Color.red
                 : new Color(0.3f, 0.7f, 1f));
         }
