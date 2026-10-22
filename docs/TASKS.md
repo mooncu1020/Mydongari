@@ -134,6 +134,27 @@
 
 ---
 
+## Phase D — 연습 모드
+
+### [ ] D1. 연습 봇
+- `MeleeDummy`에 행동 모드(enum): Idle(가만히), AlwaysGuard(제자리 가드 유지), Approach(다가와서 펀치, 기존 동작), Lunger(6~12m 유지하다 런지), Parrier(상대 공격 직전에 일정 확률로 패리), Mixed(위 행동을 섞어서).
+- 더미도 실제 기체와 같은 규칙(`MeleeSystem.ReceiveHit`, 히트, 가드 깨짐, 패리 반사)을 그대로 거친다. 더미 전용 판정을 새로 만들지 않는다.
+- 더미 입력은 `ICombatInputSource`를 구현한 봇 입력 컴포넌트로. 런지는 `ThrusterLunge`를 그대로 쓴다.
+- Parrier의 패리 확률·반응 시간, Lunger의 거리 같은 수치는 SerializeField.
+
+### [ ] D2. 타이틀과 모드 선택
+- 실행하면 간단한 타이틀: VERSUS / PRACTICE. 패드 스틱·버튼과 키보드로 선택.
+- VERSUS = 지금의 2인 매치. PRACTICE = P1 vs 연습 봇, 한 화면, 라운드 제한 없이 계속. 봇 모드는 화면 구석에 표시.
+- 매치가 끝나면 타이틀로 돌아가는 선택지.
+- 씬은 하나로 유지하고 GameManager 상태로 전환. `.unity` 직접 편집 금지, 필요한 UI는 기존 Setup 메뉴나 런타임 생성.
+
+### [ ] D3. 연습 단축키 (PRACTICE에서만)
+- 패드 Select(Back/Share) 또는 키보드 Tab: 봇 행동 모드 순환.
+- 패드 Select 길게 또는 키보드 R: 두 기체 체력·부스트·히트·위치 즉시 리셋.
+- 키보드 1~4: 내 히트를 0/50/90/100%로 세팅 (과열·가드 깨짐 테스트용).
+
+---
+
 ## 작업 메모 (Claude Code가 태스크마다 추가)
 
 - **A0** 완료. 바뀐 파일: `InputSystem_Actions.inputactions`(Guard/StepLeft/StepRight 액션 + 패드 바인딩 추가), `InputReader`, 신규 `Core/MechIdentity`·`Input/ICombatInputSource`, `MeleeSystem`, `WeaponSystem`, `Projectile`(Init 시그니처), `LockOnSystem`, `ImpactSlam`, `SprintState`, `MechController`(Identity), `MeleeDummy`, `HUDController`, `MechCamera`, `GameManager`(LinkOpponents). 위험: `MechIdentity`는 런타임 자동 부착이라 GameManager의 Player1/2가 비어 있으면 상대가 없어 아무 공격도 안 맞는다. 패드 판별(`IsLookFromGamepad`)은 Look 액션의 activeControl 기준.
