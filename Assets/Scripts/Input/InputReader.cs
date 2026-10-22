@@ -17,6 +17,10 @@ namespace MyDongari.Input
         [Tooltip("튕기기(↑↑ 전력질주, ↓ 초신지선회, ←→ 사이드스텝, 중립 후 ↗↖ 슬라이딩) 판정 수치")]
         [SerializeField] private StickGestureSettings gesture = new StickGestureSettings();
 
+        [Header("메뉴")]
+        [Tooltip("메뉴 위아래 이동으로 인정하는 스틱·D패드 기울기")]
+        [SerializeField] private float menuNavigateThreshold = 0.5f;
+
         public Vector2 MoveInput { get; private set; }
         public Vector2 LookInput { get; private set; }
         public bool RunInput { get; private set; }
@@ -38,6 +42,10 @@ namespace MyDongari.Input
         public bool GuardPressedThisFrame { get; private set; }
         /// <summary>시작 버튼(패드 Start / 키보드 Enter). 입력 잠금 중에도 읽힌다 (재매치용).</summary>
         public bool StartPressed { get; private set; }
+        /// <summary>메뉴 위아래: 이번 프레임에 새로 기울였으면 위 = 1, 아래 = -1. 이동 스틱·D패드·W/S·화살표. 잠금 중에도 읽힌다.</summary>
+        public int MenuVertical { get; private set; }
+        /// <summary>메뉴 결정: 패드 Start·A(South), 키보드 Enter. 잠금 중에도 읽힌다.</summary>
+        public bool MenuConfirmPressed { get; private set; }
         public bool IsInputLocked => _inputLocked;
 
         /// <summary>
@@ -71,6 +79,9 @@ namespace MyDongari.Input
         private InputAction _stepRightAction;
         private InputAction _moveStickAction;
         private InputAction _startAction;
+        private InputAction _submitAction;
+        private InputAction _menuNavigateAction;
+        private int _menuHeldDirection;
         // 라운드 카운트다운·라운드 사이에 GameManager가 건다. 잠긴 동안 게임플레이 입력은 전부 0
         private bool _inputLocked = false;
 
@@ -101,6 +112,8 @@ namespace MyDongari.Input
             // 패드 스틱만 바인딩된 액션. 키보드 WASD가 튕기기로 오인되지 않게 제스처는 이것만 본다
             _moveStickAction = _playerInput.actions["MoveStick"];
             _startAction = _playerInput.actions["Start"];
+            _submitAction = _playerInput.actions["Submit"];
+            _menuNavigateAction = _playerInput.actions["MenuNavigate"];
 
             _quickTurnAction.performed += _ => _quickTurnPending = true;
             _skill1Action.performed += _ => _skill1Pending = true;
@@ -140,7 +153,26 @@ namespace MyDongari.Input
             DetectSideStep();
 
             StartPressed = _startAction.WasPressedThisFrame();
+            UpdateMenuInput();
             if (_inputLocked) ClearGameplayInput();
+        }
+
+        private void UpdateMenuInput()
+        {
+            // 잠금으로 MoveInput이 0이 되기 전에 원래 값을 읽는다 (메뉴는 잠금 중에 쓰인다)
+            float y = _moveAction.ReadValue<Vector2>().y + _menuNavigateAction.ReadValue<Vector2>().y;
+            int direction = y > menuNavigateThreshold ? 1 : y < -menuNavigateThreshold ? -1 : 0;
+            // 기울인 순간 한 번만 (계속 밀고 있으면 한 칸만 움직인다)
+            MenuVertical = direction != 0 && direction != _menuHeldDirection ? direction : 0;
+            _menuHeldDirection = direction;
+
+            MenuConfirmPressed = StartPressed || _submitAction.WasPressedThisFrame();
+        }
+
+        /// <summary>이번 프레임 게임 입력을 비운다 (연습 리셋 단축키가 다른 입력과 겹쳐도 같은 프레임에 같이 나가지 않게).</summary>
+        public void ClearFrameInput()
+        {
+            ClearGameplayInput();
         }
 
         public void SetInputLocked(bool locked)

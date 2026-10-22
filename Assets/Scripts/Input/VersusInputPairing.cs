@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Users;
-using MyDongari.Core;
 
 namespace MyDongari.Input
 {
@@ -10,6 +9,7 @@ namespace MyDongari.Input
     /// 2인 대전에서 P1/P2의 PlayerInput에 장치를 고정 배정한다.
     /// PlayerInput 기본 동작(자동 스킴 전환)에 맡기면 패드 두 개가 한 플레이어에 몰리거나
     /// 버튼을 먼저 누른 쪽이 P1이 되는 식으로 흔들려서, 연결 순서대로 직접 묶는다.
+    /// 배정은 GameManager가 모드(VERSUS/PRACTICE)를 바꿀 때마다 Apply(versus)로 다시 한다.
     /// </summary>
     public class VersusInputPairing : MonoBehaviour
     {
@@ -22,12 +22,11 @@ namespace MyDongari.Input
         [SerializeField] private bool allowKeyboardForP1 = true;
         [SerializeField] private bool debugLog = false;
 
+        // 마지막으로 적용한 모드. 패드를 꽂고 뺄 때 같은 모드로 다시 배정한다
+        private bool _versus = true;
+
         private void Start()
         {
-            // 1인(더미) 모드에서는 P1 PlayerInput 기본 동작(자동 스킴 전환)을 그대로 쓴다
-            if (GameManager.Instance != null && !GameManager.Instance.VersusMode) return;
-
-            Apply();
             InputSystem.onDeviceChange += OnDeviceChange;
         }
 
@@ -42,21 +41,27 @@ namespace MyDongari.Input
             if (change == InputDeviceChange.Added || change == InputDeviceChange.Removed ||
                 change == InputDeviceChange.Reconnected || change == InputDeviceChange.Disconnected)
             {
-                Apply();
+                Apply(_versus);
             }
         }
 
         /// <summary>
-        /// 패드 2개 이상: P1=패드0, P2=패드1. 패드 1개: P2=패드, P1=키보드·마우스. 패드 0개: P1=키보드·마우스, P2 없음.
+        /// VERSUS — 패드 2개 이상: P1=패드0, P2=패드1. 패드 1개: P2=패드, P1=키보드·마우스. 패드 0개: P1=키보드·마우스, P2 없음.
+        /// PRACTICE — P2 기체가 꺼져 있으므로 P1=패드0(있으면) + 키보드·마우스.
         /// </summary>
-        public void Apply()
+        public void Apply(bool versus)
         {
-            if (player1Input == null || player2Input == null) return;
+            _versus = versus;
+            if (player1Input == null) return;
 
             var pads = Gamepad.all;
             Gamepad p1Pad = null;
             Gamepad p2Pad = null;
-            if (pads.Count >= 2)
+            if (!versus)
+            {
+                if (pads.Count >= 1) p1Pad = pads[0];
+            }
+            else if (pads.Count >= 2)
             {
                 p1Pad = pads[0];
                 p2Pad = pads[1];
@@ -68,7 +73,7 @@ namespace MyDongari.Input
 
             var p1Devices = new List<InputDevice>();
             if (p1Pad != null) p1Devices.Add(p1Pad);
-            if (allowKeyboardForP1 || p1Pad == null)
+            if (allowKeyboardForP1 || p1Pad == null || !versus)
             {
                 // 장치 "핸들"만 얻어 페어링하는 용도. 입력 값은 여전히 PlayerInput 액션으로만 읽는다.
                 Keyboard keyboard = InputSystem.GetDevice<Keyboard>();
@@ -81,11 +86,12 @@ namespace MyDongari.Input
             if (p2Pad != null) p2Devices.Add(p2Pad);
 
             Pair(player1Input, p1Devices);
-            Pair(player2Input, p2Devices);
+            // 꺼진(연습 모드) P2는 사용자도 없으니 건드리지 않는다. 다시 켜질 때 GameManager가 Apply(true)를 부른다
+            if (player2Input != null && player2Input.isActiveAndEnabled) Pair(player2Input, p2Devices);
 
             if (debugLog)
             {
-                Debug.Log($"[VersusInputPairing] P1: {string.Join(", ", p1Devices)} / P2: {string.Join(", ", p2Devices)}");
+                Debug.Log($"[VersusInputPairing] {(versus ? "VERSUS" : "PRACTICE")} P1: {string.Join(", ", p1Devices)} / P2: {string.Join(", ", p2Devices)}");
             }
         }
 

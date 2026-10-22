@@ -33,8 +33,8 @@ namespace MyDongari.Core
         {
             GameManager gm = GameManager.Instance;
             if (gm == null) return;
-            Subscribe(gm.Player1);
-            Subscribe(gm.Player2);
+            // 모드(VERSUS/PRACTICE)에 따라 상대가 바뀌므로 P2·연습 봇 모두 구독 (꺼진 기체는 이벤트가 안 난다)
+            foreach (GameObject mech in gm.AllMechs) Subscribe(mech);
         }
 
         private void Subscribe(GameObject mech)

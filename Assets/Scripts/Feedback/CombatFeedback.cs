@@ -70,7 +70,8 @@ namespace MyDongari.Feedback
             public HeatGauge Heat;
             public BoostGauge Boost;
             public MechTint Tint;
-            public float HeadHeight;
+            // 처음 팝업을 띄울 때 잰다 (모드에 따라 시작할 때 꺼져 있는 기체는 렌더러 크기를 못 잰다)
+            public float HeadHeight = -1f;
             public bool WasOverheated;
             public bool WasExhausted;
         }
@@ -92,9 +93,8 @@ namespace MyDongari.Feedback
         {
             GameManager gm = GameManager.Instance;
             if (gm == null) return;
-            // GameManager.Awake가 1인/2인 모드를 정한 뒤라 Player2는 현재 상대(1인 모드면 더미)
-            Register(gm.Player1);
-            Register(gm.Player2);
+            // 모드(VERSUS/PRACTICE)에 따라 상대가 바뀌므로 P2·연습 봇 모두 등록 (꺼진 기체는 건너뛴다)
+            foreach (GameObject mech in gm.AllMechs) Register(mech);
         }
 
         private void Register(GameObject mech)
@@ -106,8 +106,7 @@ namespace MyDongari.Feedback
                 Melee = mech.GetComponent<MeleeSystem>(),
                 Heat = mech.GetComponent<HeatGauge>(),
                 Boost = mech.GetComponent<BoostGauge>(),
-                Tint = new MechTint(mech),
-                HeadHeight = MeasureHeadHeight(mech)
+                Tint = new MechTint(mech)
             };
             _mechs.Add(fb);
 
@@ -255,6 +254,7 @@ namespace MyDongari.Feedback
         private void Popup(MechFeedback fb, string label, Color color)
         {
             if (!enablePopups || fb.Mech == null || !fb.Mech.activeInHierarchy) return;
+            if (fb.HeadHeight < 0f) fb.HeadHeight = MeasureHeadHeight(fb.Mech);
             StatusPopup.Spawn(fb.Mech.transform, fb.HeadHeight, label, color, popupStyle);
         }
 

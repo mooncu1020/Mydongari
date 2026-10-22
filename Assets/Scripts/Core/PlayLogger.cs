@@ -66,6 +66,8 @@ namespace MyDongari.Core
         private readonly Dictionary<string, int>[] _counts = { new Dictionary<string, int>(), new Dictionary<string, int>() };
         private readonly float[] _bandTime = new float[3];
         private int _matchIndex = 0;
+        // 요약의 match 칸에 붙이는 모드 이름 (versus / practice)
+        private string _matchMode = "versus";
         private bool _matchSummaryWritten = false;
         private readonly List<Action> _unsubscribers = new List<Action>();
 
@@ -93,7 +95,18 @@ namespace MyDongari.Core
             _summarySb.AppendLine("match,player,metric,value");
 
             SubscribeMech(player1, 1);
-            SubscribeMech(player2, 2);
+            if (gm != null)
+            {
+                // 모드에 따라 P2가 2인용 기체 또는 연습 봇으로 바뀐다. 둘 다 P2로 구독 (꺼진 쪽은 이벤트가 안 난다)
+                foreach (GameObject mech in gm.AllMechs)
+                {
+                    if (mech != player1) SubscribeMech(mech, 2);
+                }
+            }
+            else
+            {
+                SubscribeMech(player2, 2);
+            }
             SubscribeGameManager(gm);
 
             _isLogging = true;
@@ -181,7 +194,19 @@ namespace MyDongari.Core
                     _matchIndex++;
                     ResetMatchStats();
                 }
-                LogEvent(0, "match_start", _matchIndex.ToString());
+                player2 = gm.Player2;
+                _matchMode = gm.Mode == GameMode.Practice ? "practice" : "versus";
+                LogEvent(0, "match_start", _matchIndex + " " + _matchMode);
+            };
+            Action onReturnedToTitle = () =>
+            {
+                // 매치 도중에 나갔거나 연습을 끝냈으면 지금까지를 요약으로 남긴다 (2인 매치 도중이면 미완료 표시)
+                if (!_matchSummaryWritten && HasAnyStats())
+                {
+                    WriteMatchSummary(_matchMode == "versus" && !gm.IsMatchOver);
+                    SaveLog();
+                }
+                LogEvent(0, "title", "");
             };
 
             gm.OnRoundStarted += onRoundStarted;
@@ -189,6 +214,7 @@ namespace MyDongari.Core
             gm.OnRoundOver += onRoundOver;
             gm.OnMatchOver += onMatchOver;
             gm.OnMatchStarted += onMatchStarted;
+            gm.OnReturnedToTitle += onReturnedToTitle;
             _unsubscribers.Add(() =>
             {
                 gm.OnRoundStarted -= onRoundStarted;
@@ -196,6 +222,7 @@ namespace MyDongari.Core
                 gm.OnRoundOver -= onRoundOver;
                 gm.OnMatchOver -= onMatchOver;
                 gm.OnMatchStarted -= onMatchStarted;
+                gm.OnReturnedToTitle -= onReturnedToTitle;
             });
         }
 
@@ -310,6 +337,8 @@ namespace MyDongari.Core
         private void Update()
         {
             if (!_isLogging) return;
+            // 현재 상대(모드 전환으로 바뀔 수 있음)
+            if (GameManager.Instance != null && GameManager.Instance.Player2 != null) player2 = GameManager.Instance.Player2;
             if (GameManager.Instance != null && !GameManager.Instance.IsRoundActive) return;
 
             // 거리 구간 체류 시간은 실제 싸우는 시간(Fight 단계)만 센다
@@ -387,7 +416,7 @@ namespace MyDongari.Core
         private void WriteMatchSummary(bool incomplete)
         {
             if (_summarySb == null) return;
-            string match = incomplete ? _matchIndex + "_incomplete" : _matchIndex.ToString();
+            string match = _matchIndex + (_matchMode == "practice" ? "_practice" : "") + (incomplete ? "_incomplete" : "");
 
             for (int p = 0; p < 2; p++)
             {
@@ -431,11 +460,11 @@ namespace MyDongari.Core
         {
             if (!_isLogging || !_dirty) return;
 
-            // 매치 도중 종료면 지금까지의 요약을 미완료로 남긴다
+            // 매치 도중 종료면 지금까지의 요약을 미완료로 남긴다 (연습은 끝이 없으니 미완료 표시 없이)
             bool matchInProgress = GameManager.Instance == null || !GameManager.Instance.IsMatchOver;
             if (matchInProgress && !_matchSummaryWritten && HasAnyStats())
             {
-                WriteMatchSummary(true);
+                WriteMatchSummary(_matchMode != "practice");
             }
 
             // 매치 종료마다 전체를 다시 쓴다 (도중에 꺼져도 마지막 매치까지는 남게)

@@ -162,3 +162,14 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (D1) Parrier 상대로 연속 펀치 → 패리 실패 후엔 봇 가드 재사용 대기(0.4초) 때문에 다음 펀치는 못 막음 (규칙 그대로)
 - [ ] (D1) Mixed → 몇 초마다 행동이 바뀜 (가드 / 접근 펀치 / 거리 두고 런지 / 패리)
 - [ ] (D1) 어떤 모드든 카운트다운·라운드 사이엔 봇이 가만히 있고 가드도 내림
+- [ ] (D2) 플레이 → 화면이 어두워지고 MYDONGARI / SELECT MODE / VERSUS·PRACTICE, 아래 조작 안내. 카운트다운·승수 표시 없음
+- [ ] (D2) 패드 스틱·D패드 위아래, 키보드 W/S·화살표로 선택 이동(밀고 있어도 한 칸씩), 패드 A·Start·Enter로 결정. 2인 배치라 P2 패드로도 조작됨
+- [ ] (D2) VERSUS → 지금과 같은 2인 화면 분할 3판 2선승 (카운트다운 3초 → FIGHT)
+- [ ] (D2) VERSUS 매치 끝 → `P? WINS THE MATCH` 아래 REMATCH / TITLE. REMATCH = 승수 0부터 다시, TITLE = 타이틀로
+- [ ] (D2) PRACTICE → 한 화면(P1 카메라 전체), 상대는 연습 봇, 승수 표시 없음, 카운트다운 아래 PRACTICE. 왼쪽 위에 `PRACTICE   BOT: APPROACH`
+- [ ] (D2) PRACTICE에서 봇이나 내가 쓰러짐 → K.O. 1초 → 두 기체 되살아나 바로 이어서(카운트다운 없음, 끝없이 반복)
+- [ ] (D2) PRACTICE에서 Start(Enter) → CONTINUE / TITLE 메뉴, 그동안 봇·내 기체 멈춤. CONTINUE면 이어서, TITLE이면 타이틀
+- [ ] (D2) 패드 1개 + 키보드에서 PRACTICE → 그 패드로 P1을 조작할 수 있음 (VERSUS에선 그 패드가 P2)
+- [ ] (D2) 타이틀 ↔ PRACTICE ↔ VERSUS를 여러 번 오가도: 팝업·틴트·히트스톱이 현재 상대 기준으로 동작, 상대 체력 바가 맞는 대상을 표시
+- [ ] (D2) 로그(`Logs/PlayLogs/summary_*.csv`)에 VERSUS는 `1`, `2`…, PRACTICE는 `N_practice`로 매치별 요약. 매치 중간에 TITLE로 나가면 `_incomplete`
+- [ ] (D2) `GameManager → Show Title On Start` 끄고 `Versus Mode` 끄고 플레이 → 타이틀 없이 바로 연습 모드

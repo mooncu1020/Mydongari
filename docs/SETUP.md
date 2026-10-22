@@ -76,3 +76,9 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
     - Mixed: `Mixed Segment Min/Max` 4~8초마다 AlwaysGuard/Approach/Lunger/Parrier 중 하나로 바뀜.
     - 플레이 중 인스펙터에서 `Mode`를 바꿔도 바로 반영된다.
 49. (D1) 씬 편집 없음: 봇에 필요한 `BotInput`·`HeatGauge`·`BoostGauge`·`ThrusterLunge`는 `MeleeDummy`가 플레이 시작 때 없으면 붙인다(봇도 플레이어와 같은 히트·부스트·런지 규칙). 수치는 모두 `BernardTuning` 에셋에서 읽으므로 따로 넣을 값이 없다.
+50. (D2) 실행하면 **타이틀**(VERSUS / PRACTICE)부터 시작한다. 씬 편집·메뉴 실행 없이 동작: 타이틀·메뉴·연습 표시 캔버스는 `MenuUI`가 런타임에 만든다(GameManager에 자동 부착). 문구(`Game Title` 기본 MYDONGARI 등)·색을 바꾸려면 GameManager 오브젝트에 `MenuUI`를 직접 Add Component 해서 저장.
+51. (D2) `GameManager` 새 필드: `Show Title On Start`(기본 켬), `Practice Respawn Delay`(1초). **SETUP 17의 "Versus Mode 끄기로 1인 테스트"는 이제 타이틀에서 PRACTICE를 고르면 된다.** `Versus Mode`는 `Show Title On Start`를 끈 경우에만 쓰인다(켬 = 바로 2인, 끔 = 바로 연습).
+52. (D2) 모드를 바꿀 때마다 GameManager가 상대 연결(`MechIdentity.Opponent`)을 다시 한다. 인스펙터에서 Opponent를 직접 지정해 둔 값은 덮어쓴다(A0의 "지정돼 있으면 덮어쓰지 않음"은 더 이상 유효하지 않음).
+53. (D2) 패드 배정: VERSUS는 예전 규칙(SETUP 18). PRACTICE는 P1 = 패드 0(있으면) + 키보드·마우스. 모드가 바뀔 때마다 다시 배정한다.
+54. (D2) `.inputactions`에 `Submit`(패드 A/South)·`MenuNavigate`(패드 D패드) 추가. 메뉴 이동은 이동 스틱·D패드·W/S·화살표, 결정은 패드 A·Start, 키보드 Enter.
+55. (D2) `RoundUI`의 `Rematch Hint` 필드는 지웠다(매치 종료 선택지는 MenuUI가 그림). 새 필드 `Practice Label`(PRACTICE)·`Knockout Label`(K.O.).

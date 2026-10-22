@@ -142,7 +142,7 @@
 - 더미 입력은 `ICombatInputSource`를 구현한 봇 입력 컴포넌트로. 런지는 `ThrusterLunge`를 그대로 쓴다.
 - Parrier의 패리 확률·반응 시간, Lunger의 거리 같은 수치는 SerializeField.
 
-### [ ] D2. 타이틀과 모드 선택
+### [x] D2. 타이틀과 모드 선택
 - 실행하면 간단한 타이틀: VERSUS / PRACTICE. 패드 스틱·버튼과 키보드로 선택.
 - VERSUS = 지금의 2인 매치. PRACTICE = P1 vs 연습 봇, 한 화면, 라운드 제한 없이 계속. 봇 모드는 화면 구석에 표시.
 - 매치가 끝나면 타이틀로 돌아가는 선택지.
@@ -180,3 +180,4 @@
 - **C3** 완료. 바뀐 파일: `PlayLogger`(저장 경로 = `Application.dataPath`의 부모/Logs — 에디터는 프로젝트 루트, 빌드는 실행 파일 옆, 폴더 자동 생성, 쓰기 실패 시 경고만), 신규 `Core/AppRuntime`(ESC 1초 홀드 종료 + 진행 표시, 빌드 커서 숨김·잠금, 시작 시 FullScreenWindow 네이티브 해상도), `GameManager`(자동 부착), `MechComponentSetup`(GameManager에 AppRuntime), 신규 `docs/BUILD.md`. 위험: Run In Background가 꺼져 있어 BUILD.md대로 켜지 않으면 포커스를 잃을 때 게임이 멈춘다. 빌드 결과는 아직 확인 안 됨(빌드는 사용자).
 - **C4** (질문 반영, TASKS 외 추가 작업) 완료. 바뀐 파일: `PlayLogger`(`logSubfolderName` = PlayLogs — 씬에 `logFolderName`이 저장돼 있어 기본값 변경 대신 새 필드), `CombatFeedback`(STUN 팝업을 프로퍼티 감시 → 피격 이벤트(Hit + 스턴)·앵커 잡기 이벤트로, `lungeHitClip`), `BUILD.md`. 위험: 낮음. 가드 깨짐 스턴은 GUARD BREAK로만 표시.
 - **D1** 완료. 바뀐 파일: 신규 `Input/BotInput`(ICombatInputSource), `MeleeDummy`(연습 봇 두뇌, `BotMode` 6종, 실행 순서 -50, 필요한 부품 런타임 부착, 상대 공격 이벤트 구독으로 패리), `MeleeSystem`(`SetInputSource`, `RebindComponents`, `ApplyGuardInputNow` — 모두 범용, 판정 로직 변경 없음), `ThrusterLunge`(상태 머신 없는 기체는 스스로 돌진 진행), `HeatGauge`·`BoostGauge`(상태 머신 없이도 냉각·회복). 위험: 봇의 런지 중에도 부스트가 회복된다(상태 머신이 없어 "정지/걷기"로 봄). 봇이 질주를 안 하므로 질주 관련 규칙은 봇에 해당 없음.
+- **D2** 완료. 바뀐 파일: `GameManager`(`GameMode`, `MatchPhase.Title`, 모드별 배치 `ApplyLayout`·패드 재배정·상대 재연결, 타이틀/매치 종료/연습 메뉴, 연습 KO 무제한 루프, `ResetPracticeNow`, `AllMechs`, `OnReturnedToTitle`), 신규 `UI/MenuUI`(런타임 캔버스), `RoundUI`(타이틀 숨김·연습 표시), `InputReader`(`MenuVertical`, `MenuConfirmPressed`, `ClearFrameInput`), `VersusInputPairing`(`Apply(versus)`, 연습은 패드 0 → P1), `HitStop`·`CombatFeedback`·`PlayLogger`(P2·봇 모두 구독, 모드별 요약), `.inputactions`(`Submit`, `MenuNavigate` 추가). 위험: 봇이 꺼진 채 시작하면(2인 배치) 봇 부품 런타임 부착이 Awake 순서(-50)에 의존 — 연습 모드에서 봇 런지 팝업·로그가 안 나오면 이 부분. 2인 패드 확인은 아직.
