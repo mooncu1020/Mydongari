@@ -48,6 +48,7 @@ namespace MyDongari.Movement
         public MechCamera MechCamera => mechCamera;
         public Transform CameraTransform => cameraTransform;
         public ExternalControlLock ControlLock { get; private set; }
+        public MechIdentity Identity { get; private set; }
         public bool IsExternallyControlled => ControlLock != null && ControlLock.IsLocked;
 
         private float _defaultDamping;
@@ -60,6 +61,7 @@ namespace MyDongari.Movement
 
             ControlLock = GetComponent<ExternalControlLock>();
             if (ControlLock == null) ControlLock = gameObject.AddComponent<ExternalControlLock>();
+            Identity = MechIdentity.GetOrAdd(gameObject);
 
             _defaultDamping = Rb.linearDamping;
         }

@@ -12,6 +12,8 @@ namespace MyDongari.Camera
 
         [Header("시점 설정")]
         [SerializeField] private float mouseSensitivity = 2f;
+        [Tooltip("패드 오른쪽 스틱 감도(초당 회전 각도). 스틱은 기울기 값이라 프레임레이트와 무관하게 deltaTime을 곱한다")]
+        [SerializeField] private float stickSensitivity = 180f;
         [SerializeField] private float verticalClamp = 60f;
 
         [Header("퀵턴 설정")]
@@ -138,8 +140,12 @@ namespace MyDongari.Camera
                 }
                 else if (!isSprinting)
                 {
-                    _yaw += _inputReader.LookInput.x * mouseSensitivity;
-                    _pitch -= _inputReader.LookInput.y * mouseSensitivity;
+                    // 마우스 델타는 이미 프레임당 이동량이라 그대로, 스틱은 기울기라 시간 비례로
+                    float lookScale = _inputReader.IsLookFromGamepad
+                        ? stickSensitivity * Time.deltaTime
+                        : mouseSensitivity;
+                    _yaw += _inputReader.LookInput.x * lookScale;
+                    _pitch -= _inputReader.LookInput.y * lookScale;
                     _pitch = Mathf.Clamp(_pitch, -verticalClamp, verticalClamp);
                 }
                 else if (_mechController != null)

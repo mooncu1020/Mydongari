@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using MyDongari.Mech;
 using MyDongari.Combat;
 using MyDongari.Movement;
+using MyDongari.Core;
 using UnityCamera = UnityEngine.Camera;
 
 namespace MyDongari.UI
@@ -28,12 +29,20 @@ namespace MyDongari.UI
         [SerializeField] private Health playerHealth;
         [SerializeField] private LockOnSystem lockOnSystem;
         [SerializeField] private MechStateMachine mechStateMachine;
+        [Tooltip("이 HUD가 올라가는 화면의 카메라. 비워 두면 lockOnSystem 기체의 카메라를 쓴다")]
+        [SerializeField] private UnityCamera viewCamera;
 
         private UnityCamera _camera;
 
         private void Start()
         {
-            _camera = UnityCamera.main;
+            // 화면 분할이라 메인 카메라가 아니라 "이 HUD 주인의" 카메라로 화면 좌표를 계산해야 한다
+            _camera = viewCamera;
+            if (_camera == null && lockOnSystem != null)
+            {
+                MechIdentity identity = lockOnSystem.GetComponent<MechIdentity>();
+                if (identity != null) _camera = identity.ViewCamera;
+            }
         }
 
         private void Update()
@@ -91,7 +100,7 @@ namespace MyDongari.UI
 
         private void UpdateLockOn()
         {
-            if (lockOnMarker == null || lockOnSystem == null) return;
+            if (lockOnMarker == null || lockOnSystem == null || _camera == null) return;
 
             if (lockOnSystem.Target == null)
             {

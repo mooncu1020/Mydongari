@@ -1,5 +1,6 @@
 using UnityEngine;
 using MyDongari.Camera;
+using MyDongari.Core;
 
 namespace MyDongari.Combat
 {
@@ -17,18 +18,22 @@ namespace MyDongari.Combat
 
         private Transform _camera;
         private MechCamera _mechCamera;
+        private MechIdentity _identity;
 
         public Transform Target { get; private set; }
         public bool IsHardLocked { get; private set; }
 
         private void Awake()
         {
-            _camera = GameObject.FindWithTag("MainCamera").transform;
-            _mechCamera = _camera.GetComponent<MechCamera>();
+            // 화면 분할: 각 기체는 자기 카메라만 기준으로 조준한다
+            _identity = MechIdentity.GetOrAdd(gameObject);
+            _camera = _identity.CameraTransform;
+            _mechCamera = _identity.MechCamera;
         }
 
         private void Update()
         {
+            if (_camera == null) return;
             DetectTarget();
             UpdateHardLock();
         }
@@ -41,7 +46,7 @@ namespace MyDongari.Combat
 
             foreach (Collider hit in hits)
             {
-                if (!hit.CompareTag("Enemy")) continue;
+                if (!_identity.IsOpponentCollider(hit)) continue;
 
                 Vector3 targetCenter = hit.bounds.center;
                 Vector3 dirToTarget = (targetCenter - _camera.position).normalized;
@@ -52,11 +57,11 @@ namespace MyDongari.Combat
                 RaycastHit rayHit;
                 if (Physics.Raycast(_camera.position, dirToTarget, out rayHit, lockOnRange))
                 {
-                    if (!rayHit.collider.CompareTag("Enemy")) continue;
+                    if (!_identity.IsOpponentCollider(rayHit.collider)) continue;
                 }
 
                 bestAngle = angle;
-                bestTarget = hit.transform;
+                bestTarget = _identity.Opponent.transform;
             }
 
             Target = bestTarget;

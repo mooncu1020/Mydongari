@@ -44,6 +44,23 @@ namespace MyDongari.Core
                 return;
             }
             Instance = this;
+            LinkOpponents();
+        }
+
+        /// <summary>
+        /// player1·player2를 서로의 상대로 연결한다. 전투 코드는 태그 대신 이 참조로 상대를 찾는다.
+        /// 인스펙터에서 Opponent를 직접 지정해 둔 경우(더미 테스트 등)는 덮어쓰지 않는다.
+        /// </summary>
+        private void LinkOpponents()
+        {
+            if (player1 == null || player2 == null) return;
+
+            MechIdentity id1 = MechIdentity.GetOrAdd(player1);
+            MechIdentity id2 = MechIdentity.GetOrAdd(player2);
+            id1.SetPlayerIndex(1);
+            id2.SetPlayerIndex(2);
+            if (id1.Opponent == null) id1.SetOpponent(id2);
+            if (id2.Opponent == null) id2.SetOpponent(id1);
         }
 
         private void Start()

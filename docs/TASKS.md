@@ -7,7 +7,7 @@
 
 ## Phase A — 기존 코드 수정
 
-### [ ] A0. 1인 전제 구조 걷어내기 (입력·상대·카메라 참조)
+### [x] A0. 1인 전제 구조 걷어내기 (입력·상대·카메라 참조)
 뒤의 모든 태스크가 이 위에서 돌아가므로 가장 먼저 한다.
 
 - `InputReader`
@@ -115,3 +115,4 @@
 
 ## 작업 메모 (Claude Code가 태스크마다 추가)
 
+- **A0** 완료. 바뀐 파일: `InputSystem_Actions.inputactions`(Guard/StepLeft/StepRight 액션 + 패드 바인딩 추가), `InputReader`, 신규 `Core/MechIdentity`·`Input/ICombatInputSource`, `MeleeSystem`, `WeaponSystem`, `Projectile`(Init 시그니처), `LockOnSystem`, `ImpactSlam`, `SprintState`, `MechController`(Identity), `MeleeDummy`, `HUDController`, `MechCamera`, `GameManager`(LinkOpponents). 위험: `MechIdentity`는 런타임 자동 부착이라 GameManager의 Player1/2가 비어 있으면 상대가 없어 아무 공격도 안 맞는다. 패드 판별(`IsLookFromGamepad`)은 Look 액션의 activeControl 기준.

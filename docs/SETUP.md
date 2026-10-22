@@ -3,3 +3,12 @@
 Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙터에서 새로 연결해야 하는 참조, 추가할 컴포넌트, 실행할 에디터 메뉴를 여기에 순서대로 적는다.
 형식: `1. (태스크) 오브젝트 → 컴포넌트 → 필드에 무엇을 연결`
 
+
+## Phase A
+
+0. (공통) 새 스크립트(`MechIdentity.cs`, `ICombatInputSource.cs`, `HitTypes.cs` 등)는 `.meta`가 없다. 에디터를 한 번 열어 임포트하면 자동 생성되니 생성된 `.meta`도 커밋한다.
+1. (A0) 별도 연결 없이 동작하게 만들었다: `GameManager`의 `Player1`(Mech)·`Player2`(DummyTarget)에 `MechIdentity`를 런타임에 붙이고 서로를 Opponent로 연결한다. **GameManager의 Player1/Player2 필드가 비어 있으면 아무도 안 맞는다** — 비어 있지 않은지 확인.
+2. (A0, 선택) 원하면 Mech·DummyTarget에 `MechIdentity`를 직접 추가해 `Opponent`를 서로 지정해도 된다 (지정돼 있으면 GameManager가 덮어쓰지 않는다). `Camera Transform`은 비워 두면 `MechController → Camera Transform`을 쓴다.
+3. (A0) HUD → `HUDController` → `View Camera`: 비워 두면 Lock On System 기체의 카메라를 쓴다. B1 화면 분할에서는 각 HUD에 자기 카메라를 넣는다.
+4. (A0) Camera → `MechCamera` → `Stick Sensitivity`(기본 180°/초): 패드 오른쪽 스틱 시점 감도. 마우스는 기존 `Mouse Sensitivity` 그대로.
+5. (A0) `Assets/InputSystem_Actions.inputactions`에 `Guard`, `StepLeft`, `StepRight` 액션과 패드 바인딩(RT 공격, LT 가드, LB/RB 스킬)을 추가했다. 에디터에서 에셋을 열어 저장 경고가 없는지 확인. 만약 프로젝트가 이 에셋에서 C# 클래스를 생성하도록 설정돼 있다면 재생성된다(현재 코드는 생성 클래스를 쓰지 않음).

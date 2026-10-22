@@ -11,6 +11,7 @@ namespace MyDongari.Combat
         [SerializeField] private float moveSpeed = 5f;
 
         private Transform _player;
+        private MechIdentity _identity;
         private MeleeSystem _meleeSystem;
         private Health _health;
         private float _attackTimer = 0f;
@@ -23,15 +24,14 @@ namespace MyDongari.Combat
             _meleeSystem = GetComponent<MeleeSystem>();
             _rb = GetComponent<Rigidbody>();
             _controlLock = GetComponent<ExternalControlLock>();
-        }
-
-        private void Start()
-        {
-            _player = GameObject.FindWithTag("Player").transform;
+            _identity = MechIdentity.GetOrAdd(gameObject);
         }
 
         private void Update()
         {
+            // 상대는 GameManager가 Awake 이후에 연결할 수 있으니 매 프레임 참조를 갱신
+            _player = _identity.Opponent != null ? _identity.Opponent.transform : null;
+
             if (_health != null && _health.IsDead) return;
             if (_player == null) return;
 
@@ -47,6 +47,7 @@ namespace MyDongari.Combat
 
         private void FixedUpdate()
         {
+            _player = _identity.Opponent != null ? _identity.Opponent.transform : null;
             if (_health != null && _health.IsDead) return;
             if (_player == null) return;
             if (_controlLock != null && _controlLock.IsLocked) return; // 앵커클로 등에 잡혀있으면 양보

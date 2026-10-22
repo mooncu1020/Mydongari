@@ -1,4 +1,5 @@
 using UnityEngine;
+using MyDongari.Core;
 
 namespace MyDongari.Combat
 {
@@ -10,15 +11,27 @@ namespace MyDongari.Combat
         [SerializeField] private float lifetime = 3f;
         [SerializeField] private float damage = 10f;
 
+        [Header("소프트 호밍")]
+        [Tooltip("이 각도(발사자 카메라 정면 기준) 밖이면 각도 점수 0")]
+        [SerializeField] private float homingMaxAngle = 30f;
+        [Tooltip("이 거리 밖이면 거리 점수 0")]
+        [SerializeField] private float homingMaxDistance = 50f;
+
         private Transform _target;
         private Vector3 _direction;
         private float _lifeTimer = 0f;
         private Rigidbody _rb;
+        private Transform _aimCamera;
+        private MechIdentity _owner;
 
-        public void Init(Vector3 direction, Transform target)
+        /// <param name="aimCamera">발사자의 카메라. 호밍 각도 점수를 이 카메라 정면 기준으로 잰다</param>
+        /// <param name="owner">발사자. 발사자의 상대만 맞고 발사자 자신은 절대 안 맞는다</param>
+        public void Init(Vector3 direction, Transform target, Transform aimCamera, MechIdentity owner)
         {
             _direction = direction.normalized;
             _target = target;
+            _aimCamera = aimCamera;
+            _owner = owner;
         }
 
         private void Awake()
@@ -46,7 +59,6 @@ namespace MyDongari.Combat
         {
             if (_target != null && !_passed)
             {
-                Transform cam = GameObject.FindWithTag("MainCamera").transform;
                 Vector3 dirToTarget = (_target.position - transform.position).normalized;
 
                 float dot = Vector3.Dot(_direction.normalized, dirToTarget);
@@ -56,13 +68,12 @@ namespace MyDongari.Combat
                 }
                 else
                 {
-                    float angle = Vector3.Angle(cam.forward, dirToTarget);
-                    float maxAngle = 30f;
-                    float angleFactor = Mathf.Clamp01(1f - (angle / maxAngle));
+                    Vector3 aimForward = _aimCamera != null ? _aimCamera.forward : _direction;
+                    float angle = Vector3.Angle(aimForward, dirToTarget);
+                    float angleFactor = Mathf.Clamp01(1f - (angle / homingMaxAngle));
 
                     float distance = Vector3.Distance(transform.position, _target.position);
-                    float maxDistance = 50f;
-                    float distanceFactor = Mathf.Clamp01(1f - (distance / maxDistance));
+                    float distanceFactor = Mathf.Clamp01(1f - (distance / homingMaxDistance));
 
                     float currentHoming = homingStrength * (angleFactor + distanceFactor) * 0.5f;
                     _direction = Vector3.Lerp(_direction, dirToTarget, currentHoming * Time.fixedDeltaTime);
@@ -74,10 +85,11 @@ namespace MyDongari.Combat
 
         private void OnTriggerEnter(Collider other)
         {
-            if (other.CompareTag("Enemy"))
+            if (_owner != null && _owner.IsOpponentCollider(other))
             {
-                Health health = other.GetComponent<Health>();
-                MeleeSystem meleeSystem = other.GetComponent<MeleeSystem>();
+                GameObject victim = _owner.Opponent.gameObject;
+                Health health = victim.GetComponent<Health>();
+                MeleeSystem meleeSystem = victim.GetComponent<MeleeSystem>();
 
                 float finalDamage = damage;
                 if (meleeSystem != null)

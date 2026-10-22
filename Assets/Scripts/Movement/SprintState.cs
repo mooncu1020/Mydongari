@@ -73,7 +73,7 @@ namespace MyDongari.Movement
                     StateMachine.MechController.transform.position, 2f);
                 foreach (Collider hit in hits)
                 {
-                    if (!hit.CompareTag("Enemy")) continue;
+                    if (!StateMachine.MechController.Identity.IsOpponentCollider(hit)) continue;
 
                     StateMachine.MechController.Rb.linearVelocity = Vector3.zero;
                     StateMachine.MechController.MeleeSystem.TryTackle(TackleChargePower);

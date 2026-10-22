@@ -1,4 +1,5 @@
 using UnityEngine;
+using MyDongari.Core;
 
 namespace MyDongari.Combat.Skills
 {
@@ -12,6 +13,12 @@ namespace MyDongari.Combat.Skills
         [SerializeField] private float cooldown = 8f;
 
         private float _cooldownTimer = 0f;
+        private MechIdentity _identity;
+
+        private void Awake()
+        {
+            _identity = MechIdentity.GetOrAdd(gameObject);
+        }
 
         private void Update()
         {
@@ -25,15 +32,16 @@ namespace MyDongari.Combat.Skills
             Collider[] hits = Physics.OverlapSphere(transform.position, slamRange);
             foreach (Collider hit in hits)
             {
-                if (!hit.CompareTag("Enemy")) continue;
+                if (!_identity.IsOpponentCollider(hit)) continue;
+                GameObject target = _identity.Opponent.gameObject;
 
-                Vector3 dirToTarget = (hit.transform.position - transform.position).normalized;
+                Vector3 dirToTarget = (target.transform.position - transform.position).normalized;
                 float angle = Vector3.Angle(transform.forward, dirToTarget);
 
                 if (angle > slamAngle * 0.5f) continue;
 
-                Health health = hit.GetComponent<Health>();
-                Rigidbody rb = hit.GetComponent<Rigidbody>();
+                Health health = target.GetComponent<Health>();
+                Rigidbody rb = target.GetComponent<Rigidbody>();
 
                 if (health != null)
                 {
@@ -42,10 +50,12 @@ namespace MyDongari.Combat.Skills
 
                 if (rb != null)
                 {
-                    Vector3 knockDir = (hit.transform.position - transform.position).normalized;
+                    Vector3 knockDir = (target.transform.position - transform.position).normalized;
                     knockDir.y = 0.3f;
                     rb.AddForce(knockDir.normalized * slamKnockback, ForceMode.Impulse);
                 }
+                // 상대 콜라이더가 여러 개여도 한 번만 맞는다
+                return;
             }
         }
     }

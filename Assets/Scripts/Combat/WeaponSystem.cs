@@ -21,6 +21,7 @@ namespace MyDongari.Combat
         private AnchorClaw _anchorClaw;
         private ImpactSlam _impactSlam;
         private InputReader _inputReader;
+        private MechIdentity _identity;
         private float _fireTimer = 0f;
 
         private void Awake()
@@ -31,6 +32,7 @@ namespace MyDongari.Combat
             _anchorClaw = GetComponent<AnchorClaw>();
             _impactSlam = GetComponent<ImpactSlam>();
             _inputReader = GetComponent<InputReader>();
+            _identity = MechIdentity.GetOrAdd(gameObject);
         }
 
         private void Update()
@@ -55,7 +57,7 @@ namespace MyDongari.Combat
                 }
             }
 
-            if (UnityEngine.InputSystem.Mouse.current.leftButton.isPressed)
+            if (_inputReader.AttackHeld)
             {
                 if (_anchorClaw != null && _anchorClaw.IsPileDriverReady)
                 {
@@ -74,12 +76,9 @@ namespace MyDongari.Combat
 
         private bool IsEnemyInMeleeRange()
         {
-            Collider[] hits = Physics.OverlapSphere(transform.position, meleeAutoRange);
-            foreach (Collider hit in hits)
-            {
-                if (hit.CompareTag("Enemy")) return true;
-            }
-            return false;
+            MechIdentity opponent = _identity.Opponent;
+            if (opponent == null) return false;
+            return Vector3.Distance(transform.position, opponent.transform.position) <= meleeAutoRange;
         }
 
         private void TryFire()
@@ -90,14 +89,16 @@ namespace MyDongari.Combat
             _fireTimer = 0f;
             _heatGauge.AddHeat(heatPerShot);
 
-            Vector3 fireDirection = GameObject.FindWithTag("MainCamera").transform.forward;
+            // 화면 분할이라 조준 기준은 반드시 "내" 카메라
+            Transform aimCamera = _identity.CameraTransform;
+            Vector3 fireDirection = aimCamera != null ? aimCamera.forward : transform.forward;
             Transform target = _lockOnSystem != null ? _lockOnSystem.Target : null;
 
             GameObject proj = Instantiate(projectilePrefab, firePoint.position, Quaternion.identity);
             Projectile projectile = proj.GetComponent<Projectile>();
             if (projectile != null)
             {
-                projectile.Init(fireDirection, target);
+                projectile.Init(fireDirection, target, aimCamera, _identity);
             }
         }
     }
