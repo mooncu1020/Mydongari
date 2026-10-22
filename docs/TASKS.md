@@ -113,6 +113,27 @@
 
 ---
 
+## Phase C — 로케테스트 다듬기
+
+### [ ] C1. 튜닝 에셋 통합
+- 조정 가능한 전투·이동 수치(이동 속도, 부스트, 히트, 가드, 패리, 런지, 태클, 대시 어택, 펀치, 스킬, 락온, 히트스톱)를 ScriptableObject `BernardTuning` 하나로 옮긴다.
+- 두 기체가 같은 에셋을 참조하고, 플레이 중에 값을 바꾸면 바로 반영된다 (매 프레임 읽거나 OnValidate로 갱신).
+- 기본 에셋 생성 메뉴, 현재 P1 기체 인스펙터 값을 에셋으로 복사하는 메뉴. `Setup Versus Scene`도 이 에셋을 두 기체에 연결.
+- 컴포넌트에 남은 같은 이름의 개별 필드는 제거하거나 `[HideInInspector]` 처리하고, 어느 쪽인지 SETUP.md에 적는다.
+
+### [ ] C2. 상태 피드백
+- 기체 머리 위 짧은 월드 텍스트 팝업: PARRY, GUARD BREAK, CLASH, STUN, OVERHEAT, EXHAUSTED. 각 플레이어 카메라를 향하고 화면 분할 양쪽에 다 보인다.
+- 가드 중·스턴 중·과열 중 상태를 기체 머티리얼 색 틴트로 표시 (원래 색 복귀 보장).
+- 효과음 훅: 펀치 명중, 가드로 막힘, 패리, 가드 깨짐, 맞딜, 런지 발동, 태클 명중. AudioClip 필드만, 비어 있으면 무음.
+- 전투 코드는 기존 이벤트를 구독만 해서 처리하고, 전투 코드에 피드백 의존을 넣지 않는다.
+
+### [ ] C3. 로케테스트 빌드 준비
+- PlayLogger 저장 경로: 에디터는 프로젝트 루트/Logs, 빌드는 실행 파일 옆 Logs 폴더.
+- 빌드에서 ESC 길게 누르기(1초)로 종료, 마우스 커서 숨김, 해상도는 전체 화면 기본.
+- Windows 빌드 설정 체크리스트와 빌드 후 확인 항목을 `docs/BUILD.md`에. 빌드 실행은 사용자가 한다.
+
+---
+
 ## 작업 메모 (Claude Code가 태스크마다 추가)
 
 - **A0** 완료. 바뀐 파일: `InputSystem_Actions.inputactions`(Guard/StepLeft/StepRight 액션 + 패드 바인딩 추가), `InputReader`, 신규 `Core/MechIdentity`·`Input/ICombatInputSource`, `MeleeSystem`, `WeaponSystem`, `Projectile`(Init 시그니처), `LockOnSystem`, `ImpactSlam`, `SprintState`, `MechController`(Identity), `MeleeDummy`, `HUDController`, `MechCamera`, `GameManager`(LinkOpponents). 위험: `MechIdentity`는 런타임 자동 부착이라 GameManager의 Player1/2가 비어 있으면 상대가 없어 아무 공격도 안 맞는다. 패드 판별(`IsLookFromGamepad`)은 Look 액션의 activeControl 기준.
