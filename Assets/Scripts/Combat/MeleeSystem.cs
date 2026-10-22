@@ -219,7 +219,7 @@ namespace MyDongari.Combat
         public float ApplyDamage(float incomingDamage, AttackType type)
         {
             if (!IsGuarding) return incomingDamage;
-            if (type == AttackType.Lunge || type == AttackType.Tackle) return incomingDamage;
+            if (HitInfo.PiercesGuardType(type)) return incomingDamage;
 
             float reduction = type == AttackType.Projectile ? guardProjectileReduction : guardMeleeReduction;
             return incomingDamage * (1f - reduction);

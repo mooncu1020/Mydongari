@@ -37,8 +37,13 @@ namespace MyDongari.Combat
         /// <summary>그대로 맞았을 때(Hit) 피격자에게 거는 스턴. 0이면 없음</summary>
         public float StunDuration;
 
-        /// <summary>런지·차징 태클은 가드를 뚫는다 (감쇄 없음, 가드 히트 증가 없음)</summary>
-        public bool PiercesGuard => Type == AttackType.Lunge || Type == AttackType.Tackle;
+        /// <summary>런지·차징 태클·파일드라이버(잡기 후속타)는 가드를 뚫는다 (감쇄 없음, 가드 히트 증가 없음)</summary>
+        public bool PiercesGuard => PiercesGuardType(Type);
+
+        public static bool PiercesGuardType(AttackType type)
+        {
+            return type == AttackType.Lunge || type == AttackType.Tackle || type == AttackType.PileDriver;
+        }
 
         /// <summary>앵커 클로(잡기)로 이어지는 파일드라이버는 패리가 안 된다</summary>
         public bool IgnoresParry => Type == AttackType.PileDriver;

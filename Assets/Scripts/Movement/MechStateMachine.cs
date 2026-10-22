@@ -27,6 +27,15 @@ namespace MyDongari.Movement
 
         public bool IsRunning => _currentState is RunState;
 
+        /// <summary>
+        /// 하드 락온 몸통 자동 회전을 허용하는 상태인지.
+        /// 전력질주·슬라이딩·초신지선회(·런지)는 진행 방향이 정해진 기동이라 몸을 돌리면 안 된다.
+        /// </summary>
+        public bool AllowsHardLockFacing =>
+            !(_currentState is SprintState) &&
+            !(_currentState is SlideState) &&
+            !(_currentState is QuickTurnState);
+
         public string CurrentStateName => _currentState != null ? _currentState.GetType().Name : "None";
 
         public Vector3 LastMoveDirection { get; set; }
@@ -78,6 +87,8 @@ namespace MyDongari.Movement
         private void FixedUpdate()
         {
             _currentState?.FixedUpdate();
+            // 상태가 끝난 뒤에 돌려야 상태 쪽 회전과 겹치지 않는다 (RotateToCamera는 이때 양보함)
+            MechController.ApplyHardLockFacing();
         }
     }
 }

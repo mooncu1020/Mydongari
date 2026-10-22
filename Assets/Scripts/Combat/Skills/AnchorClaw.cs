@@ -152,7 +152,7 @@ namespace MyDongari.Combat.Skills
 
             _pileDriverReady = false;
 
-            // 잡기 후속타라 패리는 안 되지만 가드 감쇄는 받는다 (HitInfo.IgnoresParry)
+            // 잡기 후속타라 가드·패리를 모두 무시한다 (HitInfo.PiercesGuard / IgnoresParry)
             HitInfo info = new HitInfo
             {
                 Type = AttackType.PileDriver,

@@ -21,6 +21,8 @@ namespace MyDongari.Movement
 
         [Header("회전 수치")]
         [SerializeField] private float rotationSpeed = 15f;
+        [Tooltip("하드 락온 중 몸통이 상대 쪽으로 자동으로 도는 속도 (수평 회전만)")]
+        [SerializeField] private float hardLockTurnSpeed = 10f;
 
         public float WalkSpeed => walkSpeed;
         public float RunSpeed => runSpeed;
@@ -49,6 +51,7 @@ namespace MyDongari.Movement
         public Transform CameraTransform => cameraTransform;
         public ExternalControlLock ControlLock { get; private set; }
         public MechIdentity Identity { get; private set; }
+        public LockOnSystem LockOn { get; private set; }
         public bool IsExternallyControlled => ControlLock != null && ControlLock.IsLocked;
 
         private float _defaultDamping;
@@ -62,6 +65,7 @@ namespace MyDongari.Movement
             ControlLock = GetComponent<ExternalControlLock>();
             if (ControlLock == null) ControlLock = gameObject.AddComponent<ExternalControlLock>();
             Identity = MechIdentity.GetOrAdd(gameObject);
+            LockOn = GetComponent<LockOnSystem>();
 
             _defaultDamping = Rb.linearDamping;
         }
@@ -121,8 +125,30 @@ namespace MyDongari.Movement
             Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, rotationSpeed * Time.fixedDeltaTime));
         }
 
+        /// <summary>
+        /// 지금 하드 락온 몸통 회전이 기체 방향을 맡고 있는지.
+        /// 이때는 상태들의 RotateToCamera가 같은 물리 스텝에 회전을 덮어쓰지 않게 양보한다.
+        /// </summary>
+        public bool IsHardLockFacing =>
+            LockOn != null && LockOn.IsHardLocked && LockOn.Target != null &&
+            StateMachine != null && StateMachine.AllowsHardLockFacing &&
+            !IsExternallyControlled;
+
+        /// <summary>하드 락온 중 몸통을 상대 쪽으로 수평 회전. MechStateMachine이 매 물리 스텝 부른다.</summary>
+        public void ApplyHardLockFacing()
+        {
+            if (!IsHardLockFacing) return;
+
+            Vector3 toTarget = LockOn.Target.position - transform.position;
+            toTarget.y = 0f;
+            if (toTarget.sqrMagnitude < 0.0001f) return;
+            Quaternion targetRot = Quaternion.LookRotation(toTarget.normalized, Vector3.up);
+            Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, hardLockTurnSpeed * Time.fixedDeltaTime));
+        }
+
         public void RotateToCamera()
         {
+            if (IsHardLockFacing) return;
             if (CameraTransform == null) return;
             Vector3 camForward = CameraTransform.forward;
             camForward.y = 0f;

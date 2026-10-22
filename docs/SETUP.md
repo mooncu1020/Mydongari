@@ -19,3 +19,6 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 10. (A6) `MeleeSystem` → `Punch Half Angle`(기본 45°) 새 필드. DummyTarget → `MeleeDummy` → `Turn Speed`(기본 8) 새 필드: 더미가 상대를 향해 몸을 돌린다.
 11. (A7) `ImpactSlam` → `Slam Knockback Lift`(기본 0.3) 새 필드: 기존 코드에 박혀 있던 넉백 위쪽 성분.
 12. (A8) GameManager → `Player1 Spawn Point`·`Player2 Spawn Point`: 이제 **회전도** 스폰 포인트를 따른다. 스폰 포인트 오브젝트(` SpawnPoint_P1`, ` SpawnPoint_P2`)의 Y 회전을 기체가 바라볼 방향(서로 마주 보게)으로 맞춘다. 카메라도 그 방향으로 리셋된다.
+13. (A9) `HeatGauge`의 `Sprint Cooling Penalty`(씬 값 0.2)는 `Sprint Cooling Reduction`으로 이름이 바뀌어 새 기본값 **0.7**(질주 중 냉각 속도 30%)이 적용된다. 씬 값을 따로 고칠 필요 없음.
+14. (A9) `MechController` → `Hard Lock Turn Speed`(기본 10) 새 필드: 하드 락온 중 몸통이 상대 쪽으로 도는 속도.
+15. (A9) `.inputactions`에서 그룹이 비어 있던 키보드 바인딩(Ctrl 슬라이드, R 퀵턴, Shift 달리기, Q/E 스킬)을 `Keyboard&Mouse` 스킴에 넣었다.
