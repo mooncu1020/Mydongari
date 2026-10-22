@@ -13,7 +13,6 @@ namespace MyDongari.Combat
         [SerializeField] private Transform firePoint;
         [SerializeField] private float heatPerShot = 10f;
         [SerializeField] private float fireRate = 0.3f;
-        [SerializeField] private float meleeAutoRange = 5f;
 
         private LockOnSystem _lockOnSystem;
         private HeatGauge _heatGauge;
@@ -63,7 +62,8 @@ namespace MyDongari.Combat
                 {
                     _anchorClaw.TryPileDriver();
                 }
-                else if (_lockOnSystem != null && _lockOnSystem.IsHardLocked && IsEnemyInMeleeRange())
+                // 근접 전환 거리는 하드 락온 진입 거리 하나로 통일 (거리 값이 두 군데 있으면 서로 어긋남)
+                else if (_lockOnSystem != null && _lockOnSystem.IsHardLocked)
                 {
                     _meleeSystem.TryMeleeAttack();
                 }
@@ -72,13 +72,6 @@ namespace MyDongari.Combat
                     TryFire();
                 }
             }
-        }
-
-        private bool IsEnemyInMeleeRange()
-        {
-            MechIdentity opponent = _identity.Opponent;
-            if (opponent == null) return false;
-            return Vector3.Distance(transform.position, opponent.transform.position) <= meleeAutoRange;
         }
 
         private void TryFire()

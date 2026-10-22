@@ -24,7 +24,7 @@
 
 완료 조건: grep으로 `Mouse.current`, `Keyboard.current`, `CompareTag("Enemy")`, `CompareTag("Player")`, `FindWithTag("MainCamera")`, `Camera.main`이 게임 로직(Scripts/, Editor 제외)에서 0건. 기존 1인 + 더미 구성이 SETUP.md 단계대로 연결하면 이전처럼 동작.
 
-### [ ] A1. 락온 거리를 기체 기준으로
+### [x] A1. 락온 거리를 기체 기준으로
 - `LockOnSystem.UpdateHardLock`의 거리를 카메라 위치가 아니라 기체(`transform.position`) 기준으로. 각도 판정(±60°)은 카메라 정면 기준 유지.
 - `hardLockEnterRange` 기본 6, `hardLockExitRange` 7.
 - 근접 전환 판정(`WeaponSystem.IsEnemyInMeleeRange`의 5m)을 하드 락온 상태 하나로 통일한다. 거리 값이 두 군데 있으면 안 된다.
@@ -116,3 +116,4 @@
 ## 작업 메모 (Claude Code가 태스크마다 추가)
 
 - **A0** 완료. 바뀐 파일: `InputSystem_Actions.inputactions`(Guard/StepLeft/StepRight 액션 + 패드 바인딩 추가), `InputReader`, 신규 `Core/MechIdentity`·`Input/ICombatInputSource`, `MeleeSystem`, `WeaponSystem`, `Projectile`(Init 시그니처), `LockOnSystem`, `ImpactSlam`, `SprintState`, `MechController`(Identity), `MeleeDummy`, `HUDController`, `MechCamera`, `GameManager`(LinkOpponents). 위험: `MechIdentity`는 런타임 자동 부착이라 GameManager의 Player1/2가 비어 있으면 상대가 없어 아무 공격도 안 맞는다. 패드 판별(`IsLookFromGamepad`)은 Look 액션의 activeControl 기준.
+- **A1** 완료. 바뀐 파일: `LockOnSystem`(Opponent 단일 검사, 기체 기준 거리, 목표 상실 시 카메라 추적 해제), `WeaponSystem`(`meleeAutoRange` 삭제 — 펀치 조건은 `IsHardLocked`만). 위험: 레이캐스트가 트리거를 무시하도록 바뀜, 상대 중심은 루트 콜라이더 bounds 기준(없으면 위치).

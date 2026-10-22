@@ -12,3 +12,5 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 3. (A0) HUD → `HUDController` → `View Camera`: 비워 두면 Lock On System 기체의 카메라를 쓴다. B1 화면 분할에서는 각 HUD에 자기 카메라를 넣는다.
 4. (A0) Camera → `MechCamera` → `Stick Sensitivity`(기본 180°/초): 패드 오른쪽 스틱 시점 감도. 마우스는 기존 `Mouse Sensitivity` 그대로.
 5. (A0) `Assets/InputSystem_Actions.inputactions`에 `Guard`, `StepLeft`, `StepRight` 액션과 패드 바인딩(RT 공격, LT 가드, LB/RB 스킬)을 추가했다. 에디터에서 에셋을 열어 저장 경고가 없는지 확인. 만약 프로젝트가 이 에셋에서 C# 클래스를 생성하도록 설정돼 있다면 재생성된다(현재 코드는 생성 클래스를 쓰지 않음).
+6. (A1) Mech → `LockOnSystem`: 씬에 저장된 값이 코드 기본값보다 우선한다. 현재 씬 값은 `Hard Lock Enter Range 6`, `Exit 7`로 스펙과 같지만 **`Hard Lock Track Speed`가 10**(스펙 5)이다. 스펙대로 하려면 5로 바꾼다.
+7. (A1) `WeaponSystem`의 `Melee Auto Range`(씬 값 50) 필드는 삭제됐다. 펀치 전환은 하드 락온 진입 거리(6m) 하나로만 정해진다.
