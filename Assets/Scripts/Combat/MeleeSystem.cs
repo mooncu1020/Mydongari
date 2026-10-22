@@ -12,6 +12,8 @@ namespace MyDongari.Combat
         [SerializeField] private float meleeRange = 3f;
         [SerializeField] private float meleeDamage = 25f;
         [SerializeField] private float meleeCooldown = 0.5f;
+        [Tooltip("펀치 한 방(발동 기준)마다 오르는 히트")]
+        [SerializeField] private float heatPerPunch = 6f;
 
         [Header("가드 설정")]
         [SerializeField] private float guardDamageReduction = 0.7f;
@@ -38,12 +40,14 @@ namespace MyDongari.Combat
         private bool _parryActive = false;
 
         private MechStateMachine _stateMachine;
+        private HeatGauge _heatGauge;
         private ICombatInputSource _input;
         private MechIdentity _identity;
 
         private void Awake()
         {
             _stateMachine = GetComponent<MechStateMachine>();
+            _heatGauge = GetComponent<HeatGauge>();
             // 입력 소스가 없는 기체(더미 AI)는 가드 입력이 항상 false
             _input = GetComponent<ICombatInputSource>();
             _identity = MechIdentity.GetOrAdd(gameObject);
@@ -180,7 +184,11 @@ namespace MyDongari.Combat
         public void TryMeleeAttack()
         {
             if (_meleeTimer < meleeCooldown) return;
+            // 과열이면 주먹이 안 나간다. 히트게이지가 없는 기체(더미)는 제한 없음
+            if (_heatGauge != null && !_heatGauge.CanPunch()) return;
             _meleeTimer = 0f;
+            // 맞든 빗나가든 휘두른 순간 히트가 오른다
+            if (_heatGauge != null) _heatGauge.AddHeat(heatPerPunch);
 
             Collider[] hits = Physics.OverlapSphere(transform.position, meleeRange);
             foreach (Collider hit in hits)

@@ -36,7 +36,7 @@
 - 가드가 부스트를 소모하던 코드(`guardBoostDrain`) 제거. 탈진이어도 가드는 가능.
 - 이름 정리: `BoostGauge.IsOverheated` → `IsExhausted` (참조 전부 수정). `HeatGauge.IsOverheated`는 유지.
 
-### [ ] A3. 히트 규칙
+### [x] A3. 히트 규칙
 - `HeatGauge`에 `CanPunch()` 추가(과열이 아니면 true). 과열 해제는 0%까지 식었을 때(현재 동작 유지).
 - 펀치 발동 시 `AddHeat(heatPerPunch)` (기본 6). 과열 중이면 펀치가 나가지 않는다.
 - `IsSkillActive`로 냉각을 멈추는 기존 동작이 어디서 쓰이는지 확인하고, 스킬이 히트를 올리지 않는다는 규칙과 충돌하면 QUESTIONS.md에 적는다.
@@ -118,3 +118,4 @@
 - **A0** 완료. 바뀐 파일: `InputSystem_Actions.inputactions`(Guard/StepLeft/StepRight 액션 + 패드 바인딩 추가), `InputReader`, 신규 `Core/MechIdentity`·`Input/ICombatInputSource`, `MeleeSystem`, `WeaponSystem`, `Projectile`(Init 시그니처), `LockOnSystem`, `ImpactSlam`, `SprintState`, `MechController`(Identity), `MeleeDummy`, `HUDController`, `MechCamera`, `GameManager`(LinkOpponents). 위험: `MechIdentity`는 런타임 자동 부착이라 GameManager의 Player1/2가 비어 있으면 상대가 없어 아무 공격도 안 맞는다. 패드 판별(`IsLookFromGamepad`)은 Look 액션의 activeControl 기준.
 - **A1** 완료. 바뀐 파일: `LockOnSystem`(Opponent 단일 검사, 기체 기준 거리, 목표 상실 시 카메라 추적 해제), `WeaponSystem`(`meleeAutoRange` 삭제 — 펀치 조건은 `IsHardLocked`만). 위험: 레이캐스트가 트리거를 무시하도록 바뀜, 상대 중심은 루트 콜라이더 bounds 기준(없으면 위치).
 - **A2** 완료. 바뀐 파일: `BoostGauge`(`IsOverheated`→`IsExhausted`, `exhaustRecoverRatio` 0.5, 가드 중 회복 정지), `MeleeSystem`(`guardBoostDrain`·탈진 가드 금지 제거), `WalkState`·`RunState`·`SprintState`·`HUDController`(이름 변경 반영). 위험: 낮음. 걷기 중 "탈진 이동 속도 저하"는 기존대로 달리기 이상 봉쇄로만 구현돼 있음(걷기 속도 자체는 그대로).
+- **A3** 완료. 바뀐 파일: `HeatGauge`(`CanPunch()`), `MeleeSystem`(`heatPerPunch` 6, 과열 시 펀치 불가, 발동 시 히트 증가). `IsSkillActive`는 아무 데서도 안 켜짐 → QUESTIONS. 위험: 더미는 HeatGauge가 없어 펀치 제한 없음(의도).
