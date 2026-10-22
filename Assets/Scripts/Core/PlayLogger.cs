@@ -25,6 +25,8 @@ namespace MyDongari.Core
         [SerializeField] private string fileName = "playlog";
         [SerializeField] private string eventFileName = "events";
         [SerializeField] private string summaryFileName = "summary";
+        [Tooltip("로그 폴더 이름. 에디터: 프로젝트 루트/이 폴더, 빌드: 실행 파일 옆/이 폴더")]
+        [SerializeField] private string logFolderName = "Logs";
 
         [Header("거리 구간 (m)")]
         [Tooltip("이 거리 미만 = near (하드 락온·펀치 거리)")]
@@ -76,9 +78,10 @@ namespace MyDongari.Core
             }
 
             string timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            _filePath = Application.dataPath + "/" + fileName + "_" + timestamp + ".csv";
-            _eventFilePath = Application.dataPath + "/" + eventFileName + "_" + timestamp + ".csv";
-            _summaryFilePath = Application.dataPath + "/" + summaryFileName + "_" + timestamp + ".csv";
+            string folder = LogFolder();
+            _filePath = Path.Combine(folder, fileName + "_" + timestamp + ".csv");
+            _eventFilePath = Path.Combine(folder, eventFileName + "_" + timestamp + ".csv");
+            _summaryFilePath = Path.Combine(folder, summaryFileName + "_" + timestamp + ".csv");
 
             _sb = new StringBuilder();
             _sb.AppendLine("time,round,p1_hp,p1_boost,p1_heat,p1_state,p1_posX,p1_posZ,p1_moveX,p1_moveY,p2_hp,p2_boost,p2_heat,p2_state,p2_posX,p2_posZ,p2_moveX,p2_moveY,distance,dist_band");
@@ -434,10 +437,30 @@ namespace MyDongari.Core
             }
 
             // 매치 종료마다 전체를 다시 쓴다 (도중에 꺼져도 마지막 매치까지는 남게)
-            File.WriteAllText(_filePath, _sb.ToString());
-            File.WriteAllText(_eventFilePath, _eventSb.ToString());
-            File.WriteAllText(_summaryFilePath, _summarySb.ToString());
-            _dirty = false;
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(_filePath));
+                File.WriteAllText(_filePath, _sb.ToString());
+                File.WriteAllText(_eventFilePath, _eventSb.ToString());
+                File.WriteAllText(_summaryFilePath, _summarySb.ToString());
+                _dirty = false;
+            }
+            catch (Exception e)
+            {
+                // 쓰기 권한 없는 폴더(예: Program Files)에 빌드를 두면 여기로 온다. 게임은 계속 돌게 하고 경고만
+                Debug.LogWarning($"[PlayLogger] 로그 저장 실패: {_filePath}\n{e.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 에디터: 프로젝트 루트/Logs (Assets 밖이라 임포트되지 않고 .gitignore 대상).
+        /// Windows 빌드: dataPath가 "실행 파일 폴더/이름_Data"라 그 부모 = 실행 파일 옆/Logs.
+        /// </summary>
+        private string LogFolder()
+        {
+            DirectoryInfo parent = Directory.GetParent(Application.dataPath);
+            string root = parent != null ? parent.FullName : Application.persistentDataPath;
+            return Path.Combine(root, logFolderName);
         }
 
         private bool HasAnyStats()

@@ -43,11 +43,12 @@ namespace MyDongari.EditorTools
             {
                 added += AddIfMissing<HitStop>(gameManager.gameObject);
                 added += AddIfMissing<CombatFeedback>(gameManager.gameObject);
+                added += AddIfMissing<AppRuntime>(gameManager.gameObject);
             }
 
             Undo.CollapseUndoOperations(undoGroup);
             EditorUtility.DisplayDialog("Mech Components",
-                $"추가한 컴포넌트: {added}개 (기체: ThrusterLunge, MechTuning / GameManager: HitStop, CombatFeedback).\n" +
+                $"추가한 컴포넌트: {added}개 (기체: ThrusterLunge, MechTuning / GameManager: HitStop, CombatFeedback, AppRuntime).\n" +
                 $"수치 에셋: {AssetDatabase.GetAssetPath(tuning)}. 씬을 저장하세요.", "확인");
         }
 

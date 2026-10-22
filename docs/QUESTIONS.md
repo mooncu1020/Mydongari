@@ -42,3 +42,7 @@
 | C2 | CLASH는 양쪽 기체 머리 위에 모두, PARRY는 패리한 쪽, GUARD BREAK는 깨진 쪽에 띄운다. | 그대로 | |
 | C2 | "태클 명중" 효과음은 대시 어택·차징 태클이 그대로 맞았을 때(Hit)만. 가드에 막히면 가드 효과음, 패리되면 패리 효과음. 런지 명중 효과음은 요청 목록에 없어 넣지 않았다. | 그대로 | |
 | C2 | 팝업 문구는 영어(기본 폰트에 한글 없음 가능성). | 영어 | |
+| C3 | 에디터 로그 폴더 "프로젝트 루트/Logs"는 Unity 자체 로그(AssetImportWorker 등)와 같은 폴더다. 요청대로 그대로 썼다. 섞이는 게 싫으면 `Logs/PlayLogs` 같은 하위 폴더로 바꿀 수 있다(`Log Folder Name`). | `Logs` | |
+| C3 | ESC 종료는 운영자 키라 플레이어 장치 배정과 무관하게 전용 InputAction으로 읽는다(키보드가 P1에 배정되지 않아도 동작). 패드 버튼 조합(예: Select 길게)으로도 종료할까? | ESC만 | |
+| C3 | 에디터에서는 ESC 길게 누르기가 기본으로 꺼져 있다(`Quit In Editor`). 에디터 ESC는 커서 해제로 쓰이기 때문. | 에디터 끔 | |
+| C3 | Run In Background(현재 꺼짐)·Force Single Instance·Input System Background Behavior는 프로젝트 설정 에셋이라 직접 고치지 않고 BUILD.md에 권장값으로 적었다. | 사용자가 에디터에서 변경 | |
