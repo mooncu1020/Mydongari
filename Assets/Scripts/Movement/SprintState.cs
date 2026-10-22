@@ -114,6 +114,10 @@ namespace MyDongari.Movement
 
         private bool IsOpponentInContact()
         {
+            // 정면 부채꼴 밖(옆으로 스침)이면 자동 태클을 걸지 않는다. 걸면 헛치고 경직만 남는다
+            MeleeSystem melee = StateMachine.MechController.MeleeSystem;
+            if (melee == null || !melee.IsOpponentInTackleArc()) return false;
+
             Collider[] hits = Physics.OverlapSphere(
                 StateMachine.MechController.transform.position, ContactRadius);
             foreach (Collider hit in hits)

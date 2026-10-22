@@ -53,6 +53,8 @@ namespace MyDongari.Combat
         [SerializeField] private float tackleDamage = 30f;
         [SerializeField] private float tackleKnockback = 8f;
         [SerializeField] private float tackleRange = 5f;
+        [Tooltip("태클 판정 부채꼴 반각(°). 기체 정면 기준 ±이 각도 안의 상대만 맞는다 (대시 어택·차징 태클·자동 접촉 공통)")]
+        [SerializeField] private float tackleHalfAngle = 45f;
         [SerializeField] private float tackleCooldown = 1f;
         [SerializeField] private float victimStunDuration = 1.7f;
         [Tooltip("태클을 부딪친 뒤 공격자 자신의 경직(초). 패리당했을 땐 적용 안 함")]
@@ -354,6 +356,9 @@ namespace MyDongari.Combat
             float finalKnockback = charged ? tackleKnockback * (1f + chargePower) : dashAttackKnockback;
             float finalStun = charged ? victimStunDuration : dashAttackStun;
 
+            // 정면 부채꼴 밖이면 헛침 (등 뒤·옆으로 스친 상대는 안 맞는다)
+            if (!IsOpponentInTackleArc()) return null;
+
             Collider[] hits = Physics.OverlapSphere(transform.position, tackleRange);
             foreach (Collider hit in hits)
             {
@@ -392,7 +397,7 @@ namespace MyDongari.Combat
             OnAttackStarted?.Invoke(AttackType.Punch);
 
             MechIdentity opponent = _identity.Opponent;
-            if (opponent == null || !IsInPunchArc(opponent.transform)) return null;
+            if (opponent == null || !IsInFrontArc(opponent.transform, punchHalfAngle)) return null;
 
             // 거리는 콜라이더 표면 기준(OverlapSphere)이라 덩치 큰 기체도 사거리가 자연스럽다
             Collider[] hits = Physics.OverlapSphere(transform.position, meleeRange);
@@ -412,7 +417,14 @@ namespace MyDongari.Combat
             return null;
         }
 
-        private bool IsInPunchArc(Transform target)
+        /// <summary>상대가 태클 부채꼴(정면 ±tackleHalfAngle) 안인지. 거리는 따로 본다. 자동 접촉 태클 판정에도 쓴다.</summary>
+        public bool IsOpponentInTackleArc()
+        {
+            MechIdentity opponent = _identity.Opponent;
+            return opponent != null && IsInFrontArc(opponent.transform, tackleHalfAngle);
+        }
+
+        private bool IsInFrontArc(Transform target, float halfAngle)
         {
             // 위아래 차이는 무시하고 수평 방향만 본다 (지면 밀착 격투)
             Vector3 toTarget = target.position - transform.position;
@@ -421,7 +433,7 @@ namespace MyDongari.Combat
 
             Vector3 forward = transform.forward;
             forward.y = 0f;
-            return Vector3.Angle(forward, toTarget) <= punchHalfAngle;
+            return Vector3.Angle(forward, toTarget) <= halfAngle;
         }
     }
 }
