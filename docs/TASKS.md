@@ -59,7 +59,7 @@
 - 맞딜 판정 유지.
 - 판정 결과를 HitResult로 받아 이벤트를 남길 수 있게 한다 (B6에서 로그 연결).
 
-### [ ] A7. 임팩트 슬램 버그 수정
+### [x] A7. 임팩트 슬램 버그 수정
 - 슬램 피해를 `ReceiveHit(AttackType.Slam)`으로 통과시켜 가드(50%)·패리·깨짐이 적용되게 한다. 패리 시 넉백도 없음.
 
 ### [ ] A8. 라운드 리셋 완전하게
@@ -122,3 +122,4 @@
 - **A4** 완료. 바뀐 파일: 신규 `Combat/HitTypes.cs`(AttackType·HitResult·HitInfo), `MeleeSystem`(`ReceiveHit`/`DeliverHit`/`OnHitResolved`, `ApplyDamage(float, AttackType)`, 가드 재사용 대기, 스턴 중 가드 해제), `Projectile`·`AnchorClaw`(DeliverHit 사용). 위험: `ApplyDamage(float)` 단일 인자 시그니처 삭제(참조 전부 교체 확인). 맞딜 판정을 피격자 쪽 ReceiveHit으로 옮김(결과 동일).
 - **A5** 완료. 바뀐 파일: `MeleeSystem`(`parryReflectRatio`·`parryReflectKnockback`, 런지·태클 패리 반사, `attackerStunDuration` 삭제, `TryTackle` → `HitResult?` 반환, `CanTackle`·`TackleRecoveryStun`), `SprintState`(결과가 Parried면 자기 경직 없음, 쿨다운 중 접촉은 질주 유지). 위험: 쿨다운 중 접촉 시 예전엔 멈추고 경직됐는데 이제 질주가 이어짐.
 - **A6** 완료. 바뀐 파일: `MeleeSystem`(`punchHalfAngle` 45°, Opponent만, `TryMeleeAttack` → `HitResult?` 반환, `OnAttackStarted` 이벤트), `MeleeDummy`(상대 쪽으로 회전). 위험: 기체 정면(transform.forward) 기준이라, 하드 락온이 아닌 상태에서 카메라만 돌리고 기체가 덜 돌았으면 빗나갈 수 있음.
+- **A7** 완료. 바뀐 파일: `ImpactSlam`(`DeliverHit(AttackType.Slam)` 경유 — 가드 50%·패리·깨짐 적용, 패리 시 넉백 없음, `TryActivate` → `HitResult?` 반환, `slamKnockbackLift`). 위험: 낮음. WeaponSystem은 반환값을 무시(호환).
