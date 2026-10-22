@@ -88,19 +88,13 @@ namespace MyDongari.Combat
             if (_owner != null && _owner.IsOpponentCollider(other))
             {
                 GameObject victim = _owner.Opponent.gameObject;
-                Health health = victim.GetComponent<Health>();
-                MeleeSystem meleeSystem = victim.GetComponent<MeleeSystem>();
-
-                float finalDamage = damage;
-                if (meleeSystem != null)
+                HitInfo info = new HitInfo
                 {
-                    finalDamage = meleeSystem.ApplyDamage(damage);
-                }
-
-                if (health != null)
-                {
-                    health.TakeDamage(finalDamage);
-                }
+                    Type = AttackType.Projectile,
+                    Damage = damage,
+                    Attacker = _owner.gameObject
+                };
+                MeleeSystem.DeliverHit(victim, info);
                 Destroy(gameObject);
             }
         }

@@ -41,7 +41,7 @@
 - 펀치 발동 시 `AddHeat(heatPerPunch)` (기본 6). 과열 중이면 펀치가 나가지 않는다.
 - `IsSkillActive`로 냉각을 멈추는 기존 동작이 어디서 쓰이는지 확인하고, 스킬이 히트를 올리지 않는다는 규칙과 충돌하면 QUESTIONS.md에 적는다.
 
-### [ ] A4. 가드 규칙 교체 (`MeleeSystem`)
+### [x] A4. 가드 규칙 교체 (`MeleeSystem`)
 - 가드 비용 없음. 근접 계열 피해 50% 감쇄(`guardMeleeReduction` 0.5), 투사체 70% 감쇄(`guardProjectileReduction` 0.7) — `ApplyDamage`에 공격 종류 인자(enum `AttackType { Punch, DashAttack, Tackle, Lunge, Slam, PileDriver, Projectile }`)를 추가해 분기.
 - 가드로 받을 때마다 피격자 히트 +10(`guardHeatPerBlock`).
 - 과열 상태에서 가드로 받으면: 가드 깨짐 → 감쇄 없이 전체 피해, 스턴 `guardBreakStun`(0.9초).
@@ -119,3 +119,4 @@
 - **A1** 완료. 바뀐 파일: `LockOnSystem`(Opponent 단일 검사, 기체 기준 거리, 목표 상실 시 카메라 추적 해제), `WeaponSystem`(`meleeAutoRange` 삭제 — 펀치 조건은 `IsHardLocked`만). 위험: 레이캐스트가 트리거를 무시하도록 바뀜, 상대 중심은 루트 콜라이더 bounds 기준(없으면 위치).
 - **A2** 완료. 바뀐 파일: `BoostGauge`(`IsOverheated`→`IsExhausted`, `exhaustRecoverRatio` 0.5, 가드 중 회복 정지), `MeleeSystem`(`guardBoostDrain`·탈진 가드 금지 제거), `WalkState`·`RunState`·`SprintState`·`HUDController`(이름 변경 반영). 위험: 낮음. 걷기 중 "탈진 이동 속도 저하"는 기존대로 달리기 이상 봉쇄로만 구현돼 있음(걷기 속도 자체는 그대로).
 - **A3** 완료. 바뀐 파일: `HeatGauge`(`CanPunch()`), `MeleeSystem`(`heatPerPunch` 6, 과열 시 펀치 불가, 발동 시 히트 증가). `IsSkillActive`는 아무 데서도 안 켜짐 → QUESTIONS. 위험: 더미는 HeatGauge가 없어 펀치 제한 없음(의도).
+- **A4** 완료. 바뀐 파일: 신규 `Combat/HitTypes.cs`(AttackType·HitResult·HitInfo), `MeleeSystem`(`ReceiveHit`/`DeliverHit`/`OnHitResolved`, `ApplyDamage(float, AttackType)`, 가드 재사용 대기, 스턴 중 가드 해제), `Projectile`·`AnchorClaw`(DeliverHit 사용). 위험: `ApplyDamage(float)` 단일 인자 시그니처 삭제(참조 전부 교체 확인). 맞딜 판정을 피격자 쪽 ReceiveHit으로 옮김(결과 동일).

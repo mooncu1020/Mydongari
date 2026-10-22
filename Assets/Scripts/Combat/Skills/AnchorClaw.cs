@@ -134,19 +134,14 @@ namespace MyDongari.Combat.Skills
 
             _pileDriverReady = false;
 
-            Health health = _target.GetComponent<Health>();
-            MeleeSystem enemyMelee = _target.GetComponent<MeleeSystem>();
-
-            float damage = pileDriverDamage;
-            if (enemyMelee != null)
+            // 잡기 후속타라 패리는 안 되지만 가드 감쇄는 받는다 (HitInfo.IgnoresParry)
+            HitInfo info = new HitInfo
             {
-                damage = enemyMelee.ApplyDamage(pileDriverDamage);
-            }
-
-            if (health != null)
-            {
-                health.TakeDamage(damage);
-            }
+                Type = AttackType.PileDriver,
+                Damage = pileDriverDamage,
+                Attacker = gameObject
+            };
+            MeleeSystem.DeliverHit(_target.gameObject, info);
 
             _target = null;
         }
