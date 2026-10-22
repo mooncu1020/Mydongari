@@ -71,7 +71,7 @@
 
 ## Phase B — 새로 만드는 것
 
-### [ ] B1. 2인 화면 분할 구성
+### [x] B1. 2인 화면 분할 구성
 - 패드 2개를 각각 P1/P2에 고정 배정 (PlayerInput 두 개 + 장치 페어링, 또는 PlayerInputManager의 수동 조인). 키보드·마우스는 P1 디버그용으로 허용.
 - 카메라 2대, 좌우 화면 분할(viewport rect). 각 MechCamera는 자기 기체만 따라간다. 오디오 리스너는 하나만.
 - HUD 2벌(각 화면). HUDController는 자기 기체·자기 카메라 참조만 쓴다. 상대 체력 바(작게)도 각 화면에 표시.
@@ -125,3 +125,4 @@
 - **A7** 완료. 바뀐 파일: `ImpactSlam`(`DeliverHit(AttackType.Slam)` 경유 — 가드 50%·패리·깨짐 적용, 패리 시 넉백 없음, `TryActivate` → `HitResult?` 반환, `slamKnockbackLift`). 위험: 낮음. WeaponSystem은 반환값을 무시(호환).
 - **A8** 완료. 바뀐 파일: `ResetForRound()` 추가 — `BoostGauge`, `HeatGauge`, `MeleeSystem`, `AnchorClaw`, `ImpactSlam`, `MechStateMachine`, `ExternalControlLock.ResetLock()`, `MechCamera.ResetView(yaw)`. `GameManager`(클로 먼저 해제 → 위치·회전·속도·잠금·각 시스템 리셋, 동시 사망 무승부, `OnRoundOver(0=무승부)` 이벤트). 위험: 스폰 포인트 회전이 0이면 두 기체가 같은 방향을 봄(SETUP 12). 라운드 사이 3초 동안 이동 입력은 아직 막혀 있지 않음(B5 카운트다운에서 처리).
 - **A9** (질문 반영, TASKS 외 추가 작업) 완료. 바뀐 파일: `.inputactions`(그룹 없던 키보드 바인딩 5개 → Keyboard&Mouse), `HeatGauge`(`IsSkillActive` 삭제, `sprintCoolingPenalty` → `sprintCoolingReduction` 0.7), `HitTypes`·`MeleeSystem`·`AnchorClaw`(파일드라이버 가드 관통), `MechController`·`MechStateMachine`(하드 락온 몸통 자동 회전), `GAME_SPEC.md`(3·1·6·7장). 위험: 몸통 자동 회전 중엔 `RotateToCamera`가 양보하므로 하드 락온 중 카메라와 몸통 방향이 다를 수 있음(의도).
+- **B1** 완료. 바뀐 파일: 신규 `Input/VersusInputPairing`, 신규 `Editor/VersusSceneSetup`(메뉴), `GameManager`(versusMode·dummyOpponent·versusOnlyObjects·player1Camera, Player1/Player2/VersusMode getter), `HUDController`(상대 체력 바, Screen Space - Camera 락온 마커 좌표, 최대 HP 기준), `Health`(`MaxHealth`). 위험: 장치 페어링은 InputUser API + `actions.devices` 제한으로 처리 — 에디터에서 두 패드 분리 동작을 꼭 확인. 반쪽 화면 HUD 크기는 Canvas Scaler 설정에 따라 달라질 수 있음(SETUP 19).

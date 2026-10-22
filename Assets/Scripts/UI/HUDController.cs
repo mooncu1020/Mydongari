@@ -16,6 +16,8 @@ namespace MyDongari.UI
 
         [Header("HP")]
         [SerializeField] private LinearGauge hpBarFill;
+        [Tooltip("상대 체력 바(작게). 상대는 이 HUD 주인 기체의 MechIdentity.Opponent")]
+        [SerializeField] private LinearGauge opponentHpBarFill;
 
         [Header("태클 차지")]
         [SerializeField] private LinearGauge tackleBarFill;
@@ -33,16 +35,16 @@ namespace MyDongari.UI
         [SerializeField] private UnityCamera viewCamera;
 
         private UnityCamera _camera;
+        private Canvas _canvas;
+        private MechIdentity _identity;
 
         private void Start()
         {
             // 화면 분할이라 메인 카메라가 아니라 "이 HUD 주인의" 카메라로 화면 좌표를 계산해야 한다
             _camera = viewCamera;
-            if (_camera == null && lockOnSystem != null)
-            {
-                MechIdentity identity = lockOnSystem.GetComponent<MechIdentity>();
-                if (identity != null) _camera = identity.ViewCamera;
-            }
+            if (lockOnSystem != null) _identity = lockOnSystem.GetComponent<MechIdentity>();
+            if (_camera == null && _identity != null) _camera = _identity.ViewCamera;
+            _canvas = GetComponentInParent<Canvas>();
         }
 
         private void Update()
@@ -50,6 +52,7 @@ namespace MyDongari.UI
             UpdateHeat();
             UpdateBoost();
             UpdateHP();
+            UpdateOpponentHP();
             UpdateTackleCharge();
             UpdateLockOn();
         }
@@ -75,7 +78,15 @@ namespace MyDongari.UI
         private void UpdateHP()
         {
             if (hpBarFill == null || playerHealth == null) return;
-            hpBarFill.SetFill(playerHealth.CurrentHealth / 100f);
+            hpBarFill.SetFill(playerHealth.CurrentHealth / playerHealth.MaxHealth);
+        }
+
+        private void UpdateOpponentHP()
+        {
+            if (opponentHpBarFill == null || _identity == null) return;
+            // 상대는 라운드·모드(더미/2인)에 따라 바뀔 수 있어 매 프레임 따라간다
+            Health opponentHealth = _identity.Opponent != null ? _identity.Opponent.GetComponent<Health>() : null;
+            opponentHpBarFill.SetFill(opponentHealth != null ? opponentHealth.CurrentHealth / opponentHealth.MaxHealth : 0f);
         }
 
         private void UpdateTackleCharge()
@@ -108,9 +119,28 @@ namespace MyDongari.UI
                 return;
             }
 
-            lockOnMarker.gameObject.SetActive(true);
             Vector3 screenPos = _camera.WorldToScreenPoint(lockOnSystem.Target.position);
-            lockOnMarker.position = screenPos;
+            // 카메라 뒤쪽 목표는 화면에 거꾸로 찍히므로 숨긴다
+            if (screenPos.z < 0f)
+            {
+                lockOnMarker.gameObject.SetActive(false);
+                return;
+            }
+            lockOnMarker.gameObject.SetActive(true);
+
+            if (_canvas == null || _canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+            {
+                lockOnMarker.position = screenPos;
+                return;
+            }
+
+            // 화면 분할용 Screen Space - Camera 캔버스: 스크린 좌표를 캔버스 평면 위 월드 좌표로 바꿔야 한다
+            RectTransform canvasRect = (RectTransform)_canvas.transform;
+            if (RectTransformUtility.ScreenPointToWorldPointInRectangle(
+                    canvasRect, screenPos, _canvas.worldCamera, out Vector3 worldPos))
+            {
+                lockOnMarker.position = worldPos;
+            }
         }
     }
 }

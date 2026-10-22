@@ -22,6 +22,18 @@ namespace MyDongari.Core
         public bool IsMatchOver { get; private set; }
         public int MatchWinner { get; private set; }
 
+        [Header("모드")]
+        [Tooltip("켜면 2인 대전(P1 vs P2), 끄면 P1 vs 더미 1인 테스트. Dummy Opponent가 비어 있으면 무시")]
+        [SerializeField] private bool versusMode = true;
+
+        [Header("1인(더미) 모드")]
+        [Tooltip("1인 모드에서 Player2 대신 상대가 될 더미. 2인 모드에선 꺼 둔다")]
+        [SerializeField] private GameObject dummyOpponent;
+        [Tooltip("2인 모드에서만 쓰는 오브젝트(P2 기체, P2 HUD 캔버스 등). 1인 모드에서 끈다")]
+        [SerializeField] private GameObject[] versusOnlyObjects;
+        [Tooltip("1인 모드에서 화면 전체를 쓰게 할 P1 카메라")]
+        [SerializeField] private UnityEngine.Camera player1Camera;
+
         [Header("라운드 설정")]
         [SerializeField] private int roundsToWin = 2;
 
@@ -41,6 +53,10 @@ namespace MyDongari.Core
 
         public int Player1Wins => _player1Wins;
         public int Player2Wins => _player2Wins;
+        public bool VersusMode => versusMode && dummyOpponent != null;
+        /// <summary>현재 대결 중인 기체. 1인 모드면 Player2는 더미.</summary>
+        public GameObject Player1 => player1;
+        public GameObject Player2 => player2;
 
         private void Awake()
         {
@@ -50,7 +66,33 @@ namespace MyDongari.Core
                 return;
             }
             Instance = this;
+            ApplyMode();
             LinkOpponents();
+        }
+
+        /// <summary>
+        /// 2인/1인 모드 전환. 더미가 지정돼 있지 않으면(Versus 세팅 전 씬) 아무것도 바꾸지 않는다.
+        /// </summary>
+        private void ApplyMode()
+        {
+            if (dummyOpponent == null) return;
+
+            if (versusMode)
+            {
+                dummyOpponent.SetActive(false);
+                return;
+            }
+
+            if (versusOnlyObjects != null)
+            {
+                foreach (GameObject go in versusOnlyObjects)
+                {
+                    if (go != null) go.SetActive(false);
+                }
+            }
+            dummyOpponent.SetActive(true);
+            player2 = dummyOpponent;
+            if (player1Camera != null) player1Camera.rect = new Rect(0f, 0f, 1f, 1f);
         }
 
         /// <summary>

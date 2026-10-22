@@ -22,3 +22,16 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 13. (A9) `HeatGauge`의 `Sprint Cooling Penalty`(씬 값 0.2)는 `Sprint Cooling Reduction`으로 이름이 바뀌어 새 기본값 **0.7**(질주 중 냉각 속도 30%)이 적용된다. 씬 값을 따로 고칠 필요 없음.
 14. (A9) `MechController` → `Hard Lock Turn Speed`(기본 10) 새 필드: 하드 락온 중 몸통이 상대 쪽으로 도는 속도.
 15. (A9) `.inputactions`에서 그룹이 비어 있던 키보드 바인딩(Ctrl 슬라이드, R 퀵턴, Shift 달리기, Q/E 스킬)을 `Keyboard&Mouse` 스킴에 넣었다.
+
+## Phase B
+
+16. (B1) **메뉴 `Mydongari/Setup Versus Scene` 실행** → 저장(Ctrl+S). 하는 일:
+    - `Mech`를 복제해 `Mech_P2`를 P2 스폰 포인트에 만든다 (카메라가 자식이라 같이 복제됨). P2 카메라의 AudioListener 제거, 태그 Untagged.
+    - 카메라 viewport: P1 왼쪽 절반, P2 오른쪽 절반.
+    - 기존 `Canvas`를 Screen Space - Camera(P1 카메라)로 바꾸고 복제해 `Canvas_P2`(P2 카메라). 각 HUD의 참조를 자기 기체로 연결, 화면 위쪽 가운데에 작은 상대 체력 바(`OpponentHPBar`) 추가.
+    - `GameManager`: Player2 = Mech_P2, Dummy Opponent = DummyTarget, Versus Only Objects = [Mech_P2, Canvas_P2], Player1 Camera, Versus Mode 켬. `VersusInputPairing` 컴포넌트 추가·연결.
+    - `PlayLogger` Player1/Player2 연결.
+    - Ctrl+Z 한 번으로 전부 되돌릴 수 있다. 이미 `Mech_P2`가 있으면 아무것도 안 한다.
+17. (B1) 1인(더미) 테스트: `GameManager` → `Versus Mode` 끄기. P2 기체·P2 캔버스가 꺼지고 DummyTarget이 상대가 되며 P1 카메라가 전체 화면이 된다.
+18. (B1) 패드 배정 규칙(`GameManager` 오브젝트의 `VersusInputPairing`): 패드 2개 → P1 = 먼저 연결된 패드, P2 = 두 번째. 패드 1개 → P2 = 패드, P1 = 키보드·마우스. `Allow Keyboard For P1`(기본 켬)이면 P1에 키보드·마우스도 붙는다. 로케 PC에서 P1/P2 패드가 반대로 잡히면 패드 USB를 뽑았다 순서대로 다시 꽂는다.
+19. (B1) 수동 확인: `Canvas_P2`의 HUD 요소가 오른쪽 화면 안에 들어오는지. Canvas Scaler가 화면 전체 해상도 기준이라 반쪽 화면에서 HUD가 크게 보이면 두 캔버스의 Canvas Scaler → `Match Width Or Height`를 1(높이 기준)로 바꾼다.
