@@ -147,18 +147,21 @@ namespace MyDongari.Core
 
             _roundActive = true;
 
-            // 앵커 클로는 상대 쪽 잠금을 잡고 있을 수 있어서, 두 기체 모두 클로부터 먼저 놓게 한 뒤 나머지를 리셋한다
-            ReleaseGrabs(player1);
-            ReleaseGrabs(player2);
+            // 앵커 클로는 상대 쪽 잠금을 잡고 있을 수 있고, 런지는 상태 전환 시 "빗나감"으로 끝나므로
+            // 두 기체 모두 진행 중인 기동부터 조용히 끊은 뒤 나머지를 리셋한다
+            StopActiveMoves(player1);
+            StopActiveMoves(player2);
             ResetMech(player1, player1SpawnPoint);
             ResetMech(player2, player2SpawnPoint);
         }
 
-        private static void ReleaseGrabs(GameObject mech)
+        private static void StopActiveMoves(GameObject mech)
         {
             if (mech == null) return;
             AnchorClaw claw = mech.GetComponent<AnchorClaw>();
             if (claw != null) claw.ResetForRound();
+            ThrusterLunge lunge = mech.GetComponent<ThrusterLunge>();
+            if (lunge != null) lunge.ResetForRound();
         }
 
         /// <summary>
@@ -205,7 +208,7 @@ namespace MyDongari.Core
             if (slam != null) slam.ResetForRound();
 
             LockOnSystem lockOn = mech.GetComponent<LockOnSystem>();
-            if (lockOn != null) lockOn.ForceRelease();
+            if (lockOn != null) lockOn.ResetForRound();
 
             MechStateMachine stateMachine = mech.GetComponent<MechStateMachine>();
             if (stateMachine != null) stateMachine.ResetForRound();

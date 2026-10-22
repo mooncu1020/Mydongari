@@ -33,6 +33,7 @@ namespace MyDongari.Input
         public bool IsMoveInputActive => MoveInput.magnitude >= moveDeadzone;
 
         public bool AttackHeld { get; private set; }
+        public bool AttackPressedThisFrame { get; private set; }
         public bool GuardHeld { get; private set; }
         public bool GuardPressedThisFrame { get; private set; }
 
@@ -115,6 +116,7 @@ namespace MyDongari.Input
             SlideDirection = _gesture.SlideTriggered ? _gesture.SlideDirection : 0;
 
             AttackHeld = _attackAction.IsPressed();
+            AttackPressedThisFrame = _attackAction.WasPressedThisFrame();
             GuardHeld = _guardAction.IsPressed();
             GuardPressedThisFrame = _guardAction.WasPressedThisFrame();
 

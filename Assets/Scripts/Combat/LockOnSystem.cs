@@ -28,6 +28,14 @@ namespace MyDongari.Combat
         public Transform Target { get; private set; }
         public bool IsHardLocked { get; private set; }
 
+        // 하드 락온 금지: 내 런지 돌진 중(플래그) + 런지 빗나감 직후(타이머)
+        private bool _hardLockSuppressed;
+        private float _hardLockBlockTimer;
+        // 락온 전체(소프트 포함) 금지: 상대가 슬라이딩으로 내 락온을 끊었을 때
+        private float _allLockBlockTimer;
+
+        public bool IsHardLockBlocked => _hardLockSuppressed || _hardLockBlockTimer > 0f || _allLockBlockTimer > 0f;
+
         private void Awake()
         {
             // 화면 분할: 각 기체는 자기 카메라만 기준으로 조준한다
@@ -38,6 +46,9 @@ namespace MyDongari.Combat
 
         private void Update()
         {
+            if (_hardLockBlockTimer > 0f) _hardLockBlockTimer -= Time.deltaTime;
+            if (_allLockBlockTimer > 0f) _allLockBlockTimer -= Time.deltaTime;
+
             if (_camera == null) return;
             DetectTarget();
             UpdateHardLock();
@@ -45,6 +56,11 @@ namespace MyDongari.Combat
 
         private void DetectTarget()
         {
+            if (_allLockBlockTimer > 0f)
+            {
+                Target = null;
+                return;
+            }
             // 1대1이라 후보는 상대 하나뿐. 주변 콜라이더를 훑을 필요가 없다.
             Target = CanSoftLock(_identity.Opponent) ? _identity.Opponent.transform : null;
         }
@@ -83,7 +99,7 @@ namespace MyDongari.Combat
 
         private void UpdateHardLock()
         {
-            if (Target == null)
+            if (Target == null || IsHardLockBlocked)
             {
                 ReleaseHardLock();
                 return;
@@ -129,6 +145,37 @@ namespace MyDongari.Combat
             // 목표를 잃었을 때도 카메라 추적을 반드시 끊는다 (안 끊으면 사라진 목표를 계속 바라봄)
             if (IsHardLocked && _mechCamera != null) _mechCamera.StopTracking();
             IsHardLocked = false;
+        }
+
+        /// <summary>내 런지 돌진 동안 켠다. 켜져 있는 동안 하드 락온이 걸리지 않는다.</summary>
+        public void SetHardLockSuppressed(bool suppressed)
+        {
+            _hardLockSuppressed = suppressed;
+            if (suppressed) ReleaseHardLock();
+        }
+
+        /// <summary>일정 시간 하드 락온 금지 (런지 빗나감 후 반격 틈).</summary>
+        public void BlockHardLockFor(float seconds)
+        {
+            _hardLockBlockTimer = Mathf.Max(_hardLockBlockTimer, seconds);
+            ReleaseHardLock();
+        }
+
+        /// <summary>일정 시간 소프트·하드 락온 모두 금지 (상대의 슬라이딩).</summary>
+        public void BlockAllLockFor(float seconds)
+        {
+            _allLockBlockTimer = Mathf.Max(_allLockBlockTimer, seconds);
+            ReleaseHardLock();
+            Target = null;
+        }
+
+        /// <summary>라운드 시작: 락온 해제 + 금지 타이머 초기화.</summary>
+        public void ResetForRound()
+        {
+            _hardLockSuppressed = false;
+            _hardLockBlockTimer = 0f;
+            _allLockBlockTimer = 0f;
+            ForceRelease();
         }
 
         public void ForceRelease()

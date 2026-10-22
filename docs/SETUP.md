@@ -37,3 +37,6 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 19. (B1) 수동 확인: `Canvas_P2`의 HUD 요소가 오른쪽 화면 안에 들어오는지. Canvas Scaler가 화면 전체 해상도 기준이라 반쪽 화면에서 HUD가 크게 보이면 두 캔버스의 Canvas Scaler → `Match Width Or Height`를 1(높이 기준)로 바꾼다.
 20. (B2) `.inputactions`에 `MoveStick`(Value/Vector2, `<Gamepad>/leftStick`) 액션 추가 — 제스처 판정 전용이라 키보드 WASD는 튕기기로 오인되지 않는다.
 21. (B2) `Mech`(·`Mech_P2`) → `InputReader`: `Move Deadzone 0.3`(걷기 시작), `Run Threshold 0.8`(달리기), `Gesture` 묶음(중립 0.3 / 끝 0.8 / 도달 0.15초 / 복귀 0.25초 / 부채꼴 ±30° / ↑↑ 간격 0.35초 / 슬라이딩 창 0.2초 / 슬라이딩 각도 20~55°) 새 필드. Versus 세팅을 이미 했다면 두 기체 모두 같은 값인지 확인.
+22. (B3) **메뉴 `Mydongari/Add Missing Mech Components` 실행** → 저장. PlayerInput이 있는 기체(Mech, Mech_P2)에 `ThrusterLunge`를 붙인다. (Versus 세팅 메뉴도 복제 전에 P1에 붙인다. 안 붙여도 런타임에 기본값으로 자동 부착되지만 수치 조정·저장은 씬에 붙어 있어야 한다.)
+23. (B3) `ThrusterLunge` 수치: 거리 8 / 속도 30 / 종료 속도 비율 0.2 / 부스트 15 / 피해 15 / 스턴 0.5 / 넉백 0 / 판정 반경 1.2·전방 1 / 빗나감 락 지연 0.6. 돌진 거리·속도는 테스트로 정한다.
+24. (B3) `WeaponSystem` → `Ranged Mode`: 버나드는 `Lunge`(기본). 사격 기체 테스트 때만 `Projectile`.

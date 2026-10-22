@@ -85,7 +85,7 @@
 - 기존 키보드 경로(Space, Ctrl, R, A/D 더블탭)는 같은 프로퍼티로 합쳐 유지.
 - 모든 임계값·시간은 SerializeField.
 
-### [ ] B3. 스러스터 런지
+### [x] B3. 스러스터 런지
 - 새 컴포넌트 `ThrusterLunge` (`MyDongari.Combat.Skills` 또는 `Combat`). 동작은 GAME_SPEC 5장.
 - 새 상태 `LungeState`를 MechStateMachine에 추가(돌진 중 이동 입력 무시, ExternalControlLock 존중). 돌진은 AddForce/속도 지정 중 기존 대시 상태(SideStep/Slide)와 같은 방식을 따른다.
 - 돌진 중 `LockOnSystem`에 하드 락온 금지 플래그. 빗나간 뒤 `lungeMissLockDelay` 동안 유지.
@@ -127,3 +127,4 @@
 - **A9** (질문 반영, TASKS 외 추가 작업) 완료. 바뀐 파일: `.inputactions`(그룹 없던 키보드 바인딩 5개 → Keyboard&Mouse), `HeatGauge`(`IsSkillActive` 삭제, `sprintCoolingPenalty` → `sprintCoolingReduction` 0.7), `HitTypes`·`MeleeSystem`·`AnchorClaw`(파일드라이버 가드 관통), `MechController`·`MechStateMachine`(하드 락온 몸통 자동 회전), `GAME_SPEC.md`(3·1·6·7장). 위험: 몸통 자동 회전 중엔 `RotateToCamera`가 양보하므로 하드 락온 중 카메라와 몸통 방향이 다를 수 있음(의도).
 - **B1** 완료. 바뀐 파일: 신규 `Input/VersusInputPairing`, 신규 `Editor/VersusSceneSetup`(메뉴), `GameManager`(versusMode·dummyOpponent·versusOnlyObjects·player1Camera, Player1/Player2/VersusMode getter), `HUDController`(상대 체력 바, Screen Space - Camera 락온 마커 좌표, 최대 HP 기준), `Health`(`MaxHealth`). 위험: 장치 페어링은 InputUser API + `actions.devices` 제한으로 처리 — 에디터에서 두 패드 분리 동작을 꼭 확인. 반쪽 화면 HUD 크기는 Canvas Scaler 설정에 따라 달라질 수 있음(SETUP 19).
 - **B2** 완료. 바뀐 파일: 신규 `Input/StickGestureDetector`(설정 클래스 포함), `InputReader`(MoveStick 기반 제스처, RunInput = Shift || 스틱 0.8, `IsMoveInputActive`, `SlideDirection`, 시간은 unscaled), `.inputactions`(`MoveStick`), 상태 7개(이동 판정 하드코딩 0.64 → `IsMoveInputActive`), `SprintState`·`BrakeState`(퀵턴·사이드스텝 허용). 위험: 제스처 수치는 실기 패드로 튜닝 필요. 첫 ↑ 튕기기 동안 잠깐 걷기/달리기 상태가 끼어든다.
+- **B3** 완료. 바뀐 파일: 신규 `Combat/ThrusterLunge`, 신규 `Movement/LungeState`, 신규 `Editor/MechComponentSetup`(메뉴), `MechStateMachine`(LungeState·`CanStartLunge`·`IsLunging`), `LockOnSystem`(하드 락온 금지 플래그·타이머, 전체 락온 금지, `ResetForRound`), `WeaponSystem`(GAME_SPEC 4장 우선순위, `RangedMode`), `InputReader`(`AttackPressedThisFrame`), `SlideState`(상대 락온 해제), `GameManager`·`VersusSceneSetup`. 위험: 대시 어택 분기는 B4에서 연결(지금은 질주 중 공격 버튼 무반응). 런지 스턴의 히트스톱 이후 시작은 B7.

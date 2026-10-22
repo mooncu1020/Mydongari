@@ -1,4 +1,6 @@
 using UnityEngine;
+using MyDongari.Core;
+using MyDongari.Combat;
 
 namespace MyDongari.Movement
 {
@@ -22,6 +24,11 @@ namespace MyDongari.Movement
             }
 
             _slideTimer = 0f;
+
+            // 스펙: 슬라이딩은 상대의 락온을 강제로 해제한다 (미끄러지는 동안 다시 못 잡음)
+            MechIdentity opponent = StateMachine.MechController.Identity.Opponent;
+            LockOnSystem opponentLock = opponent != null ? opponent.GetComponent<LockOnSystem>() : null;
+            if (opponentLock != null) opponentLock.BlockAllLockFor(SlideDuration);
         }
 
         public override void Update()

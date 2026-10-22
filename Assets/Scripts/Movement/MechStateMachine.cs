@@ -18,6 +18,7 @@ namespace MyDongari.Movement
         public SlideState SlideState { get; private set; }
         public SideStepState SideStepState { get; private set; }
         public QuickTurnState QuickTurnState { get; private set; }
+        public LungeState LungeState { get; private set; }
 
         public bool IsSprinting => _currentState is SprintState;
 
@@ -26,6 +27,12 @@ namespace MyDongari.Movement
         public bool IsIdle => _currentState is IdleState;
 
         public bool IsRunning => _currentState is RunState;
+        public bool IsLunging => _currentState is LungeState;
+
+        /// <summary>스러스터 런지를 시작할 수 있는 상태(정지·걷기·달리기·제동). 다른 기동 중엔 불가.</summary>
+        public bool CanStartLunge =>
+            _currentState is IdleState || _currentState is WalkState ||
+            _currentState is RunState || _currentState is BrakeState;
 
         /// <summary>
         /// 하드 락온 몸통 자동 회전을 허용하는 상태인지.
@@ -34,7 +41,8 @@ namespace MyDongari.Movement
         public bool AllowsHardLockFacing =>
             !(_currentState is SprintState) &&
             !(_currentState is SlideState) &&
-            !(_currentState is QuickTurnState);
+            !(_currentState is QuickTurnState) &&
+            !(_currentState is LungeState);
 
         public string CurrentStateName => _currentState != null ? _currentState.GetType().Name : "None";
 
@@ -53,6 +61,7 @@ namespace MyDongari.Movement
             SlideState = new SlideState(this);
             SideStepState = new SideStepState(this);
             QuickTurnState = new QuickTurnState(this);
+            LungeState = new LungeState(this);
         }
 
         private void Start()

@@ -50,6 +50,12 @@ namespace MyDongari.EditorTools
             Undo.SetCurrentGroupName("Mydongari Setup Versus Scene");
             int undoGroup = Undo.GetCurrentGroup();
 
+            // 0) 복제 전에 P1에 빠진 기체 컴포넌트를 붙여 둔다 (P2가 같은 구성을 갖게)
+            if (p1.GetComponent<MyDongari.Combat.ThrusterLunge>() == null)
+            {
+                Undo.AddComponent<MyDongari.Combat.ThrusterLunge>(p1);
+            }
+
             // 1) P2 기체 복제. 카메라가 Mech 자식이라 같이 복제되고, 기체 내부 참조는 복제본끼리 자동 재연결된다
             Vector3 p2Pos = spawn2 != null ? spawn2.position : p1.transform.position + p1.transform.forward * 10f;
             Quaternion p2Rot = spawn2 != null ? spawn2.rotation : Quaternion.LookRotation(-p1.transform.forward);
