@@ -30,7 +30,7 @@ namespace MyDongari.Movement
 
             if (_slideTimer >= SlideDuration)
             {
-                if (StateMachine.InputReader.MoveInput.sqrMagnitude >= 0.64f)
+                if (StateMachine.InputReader.IsMoveInputActive)
                 {
                     StateMachine.ChangeState(StateMachine.WalkState);
                 }

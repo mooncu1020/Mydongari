@@ -35,3 +35,5 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 17. (B1) 1인(더미) 테스트: `GameManager` → `Versus Mode` 끄기. P2 기체·P2 캔버스가 꺼지고 DummyTarget이 상대가 되며 P1 카메라가 전체 화면이 된다.
 18. (B1) 패드 배정 규칙(`GameManager` 오브젝트의 `VersusInputPairing`): 패드 2개 → P1 = 먼저 연결된 패드, P2 = 두 번째. 패드 1개 → P2 = 패드, P1 = 키보드·마우스. `Allow Keyboard For P1`(기본 켬)이면 P1에 키보드·마우스도 붙는다. 로케 PC에서 P1/P2 패드가 반대로 잡히면 패드 USB를 뽑았다 순서대로 다시 꽂는다.
 19. (B1) 수동 확인: `Canvas_P2`의 HUD 요소가 오른쪽 화면 안에 들어오는지. Canvas Scaler가 화면 전체 해상도 기준이라 반쪽 화면에서 HUD가 크게 보이면 두 캔버스의 Canvas Scaler → `Match Width Or Height`를 1(높이 기준)로 바꾼다.
+20. (B2) `.inputactions`에 `MoveStick`(Value/Vector2, `<Gamepad>/leftStick`) 액션 추가 — 제스처 판정 전용이라 키보드 WASD는 튕기기로 오인되지 않는다.
+21. (B2) `Mech`(·`Mech_P2`) → `InputReader`: `Move Deadzone 0.3`(걷기 시작), `Run Threshold 0.8`(달리기), `Gesture` 묶음(중립 0.3 / 끝 0.8 / 도달 0.15초 / 복귀 0.25초 / 부채꼴 ±30° / ↑↑ 간격 0.35초 / 슬라이딩 창 0.2초 / 슬라이딩 각도 20~55°) 새 필드. Versus 세팅을 이미 했다면 두 기체 모두 같은 값인지 확인.

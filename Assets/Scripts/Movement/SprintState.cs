@@ -33,6 +33,19 @@ namespace MyDongari.Movement
                 return;
             }
 
+            // 스펙: 초신지선회·사이드스텝은 전력질주 중에도 쓸 수 있다
+            if (StateMachine.InputReader.QuickTurnInput)
+            {
+                StateMachine.ChangeState(StateMachine.QuickTurnState);
+                return;
+            }
+
+            if (StateMachine.InputReader.SideStepDirection != 0)
+            {
+                StateMachine.ChangeState(StateMachine.SideStepState);
+                return;
+            }
+
             _tackleChargeTimer += Time.deltaTime;
 
 

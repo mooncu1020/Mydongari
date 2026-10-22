@@ -9,6 +9,14 @@ namespace MyDongari.Input
         [Tooltip("같은 방향키를 두 번 누르는 간격이 이 시간(초) 안이면 사이드스텝")]
         [SerializeField] private float doubleTapWindow = 0.3f;
 
+        [Header("패드 왼쪽 스틱")]
+        [Tooltip("이동 입력 크기가 이 값 이상이면 걷기 시작 (키보드는 항상 1이라 영향 없음)")]
+        [SerializeField] private float moveDeadzone = 0.3f;
+        [Tooltip("스틱 크기가 이 값 이상이면 달리기 (스펙: 80% 경계)")]
+        [SerializeField] private float runThreshold = 0.8f;
+        [Tooltip("튕기기(↑↑ 전력질주, ↓ 초신지선회, ←→ 사이드스텝, 중립 후 ↗↖ 슬라이딩) 판정 수치")]
+        [SerializeField] private StickGestureSettings gesture = new StickGestureSettings();
+
         public Vector2 MoveInput { get; private set; }
         public Vector2 LookInput { get; private set; }
         public bool RunInput { get; private set; }
@@ -18,6 +26,11 @@ namespace MyDongari.Input
         public bool Skill1Input { get; private set; }
         public bool Skill2Input { get; private set; }
         public int SideStepDirection { get; private set; }
+        /// <summary>슬라이딩 방향(스틱 ↗ = 1, ↖ = -1, 키보드 = 0). 지금은 기록용, 슬라이드는 질주 방향으로 나간다.</summary>
+        public int SlideDirection { get; private set; }
+
+        /// <summary>이동 입력이 걷기를 시작할 만큼 있는지. 상태들의 이동 시작/정지 판정은 이걸 쓴다.</summary>
+        public bool IsMoveInputActive => MoveInput.magnitude >= moveDeadzone;
 
         public bool AttackHeld { get; private set; }
         public bool GuardHeld { get; private set; }
@@ -52,6 +65,9 @@ namespace MyDongari.Input
         private InputAction _guardAction;
         private InputAction _stepLeftAction;
         private InputAction _stepRightAction;
+        private InputAction _moveStickAction;
+
+        private readonly StickGestureDetector _gesture = new StickGestureDetector();
 
         private float _lastLeftTapTime = 0f;
         private float _lastRightTapTime = 0f;
@@ -75,6 +91,8 @@ namespace MyDongari.Input
             _guardAction = _playerInput.actions["Guard"];
             _stepLeftAction = _playerInput.actions["StepLeft"];
             _stepRightAction = _playerInput.actions["StepRight"];
+            // 패드 스틱만 바인딩된 액션. 키보드 WASD가 튕기기로 오인되지 않게 제스처는 이것만 본다
+            _moveStickAction = _playerInput.actions["MoveStick"];
 
             _quickTurnAction.performed += _ => _quickTurnPending = true;
             _skill1Action.performed += _ => _skill1Pending = true;
@@ -85,15 +103,22 @@ namespace MyDongari.Input
         {
             MoveInput = _moveAction.ReadValue<Vector2>();
             LookInput = _lookAction.ReadValue<Vector2>();
-            RunInput = _runAction.IsPressed();
-            SprintInput = _sprintAction.IsPressed();
-            SlideInput = _slideAction.WasPressedThisFrame();
+
+            // 히트스톱(timeScale 0) 중에도 입력 타이밍은 실제 시간으로 잰다
+            Vector2 stick = _moveStickAction.ReadValue<Vector2>();
+            _gesture.Tick(stick, Time.unscaledTime, gesture);
+
+            // 키보드 경로(Shift/Space/Ctrl/R/A·D 더블탭)와 패드 스틱 경로를 같은 프로퍼티로 합친다
+            RunInput = _runAction.IsPressed() || stick.magnitude >= runThreshold;
+            SprintInput = _sprintAction.IsPressed() || _gesture.SprintHeld;
+            SlideInput = _slideAction.WasPressedThisFrame() || _gesture.SlideTriggered;
+            SlideDirection = _gesture.SlideTriggered ? _gesture.SlideDirection : 0;
 
             AttackHeld = _attackAction.IsPressed();
             GuardHeld = _guardAction.IsPressed();
             GuardPressedThisFrame = _guardAction.WasPressedThisFrame();
 
-            QuickTurnInput = _quickTurnPending;
+            QuickTurnInput = _quickTurnPending || _gesture.FlickDown;
             _quickTurnPending = false;
 
             Skill1Input = _skill1Pending;
@@ -102,7 +127,7 @@ namespace MyDongari.Input
             Skill2Input = _skill2Pending;
             _skill2Pending = false;
 
-            SideStepDirection = 0;
+            SideStepDirection = _gesture.FlickSide;
             DetectSideStep();
         }
 
@@ -115,27 +140,27 @@ namespace MyDongari.Input
 
             if (leftPressed)
             {
-                if (Time.time - _lastLeftTapTime < doubleTapWindow)
+                if (Time.unscaledTime - _lastLeftTapTime < doubleTapWindow)
                 {
                     SideStepDirection = -1;
                     _lastLeftTapTime = 0f;
                 }
                 else
                 {
-                    _lastLeftTapTime = Time.time;
+                    _lastLeftTapTime = Time.unscaledTime;
                 }
             }
 
             if (rightPressed)
             {
-                if (Time.time - _lastRightTapTime < doubleTapWindow)
+                if (Time.unscaledTime - _lastRightTapTime < doubleTapWindow)
                 {
                     SideStepDirection = 1;
                     _lastRightTapTime = 0f;
                 }
                 else
                 {
-                    _lastRightTapTime = Time.time;
+                    _lastRightTapTime = Time.unscaledTime;
                 }
             }
         }

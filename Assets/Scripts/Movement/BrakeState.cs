@@ -38,9 +38,23 @@ namespace MyDongari.Movement
                 }
             }
 
+            // 패드는 스틱을 튕기려면 중립을 거쳐야 해서 질주가 먼저 Brake로 넘어온다.
+            // 그래서 질주 중 초신지선회·사이드스텝을 Brake에서도 받아 준다.
+            if (StateMachine.InputReader.QuickTurnInput)
+            {
+                StateMachine.ChangeState(StateMachine.QuickTurnState);
+                return;
+            }
+
+            if (StateMachine.InputReader.SideStepDirection != 0)
+            {
+                StateMachine.ChangeState(StateMachine.SideStepState);
+                return;
+            }
+
             if (_brakeTimer >= BrakeDuration)
             {
-                if (StateMachine.InputReader.MoveInput.sqrMagnitude >= 0.64f)
+                if (StateMachine.InputReader.IsMoveInputActive)
                 {
                     StateMachine.ChangeState(StateMachine.WalkState);
                 }

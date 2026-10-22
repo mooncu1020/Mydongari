@@ -78,7 +78,7 @@
 - 씬 YAML은 직접 편집하지 말 것. `Assets/Editor/VersusSceneSetup.cs` 메뉴(`Mydongari/Setup Versus Scene`)를 만들어 현재 씬의 Mech를 복제해 P2를 만들고, 카메라·HUD·스폰 포인트·GameManager·PlayLogger 참조를 연결하게 한다. 실행 결과를 되돌릴 수 있게 Undo 등록. 메뉴로 안 되는 부분은 SETUP.md에 수동 단계로.
 - 더미 1인 모드도 남긴다 (GameManager에 `versusMode` 토글).
 
-### [ ] B2. 패드 스틱 제스처
+### [x] B2. 패드 스틱 제스처
 - `InputReader`에 스틱 튕기기 감지기 추가 (GAME_SPEC 2장 정의). 출력: `SprintTriggered`(↑↑), `QuickTurnTriggered`(↓), `SideStepDirection`(←/→), `SlideTriggered`(전력질주 중 중립 후 0.2초 내 ↗/↖ + 방향).
 - 카메라 기준이 아니라 **스틱 원래 방향** 기준으로 판정한다.
 - 걷기·달리기 판정(크기 0.8)과 튕기기 판정이 서로 오작동하지 않게 한다: 튕기기는 "중립 → 끝 → 중립"이 짧은 시간 안에 일어난 경우만.
@@ -126,3 +126,4 @@
 - **A8** 완료. 바뀐 파일: `ResetForRound()` 추가 — `BoostGauge`, `HeatGauge`, `MeleeSystem`, `AnchorClaw`, `ImpactSlam`, `MechStateMachine`, `ExternalControlLock.ResetLock()`, `MechCamera.ResetView(yaw)`. `GameManager`(클로 먼저 해제 → 위치·회전·속도·잠금·각 시스템 리셋, 동시 사망 무승부, `OnRoundOver(0=무승부)` 이벤트). 위험: 스폰 포인트 회전이 0이면 두 기체가 같은 방향을 봄(SETUP 12). 라운드 사이 3초 동안 이동 입력은 아직 막혀 있지 않음(B5 카운트다운에서 처리).
 - **A9** (질문 반영, TASKS 외 추가 작업) 완료. 바뀐 파일: `.inputactions`(그룹 없던 키보드 바인딩 5개 → Keyboard&Mouse), `HeatGauge`(`IsSkillActive` 삭제, `sprintCoolingPenalty` → `sprintCoolingReduction` 0.7), `HitTypes`·`MeleeSystem`·`AnchorClaw`(파일드라이버 가드 관통), `MechController`·`MechStateMachine`(하드 락온 몸통 자동 회전), `GAME_SPEC.md`(3·1·6·7장). 위험: 몸통 자동 회전 중엔 `RotateToCamera`가 양보하므로 하드 락온 중 카메라와 몸통 방향이 다를 수 있음(의도).
 - **B1** 완료. 바뀐 파일: 신규 `Input/VersusInputPairing`, 신규 `Editor/VersusSceneSetup`(메뉴), `GameManager`(versusMode·dummyOpponent·versusOnlyObjects·player1Camera, Player1/Player2/VersusMode getter), `HUDController`(상대 체력 바, Screen Space - Camera 락온 마커 좌표, 최대 HP 기준), `Health`(`MaxHealth`). 위험: 장치 페어링은 InputUser API + `actions.devices` 제한으로 처리 — 에디터에서 두 패드 분리 동작을 꼭 확인. 반쪽 화면 HUD 크기는 Canvas Scaler 설정에 따라 달라질 수 있음(SETUP 19).
+- **B2** 완료. 바뀐 파일: 신규 `Input/StickGestureDetector`(설정 클래스 포함), `InputReader`(MoveStick 기반 제스처, RunInput = Shift || 스틱 0.8, `IsMoveInputActive`, `SlideDirection`, 시간은 unscaled), `.inputactions`(`MoveStick`), 상태 7개(이동 판정 하드코딩 0.64 → `IsMoveInputActive`), `SprintState`·`BrakeState`(퀵턴·사이드스텝 허용). 위험: 제스처 수치는 실기 패드로 튜닝 필요. 첫 ↑ 튕기기 동안 잠깐 걷기/달리기 상태가 끼어든다.
