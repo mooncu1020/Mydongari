@@ -1,4 +1,5 @@
 using UnityEngine;
+using MyDongari.Combat;
 
 namespace MyDongari.Movement
 {
@@ -75,9 +76,17 @@ namespace MyDongari.Movement
                 {
                     if (!StateMachine.MechController.Identity.IsOpponentCollider(hit)) continue;
 
+                    MeleeSystem melee = StateMachine.MechController.MeleeSystem;
+                    // 쿨다운 중이면 부딪쳐도 태클이 안 나가니 질주를 끊지 않는다
+                    if (!melee.CanTackle) return;
+
+                    // 속도를 먼저 0으로: 패리 반사 넉백이 이 뒤에 들어와야 지워지지 않는다
                     StateMachine.MechController.Rb.linearVelocity = Vector3.zero;
-                    StateMachine.MechController.MeleeSystem.TryTackle(TackleChargePower);
-                    StateMachine.MechController.MeleeSystem.ApplyStun(0.5f);
+                    HitResult? result = melee.TryTackle(TackleChargePower);
+                    if (result != HitResult.Parried)
+                    {
+                        melee.ApplyStun(melee.TackleRecoveryStun);
+                    }
                     StateMachine.ChangeState(StateMachine.IdleState);
                     return;
                 }

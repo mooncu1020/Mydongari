@@ -31,6 +31,12 @@ namespace MyDongari.Combat
         [SerializeField] private float guardReraiseDelay = 0.4f;
         [Tooltip("가드를 올린 순간부터 이 시간(초) 안에 맞으면 패리")]
         [SerializeField] private float parryWindow = 0.15f;
+
+        [Header("패리 반사")]
+        [Tooltip("런지·태클을 패리하면 공격자가 그 공격 피해의 이 비율만큼 받는다")]
+        [SerializeField] private float parryReflectRatio = 1f;
+        [Tooltip("반사 넉백 힘. 공격 자체에 넉백 값이 있으면 그 값을 쓰고, 없을 때만 이 값")]
+        [SerializeField] private float parryReflectKnockback = 8f;
         [Tooltip("가드 중 리지드바디 감속. 방어 자세로 버티는 느낌")]
         [SerializeField] private float guardDamping = 8f;
         [Tooltip("가드를 내렸을 때 돌아갈 일반 이동 감속")]
@@ -45,14 +51,17 @@ namespace MyDongari.Combat
         [SerializeField] private float tackleKnockback = 8f;
         [SerializeField] private float tackleRange = 5f;
         [SerializeField] private float tackleCooldown = 1f;
-        [SerializeField] private float attackerStunDuration = 0.5f;
         [SerializeField] private float victimStunDuration = 1.7f;
+        [Tooltip("태클을 부딪친 뒤 공격자 자신의 경직(초). 패리당했을 땐 적용 안 함")]
+        [SerializeField] private float tackleRecoveryStun = 0.5f;
 
         public bool IsGuarding { get; private set; }
         public bool IsParrying { get; private set; }
         public bool IsStunned { get; private set; }
         public float MeleeTimer => _meleeTimer;
         public float MeleeCooldown => meleeCooldown;
+        public bool CanTackle => _tackleTimer >= tackleCooldown;
+        public float TackleRecoveryStun => tackleRecoveryStun;
 
         /// <summary>내가 맞았을 때(피격자 쪽) 판정 결과가 정해지면 발생. 로그·연출은 여기 구독.</summary>
         public event Action<HitInfo, HitResult> OnHitResolved;
@@ -212,10 +221,14 @@ namespace MyDongari.Combat
                 return Resolve(info, HitResult.Clash);
             }
 
-            // 2) 패리: 피해 0, 히트 증가 없음
+            // 2) 패리: 피해 0, 히트 증가 없음. 런지·태클은 공격자에게 되돌려 준다 (공격자 스턴은 없음)
             if (IsParrying && !info.IgnoresParry)
             {
                 _parryGrace = true;
+                if (info.Type == AttackType.Tackle || info.Type == AttackType.Lunge)
+                {
+                    ReflectToAttacker(info);
+                }
                 return Resolve(info, HitResult.Parried);
             }
 
@@ -255,6 +268,20 @@ namespace MyDongari.Combat
             return result;
         }
 
+        private void ReflectToAttacker(HitInfo info)
+        {
+            if (info.Attacker == null) return;
+
+            // 공격자는 돌진 중이라 가드가 없다 → 감쇄 계산 없이 체력에 바로
+            Health attackerHealth = info.Attacker.GetComponent<Health>();
+            if (attackerHealth != null) attackerHealth.TakeDamage(info.Damage * parryReflectRatio);
+
+            Vector3 pushBack = info.Attacker.transform.position - transform.position;
+            pushBack.y = 0f;
+            float force = info.KnockbackForce > 0f ? info.KnockbackForce : parryReflectKnockback;
+            ApplyKnockback(info.Attacker.GetComponent<Rigidbody>(), pushBack, force);
+        }
+
         private void ApplyClash(HitInfo info)
         {
             if (info.Attacker == null) return;
@@ -284,9 +311,13 @@ namespace MyDongari.Combat
             return HitResult.Hit;
         }
 
-        public void TryTackle(float chargePower)
+        /// <summary>
+        /// 태클 판정. 쿨다운 중이거나 범위 안에 상대가 없으면 null.
+        /// 공격자 경직은 호출 쪽(SprintState)이 결과를 보고 건다 — 패리당했으면 경직 없음.
+        /// </summary>
+        public HitResult? TryTackle(float chargePower)
         {
-            if (_tackleTimer < tackleCooldown) return;
+            if (_tackleTimer < tackleCooldown) return null;
             _tackleTimer = 0f;
 
             float finalDamage = tackleDamage * (1f + chargePower);
@@ -309,15 +340,10 @@ namespace MyDongari.Combat
                     StunDuration = victimStunDuration
                 };
 
-                HitResult result = DeliverHit(target, info);
-                if (result == HitResult.Parried)
-                {
-                    ApplyStun(attackerStunDuration);
-                }
-                return;
+                return DeliverHit(target, info);
             }
 
-            ApplyStun(attackerStunDuration);
+            return null;
         }
 
         public void TryMeleeAttack()
