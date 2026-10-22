@@ -97,7 +97,7 @@
 - 기존 자동 접촉 태클과 중복 발동되지 않게 한 번만 처리.
 - 어깨 태클은 히트를 올리지 않는다.
 
-### [ ] B5. 라운드 연출과 매치 흐름
+### [x] B5. 라운드 연출과 매치 흐름
 - 라운드 시작 카운트다운 3초(입력 잠금) → FIGHT. 라운드 종료 표시(승자), 양쪽 승수 표시.
 - 매치 종료 화면 → 시작 버튼(아무 패드)으로 재매치(씬 리로드 대신 GameManager 상태 초기화 권장).
 - UI는 기존 Canvas 구조에 맞춰 간단히. 화면 분할이므로 중앙 공용 UI 하나 + 각 화면 HUD.
@@ -129,3 +129,4 @@
 - **B2** 완료. 바뀐 파일: 신규 `Input/StickGestureDetector`(설정 클래스 포함), `InputReader`(MoveStick 기반 제스처, RunInput = Shift || 스틱 0.8, `IsMoveInputActive`, `SlideDirection`, 시간은 unscaled), `.inputactions`(`MoveStick`), 상태 7개(이동 판정 하드코딩 0.64 → `IsMoveInputActive`), `SprintState`·`BrakeState`(퀵턴·사이드스텝 허용). 위험: 제스처 수치는 실기 패드로 튜닝 필요. 첫 ↑ 튕기기 동안 잠깐 걷기/달리기 상태가 끼어든다.
 - **B3** 완료. 바뀐 파일: 신규 `Combat/ThrusterLunge`, 신규 `Movement/LungeState`, 신규 `Editor/MechComponentSetup`(메뉴), `MechStateMachine`(LungeState·`CanStartLunge`·`IsLunging`), `LockOnSystem`(하드 락온 금지 플래그·타이머, 전체 락온 금지, `ResetForRound`), `WeaponSystem`(GAME_SPEC 4장 우선순위, `RangedMode`), `InputReader`(`AttackPressedThisFrame`), `SlideState`(상대 락온 해제), `GameManager`·`VersusSceneSetup`. 위험: 대시 어택 분기는 B4에서 연결(지금은 질주 중 공격 버튼 무반응). 런지 스턴의 히트스톱 이후 시작은 B7.
 - **B4** 완료. 바뀐 파일: `MeleeSystem`(`TryTackle(chargePower, AttackType)` — 참조는 SprintState 1곳, 대시 어택 수치, 대시 어택 패리 반사), `SprintState`(`RequestTackle()`, 버튼·자동 접촉을 FixedUpdate 한 곳에서 한 번만 처리), `WeaponSystem`(우선순위 2 연결). 위험: 대시 어택 수치는 임시값(QUESTIONS).
+- **B5** 완료. 바뀐 파일: `GameManager`(`MatchPhase` Countdown/Fight/RoundOver/MatchOver, 입력 잠금, Start로 재매치 `StartMatch`, `OnRoundStarted`·`OnFight`·`OnMatchStarted` 이벤트, `Invoke` 제거), `InputReader`(`SetInputLocked`, `StartPressed`), `.inputactions`(`Start`), `MeleeDummy`(Fight 아닐 땐 정지), 신규 `UI/RoundUI`, 신규 `Editor/RoundUISetup`(메뉴, Versus 세팅에서도 호출). 위험: 라운드 종료 후 재매치 입력은 각 플레이어 InputReader의 Start만 본다(1인 모드는 P1만).

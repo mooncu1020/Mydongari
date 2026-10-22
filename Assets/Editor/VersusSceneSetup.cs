@@ -131,6 +131,9 @@ namespace MyDongari.EditorTools
                 logSo.ApplyModifiedProperties();
             }
 
+            // 7) 가운데 공용 라운드 UI
+            RoundUISetup.CreateIfMissing();
+
             Undo.CollapseUndoOperations(undoGroup);
             EditorSceneManager.MarkSceneDirty(p1.scene);
             Selection.activeGameObject = p2;

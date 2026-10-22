@@ -34,6 +34,8 @@ namespace MyDongari.Combat
             // 상대는 GameManager가 Awake 이후에 연결할 수 있으니 매 프레임 참조를 갱신
             _player = _identity.Opponent != null ? _identity.Opponent.transform : null;
 
+            // 카운트다운·라운드 사이엔 플레이어처럼 가만히 있는다
+            if (GameManager.Instance != null && !GameManager.Instance.IsRoundActive) return;
             if (_health != null && _health.IsDead) return;
             if (_player == null) return;
 
@@ -50,6 +52,7 @@ namespace MyDongari.Combat
         private void FixedUpdate()
         {
             _player = _identity.Opponent != null ? _identity.Opponent.transform : null;
+            if (GameManager.Instance != null && !GameManager.Instance.IsRoundActive) return;
             if (_health != null && _health.IsDead) return;
             if (_player == null) return;
             if (_controlLock != null && _controlLock.IsLocked) return; // 앵커클로 등에 잡혀있으면 양보

@@ -5,9 +5,19 @@ using MyDongari.Combat;
 using MyDongari.Combat.Skills;
 using MyDongari.Mech;
 using MyDongari.Movement;
+using MyDongari.Input;
 
 namespace MyDongari.Core
 {
+    /// <summary>매치 진행 단계. Countdown(입력 잠금) → Fight → RoundOver → 다음 라운드 Countdown … → MatchOver.</summary>
+    public enum MatchPhase
+    {
+        Countdown,
+        Fight,
+        RoundOver,
+        MatchOver
+    }
+
     public class GameManager : MonoBehaviour
     {
         public static GameManager Instance { get; private set; }
@@ -18,6 +28,15 @@ namespace MyDongari.Core
 
         /// <summary>라운드가 끝났을 때 발생. 인자는 라운드 승자(1 또는 2), 무승부면 0.</summary>
         public event Action<int> OnRoundOver;
+
+        /// <summary>라운드 리셋 직후(카운트다운 시작) 발생. 인자는 라운드 번호(1부터, 무승부 재경기도 1 증가).</summary>
+        public event Action<int> OnRoundStarted;
+
+        /// <summary>카운트다운이 끝나고 입력이 풀리는 순간("FIGHT").</summary>
+        public event Action OnFight;
+
+        /// <summary>재매치로 새 매치가 시작될 때 (첫 매치 포함).</summary>
+        public event Action OnMatchStarted;
 
         public bool IsMatchOver { get; private set; }
         public int MatchWinner { get; private set; }
@@ -37,7 +56,14 @@ namespace MyDongari.Core
         [Header("라운드 설정")]
         [SerializeField] private int roundsToWin = 2;
 
+        [Header("라운드 연출")]
+        [Tooltip("라운드 시작 카운트다운(초). 이 동안 두 기체 모두 입력을 받지 않는다")]
+        [SerializeField] private float countdownDuration = 3f;
+        [Tooltip("FIGHT 글자를 띄워 두는 시간(초). 입력은 FIGHT와 동시에 풀린다")]
+        [SerializeField] private float fightBannerDuration = 1f;
+
         [Header("리스폰 설정")]
+        [Tooltip("라운드가 끝나고 다음 라운드 카운트다운이 시작될 때까지(초)")]
         [SerializeField] private float respawnDelay = 3f;
         [SerializeField] private Transform player1SpawnPoint;
         [SerializeField] private Transform player2SpawnPoint;
@@ -51,6 +77,18 @@ namespace MyDongari.Core
         private bool _roundActive = false;
         public bool IsRoundActive => _roundActive;
 
+        public MatchPhase Phase { get; private set; } = MatchPhase.Countdown;
+        public int RoundNumber { get; private set; }
+        /// <summary>직전 라운드 승자. 0이면 무승부.</summary>
+        public int LastRoundWinner { get; private set; }
+        /// <summary>현재 단계(카운트다운·라운드 종료 대기)의 남은 시간(초).</summary>
+        public float PhaseTimeRemaining => _phaseTimer;
+        public bool ShowFightBanner => Phase == MatchPhase.Fight && _fightBannerTimer > 0f;
+
+        private float _phaseTimer = 0f;
+        private float _fightBannerTimer = 0f;
+
+        public int RoundsToWin => roundsToWin;
         public int Player1Wins => _player1Wins;
         public int Player2Wins => _player2Wins;
         public bool VersusMode => versusMode && dummyOpponent != null;
@@ -113,13 +151,49 @@ namespace MyDongari.Core
 
         private void Start()
         {
+            StartMatch();
+        }
+
+        /// <summary>승수·매치 상태를 비우고 1라운드부터. 재매치는 씬 리로드 없이 이걸로 한다.</summary>
+        private void StartMatch()
+        {
+            _player1Wins = 0;
+            _player2Wins = 0;
+            IsMatchOver = false;
+            MatchWinner = 0;
+            LastRoundWinner = 0;
+            RoundNumber = 0;
+            OnMatchStarted?.Invoke();
             StartRound();
         }
 
         private void Update()
         {
-            if (!_roundActive) return;
+            switch (Phase)
+            {
+                case MatchPhase.Countdown:
+                    _phaseTimer -= Time.deltaTime;
+                    if (_phaseTimer <= 0f) BeginFight();
+                    break;
 
+                case MatchPhase.Fight:
+                    if (_fightBannerTimer > 0f) _fightBannerTimer -= Time.deltaTime;
+                    CheckRoundEnd();
+                    break;
+
+                case MatchPhase.RoundOver:
+                    _phaseTimer -= Time.deltaTime;
+                    if (_phaseTimer <= 0f) StartRound();
+                    break;
+
+                case MatchPhase.MatchOver:
+                    if (AnyStartPressed()) StartMatch();
+                    break;
+            }
+        }
+
+        private void CheckRoundEnd()
+        {
             Health p1Health = player1 != null ? player1.GetComponent<Health>() : null;
             Health p2Health = player2 != null ? player2.GetComponent<Health>() : null;
 
@@ -145,7 +219,11 @@ namespace MyDongari.Core
         {
             if (IsMatchOver) return;
 
-            _roundActive = true;
+            RoundNumber++;
+            _roundActive = false;
+            Phase = MatchPhase.Countdown;
+            _phaseTimer = countdownDuration;
+            _fightBannerTimer = 0f;
 
             // 앵커 클로는 상대 쪽 잠금을 잡고 있을 수 있고, 런지는 상태 전환 시 "빗나감"으로 끝나므로
             // 두 기체 모두 진행 중인 기동부터 조용히 끊은 뒤 나머지를 리셋한다
@@ -153,6 +231,44 @@ namespace MyDongari.Core
             StopActiveMoves(player2);
             ResetMech(player1, player1SpawnPoint);
             ResetMech(player2, player2SpawnPoint);
+            SetPlayersInputLocked(true);
+
+            OnRoundStarted?.Invoke(RoundNumber);
+        }
+
+        private void BeginFight()
+        {
+            Phase = MatchPhase.Fight;
+            _roundActive = true;
+            _fightBannerTimer = fightBannerDuration;
+            SetPlayersInputLocked(false);
+            OnFight?.Invoke();
+        }
+
+        private void SetPlayersInputLocked(bool locked)
+        {
+            SetInputLocked(player1, locked);
+            SetInputLocked(player2, locked);
+        }
+
+        private static void SetInputLocked(GameObject mech, bool locked)
+        {
+            if (mech == null) return;
+            InputReader input = mech.GetComponent<InputReader>();
+            if (input != null) input.SetInputLocked(locked);
+        }
+
+        /// <summary>매치 종료 화면에서 아무 플레이어의 시작 버튼 (각자 페어링된 패드 Start / 키보드 Enter).</summary>
+        private bool AnyStartPressed()
+        {
+            return IsStartPressed(player1) || IsStartPressed(player2);
+        }
+
+        private static bool IsStartPressed(GameObject mech)
+        {
+            if (mech == null || !mech.activeInHierarchy) return false;
+            InputReader input = mech.GetComponent<InputReader>();
+            return input != null && input.StartPressed;
         }
 
         private static void StopActiveMoves(GameObject mech)
@@ -222,28 +338,27 @@ namespace MyDongari.Core
         private void RoundEnd(int winner)
         {
             _roundActive = false;
-            OnRoundOver?.Invoke(winner);
-
-            if (winner == 0)
-            {
-                // 무승부: 승수 증가 없이 다음 라운드
-                Invoke(nameof(StartRound), respawnDelay);
-                return;
-            }
+            LastRoundWinner = winner;
+            // 라운드가 끝난 뒤엔 살아남은 쪽도 멈춘다 (다음 라운드 리셋 전 추가 타격 방지)
+            SetPlayersInputLocked(true);
 
             if (winner == 1) _player1Wins++;
-            else _player2Wins++;
+            else if (winner == 2) _player2Wins++;
+            // winner == 0: 무승부, 승수 증가 없이 다음 라운드
+
+            OnRoundOver?.Invoke(winner);
 
             if (_player1Wins >= roundsToWin || _player2Wins >= roundsToWin)
             {
                 IsMatchOver = true;
                 MatchWinner = _player1Wins >= roundsToWin ? 1 : 2;
-                Debug.Log($"[GameManager] 매치 종료. 승자: Player{MatchWinner}");
+                Phase = MatchPhase.MatchOver;
                 OnMatchOver?.Invoke(MatchWinner);
             }
             else
             {
-                Invoke(nameof(StartRound), respawnDelay);
+                Phase = MatchPhase.RoundOver;
+                _phaseTimer = respawnDelay;
             }
         }
     }

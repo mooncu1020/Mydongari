@@ -36,6 +36,9 @@ namespace MyDongari.Input
         public bool AttackPressedThisFrame { get; private set; }
         public bool GuardHeld { get; private set; }
         public bool GuardPressedThisFrame { get; private set; }
+        /// <summary>시작 버튼(패드 Start / 키보드 Enter). 입력 잠금 중에도 읽힌다 (재매치용).</summary>
+        public bool StartPressed { get; private set; }
+        public bool IsInputLocked => _inputLocked;
 
         /// <summary>
         /// Look 입력이 스틱(패드)에서 오는지. 스틱은 "기울기"라 deltaTime을 곱해야 하고
@@ -67,6 +70,9 @@ namespace MyDongari.Input
         private InputAction _stepLeftAction;
         private InputAction _stepRightAction;
         private InputAction _moveStickAction;
+        private InputAction _startAction;
+        // 라운드 카운트다운·라운드 사이에 GameManager가 건다. 잠긴 동안 게임플레이 입력은 전부 0
+        private bool _inputLocked = false;
 
         private readonly StickGestureDetector _gesture = new StickGestureDetector();
 
@@ -94,6 +100,7 @@ namespace MyDongari.Input
             _stepRightAction = _playerInput.actions["StepRight"];
             // 패드 스틱만 바인딩된 액션. 키보드 WASD가 튕기기로 오인되지 않게 제스처는 이것만 본다
             _moveStickAction = _playerInput.actions["MoveStick"];
+            _startAction = _playerInput.actions["Start"];
 
             _quickTurnAction.performed += _ => _quickTurnPending = true;
             _skill1Action.performed += _ => _skill1Pending = true;
@@ -131,6 +138,35 @@ namespace MyDongari.Input
 
             SideStepDirection = _gesture.FlickSide;
             DetectSideStep();
+
+            StartPressed = _startAction.WasPressedThisFrame();
+            if (_inputLocked) ClearGameplayInput();
+        }
+
+        public void SetInputLocked(bool locked)
+        {
+            _inputLocked = locked;
+            if (locked) ClearGameplayInput();
+        }
+
+        private void ClearGameplayInput()
+        {
+            MoveInput = Vector2.zero;
+            LookInput = Vector2.zero;
+            RunInput = false;
+            SprintInput = false;
+            SlideInput = false;
+            SlideDirection = 0;
+            QuickTurnInput = false;
+            Skill1Input = false;
+            Skill2Input = false;
+            SideStepDirection = 0;
+            AttackHeld = false;
+            AttackPressedThisFrame = false;
+            GuardHeld = false;
+            GuardPressedThisFrame = false;
+            // 잠금 중 스틱 조작이 풀린 직후 제스처로 튀어나오지 않게 판정기도 비운다
+            _gesture.Reset();
         }
 
         private void DetectSideStep()
