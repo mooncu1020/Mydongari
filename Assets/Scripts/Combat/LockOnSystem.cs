@@ -7,16 +7,6 @@ namespace MyDongari.Combat
 {
     public class LockOnSystem : MonoBehaviour
     {
-        // 수치는 BernardTuning(락온)으로 옮겼다. 숨긴 필드는 "Copy P1 Values To Tuning" 메뉴용, 런타임에서 읽지 않는다.
-#pragma warning disable 0414
-        [HideInInspector] [SerializeField] private float lockOnRange = 50f;
-        [HideInInspector] [SerializeField] private float lockOnAngle = 30f;
-        [HideInInspector] [SerializeField] private float hardLockEnterRange = 6f;
-        [HideInInspector] [SerializeField] private float hardLockExitRange = 7f;
-        [HideInInspector] [SerializeField] private float hardLockMaxAngle = 120f;
-        [HideInInspector] [SerializeField] private float hardLockTrackSpeed = 5f;
-#pragma warning restore 0414
-
         private TuningRef _tuning;
         private BernardTuning.LockOnValues T => _tuning.Get(this).LockOn;
 

@@ -9,37 +9,6 @@ namespace MyDongari.Combat
 {
     public class MeleeSystem : MonoBehaviour
     {
-        // 수치는 BernardTuning(펀치·가드·패리·태클·대시 어택)으로 옮겼다.
-        // 숨긴 필드는 씬에 저장된 예전 값을 "Copy P1 Values To Tuning" 메뉴가 읽어 가기 위해서만 남겨 둔다. 런타임에서 읽지 않는다.
-#pragma warning disable 0414
-        [HideInInspector] [SerializeField] private float meleeRange = 3f;
-        [HideInInspector] [SerializeField] private float punchHalfAngle = 45f;
-        [HideInInspector] [SerializeField] private float meleeDamage = 25f;
-        [HideInInspector] [SerializeField] private float meleeCooldown = 0.5f;
-        [HideInInspector] [SerializeField] private float heatPerPunch = 6f;
-        [HideInInspector] [SerializeField] private float guardMeleeReduction = 0.5f;
-        [HideInInspector] [SerializeField] private float guardProjectileReduction = 0.7f;
-        [HideInInspector] [SerializeField] private float guardHeatPerBlock = 10f;
-        [HideInInspector] [SerializeField] private float guardBreakStun = 0.9f;
-        [HideInInspector] [SerializeField] private float guardReraiseDelay = 0.4f;
-        [HideInInspector] [SerializeField] private float parryWindow = 0.15f;
-        [HideInInspector] [SerializeField] private float parryReflectRatio = 1f;
-        [HideInInspector] [SerializeField] private float parryReflectKnockback = 8f;
-        [HideInInspector] [SerializeField] private float guardDamping = 8f;
-        [HideInInspector] [SerializeField] private float guardReleaseDamping = 2f;
-        [HideInInspector] [SerializeField] private float clashKnockback = 10f;
-        [HideInInspector] [SerializeField] private float tackleDamage = 30f;
-        [HideInInspector] [SerializeField] private float tackleKnockback = 8f;
-        [HideInInspector] [SerializeField] private float tackleRange = 5f;
-        [HideInInspector] [SerializeField] private float tackleHalfAngle = 45f;
-        [HideInInspector] [SerializeField] private float tackleCooldown = 1f;
-        [HideInInspector] [SerializeField] private float victimStunDuration = 1.7f;
-        [HideInInspector] [SerializeField] private float tackleRecoveryStun = 0.5f;
-        [HideInInspector] [SerializeField] private float dashAttackDamage = 20f;
-        [HideInInspector] [SerializeField] private float dashAttackKnockback = 6f;
-        [HideInInspector] [SerializeField] private float dashAttackStun = 0f;
-#pragma warning restore 0414
-
         // 값은 캐시하지 않고 매번 에셋에서 읽는다 (플레이 중 조정 반영)
         private TuningRef _tuning;
         private BernardTuning.PunchValues Punch => _tuning.Get(this).Punch;

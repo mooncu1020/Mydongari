@@ -5,13 +5,6 @@ namespace MyDongari.Mech
 {
     public class HeatGauge : MonoBehaviour
     {
-        // 수치는 BernardTuning(히트)으로 옮겼다. 숨긴 필드는 "Copy P1 Values To Tuning" 메뉴용, 런타임에서 읽지 않는다.
-#pragma warning disable 0414
-        [HideInInspector] [SerializeField] private float maxHeat = 100f;
-        [HideInInspector] [SerializeField] private float coolingRate = 20f;
-        [HideInInspector] [SerializeField] private float sprintCoolingReduction = 0.7f;
-#pragma warning restore 0414
-
         private TuningRef _tuning;
         private BernardTuning.HeatValues T => _tuning.Get(this).Heat;
 

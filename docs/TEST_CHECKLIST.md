@@ -181,3 +181,5 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (D3) VERSUS와 타이틀, PRACTICE 메뉴(Start)가 열린 동안에는 Tab·Backspace·1~4가 아무것도 안 함
 - [ ] (D4) 타이틀 제목이 DRAFT HOUND PATRASCHE, 왼쪽 위 연습 안내에 BACKSPACE / HOLD SELECT : RESET
 - [ ] (D4) PRACTICE에서 R → 퀵턴만(리셋 안 됨), Backspace → 리셋만
+- [ ] (C5) 컴파일 오류 없음. `Mydongari/Tuning` 메뉴에 `Create Default Tuning And Assign`만 남음
+- [ ] (C5) 플레이 → 수치가 C1 이후와 같음 (런지 거리, 펀치 피해 등 — 모두 `BernardTuning` 에셋 값)

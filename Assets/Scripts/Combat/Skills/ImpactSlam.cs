@@ -6,16 +6,6 @@ namespace MyDongari.Combat.Skills
 {
     public class ImpactSlam : MonoBehaviour
     {
-        // 수치는 BernardTuning(스킬: 임팩트 슬램)으로 옮겼다. 숨긴 필드는 "Copy P1 Values To Tuning" 메뉴용, 런타임에서 읽지 않는다.
-#pragma warning disable 0414
-        [HideInInspector] [SerializeField] private float slamRange = 8f;
-        [HideInInspector] [SerializeField] private float slamAngle = 90f;
-        [HideInInspector] [SerializeField] private float slamDamage = 60f;
-        [HideInInspector] [SerializeField] private float slamKnockback = 15f;
-        [HideInInspector] [SerializeField] private float slamKnockbackLift = 0.3f;
-        [HideInInspector] [SerializeField] private float cooldown = 8f;
-#pragma warning restore 0414
-
         private TuningRef _tuning;
         private BernardTuning.ImpactSlamValues T => _tuning.Get(this).ImpactSlam;
 

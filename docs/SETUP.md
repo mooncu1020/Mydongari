@@ -86,3 +86,4 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 57. (D3) 키보드 **R은 원래 초신지선회 키**다. PRACTICE에서는 R이 리셋도 같이 하며, 리셋이 그 프레임 입력을 비우고 카메라·상태를 되돌리므로 퀵턴이 남지 않는다. VERSUS에서는 R = 초신지선회 그대로.
 58. (D4) 연습 리셋 키보드 키를 **R → Backspace**로 옮겼다(`.inputactions` `PracticeReset` 바인딩 수정). R은 모든 모드에서 초신지선회만 한다. SETUP 56·57의 R 설명은 Backspace로 읽는다. 패드 Select 길게(0.6초)는 그대로.
 59. (D4) 타이틀 문구 기본값 `DRAFT HOUND PATRASCHE` (`MenuUI → Game Title`).
+60. (C5) 값 복사 확인이 끝나 **숨겨 둔 예전 개별 필드(`[HideInInspector]`)와 `Mydongari/Tuning/Copy P1 Values To Tuning` 메뉴를 삭제**했다. SETUP 33·34는 더 이상 해당 없음. 수치는 `BernardTuning` 에셋에서만 조정한다. 씬 파일에 남아 있는 예전 값(YAML)은 쓰이지 않으며, 다음에 씬을 저장할 때 Unity가 지운다(씬 변경으로 표시될 수 있음 — 그대로 커밋하면 된다).

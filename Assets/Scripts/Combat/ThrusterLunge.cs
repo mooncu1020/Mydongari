@@ -13,21 +13,6 @@ namespace MyDongari.Combat
     /// </summary>
     public class ThrusterLunge : MonoBehaviour
     {
-        // 수치는 BernardTuning(런지)으로 옮겼다. 숨긴 필드는 "Copy P1 Values To Tuning" 메뉴용, 런타임에서 읽지 않는다.
-#pragma warning disable 0414
-        [HideInInspector] [SerializeField] private float lungeDistance = 8f;
-        [HideInInspector] [SerializeField] private float lungeSpeed = 30f;
-        [HideInInspector] [SerializeField] private float endSpeedRatio = 0.2f;
-        [HideInInspector] [SerializeField] private float timeoutMultiplier = 1.5f;
-        [HideInInspector] [SerializeField] private float boostCost = 15f;
-        [HideInInspector] [SerializeField] private float damage = 15f;
-        [HideInInspector] [SerializeField] private float hitStun = 0.5f;
-        [HideInInspector] [SerializeField] private float hitKnockback = 0f;
-        [HideInInspector] [SerializeField] private float hitRadius = 1.2f;
-        [HideInInspector] [SerializeField] private float hitForwardOffset = 1f;
-        [HideInInspector] [SerializeField] private float missLockDelay = 0.6f;
-#pragma warning restore 0414
-
         private TuningRef _tuning;
         private BernardTuning.LungeValues T => _tuning.Get(this).Lunge;
 

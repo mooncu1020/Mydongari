@@ -15,15 +15,6 @@ namespace MyDongari.Core
     /// </summary>
     public class HitStop : MonoBehaviour
     {
-        // 수치는 BernardTuning(히트스톱)으로 옮겼다. 숨긴 필드는 "Copy P1 Values To Tuning" 메뉴용, 런타임에서 읽지 않는다.
-#pragma warning disable 0414
-        [HideInInspector] [SerializeField] private bool enableHitStop = true;
-        [HideInInspector] [SerializeField] private float punchDuration = 0.05f;
-        [HideInInspector] [SerializeField] private float lungeTackleDuration = 0.08f;
-        [HideInInspector] [SerializeField] private float clashDuration = 0.12f;
-        [HideInInspector] [SerializeField] private float otherDuration = 0f;
-#pragma warning restore 0414
-
         private float _endTime;
         private bool _active;
         private float _savedTimeScale = 1f;

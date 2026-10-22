@@ -8,7 +8,7 @@
 ## 1. 빌드 전 씬 준비
 
 - [ ] `docs/SETUP.md`의 메뉴를 전부 실행하고 씬 저장:
-  `Mydongari/Setup Versus Scene` → `Mydongari/Add Missing Mech Components` → `Mydongari/Tuning/Create Default Tuning And Assign` → (필요하면) `Mydongari/Tuning/Copy P1 Values To Tuning`
+  `Mydongari/Setup Versus Scene` → `Mydongari/Add Missing Mech Components` → `Mydongari/Tuning/Create Default Tuning And Assign`
 - [ ] `GameManager` → **Versus Mode 켜짐** (끄면 1인 + 더미 빌드가 된다)
 - [ ] 스폰 포인트 두 개가 서로 마주 보게 회전돼 있음 (SETUP 12)
 - [ ] `Assets/Resources/BernardTuning.asset` 값 최종 확인. **플레이 모드에서 바꾼 값은 에셋에 남아 있다** — 의도한 값인지 git diff로 확인 후 커밋

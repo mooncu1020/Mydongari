@@ -9,21 +9,6 @@ namespace MyDongari.Movement
 {
     public class MechController : MonoBehaviour
     {
-        // 이동 수치는 BernardTuning(이동)으로 옮겼다. 아래 숨긴 필드는 씬에 저장된 예전 값을
-        // "Copy P1 Values To Tuning" 메뉴가 읽어 가기 위해서만 남겨 둔다. 런타임 코드는 읽지 않는다.
-#pragma warning disable 0414
-        [HideInInspector] [SerializeField] private float walkSpeed = 10f;
-        [HideInInspector] [SerializeField] private float runSpeed = 20f;
-        [HideInInspector] [SerializeField] private float sprintSpeed = 35f;
-        [HideInInspector] [SerializeField] private float maxWalkSpeed = 5f;
-        [HideInInspector] [SerializeField] private float maxRunSpeed = 10f;
-        [HideInInspector] [SerializeField] private float maxSprintSpeed = 20f;
-        [HideInInspector] [SerializeField] private float rotationSpeed = 15f;
-        [HideInInspector] [SerializeField] private float hardLockTurnSpeed = 10f;
-        [HideInInspector] [SerializeField] private float turnResistance = 0.6f;
-        [HideInInspector] [SerializeField] private float spinUpTime = 0.25f;
-#pragma warning restore 0414
-
         private TuningRef _tuning;
         /// <summary>이 기체의 수치 에셋. 상태들도 이걸 통해 읽는다.</summary>
         public BernardTuning Tuning => _tuning.Get(this);

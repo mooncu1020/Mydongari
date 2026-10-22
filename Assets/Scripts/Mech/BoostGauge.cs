@@ -6,18 +6,6 @@ namespace MyDongari.Mech
 {
     public class BoostGauge : MonoBehaviour
     {
-        // 수치는 BernardTuning(부스트)으로 옮겼다. 숨긴 필드는 "Copy P1 Values To Tuning" 메뉴용, 런타임에서 읽지 않는다.
-#pragma warning disable 0414
-        [HideInInspector] [SerializeField] private float maxBoost = 100f;
-        [HideInInspector] [SerializeField] private float recoveryDelay = 0.5f;
-        [HideInInspector] [SerializeField] private float recoveryRate = 25f;
-        [HideInInspector] [SerializeField] private float sprintDrainRate = 5f;
-        [HideInInspector] [SerializeField] private float exhaustRecoverRatio = 0.5f;
-        [HideInInspector] [SerializeField] private float sideStepCost = 10f;
-        [HideInInspector] [SerializeField] private float quickTurnCost = 10f;
-        [HideInInspector] [SerializeField] private float slideCost = 10f;
-#pragma warning restore 0414
-
         private TuningRef _tuning;
         private BernardTuning.BoostValues T => _tuning.Get(this).Boost;
 
