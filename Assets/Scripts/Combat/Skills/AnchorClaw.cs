@@ -25,6 +25,8 @@ namespace MyDongari.Combat.Skills
 
         /// <summary>앵커가 상대에게 박혔을 때(끌어오기 시작). 인자는 잡힌 대상. 로그용.</summary>
         public event Action<GameObject> OnGrabbed;
+        /// <summary>파일드라이버를 내리찍는 순간(판정 직전). 외형·로그용.</summary>
+        public event Action OnPileDriverStarted;
 
         private LockOnSystem _lockOnSystem;
         private MechStateMachine _stateMachine;
@@ -148,6 +150,7 @@ namespace MyDongari.Combat.Skills
             if (dist > T.pileDriverRange) return;
 
             _pileDriverReady = false;
+            OnPileDriverStarted?.Invoke();
 
             // 잡기 후속타라 가드·패리를 모두 무시한다 (HitInfo.PiercesGuard / IgnoresParry)
             HitInfo info = new HitInfo

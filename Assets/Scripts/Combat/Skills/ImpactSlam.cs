@@ -9,6 +9,9 @@ namespace MyDongari.Combat.Skills
         private TuningRef _tuning;
         private BernardTuning.ImpactSlamValues T => _tuning.Get(this).ImpactSlam;
 
+        /// <summary>슬램을 발동한 순간(맞든 빗나가든). 외형·로그용.</summary>
+        public event System.Action OnSlamStarted;
+
         private float _cooldownTimer = 0f;
         private MechIdentity _identity;
 
@@ -37,6 +40,8 @@ namespace MyDongari.Combat.Skills
             BernardTuning.ImpactSlamValues t = T;
             if (_cooldownTimer < t.cooldown) return null;
             _cooldownTimer = 0f;
+            // 맞든 빗나가든 내리찍는 순간 (외형·로그용)
+            OnSlamStarted?.Invoke();
 
             MechIdentity opponent = _identity.Opponent;
             if (opponent == null) return null;

@@ -157,7 +157,7 @@
 
 ## Phase E — 외형·안정화 (10/27 최종 빌드 확정, 10/29 로케테스트. 확정 후엔 버그 수정만)
 
-### [ ] E1. 절차적 애니메이션 (MechVisualRig)
+### [x] E1. 절차적 애니메이션 (MechVisualRig)
 - 기체 루트 아래 시각 전용 부품 계층: Body, Head, Arm_L_Upper/Arm_L_Lower/Fist_L, Arm_R_Upper/Arm_R_Lower/Fist_R, Leg_L, Leg_R. 콜라이더·물리는 루트 그대로, 부품은 보이기만.
 - 모델이 오기 전까지 쓸 임시 상자 부품을 만드는 에디터 메뉴 (두 기체, 더미 포함).
 - 이벤트 구독으로 부품을 움직인다(전투 코드 의존 금지): 펀치(오른팔 뻗기, 원투면 좌우 교대), 가드(양팔 올림, 패리 성공 시 튕김), 런지(상체 숙이고 양팔 뒤로), 대시 어택·태클(어깨 앞으로), 앵커 클로(왼팔 뻗기), 파일드라이버(오른팔 내리찍기), 슬램(양팔 내리찍기), 스턴(흔들림), 가드 깨짐(팔이 튕겨 벌어짐), 이동(속도에 따라 상체 기울기, 걷기에 맞춰 다리 교차·몸통 상하), 과열 김 파티클(선택).
@@ -205,3 +205,4 @@
 - **D3** 완료. 바뀐 파일: `.inputactions`(`Select`, `BotCycle`, `PracticeReset`, `HeatPreset1~4` 추가만), `InputReader`(`BotCyclePressed`, `PracticeResetPressed` — Select 짧게/길게 구분, `HeatPresetPressed`), 신규 `Core/PracticeHotkeys`(PRACTICE의 Fight 중에만 실행), `HeatGauge`(`SetHeatRatio` 연습용), `GameManager`(자동 부착, 리셋은 D2의 `ResetPracticeNow`), `MenuUI`(단축키 안내). 위험: 키보드 R 겹침(QUESTIONS). 패드 Select 버튼 이름은 패드마다 다름(Back/View/Share) — Input System의 `<Gamepad>/select`로 잡히는지 실기 확인 필요.
 - **D4** (질문 반영, TASKS 외 추가 작업) 완료. 바뀐 파일: `.inputactions`(`PracticeReset` 키보드 R → Backspace), `MenuUI`(타이틀 DRAFT HOUND PATRASCHE, 안내 문구), 주석(`InputReader`·`PracticeHotkeys`·`GameManager`), `QUESTIONS.md`(C1·D1~D3 답 기록). 위험: 낮음.
 - **C5** (정리, TASKS 외 추가 작업) 완료. 바뀐 파일: `MechController`, `BoostGauge`, `HeatGauge`, `MeleeSystem`, `ThrusterLunge`, `LockOnSystem`, `AnchorClaw`, `ImpactSlam`, `HitStop`(숨긴 예전 필드 블록 삭제), `Editor/TuningSetup`(복사 메뉴·필드 대응표 삭제, 생성·연결 메뉴만 남김), `BUILD.md`. 위험: 낮음. 씬 YAML의 예전 값은 다음 저장 때 Unity가 정리.
+- **E1** 완료. 바뀐 파일: 신규 `Visual/MechVisualRig`(슬롯 10개, 감쇠 스프링, 이벤트 구독 + 상태 읽기, 쉴 때 자세 위에 오프셋, 슬롯별 회전 보정), 신규 `Editor/VisualRigSetup`(임시 상자 메뉴, 슬롯 연결 함수 — E2에서 재사용), `BernardTuning`(`Visual` 묶음), `AnchorClaw`(`OnPileDriverStarted`), `ImpactSlam`(`OnSlamStarted`). 전투 판정 변경 없음. 위험: 동작 방향(각도 부호)은 상자 기준으로 맞췄고 화면 확인 전 — 어색하면 Visual 묶음 각도로 조정. 과열 파티클 생략.

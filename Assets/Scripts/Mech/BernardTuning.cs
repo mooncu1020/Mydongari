@@ -268,6 +268,82 @@ namespace MyDongari.Mech
             public float other = 0f;
         }
 
+        [Serializable]
+        public class VisualValues
+        {
+            [Header("스프링 (모든 부품 공통)")]
+            [Tooltip("부품이 목표 자세를 따라가는 빠르기(Hz). 클수록 딱딱하고 빠르다")]
+            public float springFrequency = 8f;
+            [Tooltip("감쇠비. 1 = 출렁임 없이 멈춤, 작을수록 더 출렁인다")]
+            [Range(0.05f, 1.5f)] public float springDamping = 0.6f;
+
+            [Header("예비 동작 (공격 시작 직후, 판정 타이밍과 무관)")]
+            [Tooltip("팔을 살짝 뒤로 빼는 시간(초). 0.033 ≈ 60fps 2프레임")]
+            public float anticipationTime = 0.033f;
+            [Tooltip("예비 동작 때 위팔을 뒤로 빼는 각도(°)")]
+            public float anticipationPullback = 25f;
+
+            [Header("펀치 (각도는 위팔·아래팔 X축, 음수 = 앞으로)")]
+            public float punchExtendTime = 0.12f;
+            public float punchHoldTime = 0.06f;
+            public float punchArmAngle = -70f;
+            [Tooltip("팔꿈치를 펴는 각도(쉬는 자세에서 굽혀 둔 만큼 +)")]
+            public float punchElbowAngle = 75f;
+            [Tooltip("때리는 쪽 어깨가 나가도록 몸통을 비트는 각도")]
+            public float punchBodyTwist = 15f;
+            [Tooltip("이 시간(초) 안에 다음 펀치가 나오면 반대 팔로 (원투)")]
+            public float comboWindow = 0.8f;
+
+            [Header("가드 / 패리")]
+            public float guardArmAngle = -60f;
+            public float guardElbowAngle = -40f;
+            [Tooltip("가드 때 팔을 몸 안쪽으로 모으는 각도")]
+            public float guardInward = 20f;
+            [Tooltip("패리 성공 때 팔을 튕겨 올리는 순간 각속도(°/초)")]
+            public float parryKick = 600f;
+
+            [Header("런지")]
+            public float lungeLean = 25f;
+            public float lungeArmBack = 60f;
+
+            [Header("대시 어택·태클 (어깨로 들이받기)")]
+            [Tooltip("몸통 비틀기(음수 = 오른 어깨 앞으로)")]
+            public float tackleTwist = -35f;
+            public float tackleLean = 15f;
+            public float tackleTime = 0.35f;
+
+            [Header("앵커 클로 (왼팔 뻗기)")]
+            public float clawArmAngle = -85f;
+            public float clawHoldTime = 0.6f;
+
+            [Header("파일드라이버·슬램 (내리찍기)")]
+            [Tooltip("들어 올릴 때 위팔 각도(음수 = 앞·위로)")]
+            public float smashRaiseAngle = -160f;
+            public float smashDownAngle = -40f;
+            public float smashRaiseTime = 0.1f;
+            public float smashDownTime = 0.25f;
+            public float smashLean = 20f;
+
+            [Header("스턴 / 가드 깨짐")]
+            public float stunShakeAngle = 6f;
+            public float stunShakeFrequency = 9f;
+            [Tooltip("가드 깨짐 때 팔이 바깥·뒤로 튕기는 순간 각속도(°/초)")]
+            public float guardBreakFling = 700f;
+
+            [Header("이동")]
+            [Tooltip("속도 1m/s당 상체 기울기(°)")]
+            public float leanPerSpeed = 1.2f;
+            public float maxLean = 18f;
+            [Tooltip("걷기 다리 흔들림 최대 각도(°)")]
+            public float strideAngle = 30f;
+            [Tooltip("1m 이동할 때 걸음 주기 수")]
+            public float stepsPerMeter = 0.6f;
+            [Tooltip("걸음마다 몸통 상하 흔들림(m)")]
+            public float bobHeight = 0.06f;
+            [Tooltip("이 속도(m/s)에서 걷기 동작이 최대 크기")]
+            public float walkReferenceSpeed = 5f;
+        }
+
         [Header("이동")]
         [SerializeField] private MovementValues movement = new MovementValues();
         [Header("부스트")]
@@ -294,6 +370,8 @@ namespace MyDongari.Mech
         [SerializeField] private LockOnValues lockOn = new LockOnValues();
         [Header("히트스톱")]
         [SerializeField] private HitStopValues hitStop = new HitStopValues();
+        [Header("외형 애니메이션 (MechVisualRig)")]
+        [SerializeField] private VisualValues visual = new VisualValues();
 
         public MovementValues Movement => movement;
         public BoostValues Boost => boost;
@@ -308,6 +386,7 @@ namespace MyDongari.Mech
         public ImpactSlamValues ImpactSlam => impactSlam;
         public LockOnValues LockOn => lockOn;
         public HitStopValues HitStop => hitStop;
+        public VisualValues Visual => visual;
 
         private static BernardTuning _fallback;
 

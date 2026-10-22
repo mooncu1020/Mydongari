@@ -87,3 +87,10 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 58. (D4) 연습 리셋 키보드 키를 **R → Backspace**로 옮겼다(`.inputactions` `PracticeReset` 바인딩 수정). R은 모든 모드에서 초신지선회만 한다. SETUP 56·57의 R 설명은 Backspace로 읽는다. 패드 Select 길게(0.6초)는 그대로.
 59. (D4) 타이틀 문구 기본값 `DRAFT HOUND PATRASCHE` (`MenuUI → Game Title`).
 60. (C5) 값 복사 확인이 끝나 **숨겨 둔 예전 개별 필드(`[HideInInspector]`)와 `Mydongari/Tuning/Copy P1 Values To Tuning` 메뉴를 삭제**했다. SETUP 33·34는 더 이상 해당 없음. 수치는 `BernardTuning` 에셋에서만 조정한다. 씬 파일에 남아 있는 예전 값(YAML)은 쓰이지 않으며, 다음에 씬을 저장할 때 Unity가 지운다(씬 변경으로 표시될 수 있음 — 그대로 커밋하면 된다).
+
+## Phase E
+
+61. (E1) **메뉴 `Mydongari/Visual/Create Placeholder Parts`** → 저장. 씬의 모든 기체(Mech, Mech_P2, DummyTarget — MeleeSystem이 있는 오브젝트)에 `VisualPlaceholder` 임시 상자 부품(Body, Head, 양팔 3마디, 양다리)을 만들고, 루트 캡슐 렌더러를 끄고(콜라이더는 그대로), `MechVisualRig`를 붙여 슬롯을 연결한다. 이미 있는 기체는 건너뛴다. Ctrl+Z 한 번으로 되돌림.
+    - Versus 세팅(`Mech_P2` 복제) 전에 실행해도 되고 후에 실행해도 된다(복제하면 부품·연결도 같이 복제됨).
+62. (E1) `MechVisualRig`: `Animate` 끄면 정지. 슬롯 10개(부품 + `Rotation Correction`). 동작 크기·속도는 `BernardTuning` → **Visual** 묶음(스프링 8Hz·감쇠 0.6, 예비 동작 0.033초·25°, 펀치, 가드·패리, 런지, 태클, 클로, 파일드라이버·슬램, 스턴, 가드 깨짐, 이동). 플레이 중 바꾸면 바로 반영(에셋에 남음).
+63. (E1) `AnchorClaw`에 `OnPileDriverStarted`, `ImpactSlam`에 `OnSlamStarted` 이벤트를 추가했다(외형용, 판정 변화 없음).
