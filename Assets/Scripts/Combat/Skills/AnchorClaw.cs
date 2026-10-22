@@ -1,6 +1,7 @@
 using MyDongari.Combat;
 using MyDongari.Movement;
 using MyDongari.Core;
+using MyDongari.Mech;
 using System;
 using UnityEngine;
 
@@ -8,19 +9,19 @@ namespace MyDongari.Combat.Skills
 {
     public class AnchorClaw : MonoBehaviour
     {
-        [Header("앵커 설정")]
-        [SerializeField] private float pullSpeed = 15f;
-        [SerializeField] private float pullDuration = 1.5f;
-        [SerializeField] private float pileDriverDamage = 50f;
-        [SerializeField] private float cooldown = 5f;
+        // 수치는 BernardTuning(스킬: 앵커 클로)으로 옮겼다. 숨긴 필드는 "Copy P1 Values To Tuning" 메뉴용, 런타임에서 읽지 않는다.
+#pragma warning disable 0414
+        [HideInInspector] [SerializeField] private float pullSpeed = 15f;
+        [HideInInspector] [SerializeField] private float pullDuration = 1.5f;
+        [HideInInspector] [SerializeField] private float pileDriverDamage = 50f;
+        [HideInInspector] [SerializeField] private float cooldown = 5f;
+        [HideInInspector] [SerializeField] private float hookImpactSpeed = 32f;
+        [HideInInspector] [SerializeField] private float hookEaseTime = 0.2f;
+        [HideInInspector] [SerializeField] private float hookImpactStun = 0.25f;
+#pragma warning restore 0414
 
-        [Header("훅 연출")]
-        [Tooltip("그랩이 박히는 순간 확 끌려오는 초기 속도. pullSpeed보다 커야 '훅' 느낌이 남")]
-        [SerializeField] private float hookImpactSpeed = 32f;
-        [Tooltip("초기 훅 속도에서 pullSpeed로 줄어드는 데 걸리는 시간(초)")]
-        [SerializeField] private float hookEaseTime = 0.2f;
-        [Tooltip("그랩이 박히는 순간 타겟한테 거는 짧은 경직. 저항 못 하고 훅 당하는 느낌용")]
-        [SerializeField] private float hookImpactStun = 0.25f;
+        private TuningRef _tuning;
+        private BernardTuning.AnchorClawValues T => _tuning.Get(this).AnchorClaw;
 
         private Transform _target;
         private Rigidbody _targetRb;
@@ -59,7 +60,7 @@ namespace MyDongari.Combat.Skills
 
         public void TryActivate()
         {
-            if (_cooldownTimer < cooldown) return;
+            if (_cooldownTimer < T.cooldown) return;
             if (_lockOnSystem.Target == null) return;
 
             _target = _lockOnSystem.Target;
@@ -77,7 +78,7 @@ namespace MyDongari.Combat.Skills
 
             // 그랩이 박히는 순간: 저항 못 하게 짧은 경직을 걸어서 "훅 하고 걸렸다"는 걸 확실히 함
             MeleeSystem targetMelee = _target.GetComponent<MeleeSystem>();
-            if (targetMelee != null) targetMelee.ApplyStun(hookImpactStun);
+            if (targetMelee != null) targetMelee.ApplyStun(T.hookImpactStun);
 
             // 나(공격자) 쪽도 같이 잠근다. 안 그러면 이동 입력을 계속 누르고 있을 때
             // 내가 타겟 쪽으로 걸어 들어가는 게 "내가 당겨지는" 것처럼 보인다.
@@ -104,13 +105,14 @@ namespace MyDongari.Combat.Skills
             Vector3 dirToMe = (transform.position - _target.position).normalized;
 
             // 박히는 순간엔 확 끌려오다가(hookImpactSpeed) hookEaseTime에 걸쳐 pullSpeed로 잦아듦
-            float easeT = hookEaseTime > 0f ? Mathf.Clamp01(_pullTimer / hookEaseTime) : 1f;
-            float currentSpeed = Mathf.Lerp(hookImpactSpeed, pullSpeed, easeT);
+            BernardTuning.AnchorClawValues t = T;
+            float easeT = t.hookEaseTime > 0f ? Mathf.Clamp01(_pullTimer / t.hookEaseTime) : 1f;
+            float currentSpeed = Mathf.Lerp(t.hookImpactSpeed, t.pullSpeed, easeT);
 
             _targetRb.linearVelocity = dirToMe * currentSpeed;
 
             float dist = Vector3.Distance(transform.position, _target.position);
-            if (dist < 3f || _pullTimer >= pullDuration)
+            if (dist < t.pullStopDistance || _pullTimer >= t.pullDuration)
             {
                 _targetRb.linearVelocity = Vector3.zero;
                 EndPull();
@@ -145,7 +147,7 @@ namespace MyDongari.Combat.Skills
             _pileDriverReady = false;
             _target = null;
             _targetRb = null;
-            _cooldownTimer = cooldown;
+            _cooldownTimer = T.cooldown;
         }
 
         public void TryPileDriver()
@@ -154,7 +156,7 @@ namespace MyDongari.Combat.Skills
             if (_target == null) return;
 
             float dist = Vector3.Distance(transform.position, _target.position);
-            if (dist > 4f) return;
+            if (dist > T.pileDriverRange) return;
 
             _pileDriverReady = false;
 
@@ -162,7 +164,7 @@ namespace MyDongari.Combat.Skills
             HitInfo info = new HitInfo
             {
                 Type = AttackType.PileDriver,
-                Damage = pileDriverDamage,
+                Damage = T.pileDriverDamage,
                 Attacker = gameObject
             };
             MeleeSystem.DeliverHit(_target.gameObject, info);

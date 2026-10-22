@@ -6,22 +6,23 @@ namespace MyDongari.Mech
 {
     public class BoostGauge : MonoBehaviour
     {
-        [Header("부스트 설정")]
-        [SerializeField] private float maxBoost = 100f;
-        [SerializeField] private float recoveryDelay = 0.5f;
-        [SerializeField] private float recoveryRate = 25f;
-        [SerializeField] private float sprintDrainRate = 5f;
-        [Tooltip("탈진(0%) 후 걷기/정지로 회복해 최대치의 이 비율에 도달하면 탈진 해제")]
-        [Range(0f, 1f)]
-        [SerializeField] private float exhaustRecoverRatio = 0.5f;
+        // 수치는 BernardTuning(부스트)으로 옮겼다. 숨긴 필드는 "Copy P1 Values To Tuning" 메뉴용, 런타임에서 읽지 않는다.
+#pragma warning disable 0414
+        [HideInInspector] [SerializeField] private float maxBoost = 100f;
+        [HideInInspector] [SerializeField] private float recoveryDelay = 0.5f;
+        [HideInInspector] [SerializeField] private float recoveryRate = 25f;
+        [HideInInspector] [SerializeField] private float sprintDrainRate = 5f;
+        [HideInInspector] [SerializeField] private float exhaustRecoverRatio = 0.5f;
+        [HideInInspector] [SerializeField] private float sideStepCost = 10f;
+        [HideInInspector] [SerializeField] private float quickTurnCost = 10f;
+        [HideInInspector] [SerializeField] private float slideCost = 10f;
+#pragma warning restore 0414
 
-        [Header("소모량")]
-        [SerializeField] private float sideStepCost = 10f;
-        [SerializeField] private float quickTurnCost = 10f;
-        [SerializeField] private float slideCost = 10f;
+        private TuningRef _tuning;
+        private BernardTuning.BoostValues T => _tuning.Get(this).Boost;
 
         public float CurrentBoost { get; private set; }
-        public float MaxBoost => maxBoost;
+        public float MaxBoost => T.maxBoost;
         public bool IsExhausted { get; private set; }
 
         private float _recoveryDelayTimer = 0f;
@@ -31,7 +32,7 @@ namespace MyDongari.Mech
 
         private void Awake()
         {
-            CurrentBoost = maxBoost;
+            CurrentBoost = T.maxBoost;
             _stateMachine = GetComponent<MechStateMachine>();
             _meleeSystem = GetComponent<MeleeSystem>();
         }
@@ -42,7 +43,7 @@ namespace MyDongari.Mech
 
             if (_stateMachine.IsSprinting)
             {
-                Drain(sprintDrainRate * Time.deltaTime);
+                Drain(T.sprintDrainRate * Time.deltaTime);
             }
 
             // 가드를 올리고 있으면 걷기/정지여도 회복하지 않는다 (가드 유지에 대가를 주기 위함)
@@ -63,14 +64,14 @@ namespace MyDongari.Mech
 
             _recoveryDelayTimer += Time.deltaTime;
 
-            if (_recoveryDelayTimer >= recoveryDelay)
+            if (_recoveryDelayTimer >= T.recoveryDelay)
             {
                 _isRecovering = true;
             }
 
             if (_isRecovering)
             {
-                CurrentBoost = Mathf.Min(CurrentBoost + recoveryRate * Time.deltaTime, maxBoost);
+                CurrentBoost = Mathf.Min(CurrentBoost + T.recoveryRate * Time.deltaTime, T.maxBoost);
             }
         }
 
@@ -81,7 +82,7 @@ namespace MyDongari.Mech
                 CurrentBoost = 0f;
                 IsExhausted = true;
             }
-            else if (IsExhausted && CurrentBoost >= maxBoost * exhaustRecoverRatio)
+            else if (IsExhausted && CurrentBoost >= T.maxBoost * T.exhaustRecoverRatio)
             {
                 // 끝까지 다 채울 때까지 묶어 두면 너무 길어서, 절반 정도에서 풀어 준다
                 IsExhausted = false;
@@ -104,14 +105,14 @@ namespace MyDongari.Mech
         /// <summary>라운드 시작: 최대치, 탈진 해제, 회복 타이머 초기화.</summary>
         public void ResetForRound()
         {
-            CurrentBoost = maxBoost;
+            CurrentBoost = T.maxBoost;
             IsExhausted = false;
             _recoveryDelayTimer = 0f;
             _isRecovering = false;
         }
 
-        public float GetSideStepCost() => sideStepCost;
-        public float GetQuickTurnCost() => quickTurnCost;
-        public float GetSlideCost() => slideCost;
+        public float GetSideStepCost() => T.sideStepCost;
+        public float GetQuickTurnCost() => T.quickTurnCost;
+        public float GetSlideCost() => T.slideCost;
     }
 }

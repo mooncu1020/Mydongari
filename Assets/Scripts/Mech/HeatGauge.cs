@@ -5,14 +5,18 @@ namespace MyDongari.Mech
 {
     public class HeatGauge : MonoBehaviour
     {
-        [Header("히트 설정")]
-        [SerializeField] private float maxHeat = 100f;
-        [SerializeField] private float coolingRate = 20f;
-        [Tooltip("전력질주 중 냉각 속도 감소율. 0.7이면 냉각 속도가 평소의 30%로 떨어진다")]
-        [Range(0f, 1f)]
-        [SerializeField] private float sprintCoolingReduction = 0.7f;
+        // 수치는 BernardTuning(히트)으로 옮겼다. 숨긴 필드는 "Copy P1 Values To Tuning" 메뉴용, 런타임에서 읽지 않는다.
+#pragma warning disable 0414
+        [HideInInspector] [SerializeField] private float maxHeat = 100f;
+        [HideInInspector] [SerializeField] private float coolingRate = 20f;
+        [HideInInspector] [SerializeField] private float sprintCoolingReduction = 0.7f;
+#pragma warning restore 0414
+
+        private TuningRef _tuning;
+        private BernardTuning.HeatValues T => _tuning.Get(this).Heat;
 
         public float CurrentHeat { get; private set; }
+        public float MaxHeat => T.maxHeat;
         public bool IsOverheated { get; private set; }
 
         private MechStateMachine _stateMachine;
@@ -35,10 +39,10 @@ namespace MyDongari.Mech
         {
             if (IsOverheated)
             {
-                float currentCoolingRate = coolingRate;
+                float currentCoolingRate = T.coolingRate;
                 if (_stateMachine.IsSprinting)
                 {
-                    currentCoolingRate *= (1f - sprintCoolingReduction);
+                    currentCoolingRate *= (1f - T.sprintCoolingReduction);
                 }
                 CurrentHeat = Mathf.Max(CurrentHeat - currentCoolingRate * Time.deltaTime, 0f);
                 if (CurrentHeat <= 0f)
@@ -48,12 +52,12 @@ namespace MyDongari.Mech
                 return;
             }
 
-            if (CurrentHeat >= maxHeat) return;
+            if (CurrentHeat >= T.maxHeat) return;
 
-            float normalCoolingRate = coolingRate;
+            float normalCoolingRate = T.coolingRate;
             if (_stateMachine.IsSprinting)
             {
-                normalCoolingRate *= (1f - sprintCoolingReduction);
+                normalCoolingRate *= (1f - T.sprintCoolingReduction);
             }
 
             CurrentHeat = Mathf.Max(CurrentHeat - normalCoolingRate * Time.deltaTime, 0f);
@@ -61,16 +65,16 @@ namespace MyDongari.Mech
 
         private void CheckOverheat()
         {
-            if (CurrentHeat >= maxHeat)
+            if (CurrentHeat >= T.maxHeat)
             {
-                CurrentHeat = maxHeat;
+                CurrentHeat = T.maxHeat;
                 IsOverheated = true;
             }
         }
 
         public void AddHeat(float amount)
         {
-            CurrentHeat = Mathf.Min(CurrentHeat + amount, maxHeat);
+            CurrentHeat = Mathf.Min(CurrentHeat + amount, T.maxHeat);
         }
 
 

@@ -7,8 +7,9 @@ namespace MyDongari.Movement
     public class SlideState : MechState
     {
         private float _slideTimer = 0f;
-        private const float SlideDuration = 0.8f;
-        private const float SlideSpeed = 25f;
+        // 시간·속도는 BernardTuning(이동)에서 매번 읽는다 (플레이 중 조정 반영)
+        private float SlideDuration => StateMachine.MechController.Tuning.Movement.slideDuration;
+        private float SlideSpeed => StateMachine.MechController.Tuning.Movement.slideSpeed;
 
         public SlideState(MechStateMachine stateMachine) : base(stateMachine)
         {

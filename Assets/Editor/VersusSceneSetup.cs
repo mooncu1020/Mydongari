@@ -55,6 +55,10 @@ namespace MyDongari.EditorTools
             {
                 Undo.AddComponent<MyDongari.Combat.ThrusterLunge>(p1);
             }
+            // 0-1) 수치 에셋: P1(·더미)에 연결해 두면 복제된 P2도 같은 에셋을 물려받는다 (미러전)
+            MyDongari.Mech.BernardTuning tuning = TuningSetup.EnsureAsset(out _);
+            TuningSetup.AssignTo(p1, tuning);
+            if (dummy != null) TuningSetup.AssignTo(dummy, tuning);
 
             // 1) P2 기체 복제. 카메라가 Mech 자식이라 같이 복제되고, 기체 내부 참조는 복제본끼리 자동 재연결된다
             Vector3 p2Pos = spawn2 != null ? spawn2.position : p1.transform.position + p1.transform.forward * 10f;
@@ -64,6 +68,8 @@ namespace MyDongari.EditorTools
             Undo.RegisterCreatedObjectUndo(p2, "Create P2");
             ClearOpponent(p1);
             ClearOpponent(p2);
+            // 복제로 이미 연결돼 있지만, 둘이 같은 에셋을 보도록 명시적으로 다시 지정
+            TuningSetup.AssignTo(p2, tuning);
 
             // 2) 카메라 좌우 분할. 오디오 리스너는 P1 것 하나만 남긴다
             UnityCamera p1Cam = p1.GetComponentInChildren<UnityCamera>(true);
@@ -143,6 +149,7 @@ namespace MyDongari.EditorTools
 
             EditorUtility.DisplayDialog("Versus Setup",
                 $"{P2Name} 생성, 화면 분할, HUD 2벌, GameManager·PlayLogger·패드 배정 연결 완료.\n" +
+                $"두 기체 모두 수치 에셋 {AssetDatabase.GetAssetPath(tuning)}을 참조합니다.\n" +
                 (dummy != null ? $"{dummy.name}는 1인 모드(GameManager → Versus Mode 끄기)용 상대로 보관했습니다.\n" : "") +
                 "Ctrl+Z 한 번으로 전부 되돌릴 수 있습니다. 확인 후 씬을 저장하세요.", "확인");
         }

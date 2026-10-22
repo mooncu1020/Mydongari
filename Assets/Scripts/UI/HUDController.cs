@@ -60,7 +60,7 @@ namespace MyDongari.UI
         private void UpdateHeat()
         {
             if (heatGaugeArc == null || heatGauge == null) return;
-            heatGaugeArc.SetFill(heatGauge.CurrentHeat / 100f);
+            heatGaugeArc.SetFill(heatGauge.CurrentHeat / heatGauge.MaxHeat);
             heatGaugeArc.SetColor(heatGauge.IsOverheated
                 ? Color.red
                 : new Color(1f, 0.6f, 0f));

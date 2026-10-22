@@ -5,8 +5,8 @@ namespace MyDongari.Movement
     public class BrakeState : MechState
     {
         private float _brakeTimer = 0f;
-        private const float BrakeDuration = 1.0f;
-        private const float SlideWindowDuration = 0.5f;
+        private float BrakeDuration => StateMachine.MechController.Tuning.Movement.brakeDuration;
+        private float SlideWindowDuration => StateMachine.MechController.Tuning.Movement.brakeSlideWindow;
         private bool _slideWindowOpen = true;
 
         public BrakeState(MechStateMachine stateMachine) : base(stateMachine)

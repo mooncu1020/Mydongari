@@ -118,3 +118,14 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (B8) 상대가 기체 정면 ±45° 안, 5m 안일 때 질주 중 공격 버튼 → 태클(또는 대시 어택) 명중
 - [ ] (B8) 상대가 옆(90° 쯤)이나 뒤에 붙은 채로 질주 중 공격 버튼 → 헛침(멈추고 0.5초 경직)
 - [ ] (B8) 1.5초 이상 질주(차징)한 채 상대 옆을 스쳐 지나감 → 자동 태클이 나가지 않고 질주 유지. 정면으로 부딪치면 자동 태클
+
+## Phase C
+
+- [ ] (C1) `Mydongari/Tuning/Create Default Tuning And Assign` 실행 → `Assets/Resources/BernardTuning.asset` 생성, Mech·Mech_P2·DummyTarget에 `MechTuning`이 붙고 Tuning 칸에 같은 에셋
+- [ ] (C1) Mech 인스펙터에서 MeleeSystem·BoostGauge·HeatGauge·MechController·ThrusterLunge·LockOnSystem·AnchorClaw·ImpactSlam의 수치 필드가 더 이상 보이지 않음 (참조 필드만 남음)
+- [ ] (C1) `Copy P1 Values To Tuning` 실행 → 다이얼로그에 바뀐 값 목록. 예: 씬의 `Hard Lock Track Speed`가 10이었다면 `lockOn.hardTrackSpeed: 5 → 10`. Ctrl+Z로 되돌아감
+- [ ] (C1) 플레이 중 에셋의 `punch.damage`를 25 → 50으로 바꾸고 펀치 → 즉시 50 피해 (재시작 없이)
+- [ ] (C1) 플레이 중 `movement.maxRunSpeed`를 크게 바꾸면 바로 달리기 최고 속도가 바뀜. P1·P2(또는 더미) 양쪽에 같이 적용
+- [ ] (C1) 플레이 중 `hitStop.punch`를 0.3으로 → 펀치 명중 시 눈에 띄게 멈춤. `hitStop.enabled` 끄면 멈춤 없음
+- [ ] (C1) 값을 기본값으로 둔 상태에서 Phase A·B 체크 항목(런지 8m, 태클, 가드, 패리, 슬라이딩 락온 해제 등)이 예전과 같게 동작
+- [ ] (C1) `Mech`에서 `MechTuning`을 지워도(또는 Tuning 칸 비워도) `Resources/BernardTuning` 값으로 동작

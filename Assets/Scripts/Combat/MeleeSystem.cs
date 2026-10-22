@@ -9,71 +9,52 @@ namespace MyDongari.Combat
 {
     public class MeleeSystem : MonoBehaviour
     {
-        [Header("근접 설정")]
-        [Tooltip("펀치 사거리(m)")]
-        [SerializeField] private float meleeRange = 3f;
-        [Tooltip("펀치 판정 부채꼴 반각(°). 기체 정면 기준 ±이 각도 안의 상대만 맞는다")]
-        [SerializeField] private float punchHalfAngle = 45f;
-        [SerializeField] private float meleeDamage = 25f;
-        [SerializeField] private float meleeCooldown = 0.5f;
-        [Tooltip("펀치 한 방(발동 기준)마다 오르는 히트")]
-        [SerializeField] private float heatPerPunch = 6f;
+        // 수치는 BernardTuning(펀치·가드·패리·태클·대시 어택)으로 옮겼다.
+        // 숨긴 필드는 씬에 저장된 예전 값을 "Copy P1 Values To Tuning" 메뉴가 읽어 가기 위해서만 남겨 둔다. 런타임에서 읽지 않는다.
+#pragma warning disable 0414
+        [HideInInspector] [SerializeField] private float meleeRange = 3f;
+        [HideInInspector] [SerializeField] private float punchHalfAngle = 45f;
+        [HideInInspector] [SerializeField] private float meleeDamage = 25f;
+        [HideInInspector] [SerializeField] private float meleeCooldown = 0.5f;
+        [HideInInspector] [SerializeField] private float heatPerPunch = 6f;
+        [HideInInspector] [SerializeField] private float guardMeleeReduction = 0.5f;
+        [HideInInspector] [SerializeField] private float guardProjectileReduction = 0.7f;
+        [HideInInspector] [SerializeField] private float guardHeatPerBlock = 10f;
+        [HideInInspector] [SerializeField] private float guardBreakStun = 0.9f;
+        [HideInInspector] [SerializeField] private float guardReraiseDelay = 0.4f;
+        [HideInInspector] [SerializeField] private float parryWindow = 0.15f;
+        [HideInInspector] [SerializeField] private float parryReflectRatio = 1f;
+        [HideInInspector] [SerializeField] private float parryReflectKnockback = 8f;
+        [HideInInspector] [SerializeField] private float guardDamping = 8f;
+        [HideInInspector] [SerializeField] private float guardReleaseDamping = 2f;
+        [HideInInspector] [SerializeField] private float clashKnockback = 10f;
+        [HideInInspector] [SerializeField] private float tackleDamage = 30f;
+        [HideInInspector] [SerializeField] private float tackleKnockback = 8f;
+        [HideInInspector] [SerializeField] private float tackleRange = 5f;
+        [HideInInspector] [SerializeField] private float tackleHalfAngle = 45f;
+        [HideInInspector] [SerializeField] private float tackleCooldown = 1f;
+        [HideInInspector] [SerializeField] private float victimStunDuration = 1.7f;
+        [HideInInspector] [SerializeField] private float tackleRecoveryStun = 0.5f;
+        [HideInInspector] [SerializeField] private float dashAttackDamage = 20f;
+        [HideInInspector] [SerializeField] private float dashAttackKnockback = 6f;
+        [HideInInspector] [SerializeField] private float dashAttackStun = 0f;
+#pragma warning restore 0414
 
-        [Header("가드 설정")]
-        [Tooltip("가드로 받은 근접 계열(펀치·대시 어택·슬램·파일드라이버) 피해 감쇄율. 0.5 = 절반만 들어감")]
-        [Range(0f, 1f)]
-        [SerializeField] private float guardMeleeReduction = 0.5f;
-        [Tooltip("가드로 받은 투사체 피해 감쇄율 (사격 기체용)")]
-        [Range(0f, 1f)]
-        [SerializeField] private float guardProjectileReduction = 0.7f;
-        [Tooltip("가드로 공격을 받을 때마다 오르는 히트")]
-        [SerializeField] private float guardHeatPerBlock = 10f;
-        [Tooltip("과열 상태에서 가드로 받으면 가드가 깨지고 이 시간(초) 동안 스턴")]
-        [SerializeField] private float guardBreakStun = 0.9f;
-        [Tooltip("가드를 내린 뒤 다시 올릴 수 있을 때까지 대기(초). 패리 성공 직후엔 면제")]
-        [SerializeField] private float guardReraiseDelay = 0.4f;
-        [Tooltip("가드를 올린 순간부터 이 시간(초) 안에 맞으면 패리")]
-        [SerializeField] private float parryWindow = 0.15f;
-
-        [Header("패리 반사")]
-        [Tooltip("런지·태클을 패리하면 공격자가 그 공격 피해의 이 비율만큼 받는다")]
-        [SerializeField] private float parryReflectRatio = 1f;
-        [Tooltip("반사 넉백 힘. 공격 자체에 넉백 값이 있으면 그 값을 쓰고, 없을 때만 이 값")]
-        [SerializeField] private float parryReflectKnockback = 8f;
-        [Tooltip("가드 중 리지드바디 감속. 방어 자세로 버티는 느낌")]
-        [SerializeField] private float guardDamping = 8f;
-        [Tooltip("가드를 내렸을 때 돌아갈 일반 이동 감속")]
-        [SerializeField] private float guardReleaseDamping = 2f;
-
-        [Header("맞딜")]
-        [Tooltip("양쪽 펀치가 거의 동시에 나갔을 때 서로 밀려나는 힘")]
-        [SerializeField] private float clashKnockback = 10f;
-
-        [Header("태클 설정")]
-        [SerializeField] private float tackleDamage = 30f;
-        [SerializeField] private float tackleKnockback = 8f;
-        [SerializeField] private float tackleRange = 5f;
-        [Tooltip("태클 판정 부채꼴 반각(°). 기체 정면 기준 ±이 각도 안의 상대만 맞는다 (대시 어택·차징 태클·자동 접촉 공통)")]
-        [SerializeField] private float tackleHalfAngle = 45f;
-        [SerializeField] private float tackleCooldown = 1f;
-        [SerializeField] private float victimStunDuration = 1.7f;
-        [Tooltip("태클을 부딪친 뒤 공격자 자신의 경직(초). 패리당했을 땐 적용 안 함")]
-        [SerializeField] private float tackleRecoveryStun = 0.5f;
-
-        [Header("대시 어택 (전력질주 1.5초 미만 어깨 태클)")]
-        [Tooltip("가드에 막힌다(가드 규칙 적용). 차징 태클과 달리 관통·스턴 없음")]
-        [SerializeField] private float dashAttackDamage = 20f;
-        [SerializeField] private float dashAttackKnockback = 6f;
-        [Tooltip("그대로 맞았을 때 상대 스턴(초). 0이면 없음")]
-        [SerializeField] private float dashAttackStun = 0f;
+        // 값은 캐시하지 않고 매번 에셋에서 읽는다 (플레이 중 조정 반영)
+        private TuningRef _tuning;
+        private BernardTuning.PunchValues Punch => _tuning.Get(this).Punch;
+        private BernardTuning.GuardValues Guard => _tuning.Get(this).Guard;
+        private BernardTuning.ParryValues Parry => _tuning.Get(this).Parry;
+        private BernardTuning.TackleValues Tackle => _tuning.Get(this).Tackle;
+        private BernardTuning.DashAttackValues DashAttack => _tuning.Get(this).DashAttack;
 
         public bool IsGuarding { get; private set; }
         public bool IsParrying { get; private set; }
         public bool IsStunned { get; private set; }
         public float MeleeTimer => _meleeTimer;
-        public float MeleeCooldown => meleeCooldown;
-        public bool CanTackle => _tackleTimer >= tackleCooldown;
-        public float TackleRecoveryStun => tackleRecoveryStun;
+        public float MeleeCooldown => Punch.cooldown;
+        public bool CanTackle => _tackleTimer >= Tackle.cooldown;
+        public float TackleRecoveryStun => Tackle.recoveryStun;
 
         /// <summary>내가 맞았을 때(피격자 쪽) 판정 결과가 정해지면 발생. 로그·연출은 여기 구독.</summary>
         public event Action<HitInfo, HitResult> OnHitResolved;
@@ -106,7 +87,7 @@ namespace MyDongari.Combat
             _input = GetComponent<ICombatInputSource>();
             _identity = MechIdentity.GetOrAdd(gameObject);
             // 0에서 시작하면 시작 직후 "방금 펀치를 낸 상태"로 취급돼 맞딜이 잘못 판정된다
-            _meleeTimer = meleeCooldown;
+            _meleeTimer = Punch.cooldown;
         }
 
         private void Update()
@@ -151,7 +132,7 @@ namespace MyDongari.Combat
 
                 // priority 10: Slide/SideStep(우선순위 5)보다 높음 —
                 // 방어 자세는 플레이어가 의도적으로 유지 중인 상태라 대시 감속 램프보다 우선한다.
-                if (_stateMachine != null) _stateMachine.MechController.RequestDamping(guardDamping, priority: 10);
+                if (_stateMachine != null) _stateMachine.MechController.RequestDamping(Guard.damping, priority: 10);
             }
             else if (IsGuarding)
             {
@@ -163,7 +144,7 @@ namespace MyDongari.Combat
         {
             IsGuarding = false;
             EndParryWindow();
-            if (_stateMachine != null) _stateMachine.MechController.SetBaselineDamping(guardReleaseDamping);
+            if (_stateMachine != null) _stateMachine.MechController.SetBaselineDamping(Guard.releaseDamping);
 
             if (_parryGrace)
             {
@@ -172,7 +153,7 @@ namespace MyDongari.Combat
             }
             else if (applyReraiseDelay)
             {
-                _reraiseTimer = guardReraiseDelay;
+                _reraiseTimer = Guard.reraiseDelay;
             }
         }
 
@@ -194,7 +175,7 @@ namespace MyDongari.Combat
             if (_parryActive)
             {
                 _parryTimer += Time.deltaTime;
-                if (_parryTimer >= parryWindow)
+                if (_parryTimer >= Parry.window)
                 {
                     EndParryWindow();
                 }
@@ -210,9 +191,9 @@ namespace MyDongari.Combat
             EndParryWindow();
             _parryGrace = false;
             _reraiseTimer = 0f;
-            _meleeTimer = meleeCooldown;
-            _tackleTimer = tackleCooldown;
-            if (_stateMachine != null) _stateMachine.MechController.SetBaselineDamping(guardReleaseDamping);
+            _meleeTimer = Punch.cooldown;
+            _tackleTimer = Tackle.cooldown;
+            if (_stateMachine != null) _stateMachine.MechController.SetBaselineDamping(Guard.releaseDamping);
         }
 
         public void ApplyStun(float duration)
@@ -230,7 +211,7 @@ namespace MyDongari.Combat
             if (!IsGuarding) return incomingDamage;
             if (HitInfo.PiercesGuardType(type)) return incomingDamage;
 
-            float reduction = type == AttackType.Projectile ? guardProjectileReduction : guardMeleeReduction;
+            float reduction = type == AttackType.Projectile ? Guard.projectileReduction : Guard.meleeReduction;
             return incomingDamage * (1f - reduction);
         }
 
@@ -243,7 +224,7 @@ namespace MyDongari.Combat
             HitResult result;
 
             // 1) 맞딜: 내가 방금 펀치를 냈는데(쿨다운 절반 이내) 상대 펀치가 들어오면 둘 다 0 피해 + 밀려남
-            if (info.Type == AttackType.Punch && _meleeTimer < meleeCooldown * 0.5f)
+            if (info.Type == AttackType.Punch && _meleeTimer < Punch.cooldown * 0.5f)
             {
                 ApplyClash(info);
                 return Resolve(info, HitResult.Clash);
@@ -273,14 +254,14 @@ namespace MyDongari.Combat
                 result = HitResult.GuardBroken;
                 damage = info.Damage;
                 DropGuard(applyReraiseDelay: false);
-                ApplyStun(Mathf.Max(guardBreakStun, info.StunDuration));
+                ApplyStun(Mathf.Max(Guard.breakStun, info.StunDuration));
             }
             else
             {
                 // 5) 정상 가드
                 result = HitResult.Guarded;
                 damage = ApplyDamage(info.Damage, info.Type);
-                if (_heatGauge != null) _heatGauge.AddHeat(guardHeatPerBlock);
+                if (_heatGauge != null) _heatGauge.AddHeat(Guard.heatPerBlock);
             }
 
             if (_health != null) _health.TakeDamage(damage);
@@ -302,11 +283,11 @@ namespace MyDongari.Combat
 
             // 공격자는 돌진 중이라 가드가 없다 → 감쇄 계산 없이 체력에 바로
             Health attackerHealth = info.Attacker.GetComponent<Health>();
-            if (attackerHealth != null) attackerHealth.TakeDamage(info.Damage * parryReflectRatio);
+            if (attackerHealth != null) attackerHealth.TakeDamage(info.Damage * Parry.reflectRatio);
 
             Vector3 pushBack = info.Attacker.transform.position - transform.position;
             pushBack.y = 0f;
-            float force = info.KnockbackForce > 0f ? info.KnockbackForce : parryReflectKnockback;
+            float force = info.KnockbackForce > 0f ? info.KnockbackForce : Parry.reflectKnockback;
             ApplyKnockback(info.Attacker.GetComponent<Rigidbody>(), pushBack, force);
         }
 
@@ -314,8 +295,9 @@ namespace MyDongari.Combat
         {
             if (info.Attacker == null) return;
             Vector3 knockDir = (transform.position - info.Attacker.transform.position).normalized;
-            ApplyKnockback(_rb, knockDir, clashKnockback);
-            ApplyKnockback(info.Attacker.GetComponent<Rigidbody>(), -knockDir, clashKnockback);
+            float force = Punch.clashKnockback;
+            ApplyKnockback(_rb, knockDir, force);
+            ApplyKnockback(info.Attacker.GetComponent<Rigidbody>(), -knockDir, force);
         }
 
         private static void ApplyKnockback(Rigidbody rb, Vector3 direction, float force)
@@ -346,20 +328,22 @@ namespace MyDongari.Combat
         /// </summary>
         public HitResult? TryTackle(float chargePower, AttackType type)
         {
-            if (_tackleTimer < tackleCooldown) return null;
+            BernardTuning.TackleValues tackle = Tackle;
+            if (_tackleTimer < tackle.cooldown) return null;
             _tackleTimer = 0f;
             OnAttackStarted?.Invoke(type);
 
             bool charged = type == AttackType.Tackle;
             // 차징 태클은 기존 공식(TackleChargePower 반영), 대시 어택은 고정 수치
-            float finalDamage = charged ? tackleDamage * (1f + chargePower) : dashAttackDamage;
-            float finalKnockback = charged ? tackleKnockback * (1f + chargePower) : dashAttackKnockback;
-            float finalStun = charged ? victimStunDuration : dashAttackStun;
+            BernardTuning.DashAttackValues dash = DashAttack;
+            float finalDamage = charged ? tackle.damage * (1f + chargePower) : dash.damage;
+            float finalKnockback = charged ? tackle.knockback * (1f + chargePower) : dash.knockback;
+            float finalStun = charged ? tackle.victimStun : dash.stun;
 
             // 정면 부채꼴 밖이면 헛침 (등 뒤·옆으로 스친 상대는 안 맞는다)
             if (!IsOpponentInTackleArc()) return null;
 
-            Collider[] hits = Physics.OverlapSphere(transform.position, tackleRange);
+            Collider[] hits = Physics.OverlapSphere(transform.position, tackle.range);
             foreach (Collider hit in hits)
             {
                 if (!_identity.IsOpponentCollider(hit)) continue;
@@ -388,19 +372,20 @@ namespace MyDongari.Combat
         /// </summary>
         public HitResult? TryMeleeAttack()
         {
-            if (_meleeTimer < meleeCooldown) return null;
+            BernardTuning.PunchValues punch = Punch;
+            if (_meleeTimer < punch.cooldown) return null;
             // 과열이면 주먹이 안 나간다. 히트게이지가 없는 기체(더미)는 제한 없음
             if (_heatGauge != null && !_heatGauge.CanPunch()) return null;
             _meleeTimer = 0f;
             // 맞든 빗나가든 휘두른 순간 히트가 오른다
-            if (_heatGauge != null) _heatGauge.AddHeat(heatPerPunch);
+            if (_heatGauge != null) _heatGauge.AddHeat(punch.heatPerPunch);
             OnAttackStarted?.Invoke(AttackType.Punch);
 
             MechIdentity opponent = _identity.Opponent;
-            if (opponent == null || !IsInFrontArc(opponent.transform, punchHalfAngle)) return null;
+            if (opponent == null || !IsInFrontArc(opponent.transform, punch.halfAngle)) return null;
 
             // 거리는 콜라이더 표면 기준(OverlapSphere)이라 덩치 큰 기체도 사거리가 자연스럽다
-            Collider[] hits = Physics.OverlapSphere(transform.position, meleeRange);
+            Collider[] hits = Physics.OverlapSphere(transform.position, punch.range);
             foreach (Collider hit in hits)
             {
                 if (!_identity.IsOpponentCollider(hit)) continue;
@@ -408,7 +393,7 @@ namespace MyDongari.Combat
                 HitInfo info = new HitInfo
                 {
                     Type = AttackType.Punch,
-                    Damage = meleeDamage,
+                    Damage = punch.damage,
                     Attacker = gameObject
                 };
                 // 콜라이더가 여러 개여도 한 방은 한 번만 맞는다
@@ -417,11 +402,11 @@ namespace MyDongari.Combat
             return null;
         }
 
-        /// <summary>상대가 태클 부채꼴(정면 ±tackleHalfAngle) 안인지. 거리는 따로 본다. 자동 접촉 태클 판정에도 쓴다.</summary>
+        /// <summary>상대가 태클 부채꼴(정면 ±Tackle.halfAngle) 안인지. 거리는 따로 본다. 자동 접촉 태클 판정에도 쓴다.</summary>
         public bool IsOpponentInTackleArc()
         {
             MechIdentity opponent = _identity.Opponent;
-            return opponent != null && IsInFrontArc(opponent.transform, tackleHalfAngle);
+            return opponent != null && IsInFrontArc(opponent.transform, Tackle.halfAngle);
         }
 
         private bool IsInFrontArc(Transform target, float halfAngle)

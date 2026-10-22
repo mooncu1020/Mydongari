@@ -1,25 +1,24 @@
 using UnityEngine;
 using MyDongari.Camera;
 using MyDongari.Core;
+using MyDongari.Mech;
 
 namespace MyDongari.Combat
 {
     public class LockOnSystem : MonoBehaviour
     {
-        [Header("소프트 락온")]
-        [Tooltip("카메라에서 상대까지 이 거리(m) 안이어야 소프트 락온")]
-        [SerializeField] private float lockOnRange = 50f;
-        [Tooltip("카메라 정면에서 상대 방향까지의 각도(°)가 이 값보다 작아야 소프트 락온")]
-        [SerializeField] private float lockOnAngle = 30f;
+        // 수치는 BernardTuning(락온)으로 옮겼다. 숨긴 필드는 "Copy P1 Values To Tuning" 메뉴용, 런타임에서 읽지 않는다.
+#pragma warning disable 0414
+        [HideInInspector] [SerializeField] private float lockOnRange = 50f;
+        [HideInInspector] [SerializeField] private float lockOnAngle = 30f;
+        [HideInInspector] [SerializeField] private float hardLockEnterRange = 6f;
+        [HideInInspector] [SerializeField] private float hardLockExitRange = 7f;
+        [HideInInspector] [SerializeField] private float hardLockMaxAngle = 120f;
+        [HideInInspector] [SerializeField] private float hardLockTrackSpeed = 5f;
+#pragma warning restore 0414
 
-        [Header("하드 락온")]
-        [Tooltip("기체 위치 기준. 이 거리(m) 안으로 들어오면 하드 락온 + 기본 공격이 펀치로 전환")]
-        [SerializeField] private float hardLockEnterRange = 6f;
-        [Tooltip("기체 위치 기준. 이 거리(m) 밖으로 나가면 하드 락온 해제")]
-        [SerializeField] private float hardLockExitRange = 7f;
-        [Tooltip("카메라 정면 기준 전체 각도(°). 120이면 ±60° 밖에서 해제")]
-        [SerializeField] private float hardLockMaxAngle = 120f;
-        [SerializeField] private float hardLockTrackSpeed = 5f;
+        private TuningRef _tuning;
+        private BernardTuning.LockOnValues T => _tuning.Get(this).LockOn;
 
         private Transform _camera;
         private MechCamera _mechCamera;
@@ -72,10 +71,10 @@ namespace MyDongari.Combat
             Vector3 targetCenter = GetTargetCenter(opponent);
             Vector3 toTarget = targetCenter - _camera.position;
             float distance = toTarget.magnitude;
-            if (distance > lockOnRange) return false;
+            if (distance > T.softRange) return false;
 
             Vector3 dirToTarget = toTarget.normalized;
-            if (Vector3.Angle(_camera.forward, dirToTarget) >= lockOnAngle) return false;
+            if (Vector3.Angle(_camera.forward, dirToTarget) >= T.softAngle) return false;
 
             // 가려짐 판정: 카메라에서 상대 사이에 처음 걸리는 것이 상대여야 한다.
             // 카메라가 내 기체에 붙어 있어서 내 콜라이더가 먼저 걸릴 수 있으니 그건 건너뛴다.
@@ -110,14 +109,14 @@ namespace MyDongari.Combat
 
             if (!IsHardLocked)
             {
-                if (dist <= hardLockEnterRange)
+                if (dist <= T.hardEnterRange)
                 {
                     IsHardLocked = true;
                 }
             }
             else
             {
-                if (dist > hardLockExitRange)
+                if (dist > T.hardExitRange)
                 {
                     ReleaseHardLock();
                     return;
@@ -127,7 +126,7 @@ namespace MyDongari.Combat
                 Vector3 dirToTarget = (Target.position - _camera.position).normalized;
                 float angle = Vector3.Angle(_camera.forward, dirToTarget);
 
-                if (angle > hardLockMaxAngle * 0.5f)
+                if (angle > T.hardMaxAngle * 0.5f)
                 {
                     ReleaseHardLock();
                     return;
@@ -136,7 +135,7 @@ namespace MyDongari.Combat
 
             if (IsHardLocked && _mechCamera != null)
             {
-                _mechCamera.TrackTarget(Target, hardLockTrackSpeed);
+                _mechCamera.TrackTarget(Target, T.hardTrackSpeed);
             }
         }
 

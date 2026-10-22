@@ -115,7 +115,7 @@
 
 ## Phase C — 로케테스트 다듬기
 
-### [ ] C1. 튜닝 에셋 통합
+### [x] C1. 튜닝 에셋 통합
 - 조정 가능한 전투·이동 수치(이동 속도, 부스트, 히트, 가드, 패리, 런지, 태클, 대시 어택, 펀치, 스킬, 락온, 히트스톱)를 ScriptableObject `BernardTuning` 하나로 옮긴다.
 - 두 기체가 같은 에셋을 참조하고, 플레이 중에 값을 바꾸면 바로 반영된다 (매 프레임 읽거나 OnValidate로 갱신).
 - 기본 에셋 생성 메뉴, 현재 P1 기체 인스펙터 값을 에셋으로 복사하는 메뉴. `Setup Versus Scene`도 이 에셋을 두 기체에 연결.
@@ -154,3 +154,4 @@
 - **B6** 완료. 바뀐 파일: `PlayLogger`(재작성: 이벤트 구독, round·dist_band 컬럼, events/summary CSV, 매치 종료 시 저장, 재매치 시 카운트 리셋), `AnchorClaw`(`OnGrabbed`), `MechStateMachine`(`OnStateChanged`). 전투 코드에서 로거 참조 없음. 위험: 로그 파일을 Assets에 쓰는 기존 방식 유지 — 에디터에서 임포트 대상이 된다.
 - **B7** 완료. 바뀐 파일: 신규 `Core/HitStop`(OnHitResolved 구독, timeScale 0을 실제 시간으로 유지), `GameManager`(없으면 자동 부착), `VersusSceneSetup`(GameManager에 추가). 스턴·쿨다운은 scaled 시간이라 히트스톱 동안 멈춤 → 런지 스턴이 히트스톱 뒤부터 흐름. 입력 타이밍(제스처·더블탭)은 이미 unscaled. 위험: 히트스톱 중에도 마우스 시점 회전은 움직인다(카메라 입력은 시간 배율 무관).
 - **B8** (질문 반영, TASKS 외 추가 작업) 완료. 바뀐 파일: `MeleeSystem`(`tackleHalfAngle` 45°, `IsOpponentInTackleArc()`, 펀치·태클 부채꼴 판정 공용화), `SprintState`(자동 접촉 태클도 부채꼴 안일 때만), `GAME_SPEC.md`(5장 태클 판정 범위), `QUESTIONS.md`(B 질문 답 기록). 위험: 낮음. 정면 판정은 기체 몸통 방향(transform.forward) 기준이라 질주 중 카메라와 몸통이 어긋나 있으면 체감 범위가 다를 수 있음.
+- **C1** 완료. 바뀐 파일: 신규 `Mech/BernardTuning`(ScriptableObject, 묶음 13개), 신규 `Mech/MechTuning`(기체 참조 + `TuningRef` 지연 조회), 신규 `Editor/TuningSetup`(메뉴 2개: 생성·연결, P1 값 복사), `MechController`·상태 5개(SideStep/Slide/QuickTurn/Brake/Sprint의 const 포함), `BoostGauge`, `HeatGauge`(`MaxHeat`), `MeleeSystem`, `ThrusterLunge`, `LockOnSystem`, `AnchorClaw`(박혀 있던 3m/4m도), `ImpactSlam`, `HitStop`, `HUDController`(히트 게이지 /100 → MaxHeat), `VersusSceneSetup`·`MechComponentSetup`(에셋 연결). 기존 필드는 `[HideInInspector]`로 숨김(복사 메뉴용, 런타임 미사용 — 스크립트로 확인). 위험: 에셋 연결 전엔 코드 기본값으로 동작하므로 씬에서 튜닝한 값(예: 하드 락온 추적 속도 10)이 Copy 메뉴 실행 전까지 적용되지 않는다. 플레이 중 바꾼 에셋 값은 멈춰도 남는다.

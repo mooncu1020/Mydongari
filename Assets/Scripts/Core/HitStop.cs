@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using MyDongari.Combat;
+using MyDongari.Mech;
 
 namespace MyDongari.Core
 {
@@ -14,16 +15,14 @@ namespace MyDongari.Core
     /// </summary>
     public class HitStop : MonoBehaviour
     {
-        [Header("히트스톱")]
-        [SerializeField] private bool enableHitStop = true;
-
-        [Header("길이 (초, 실제 시간)")]
-        [SerializeField] private float punchDuration = 0.05f;
-        [Tooltip("런지·차징 태클·대시 어택")]
-        [SerializeField] private float lungeTackleDuration = 0.08f;
-        [SerializeField] private float clashDuration = 0.12f;
-        [Tooltip("슬램·파일드라이버·투사체. 0이면 없음")]
-        [SerializeField] private float otherDuration = 0f;
+        // 수치는 BernardTuning(히트스톱)으로 옮겼다. 숨긴 필드는 "Copy P1 Values To Tuning" 메뉴용, 런타임에서 읽지 않는다.
+#pragma warning disable 0414
+        [HideInInspector] [SerializeField] private bool enableHitStop = true;
+        [HideInInspector] [SerializeField] private float punchDuration = 0.05f;
+        [HideInInspector] [SerializeField] private float lungeTackleDuration = 0.08f;
+        [HideInInspector] [SerializeField] private float clashDuration = 0.12f;
+        [HideInInspector] [SerializeField] private float otherDuration = 0f;
+#pragma warning restore 0414
 
         private float _endTime;
         private bool _active;
@@ -44,30 +43,33 @@ namespace MyDongari.Core
             MeleeSystem melee = mech.GetComponent<MeleeSystem>();
             if (melee == null) return;
 
-            Action<HitInfo, HitResult> onHit = OnHitResolved;
+            // 히트스톱은 GameManager에 하나뿐이라, 맞은 기체의 튜닝 에셋에서 길이를 읽는다
+            MechTuning tuning = mech.GetComponent<MechTuning>();
+            Action<HitInfo, HitResult> onHit = (info, result) => OnHitResolved(tuning, info, result);
             melee.OnHitResolved += onHit;
             _unsubscribers.Add(() => melee.OnHitResolved -= onHit);
         }
 
-        private void OnHitResolved(HitInfo info, HitResult result)
+        private void OnHitResolved(MechTuning tuning, HitInfo info, HitResult result)
         {
-            if (!enableHitStop) return;
-            Request(DurationFor(info.Type, result));
+            BernardTuning.HitStopValues values = (tuning != null ? tuning.Values : BernardTuning.Fallback).HitStop;
+            if (!values.enabled) return;
+            Request(DurationFor(values, info.Type, result));
         }
 
-        private float DurationFor(AttackType type, HitResult result)
+        private static float DurationFor(BernardTuning.HitStopValues values, AttackType type, HitResult result)
         {
             // 패리는 "안 맞음"이라 멈추지 않는다
             if (result == HitResult.Parried) return 0f;
-            if (result == HitResult.Clash) return clashDuration;
+            if (result == HitResult.Clash) return values.clash;
 
             switch (type)
             {
-                case AttackType.Punch: return punchDuration;
+                case AttackType.Punch: return values.punch;
                 case AttackType.Lunge:
                 case AttackType.Tackle:
-                case AttackType.DashAttack: return lungeTackleDuration;
-                default: return otherDuration;
+                case AttackType.DashAttack: return values.lungeTackle;
+                default: return values.other;
             }
         }
 

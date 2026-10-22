@@ -5,7 +5,7 @@ namespace MyDongari.Movement
     public class QuickTurnState : MechState
     {
         private float _quickTurnTimer = 0f;
-        private const float QuickTurnDuration = 0.15f;
+        private float QuickTurnDuration => StateMachine.MechController.Tuning.Movement.quickTurnDuration;
         private Quaternion _targetRotation;
 
         public QuickTurnState(MechStateMachine stateMachine) : base(stateMachine)

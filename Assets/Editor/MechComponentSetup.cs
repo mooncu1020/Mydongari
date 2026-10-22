@@ -20,6 +20,7 @@ namespace MyDongari.EditorTools
             int undoGroup = Undo.GetCurrentGroup();
 
             int added = 0;
+            MyDongari.Mech.BernardTuning tuning = TuningSetup.EnsureAsset(out _);
             foreach (PlayerInput playerInput in Object.FindObjectsByType<PlayerInput>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 GameObject mech = playerInput.gameObject;
@@ -29,11 +30,13 @@ namespace MyDongari.EditorTools
                     Undo.AddComponent<ThrusterLunge>(mech);
                     added++;
                 }
+                if (mech.GetComponent<MyDongari.Mech.MechTuning>() == null) added++;
+                TuningSetup.AssignTo(mech, tuning);
                 EditorSceneManager.MarkSceneDirty(mech.scene);
             }
 
             Undo.CollapseUndoOperations(undoGroup);
-            EditorUtility.DisplayDialog("Mech Components", $"추가한 컴포넌트: {added}개 (ThrusterLunge). 씬을 저장하세요.", "확인");
+            EditorUtility.DisplayDialog("Mech Components", $"추가한 컴포넌트: {added}개 (ThrusterLunge, MechTuning). 수치 에셋: {AssetDatabase.GetAssetPath(tuning)}. 씬을 저장하세요.", "확인");
         }
     }
 }

@@ -1,5 +1,6 @@
 using UnityEngine;
 using MyDongari.Combat;
+using MyDongari.Mech;
 
 namespace MyDongari.Movement
 {
@@ -7,10 +8,20 @@ namespace MyDongari.Movement
     {
         private float _tackleChargeTimer = 0f;
         private bool _tackleRequested = false;
+        private BernardTuning.TackleValues Tackle => StateMachine.MechController.Tuning.Tackle;
         // 차징 상태로 이 거리(m) 안에 상대가 닿으면 자동 태클 (기존 동작 유지)
-        private const float ContactRadius = 2f;
-        public bool IsTackleCharged => _tackleChargeTimer >= 1.5f;
-        public float TackleChargePower => Mathf.Clamp01((_tackleChargeTimer - 1.5f) / 1.5f);
+        private float ContactRadius => Tackle.contactRadius;
+        public bool IsTackleCharged => _tackleChargeTimer >= Tackle.chargeStartTime;
+        /// <summary>차징 시작(1.5초)에서 0, 최대 차징(3초)에서 1. 태클 피해·넉백 배율에 쓴다.</summary>
+        public float TackleChargePower
+        {
+            get
+            {
+                float span = Tackle.fullChargeTime - Tackle.chargeStartTime;
+                if (span <= 0f) return IsTackleCharged ? 1f : 0f;
+                return Mathf.Clamp01((_tackleChargeTimer - Tackle.chargeStartTime) / span);
+            }
+        }
 
         public SprintState(MechStateMachine stateMachine) : base(stateMachine)
         {

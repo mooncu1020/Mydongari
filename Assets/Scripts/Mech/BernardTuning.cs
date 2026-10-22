@@ -1,0 +1,336 @@
+using System;
+using UnityEngine;
+
+namespace MyDongari.Mech
+{
+    /// <summary>
+    /// 버나드 표준형의 조정 가능한 전투·이동 수치 전부. 두 기체가 같은 에셋을 참조한다(미러전).
+    /// 컴포넌트들은 값을 캐시하지 않고 쓸 때마다 여기서 읽으므로, 플레이 중 에셋을 고치면 바로 반영된다.
+    /// 주의: 플레이 중 고친 에셋 값은 플레이를 멈춰도 그대로 남는다(컴포넌트 값과 다름).
+    /// </summary>
+    [CreateAssetMenu(menuName = "Mydongari/Bernard Tuning", fileName = "BernardTuning")]
+    public class BernardTuning : ScriptableObject
+    {
+        /// <summary>Resources 폴더 기준 기본 에셋 이름. 기체에 연결이 안 돼 있으면 이걸 찾는다.</summary>
+        public const string ResourcesName = "BernardTuning";
+
+        [Serializable]
+        public class MovementValues
+        {
+            [Header("가속 (AddForce, m/s²)")]
+            public float walkSpeed = 10f;
+            public float runSpeed = 20f;
+            public float sprintSpeed = 35f;
+
+            [Header("최대 속도 (m/s)")]
+            public float maxWalkSpeed = 5f;
+            public float maxRunSpeed = 10f;
+            public float maxSprintSpeed = 20f;
+
+            [Header("회전")]
+            public float rotationSpeed = 15f;
+            [Tooltip("하드 락온 중 몸통이 상대 쪽으로 자동으로 도는 속도 (수평 회전만)")]
+            public float hardLockTurnSpeed = 10f;
+
+            [Header("무게감 (관성 보정)")]
+            [Tooltip("0 = 관성 없음, 1 = 방향 반대로 꺾을 때 추진력 최대 90%까지 깎임")]
+            public float turnResistance = 0.6f;
+            [Tooltip("정지 상태에서 출발할 때 목표 가속도까지 도달하는 데 걸리는 시간(초). 0이면 즉시 풀파워")]
+            public float spinUpTime = 0.25f;
+
+            [Header("사이드스텝")]
+            public float sideStepDuration = 0.3f;
+            public float sideStepSpeed = 20f;
+
+            [Header("슬라이딩")]
+            [Tooltip("미끄러지는 시간(초). 이 동안 상대의 락온이 끊긴다")]
+            public float slideDuration = 0.8f;
+            public float slideSpeed = 25f;
+
+            [Header("초신지선회 / 제동")]
+            public float quickTurnDuration = 0.15f;
+            [Tooltip("전력질주를 놓은 뒤 제동 상태 시간(초)")]
+            public float brakeDuration = 1f;
+            [Tooltip("제동 시작 후 이 시간(초) 안에 슬라이딩 입력이 들어오면 슬라이딩")]
+            public float brakeSlideWindow = 0.5f;
+        }
+
+        [Serializable]
+        public class BoostValues
+        {
+            public float maxBoost = 100f;
+            [Tooltip("걷기/정지로 바뀐 뒤 회복이 시작되기까지(초)")]
+            public float recoveryDelay = 0.5f;
+            [Tooltip("초당 회복량")]
+            public float recoveryRate = 25f;
+            [Tooltip("전력질주 초당 소모량")]
+            public float sprintDrainRate = 5f;
+            [Tooltip("탈진(0%) 후 걷기/정지로 회복해 최대치의 이 비율에 도달하면 탈진 해제")]
+            [Range(0f, 1f)] public float exhaustRecoverRatio = 0.5f;
+
+            [Header("소모량")]
+            public float sideStepCost = 10f;
+            public float quickTurnCost = 10f;
+            public float slideCost = 10f;
+        }
+
+        [Serializable]
+        public class HeatValues
+        {
+            public float maxHeat = 100f;
+            [Tooltip("초당 냉각량")]
+            public float coolingRate = 20f;
+            [Tooltip("전력질주 중 냉각 속도 감소율. 0.7이면 냉각 속도가 평소의 30%로 떨어진다")]
+            [Range(0f, 1f)] public float sprintCoolingReduction = 0.7f;
+        }
+
+        [Serializable]
+        public class PunchValues
+        {
+            [Tooltip("펀치 사거리(m)")]
+            public float range = 3f;
+            [Tooltip("펀치 판정 부채꼴 반각(°). 기체 정면 기준 ±이 각도 안의 상대만 맞는다")]
+            public float halfAngle = 45f;
+            public float damage = 25f;
+            public float cooldown = 0.5f;
+            [Tooltip("펀치 한 방(발동 기준)마다 오르는 히트")]
+            public float heatPerPunch = 6f;
+            [Tooltip("맞딜: 양쪽 펀치가 거의 동시에 나갔을 때 서로 밀려나는 힘")]
+            public float clashKnockback = 10f;
+        }
+
+        [Serializable]
+        public class GuardValues
+        {
+            [Tooltip("가드로 받은 근접 계열(펀치·대시 어택·슬램) 피해 감쇄율. 0.5 = 절반만 들어감")]
+            [Range(0f, 1f)] public float meleeReduction = 0.5f;
+            [Tooltip("가드로 받은 투사체 피해 감쇄율 (사격 기체용)")]
+            [Range(0f, 1f)] public float projectileReduction = 0.7f;
+            [Tooltip("가드로 공격을 받을 때마다 오르는 히트")]
+            public float heatPerBlock = 10f;
+            [Tooltip("과열 상태에서 가드로 받으면 가드가 깨지고 이 시간(초) 동안 스턴")]
+            public float breakStun = 0.9f;
+            [Tooltip("가드를 내린 뒤 다시 올릴 수 있을 때까지 대기(초). 패리 성공 직후엔 면제")]
+            public float reraiseDelay = 0.4f;
+            [Tooltip("가드 중 리지드바디 감속. 방어 자세로 버티는 느낌")]
+            public float damping = 8f;
+            [Tooltip("가드를 내렸을 때 돌아갈 일반 이동 감속")]
+            public float releaseDamping = 2f;
+        }
+
+        [Serializable]
+        public class ParryValues
+        {
+            [Tooltip("가드를 올린 순간부터 이 시간(초) 안에 맞으면 패리")]
+            public float window = 0.15f;
+            [Tooltip("런지·태클·대시 어택을 패리하면 공격자가 그 공격 피해의 이 비율만큼 받는다")]
+            public float reflectRatio = 1f;
+            [Tooltip("반사 넉백 힘. 공격 자체에 넉백 값이 있으면 그 값을 쓰고, 없을 때만 이 값")]
+            public float reflectKnockback = 8f;
+        }
+
+        [Serializable]
+        public class TackleValues
+        {
+            [Tooltip("차징 태클 기본 피해. 차징이 길수록 최대 2배")]
+            public float damage = 30f;
+            [Tooltip("차징 태클 기본 넉백. 차징이 길수록 최대 2배")]
+            public float knockback = 8f;
+            [Tooltip("태클 판정 거리(m). 대시 어택 공통")]
+            public float range = 5f;
+            [Tooltip("태클 판정 부채꼴 반각(°). 대시 어택·자동 접촉 태클 공통")]
+            public float halfAngle = 45f;
+            [Tooltip("태클·대시 어택 재사용 대기(초)")]
+            public float cooldown = 1f;
+            [Tooltip("차징 태클을 그대로 맞은 상대의 스턴(초)")]
+            public float victimStun = 1.7f;
+            [Tooltip("태클을 부딪친 뒤(또는 헛친 뒤) 공격자 자신의 경직(초). 패리당했을 땐 적용 안 함")]
+            public float recoveryStun = 0.5f;
+
+            [Header("차징")]
+            [Tooltip("전력질주를 이 시간(초) 이상 유지하면 차징 태클 (미만은 대시 어택)")]
+            public float chargeStartTime = 1.5f;
+            [Tooltip("전력질주를 이 시간(초) 유지하면 차징 최대 (피해·넉백 2배)")]
+            public float fullChargeTime = 3f;
+            [Tooltip("차징 상태로 이 거리(m) 안에 상대가 정면으로 닿으면 자동 태클")]
+            public float contactRadius = 2f;
+        }
+
+        [Serializable]
+        public class DashAttackValues
+        {
+            [Tooltip("가드에 막힌다(가드 규칙 적용). 차징 태클과 달리 관통·스턴 없음")]
+            public float damage = 20f;
+            public float knockback = 6f;
+            [Tooltip("그대로 맞았을 때 상대 스턴(초). 0이면 없음")]
+            public float stun = 0f;
+        }
+
+        [Serializable]
+        public class LungeValues
+        {
+            [Header("돌진")]
+            [Tooltip("돌진 거리(m)")]
+            public float distance = 8f;
+            [Tooltip("돌진 속도(m/s)")]
+            public float speed = 30f;
+            [Tooltip("돌진이 끝날 때 남기는 속도 비율. 0이면 딱 멈춤")]
+            [Range(0f, 1f)] public float endSpeedRatio = 0.2f;
+            [Tooltip("벽 등에 막혀 거리를 못 채울 때를 대비한 최대 돌진 시간 = (거리/속도) × 이 배수")]
+            public float timeoutMultiplier = 1.5f;
+            [Tooltip("발동 시 소모하는 부스트. 탈진이면 발동 안 함")]
+            public float boostCost = 15f;
+
+            [Header("명중")]
+            [Tooltip("명중 피해 (펀치보다 약간 낮게)")]
+            public float damage = 15f;
+            [Tooltip("명중 시 상대 스턴(초). 후속 펀치 1회가 들어갈 틈")]
+            public float hitStun = 0.5f;
+            [Tooltip("명중 시 상대 넉백. 0이면 밀지 않음(후속 펀치 거리 유지)")]
+            public float hitKnockback = 0f;
+            [Tooltip("명중 판정 구의 반경(m)")]
+            public float hitRadius = 1.2f;
+            [Tooltip("명중 판정 구를 기체 앞쪽으로 내미는 거리(m)")]
+            public float hitForwardOffset = 1f;
+
+            [Header("빗나감")]
+            [Tooltip("빗나간 뒤 이 시간(초) 동안 하드 락온이 다시 걸리지 않는다 (사이드스텝으로 피한 상대의 반격 틈)")]
+            public float missLockDelay = 0.6f;
+        }
+
+        [Serializable]
+        public class AnchorClawValues
+        {
+            public float pullSpeed = 15f;
+            [Tooltip("최대 당김 시간(초)")]
+            public float pullDuration = 1.5f;
+            [Tooltip("상대가 이 거리(m) 안으로 끌려오면 당김 종료")]
+            public float pullStopDistance = 3f;
+            public float cooldown = 5f;
+
+            [Header("훅 연출")]
+            [Tooltip("그랩이 박히는 순간 확 끌려오는 초기 속도. pullSpeed보다 커야 '훅' 느낌이 남")]
+            public float hookImpactSpeed = 32f;
+            [Tooltip("초기 훅 속도에서 pullSpeed로 줄어드는 데 걸리는 시간(초)")]
+            public float hookEaseTime = 0.2f;
+            [Tooltip("그랩이 박히는 순간 상대에게 거는 짧은 경직(초)")]
+            public float hookImpactStun = 0.25f;
+
+            [Header("파일드라이버 (가드·패리 관통)")]
+            public float pileDriverDamage = 50f;
+            [Tooltip("이 거리(m) 안이어야 파일드라이버가 나간다")]
+            public float pileDriverRange = 4f;
+        }
+
+        [Serializable]
+        public class ImpactSlamValues
+        {
+            public float range = 8f;
+            [Tooltip("전방 부채꼴 전체 각도(°)")]
+            public float angle = 90f;
+            public float damage = 60f;
+            public float knockback = 15f;
+            [Tooltip("넉백 방향의 위쪽 성분. 클수록 더 띄운다")]
+            public float knockbackLift = 0.3f;
+            public float cooldown = 8f;
+        }
+
+        [Serializable]
+        public class LockOnValues
+        {
+            [Header("소프트 락온")]
+            [Tooltip("카메라에서 상대까지 이 거리(m) 안이어야 소프트 락온")]
+            public float softRange = 50f;
+            [Tooltip("카메라 정면에서 상대 방향까지의 각도(°)가 이 값보다 작아야 소프트 락온 (반각)")]
+            public float softAngle = 30f;
+
+            [Header("하드 락온")]
+            [Tooltip("기체 위치 기준. 이 거리(m) 안으로 들어오면 하드 락온 + 기본 공격이 펀치로 전환")]
+            public float hardEnterRange = 6f;
+            [Tooltip("기체 위치 기준. 이 거리(m) 밖으로 나가면 하드 락온 해제")]
+            public float hardExitRange = 7f;
+            [Tooltip("카메라 정면 기준 전체 각도(°). 120이면 ±60° 밖에서 해제")]
+            public float hardMaxAngle = 120f;
+            [Tooltip("하드 락온 중 카메라가 상대를 따라가는 속도")]
+            public float hardTrackSpeed = 5f;
+        }
+
+        [Serializable]
+        public class HitStopValues
+        {
+            public bool enabled = true;
+            [Header("길이 (초, 실제 시간)")]
+            public float punch = 0.05f;
+            [Tooltip("런지·차징 태클·대시 어택")]
+            public float lungeTackle = 0.08f;
+            public float clash = 0.12f;
+            [Tooltip("슬램·파일드라이버·투사체. 0이면 없음")]
+            public float other = 0f;
+        }
+
+        [Header("이동")]
+        [SerializeField] private MovementValues movement = new MovementValues();
+        [Header("부스트")]
+        [SerializeField] private BoostValues boost = new BoostValues();
+        [Header("히트")]
+        [SerializeField] private HeatValues heat = new HeatValues();
+        [Header("펀치 / 맞딜")]
+        [SerializeField] private PunchValues punch = new PunchValues();
+        [Header("가드")]
+        [SerializeField] private GuardValues guard = new GuardValues();
+        [Header("패리")]
+        [SerializeField] private ParryValues parry = new ParryValues();
+        [Header("태클 (차징)")]
+        [SerializeField] private TackleValues tackle = new TackleValues();
+        [Header("대시 어택 (전력질주 1.5초 미만 어깨 태클)")]
+        [SerializeField] private DashAttackValues dashAttack = new DashAttackValues();
+        [Header("스러스터 런지")]
+        [SerializeField] private LungeValues lunge = new LungeValues();
+        [Header("스킬: 앵커 클로")]
+        [SerializeField] private AnchorClawValues anchorClaw = new AnchorClawValues();
+        [Header("스킬: 임팩트 슬램")]
+        [SerializeField] private ImpactSlamValues impactSlam = new ImpactSlamValues();
+        [Header("락온")]
+        [SerializeField] private LockOnValues lockOn = new LockOnValues();
+        [Header("히트스톱")]
+        [SerializeField] private HitStopValues hitStop = new HitStopValues();
+
+        public MovementValues Movement => movement;
+        public BoostValues Boost => boost;
+        public HeatValues Heat => heat;
+        public PunchValues Punch => punch;
+        public GuardValues Guard => guard;
+        public ParryValues Parry => parry;
+        public TackleValues Tackle => tackle;
+        public DashAttackValues DashAttack => dashAttack;
+        public LungeValues Lunge => lunge;
+        public AnchorClawValues AnchorClaw => anchorClaw;
+        public ImpactSlamValues ImpactSlam => impactSlam;
+        public LockOnValues LockOn => lockOn;
+        public HitStopValues HitStop => hitStop;
+
+        private static BernardTuning _fallback;
+
+        /// <summary>
+        /// 기체에 연결된 에셋이 없을 때 쓸 값: Resources/BernardTuning → 없으면 코드 기본값 인스턴스.
+        /// 더미처럼 MechTuning이 없는 기체도 같은 Resources 에셋을 읽게 된다.
+        /// </summary>
+        public static BernardTuning Fallback
+        {
+            get
+            {
+                if (_fallback == null)
+                {
+                    _fallback = Resources.Load<BernardTuning>(ResourcesName);
+                    if (_fallback == null)
+                    {
+                        _fallback = CreateInstance<BernardTuning>();
+                        _fallback.name = "BernardTuning (코드 기본값)";
+                        _fallback.hideFlags = HideFlags.DontSave;
+                    }
+                }
+                return _fallback;
+            }
+        }
+    }
+}

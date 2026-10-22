@@ -47,3 +47,14 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 29. (B6) `PlayLogger`: Player1/Player2를 비워 두면 GameManager의 현재 대결 기체(1인 모드면 P2 = 더미)를 쓴다. 새 필드 `Event File Name`(events), `Summary File Name`(summary), `Near Range 6`, `Mid Range 12`. 로그 파일은 기존처럼 `Assets/` 폴더(빌드에선 `*_Data/`)에 `playlog_*.csv`, `events_*.csv`, `summary_*.csv`로 생긴다. 에디터에서 로그가 Assets에 쌓이면 임포트되니 테스트 후 정리.
 30. (B7) `GameManager` 오브젝트에 `HitStop` 컴포넌트(Versus 세팅 메뉴가 추가, 없으면 런타임 자동 부착). `Enable Hit Stop`, 길이: 펀치 0.05 / 런지·태클·대시 어택 0.08 / 맞딜 0.12 / 그 외 0(슬램·파일드라이버). 이미 Versus 세팅을 했다면 GameManager에 `HitStop`을 직접 Add Component 해야 수치가 저장된다.
 31. (B8) `MeleeSystem` → `Tackle Half Angle`(기본 45°) 새 필드: 버튼 태클·대시 어택·자동 접촉 태클 공통 정면 부채꼴.
+
+## Phase C
+
+32. (C1) **메뉴 `Mydongari/Tuning/Create Default Tuning And Assign` 실행** → 저장. `Assets/Resources/BernardTuning.asset`을 코드 기본값으로 만들고(이미 있으면 그걸 씀), 씬의 모든 기체(MeleeSystem이 있는 오브젝트: Mech, Mech_P2, DummyTarget)에 `MechTuning` 컴포넌트를 붙여 이 에셋을 연결한다. Versus 세팅·Add Missing Mech Components 메뉴도 이제 같은 연결을 한다.
+33. (C1) 씬에서 조정해 둔 예전 값이 있으면 **`Mydongari/Tuning/Copy P1 Values To Tuning`** 실행. GameManager Player1 기체의 예전 값(이동·부스트·히트·펀치·가드·패리·태클·대시 어택·런지·락온·앵커 클로·슬램)과 GameManager의 HitStop 값을 에셋으로 복사한다. 바뀐 항목이 다이얼로그에 나온다. Ctrl+Z로 되돌릴 수 있다.
+    - 주의: A9에서 이름이 바뀐 `Sprint Cooling Reduction`처럼 씬에 한 번도 저장되지 않은 값은 코드 기본값이 복사된다.
+34. (C1) **기존 개별 필드는 삭제하지 않고 `[HideInInspector]`로 숨겼다.** 삭제하면 씬에 저장된 예전 값을 33번 복사 메뉴가 읽을 수 없기 때문이다. 숨긴 필드는 런타임에서 읽지 않는다(인스펙터에서 안 보임). 복사를 마친 뒤 원하면 다음 작업에서 숨긴 필드를 지울 수 있다.
+35. (C1) 수치 조정은 이제 **`BernardTuning` 에셋 하나**에서 한다(Project 창 `Assets/Resources/BernardTuning`). 두 기체가 같은 에셋을 보므로 한 번 바꾸면 양쪽에 적용된다. 플레이 중 바꾼 값은 즉시 반영되고, **플레이를 멈춰도 에셋에 그대로 남는다**(컴포넌트 값과 다름). 실험 전 값을 되돌리려면 git으로 에셋을 되돌린다.
+36. (C1) 에셋으로 옮기지 않은 수치(컴포넌트에 그대로 있음): `Health → Max Health`(더미·기타 오브젝트와 공용), `InputReader`(스틱 데드존·달리기 경계·제스처·더블탭), `MechCamera`(감도·FOV), `WeaponSystem`·`Projectile`(사격 기체용), `MeleeDummy`(더미 AI), `GameManager`(라운드), `PlayLogger`.
+37. (C1) DummyTarget도 같은 에셋 값을 쓴다(연결이 없어도 `Resources/BernardTuning`을 읽음). 예전에 더미의 `MeleeSystem`에 따로 넣어 둔 값은 더 이상 쓰이지 않는다.
+38. (C1) 새로 에셋으로 들어온 값(예전엔 코드에 박혀 있던 것): 사이드스텝 0.3초·20, 슬라이딩 0.8초·25, 초신지선회 0.15초, 제동 1초·슬라이딩 입력 창 0.5초, 태클 차징 시작 1.5초·최대 3초·자동 접촉 반경 2, 앵커 당김 종료 거리 3·파일드라이버 거리 4. 값은 예전과 같다.

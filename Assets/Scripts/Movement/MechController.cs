@@ -9,28 +9,33 @@ namespace MyDongari.Movement
 {
     public class MechController : MonoBehaviour
     {
-        [Header("이동 수치")]
-        [SerializeField] private float walkSpeed = 10f;
-        [SerializeField] private float runSpeed = 20f;
-        [SerializeField] private float sprintSpeed = 35f;
+        // 이동 수치는 BernardTuning(이동)으로 옮겼다. 아래 숨긴 필드는 씬에 저장된 예전 값을
+        // "Copy P1 Values To Tuning" 메뉴가 읽어 가기 위해서만 남겨 둔다. 런타임 코드는 읽지 않는다.
+#pragma warning disable 0414
+        [HideInInspector] [SerializeField] private float walkSpeed = 10f;
+        [HideInInspector] [SerializeField] private float runSpeed = 20f;
+        [HideInInspector] [SerializeField] private float sprintSpeed = 35f;
+        [HideInInspector] [SerializeField] private float maxWalkSpeed = 5f;
+        [HideInInspector] [SerializeField] private float maxRunSpeed = 10f;
+        [HideInInspector] [SerializeField] private float maxSprintSpeed = 20f;
+        [HideInInspector] [SerializeField] private float rotationSpeed = 15f;
+        [HideInInspector] [SerializeField] private float hardLockTurnSpeed = 10f;
+        [HideInInspector] [SerializeField] private float turnResistance = 0.6f;
+        [HideInInspector] [SerializeField] private float spinUpTime = 0.25f;
+#pragma warning restore 0414
 
-        [Header("최대 속도")]
-        [SerializeField] private float maxWalkSpeed = 5f;
-        [SerializeField] private float maxRunSpeed = 10f;
-        [SerializeField] private float maxSprintSpeed = 20f;
+        private TuningRef _tuning;
+        /// <summary>이 기체의 수치 에셋. 상태들도 이걸 통해 읽는다.</summary>
+        public BernardTuning Tuning => _tuning.Get(this);
+        private BernardTuning.MovementValues Move => Tuning.Movement;
 
-        [Header("회전 수치")]
-        [SerializeField] private float rotationSpeed = 15f;
-        [Tooltip("하드 락온 중 몸통이 상대 쪽으로 자동으로 도는 속도 (수평 회전만)")]
-        [SerializeField] private float hardLockTurnSpeed = 10f;
-
-        public float WalkSpeed => walkSpeed;
-        public float RunSpeed => runSpeed;
-        public float SprintSpeed => sprintSpeed;
-        public float MaxWalkSpeed => maxWalkSpeed;
-        public float MaxRunSpeed => maxRunSpeed;
-        public float MaxSprintSpeed => maxSprintSpeed;
-        public float RotationSpeed => rotationSpeed;
+        public float WalkSpeed => Move.walkSpeed;
+        public float RunSpeed => Move.runSpeed;
+        public float SprintSpeed => Move.sprintSpeed;
+        public float MaxWalkSpeed => Move.maxWalkSpeed;
+        public float MaxRunSpeed => Move.maxRunSpeed;
+        public float MaxSprintSpeed => Move.maxSprintSpeed;
+        public float RotationSpeed => Move.rotationSpeed;
 
         public Rigidbody Rb { get; private set; }
         public InputReader InputReader { get; private set; }
@@ -80,12 +85,6 @@ namespace MyDongari.Movement
             }
         }
 
-        [Header("무게감 (관성 보정)")]
-        [Tooltip("0 = 관성 없음(현재 상태), 1 = 방향 반대로 꺾을 때 추진력 최대 90%까지 깎임")]
-        [SerializeField] private float turnResistance = 0.6f;
-        [Tooltip("정지 상태에서 출발할 때 목표 가속도까지 도달하는 데 걸리는 시간(초). 0이면 즉시 풀파워.")]
-        [SerializeField] private float spinUpTime = 0.25f;
-
         private float _spinUpTimer = 0f;
 
         /// <summary>
@@ -108,11 +107,12 @@ namespace MyDongari.Movement
             float alignment = flatVel.sqrMagnitude > 0.25f
                 ? Vector3.Dot(flatVel.normalized, moveDir)
                 : 1f; // 거의 정지 상태면 저항 없음
-            float turnPenalty = Mathf.Lerp(1f, 1f - turnResistance, (1f - alignment) * 0.5f);
+            float turnPenalty = Mathf.Lerp(1f, 1f - Move.turnResistance, (1f - alignment) * 0.5f);
 
             // 2) 스핀업: 정지→출발 순간에는 풀파워가 아니라 점점 힘이 붙는 느낌
-            _spinUpTimer = Mathf.Min(_spinUpTimer + Time.fixedDeltaTime, spinUpTime);
-            float spinUpRatio = spinUpTime > 0f ? _spinUpTimer / spinUpTime : 1f;
+            float spinUp = Move.spinUpTime;
+            _spinUpTimer = Mathf.Min(_spinUpTimer + Time.fixedDeltaTime, spinUp);
+            float spinUpRatio = spinUp > 0f ? _spinUpTimer / spinUp : 1f;
 
             Rb.AddForce(moveDir * accel * turnPenalty * spinUpRatio, ForceMode.Acceleration);
             ClampVelocity(maxSpeed);
@@ -122,7 +122,7 @@ namespace MyDongari.Movement
         {
             if (direction == Vector3.zero) return;
             Quaternion targetRot = Quaternion.LookRotation(direction, Vector3.up);
-            Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, rotationSpeed * Time.fixedDeltaTime));
+            Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, Move.rotationSpeed * Time.fixedDeltaTime));
         }
 
         /// <summary>
@@ -143,7 +143,7 @@ namespace MyDongari.Movement
             toTarget.y = 0f;
             if (toTarget.sqrMagnitude < 0.0001f) return;
             Quaternion targetRot = Quaternion.LookRotation(toTarget.normalized, Vector3.up);
-            Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, hardLockTurnSpeed * Time.fixedDeltaTime));
+            Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, Move.hardLockTurnSpeed * Time.fixedDeltaTime));
         }
 
         public void RotateToCamera()
@@ -154,7 +154,7 @@ namespace MyDongari.Movement
             camForward.y = 0f;
             if (camForward == Vector3.zero) return;
             Quaternion targetRot = Quaternion.LookRotation(camForward);
-            Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, rotationSpeed * Time.fixedDeltaTime));
+            Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, Move.rotationSpeed * Time.fixedDeltaTime));
         }
 
         // ---- Rigidbody 댐핑 소유권 조정 ----

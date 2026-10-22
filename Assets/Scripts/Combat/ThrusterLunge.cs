@@ -13,34 +13,23 @@ namespace MyDongari.Combat
     /// </summary>
     public class ThrusterLunge : MonoBehaviour
     {
-        [Header("돌진")]
-        [Tooltip("돌진 거리(m)")]
-        [SerializeField] private float lungeDistance = 8f;
-        [Tooltip("돌진 속도(m/s)")]
-        [SerializeField] private float lungeSpeed = 30f;
-        [Tooltip("돌진이 끝날 때 남기는 속도 비율. 0이면 딱 멈춤")]
-        [Range(0f, 1f)]
-        [SerializeField] private float endSpeedRatio = 0.2f;
-        [Tooltip("벽 등에 막혀 거리를 못 채울 때를 대비한 최대 돌진 시간 = (거리/속도) × 이 배수")]
-        [SerializeField] private float timeoutMultiplier = 1.5f;
-        [Tooltip("발동 시 소모하는 부스트. 탈진이면 발동 안 함")]
-        [SerializeField] private float boostCost = 15f;
+        // 수치는 BernardTuning(런지)으로 옮겼다. 숨긴 필드는 "Copy P1 Values To Tuning" 메뉴용, 런타임에서 읽지 않는다.
+#pragma warning disable 0414
+        [HideInInspector] [SerializeField] private float lungeDistance = 8f;
+        [HideInInspector] [SerializeField] private float lungeSpeed = 30f;
+        [HideInInspector] [SerializeField] private float endSpeedRatio = 0.2f;
+        [HideInInspector] [SerializeField] private float timeoutMultiplier = 1.5f;
+        [HideInInspector] [SerializeField] private float boostCost = 15f;
+        [HideInInspector] [SerializeField] private float damage = 15f;
+        [HideInInspector] [SerializeField] private float hitStun = 0.5f;
+        [HideInInspector] [SerializeField] private float hitKnockback = 0f;
+        [HideInInspector] [SerializeField] private float hitRadius = 1.2f;
+        [HideInInspector] [SerializeField] private float hitForwardOffset = 1f;
+        [HideInInspector] [SerializeField] private float missLockDelay = 0.6f;
+#pragma warning restore 0414
 
-        [Header("명중")]
-        [Tooltip("명중 피해 (펀치보다 약간 낮게)")]
-        [SerializeField] private float damage = 15f;
-        [Tooltip("명중 시 상대 스턴(초). 후속 펀치 1회가 들어갈 틈")]
-        [SerializeField] private float hitStun = 0.5f;
-        [Tooltip("명중 시 상대 넉백. 0이면 밀지 않음(후속 펀치 거리 유지)")]
-        [SerializeField] private float hitKnockback = 0f;
-        [Tooltip("명중 판정 구의 반경(m)")]
-        [SerializeField] private float hitRadius = 1.2f;
-        [Tooltip("명중 판정 구를 기체 앞쪽으로 내미는 거리(m)")]
-        [SerializeField] private float hitForwardOffset = 1f;
-
-        [Header("빗나감")]
-        [Tooltip("빗나간 뒤 이 시간(초) 동안 하드 락온이 다시 걸리지 않는다 (사이드스텝으로 피한 상대의 반격 틈)")]
-        [SerializeField] private float missLockDelay = 0.6f;
+        private TuningRef _tuning;
+        private BernardTuning.LungeValues T => _tuning.Get(this).Lunge;
 
         /// <summary>돌진 시작.</summary>
         public event Action OnLungeStarted;
@@ -78,7 +67,7 @@ namespace MyDongari.Combat
             if (_controller != null && _controller.IsExternallyControlled) return false;
             if (!_stateMachine.CanStartLunge) return false;
             // TryConsume은 탈진이면 false
-            if (_boostGauge != null && !_boostGauge.TryConsume(boostCost)) return false;
+            if (_boostGauge != null && !_boostGauge.TryConsume(T.boostCost)) return false;
 
             _stateMachine.ChangeState(_stateMachine.LungeState);
             return true;
@@ -100,7 +89,7 @@ namespace MyDongari.Combat
             if (_lockOn != null) _lockOn.SetHardLockSuppressed(true);
 
             _rb.MoveRotation(Quaternion.LookRotation(_direction, Vector3.up));
-            SetDashVelocity(lungeSpeed);
+            SetDashVelocity(T.speed);
             OnLungeStarted?.Invoke();
         }
 
@@ -116,29 +105,30 @@ namespace MyDongari.Combat
                 return true;
             }
 
+            BernardTuning.LungeValues t = T;
             _elapsed += Time.fixedDeltaTime;
-            SetDashVelocity(lungeSpeed);
+            SetDashVelocity(t.speed);
             // 돌진 중엔 감속 없이 일정 속도 (Slide/SideStep과 같은 우선순위)
             if (_controller != null) _controller.RequestDamping(0f, priority: 5);
 
             MechIdentity opponent = _identity.Opponent;
             if (opponent != null && opponent.gameObject.activeInHierarchy)
             {
-                Vector3 center = _rb.position + _direction * hitForwardOffset;
-                foreach (Collider hit in Physics.OverlapSphere(center, hitRadius))
+                Vector3 center = _rb.position + _direction * t.hitForwardOffset;
+                foreach (Collider hit in Physics.OverlapSphere(center, t.hitRadius))
                 {
                     if (!_identity.IsOpponentCollider(hit)) continue;
 
                     // 속도를 먼저 줄여 둔다: 패리 반사 넉백이 이 뒤에 들어와야 덮어쓰이지 않는다
-                    SetDashVelocity(lungeSpeed * endSpeedRatio);
+                    SetDashVelocity(t.speed * t.endSpeedRatio);
                     HitInfo info = new HitInfo
                     {
                         Type = AttackType.Lunge,
-                        Damage = damage,
+                        Damage = t.damage,
                         Attacker = gameObject,
                         KnockbackDirection = _direction,
-                        KnockbackForce = hitKnockback,
-                        StunDuration = hitStun
+                        KnockbackForce = t.hitKnockback,
+                        StunDuration = t.hitStun
                     };
                     Finish(MeleeSystem.DeliverHit(opponent.gameObject, info));
                     return true;
@@ -147,10 +137,10 @@ namespace MyDongari.Combat
 
             Vector3 travelled = _rb.position - _startPosition;
             travelled.y = 0f;
-            float timeout = lungeSpeed > 0f ? lungeDistance / lungeSpeed * timeoutMultiplier : 0f;
-            if (travelled.magnitude >= lungeDistance || _elapsed >= timeout)
+            float timeout = t.speed > 0f ? t.distance / t.speed * t.timeoutMultiplier : 0f;
+            if (travelled.magnitude >= t.distance || _elapsed >= timeout)
             {
-                SetDashVelocity(lungeSpeed * endSpeedRatio);
+                SetDashVelocity(t.speed * t.endSpeedRatio);
                 Finish(null);
                 return true;
             }
@@ -176,7 +166,7 @@ namespace MyDongari.Combat
             if (_lockOn != null)
             {
                 _lockOn.SetHardLockSuppressed(false);
-                if (result == null) _lockOn.BlockHardLockFor(missLockDelay);
+                if (result == null) _lockOn.BlockHardLockFor(T.missLockDelay);
             }
             OnLungeEnded?.Invoke(result);
         }
