@@ -54,7 +54,7 @@ namespace MyDongari.Input
         // 연습 단축키. 쓸지 말지(연습 모드 Fight 중에만)는 PracticeHotkeys가 정한다
         /// <summary>봇 행동 모드 순환: 패드 Select 짧게(뗄 때) 또는 키보드 Tab.</summary>
         public bool BotCyclePressed { get; private set; }
-        /// <summary>두 기체 즉시 리셋: 패드 Select 길게(누른 지 selectHoldTime 되는 순간 한 번) 또는 키보드 R.</summary>
+        /// <summary>두 기체 즉시 리셋: 패드 Select 길게(누른 지 selectHoldTime 되는 순간 한 번) 또는 키보드 Backspace.</summary>
         public bool PracticeResetPressed { get; private set; }
         /// <summary>히트 프리셋: 키보드 1~4 → 0~3, 안 눌렀으면 -1.</summary>
         public int HeatPresetPressed { get; private set; } = -1;

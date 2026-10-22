@@ -7,7 +7,7 @@ namespace MyDongari.Core
 {
     /// <summary>
     /// 연습 모드 단축키 (P1 입력만, PRACTICE의 Fight 중에만 — 메뉴·KO·카운트다운 중엔 무시).
-    /// 봇 모드 순환: 패드 Select 짧게 / Tab. 즉시 리셋: 패드 Select 길게 / R. 내 히트 프리셋: 1~4.
+    /// 봇 모드 순환: 패드 Select 짧게 / Tab. 즉시 리셋: 패드 Select 길게 / Backspace. 내 히트 프리셋: 1~4.
     /// 키 판정은 InputReader가, 여기는 "연습 중이면 실행"만 한다. GameManager 오브젝트에 하나 (자동 부착).
     /// </summary>
     public class PracticeHotkeys : MonoBehaviour

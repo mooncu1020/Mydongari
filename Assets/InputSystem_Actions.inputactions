@@ -691,7 +691,7 @@
                 {
                     "name": "",
                     "id": "0445ecc0-d87e-4b63-a7ce-ad664e0c21ec",
-                    "path": "<Keyboard>/r",
+                    "path": "<Keyboard>/backspace",
                     "interactions": "",
                     "processors": "",
                     "groups": ";Keyboard&Mouse",

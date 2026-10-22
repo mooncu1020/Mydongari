@@ -84,3 +84,5 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 55. (D2) `RoundUI`의 `Rematch Hint` 필드는 지웠다(매치 종료 선택지는 MenuUI가 그림). 새 필드 `Practice Label`(PRACTICE)·`Knockout Label`(K.O.).
 56. (D3) 연습 단축키(PRACTICE의 싸우는 중에만, P1 입력): 패드 Select 짧게 / Tab = 봇 모드 순환, 패드 Select 길게(0.6초) / R = 두 기체 즉시 리셋, 키보드 1~4 = 내 히트 0/50/90/100%. `.inputactions`에 `Select`·`BotCycle`·`PracticeReset`·`HeatPreset1~4` 추가. 길게 누르기 시간은 `InputReader → Select Hold Time`, 히트 비율은 GameManager 오브젝트의 `PracticeHotkeys → Heat Presets`(런타임 자동 부착 — 바꾸려면 직접 Add Component).
 57. (D3) 키보드 **R은 원래 초신지선회 키**다. PRACTICE에서는 R이 리셋도 같이 하며, 리셋이 그 프레임 입력을 비우고 카메라·상태를 되돌리므로 퀵턴이 남지 않는다. VERSUS에서는 R = 초신지선회 그대로.
+58. (D4) 연습 리셋 키보드 키를 **R → Backspace**로 옮겼다(`.inputactions` `PracticeReset` 바인딩 수정). R은 모든 모드에서 초신지선회만 한다. SETUP 56·57의 R 설명은 Backspace로 읽는다. 패드 Select 길게(0.6초)는 그대로.
+59. (D4) 타이틀 문구 기본값 `DRAFT HOUND PATRASCHE` (`MenuUI → Game Title`).

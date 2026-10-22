@@ -16,12 +16,12 @@ namespace MyDongari.UI
         private const string BuiltinFontName = "LegacyRuntime.ttf";
 
         [Header("문구 (기본 폰트에 한글이 없을 수 있어 영어)")]
-        [SerializeField] private string gameTitle = "MYDONGARI";
+        [SerializeField] private string gameTitle = "DRAFT HOUND PATRASCHE";
         [SerializeField] private string titleSubtitle = "SELECT MODE";
         [SerializeField] private string menuHint = "STICK / D-PAD / W S : SELECT     A / START / ENTER : CONFIRM";
         [Tooltip("연습 모드 왼쪽 위 안내 (봇 모드 줄 아래)")]
         [TextArea] [SerializeField] private string practiceHint =
-            "TAB / SELECT : BOT MODE    R / HOLD SELECT : RESET\n1-4 : MY HEAT 0 / 50 / 90 / 100%    START : MENU";
+            "TAB / SELECT : BOT MODE    BACKSPACE / HOLD SELECT : RESET\n1-4 : MY HEAT 0 / 50 / 90 / 100%    START : MENU";
 
         [Header("모양")]
         [SerializeField] private Color selectedColor = new Color(1f, 0.82f, 0.29f);
