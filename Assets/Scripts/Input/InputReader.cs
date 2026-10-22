@@ -21,6 +21,10 @@ namespace MyDongari.Input
         [Tooltip("메뉴 위아래 이동으로 인정하는 스틱·D패드 기울기")]
         [SerializeField] private float menuNavigateThreshold = 0.5f;
 
+        [Header("연습 단축키")]
+        [Tooltip("패드 Select를 이 시간(초) 이상 누르면 리셋, 그보다 짧게 누르고 떼면 봇 모드 순환")]
+        [SerializeField] private float selectHoldTime = 0.6f;
+
         public Vector2 MoveInput { get; private set; }
         public Vector2 LookInput { get; private set; }
         public bool RunInput { get; private set; }
@@ -46,6 +50,14 @@ namespace MyDongari.Input
         public int MenuVertical { get; private set; }
         /// <summary>메뉴 결정: 패드 Start·A(South), 키보드 Enter. 잠금 중에도 읽힌다.</summary>
         public bool MenuConfirmPressed { get; private set; }
+
+        // 연습 단축키. 쓸지 말지(연습 모드 Fight 중에만)는 PracticeHotkeys가 정한다
+        /// <summary>봇 행동 모드 순환: 패드 Select 짧게(뗄 때) 또는 키보드 Tab.</summary>
+        public bool BotCyclePressed { get; private set; }
+        /// <summary>두 기체 즉시 리셋: 패드 Select 길게(누른 지 selectHoldTime 되는 순간 한 번) 또는 키보드 R.</summary>
+        public bool PracticeResetPressed { get; private set; }
+        /// <summary>히트 프리셋: 키보드 1~4 → 0~3, 안 눌렀으면 -1.</summary>
+        public int HeatPresetPressed { get; private set; } = -1;
         public bool IsInputLocked => _inputLocked;
 
         /// <summary>
@@ -82,6 +94,12 @@ namespace MyDongari.Input
         private InputAction _submitAction;
         private InputAction _menuNavigateAction;
         private int _menuHeldDirection;
+        private InputAction _selectAction;
+        private InputAction _botCycleAction;
+        private InputAction _practiceResetAction;
+        private readonly InputAction[] _heatPresetActions = new InputAction[4];
+        private float _selectDownTime = -1f;
+        private bool _selectHoldFired;
         // 라운드 카운트다운·라운드 사이에 GameManager가 건다. 잠긴 동안 게임플레이 입력은 전부 0
         private bool _inputLocked = false;
 
@@ -114,6 +132,13 @@ namespace MyDongari.Input
             _startAction = _playerInput.actions["Start"];
             _submitAction = _playerInput.actions["Submit"];
             _menuNavigateAction = _playerInput.actions["MenuNavigate"];
+            _selectAction = _playerInput.actions["Select"];
+            _botCycleAction = _playerInput.actions["BotCycle"];
+            _practiceResetAction = _playerInput.actions["PracticeReset"];
+            for (int i = 0; i < _heatPresetActions.Length; i++)
+            {
+                _heatPresetActions[i] = _playerInput.actions["HeatPreset" + (i + 1)];
+            }
 
             _quickTurnAction.performed += _ => _quickTurnPending = true;
             _skill1Action.performed += _ => _skill1Pending = true;
@@ -154,6 +179,7 @@ namespace MyDongari.Input
 
             StartPressed = _startAction.WasPressedThisFrame();
             UpdateMenuInput();
+            UpdatePracticeInput();
             if (_inputLocked) ClearGameplayInput();
         }
 
@@ -167,6 +193,42 @@ namespace MyDongari.Input
             _menuHeldDirection = direction;
 
             MenuConfirmPressed = StartPressed || _submitAction.WasPressedThisFrame();
+        }
+
+        private void UpdatePracticeInput()
+        {
+            BotCyclePressed = _botCycleAction.WasPressedThisFrame();
+            PracticeResetPressed = _practiceResetAction.WasPressedThisFrame();
+
+            // 패드 Select 하나로 두 기능: 짧게 = 순환(뗄 때 판정), 길게 = 리셋(시간이 차는 순간, 뗄 때는 순환 안 함)
+            float now = Time.unscaledTime;
+            if (_selectAction.WasPressedThisFrame())
+            {
+                _selectDownTime = now;
+                _selectHoldFired = false;
+            }
+            if (_selectDownTime >= 0f)
+            {
+                if (_selectAction.IsPressed())
+                {
+                    if (!_selectHoldFired && now - _selectDownTime >= selectHoldTime)
+                    {
+                        _selectHoldFired = true;
+                        PracticeResetPressed = true;
+                    }
+                }
+                else
+                {
+                    if (!_selectHoldFired) BotCyclePressed = true;
+                    _selectDownTime = -1f;
+                }
+            }
+
+            HeatPresetPressed = -1;
+            for (int i = 0; i < _heatPresetActions.Length; i++)
+            {
+                if (_heatPresetActions[i].WasPressedThisFrame()) HeatPresetPressed = i;
+            }
         }
 
         /// <summary>이번 프레임 게임 입력을 비운다 (연습 리셋 단축키가 다른 입력과 겹쳐도 같은 프레임에 같이 나가지 않게).</summary>

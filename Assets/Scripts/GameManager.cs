@@ -190,6 +190,8 @@ namespace MyDongari.Core
             if (GetComponent<AppRuntime>() == null) gameObject.AddComponent<AppRuntime>();
             // 타이틀·메뉴·연습 표시. 캔버스를 런타임에 스스로 만든다 (씬 편집 불필요)
             if (GetComponent<MenuUI>() == null) gameObject.AddComponent<MenuUI>();
+            // 연습 모드 단축키 (봇 모드 순환·리셋·히트 프리셋)
+            if (GetComponent<PracticeHotkeys>() == null) gameObject.AddComponent<PracticeHotkeys>();
         }
 
         private GameMode StartLayout()

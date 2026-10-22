@@ -20,7 +20,8 @@ namespace MyDongari.UI
         [SerializeField] private string titleSubtitle = "SELECT MODE";
         [SerializeField] private string menuHint = "STICK / D-PAD / W S : SELECT     A / START / ENTER : CONFIRM";
         [Tooltip("연습 모드 왼쪽 위 안내 (봇 모드 줄 아래)")]
-        [TextArea] [SerializeField] private string practiceHint = "START : MENU";
+        [TextArea] [SerializeField] private string practiceHint =
+            "TAB / SELECT : BOT MODE    R / HOLD SELECT : RESET\n1-4 : MY HEAT 0 / 50 / 90 / 100%    START : MENU";
 
         [Header("모양")]
         [SerializeField] private Color selectedColor = new Color(1f, 0.82f, 0.29f);
@@ -35,13 +36,6 @@ namespace MyDongari.UI
         private Text _titleOptions;
         private Text _menuOptions;
         private Text _practiceLabel;
-
-        /// <summary>연습 모드 안내에 단축키 줄을 바꿔 넣을 때 (D3 단축키 안내 등).</summary>
-        public string PracticeHint
-        {
-            get => practiceHint;
-            set => practiceHint = value;
-        }
 
         private void Awake()
         {

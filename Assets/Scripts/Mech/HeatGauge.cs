@@ -88,6 +88,16 @@ namespace MyDongari.Mech
             IsOverheated = false;
         }
 
+        /// <summary>
+        /// 연습용: 히트를 최대치의 ratio(0~1)로 바로 맞춘다. 100%면 과열 상태(펀치 불가·가드하면 깨짐),
+        /// 그 밖의 값이면 과열 해제 — 90%에서 몇 번 막으면 과열되는 상황을 바로 만들 수 있다.
+        /// </summary>
+        public void SetHeatRatio(float ratio)
+        {
+            CurrentHeat = Mathf.Clamp01(ratio) * T.maxHeat;
+            IsOverheated = CurrentHeat >= T.maxHeat;
+        }
+
         /// <summary>과열(100%) 중엔 펀치 불가. 해제는 0%까지 식었을 때.</summary>
         public bool CanPunch() => !IsOverheated;
     }

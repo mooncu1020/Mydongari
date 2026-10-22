@@ -148,7 +148,7 @@
 - 매치가 끝나면 타이틀로 돌아가는 선택지.
 - 씬은 하나로 유지하고 GameManager 상태로 전환. `.unity` 직접 편집 금지, 필요한 UI는 기존 Setup 메뉴나 런타임 생성.
 
-### [ ] D3. 연습 단축키 (PRACTICE에서만)
+### [x] D3. 연습 단축키 (PRACTICE에서만)
 - 패드 Select(Back/Share) 또는 키보드 Tab: 봇 행동 모드 순환.
 - 패드 Select 길게 또는 키보드 R: 두 기체 체력·부스트·히트·위치 즉시 리셋.
 - 키보드 1~4: 내 히트를 0/50/90/100%로 세팅 (과열·가드 깨짐 테스트용).
@@ -181,3 +181,4 @@
 - **C4** (질문 반영, TASKS 외 추가 작업) 완료. 바뀐 파일: `PlayLogger`(`logSubfolderName` = PlayLogs — 씬에 `logFolderName`이 저장돼 있어 기본값 변경 대신 새 필드), `CombatFeedback`(STUN 팝업을 프로퍼티 감시 → 피격 이벤트(Hit + 스턴)·앵커 잡기 이벤트로, `lungeHitClip`), `BUILD.md`. 위험: 낮음. 가드 깨짐 스턴은 GUARD BREAK로만 표시.
 - **D1** 완료. 바뀐 파일: 신규 `Input/BotInput`(ICombatInputSource), `MeleeDummy`(연습 봇 두뇌, `BotMode` 6종, 실행 순서 -50, 필요한 부품 런타임 부착, 상대 공격 이벤트 구독으로 패리), `MeleeSystem`(`SetInputSource`, `RebindComponents`, `ApplyGuardInputNow` — 모두 범용, 판정 로직 변경 없음), `ThrusterLunge`(상태 머신 없는 기체는 스스로 돌진 진행), `HeatGauge`·`BoostGauge`(상태 머신 없이도 냉각·회복). 위험: 봇의 런지 중에도 부스트가 회복된다(상태 머신이 없어 "정지/걷기"로 봄). 봇이 질주를 안 하므로 질주 관련 규칙은 봇에 해당 없음.
 - **D2** 완료. 바뀐 파일: `GameManager`(`GameMode`, `MatchPhase.Title`, 모드별 배치 `ApplyLayout`·패드 재배정·상대 재연결, 타이틀/매치 종료/연습 메뉴, 연습 KO 무제한 루프, `ResetPracticeNow`, `AllMechs`, `OnReturnedToTitle`), 신규 `UI/MenuUI`(런타임 캔버스), `RoundUI`(타이틀 숨김·연습 표시), `InputReader`(`MenuVertical`, `MenuConfirmPressed`, `ClearFrameInput`), `VersusInputPairing`(`Apply(versus)`, 연습은 패드 0 → P1), `HitStop`·`CombatFeedback`·`PlayLogger`(P2·봇 모두 구독, 모드별 요약), `.inputactions`(`Submit`, `MenuNavigate` 추가). 위험: 봇이 꺼진 채 시작하면(2인 배치) 봇 부품 런타임 부착이 Awake 순서(-50)에 의존 — 연습 모드에서 봇 런지 팝업·로그가 안 나오면 이 부분. 2인 패드 확인은 아직.
+- **D3** 완료. 바뀐 파일: `.inputactions`(`Select`, `BotCycle`, `PracticeReset`, `HeatPreset1~4` 추가만), `InputReader`(`BotCyclePressed`, `PracticeResetPressed` — Select 짧게/길게 구분, `HeatPresetPressed`), 신규 `Core/PracticeHotkeys`(PRACTICE의 Fight 중에만 실행), `HeatGauge`(`SetHeatRatio` 연습용), `GameManager`(자동 부착, 리셋은 D2의 `ResetPracticeNow`), `MenuUI`(단축키 안내). 위험: 키보드 R 겹침(QUESTIONS). 패드 Select 버튼 이름은 패드마다 다름(Back/View/Share) — Input System의 `<Gamepad>/select`로 잡히는지 실기 확인 필요.

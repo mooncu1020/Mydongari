@@ -173,3 +173,9 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (D2) 타이틀 ↔ PRACTICE ↔ VERSUS를 여러 번 오가도: 팝업·틴트·히트스톱이 현재 상대 기준으로 동작, 상대 체력 바가 맞는 대상을 표시
 - [ ] (D2) 로그(`Logs/PlayLogs/summary_*.csv`)에 VERSUS는 `1`, `2`…, PRACTICE는 `N_practice`로 매치별 요약. 매치 중간에 TITLE로 나가면 `_incomplete`
 - [ ] (D2) `GameManager → Show Title On Start` 끄고 `Versus Mode` 끄고 플레이 → 타이틀 없이 바로 연습 모드
+- [ ] (D3) PRACTICE에서 Tab(또는 패드 Select 짧게) → 왼쪽 위 `BOT:`가 IDLE → ALWAYSGUARD → APPROACH → LUNGER → PARRIER → MIXED (…) → IDLE 순으로 바뀌고 봇 행동도 즉시 바뀜
+- [ ] (D3) 패드 Select를 0.6초 이상 누름 → 그 순간 리셋, 손을 떼도 모드는 안 바뀜
+- [ ] (D3) 서로 깎인 상태에서 R → 두 기체 체력·부스트·히트 가득/0, 스폰 위치·방향으로, 카운트다운 없이 바로 조작 가능. 내 기체가 180° 돌아 있지 않음(퀵턴 안 남음)
+- [ ] (D3) 1 → 내 히트 0%, 2 → 50%, 3 → 90%, 4 → 100%(과열: 펀치 안 나감, OVERHEAT 팝업·빨간 깜빡임)
+- [ ] (D3) 3(90%)에서 AlwaysGuard 봇 대신 내가 가드하고 봇(Approach) 펀치 한 방 받기 → 히트 100% 과열 → 다음 펀치에 내 GUARD BREAK
+- [ ] (D3) VERSUS와 타이틀, PRACTICE 메뉴(Start)가 열린 동안에는 Tab·R·1~4가 아무것도 안 함 (VERSUS에서 R은 퀵턴만)
