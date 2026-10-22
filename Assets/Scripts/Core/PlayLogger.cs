@@ -27,6 +27,8 @@ namespace MyDongari.Core
         [SerializeField] private string summaryFileName = "summary";
         [Tooltip("로그 폴더 이름. 에디터: 프로젝트 루트/이 폴더, 빌드: 실행 파일 옆/이 폴더")]
         [SerializeField] private string logFolderName = "Logs";
+        [Tooltip("Logs 안의 하위 폴더. 에디터에선 Logs/에 Unity 자체 로그도 쌓이므로 섞이지 않게 나눈다. 비우면 Logs 바로 아래")]
+        [SerializeField] private string logSubfolderName = "PlayLogs";
 
         [Header("거리 구간 (m)")]
         [Tooltip("이 거리 미만 = near (하드 락온·펀치 거리)")]
@@ -453,14 +455,15 @@ namespace MyDongari.Core
         }
 
         /// <summary>
-        /// 에디터: 프로젝트 루트/Logs (Assets 밖이라 임포트되지 않고 .gitignore 대상).
-        /// Windows 빌드: dataPath가 "실행 파일 폴더/이름_Data"라 그 부모 = 실행 파일 옆/Logs.
+        /// 에디터: 프로젝트 루트/Logs/PlayLogs (Assets 밖이라 임포트되지 않고 .gitignore 대상).
+        /// Windows 빌드: dataPath가 "실행 파일 폴더/이름_Data"라 그 부모 = 실행 파일 옆/Logs/PlayLogs.
         /// </summary>
         private string LogFolder()
         {
             DirectoryInfo parent = Directory.GetParent(Application.dataPath);
             string root = parent != null ? parent.FullName : Application.persistentDataPath;
-            return Path.Combine(root, logFolderName);
+            string folder = Path.Combine(root, logFolderName);
+            return string.IsNullOrEmpty(logSubfolderName) ? folder : Path.Combine(folder, logSubfolderName);
         }
 
         private bool HasAnyStats()

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using MyDongari.Combat;
+using MyDongari.Combat.Skills;
 using MyDongari.Core;
 using MyDongari.Mech;
 
@@ -9,8 +10,9 @@ namespace MyDongari.Feedback
 {
     /// <summary>
     /// 상태 피드백: 머리 위 팝업(PARRY / GUARD BREAK / CLASH / STUN / OVERHEAT / EXHAUSTED), 기체 색 틴트, 효과음.
-    /// 전투 코드는 이 컴포넌트를 모른다. 기존 이벤트(OnHitResolved, OnLungeStarted)를 구독하고,
-    /// 이벤트가 없는 상태(스턴·과열·탈진·가드)는 공개 프로퍼티를 매 프레임 읽어 변화만 감지한다.
+    /// 전투 코드는 이 컴포넌트를 모른다. 기존 이벤트(OnHitResolved, OnLungeStarted, OnGrabbed)를 구독하고,
+    /// 이벤트가 없는 상태(과열·탈진·가드, 틴트용 스턴)는 공개 프로퍼티를 매 프레임 읽어 변화만 감지한다.
+    /// STUN 팝업은 상대에게 맞아서 생긴 스턴만 (태클 후 자기 경직은 표시 안 함 — C4 결정).
     /// GameManager 오브젝트에 하나 (없으면 GameManager가 자동 부착).
     /// </summary>
     public class CombatFeedback : MonoBehaviour
@@ -56,6 +58,8 @@ namespace MyDongari.Feedback
         [SerializeField] private AudioClip lungeStartClip;
         [Tooltip("대시 어택·차징 태클이 그대로 맞았을 때")]
         [SerializeField] private AudioClip tackleHitClip;
+        [Tooltip("런지가 그대로 맞았을 때")]
+        [SerializeField] private AudioClip lungeHitClip;
         [Range(0f, 1f)] [SerializeField] private float sfxVolume = 1f;
 
         /// <summary>기체 하나의 피드백 상태 (이전 프레임 플래그로 "막 그렇게 됐다"를 감지).</summary>
@@ -67,11 +71,8 @@ namespace MyDongari.Feedback
             public BoostGauge Boost;
             public MechTint Tint;
             public float HeadHeight;
-            public bool WasStunned;
             public bool WasOverheated;
             public bool WasExhausted;
-            // 가드 깨짐 팝업을 띄운 프레임. 같은 스턴으로 STUN이 겹쳐 뜨지 않게 한다
-            public int GuardBreakFrame = -10;
         }
 
         private readonly List<MechFeedback> _mechs = new List<MechFeedback>();
@@ -125,6 +126,20 @@ namespace MyDongari.Feedback
                 lunge.OnLungeStarted += onLunge;
                 _unsubscribers.Add(() => lunge.OnLungeStarted -= onLunge);
             }
+
+            // 앵커 클로 훅 경직은 ReceiveHit을 거치지 않으므로 잡기 이벤트로 STUN을 띄운다
+            AnchorClaw claw = mech.GetComponent<AnchorClaw>();
+            if (claw != null)
+            {
+                MechTuning tuning = mech.GetComponent<MechTuning>();
+                Action<GameObject> onGrab = target =>
+                {
+                    BernardTuning values = tuning != null ? tuning.Values : BernardTuning.Fallback;
+                    if (values.AnchorClaw.hookImpactStun > 0f) OnGrabbed(target);
+                };
+                claw.OnGrabbed += onGrab;
+                _unsubscribers.Add(() => claw.OnGrabbed -= onGrab);
+            }
         }
 
         private float MeasureHeadHeight(GameObject mech)
@@ -154,8 +169,8 @@ namespace MyDongari.Feedback
                     break;
 
                 case HitResult.GuardBroken:
+                    // 가드 깨짐도 스턴이지만 GUARD BREAK가 이미 말해 주므로 STUN은 생략
                     Popup(fb, guardBreakLabel, guardBreakColor);
-                    fb.GuardBreakFrame = Time.frameCount;
                     Play(guardBreakClip);
                     break;
 
@@ -173,8 +188,17 @@ namespace MyDongari.Feedback
                 case HitResult.Hit:
                     if (info.Type == AttackType.Punch) Play(punchHitClip);
                     else if (info.Type == AttackType.Tackle || info.Type == AttackType.DashAttack) Play(tackleHitClip);
+                    else if (info.Type == AttackType.Lunge) Play(lungeHitClip);
+                    // 그대로 맞아서 스턴이 걸린 경우만 STUN (런지·차징 태클 등). 자기 경직은 이 경로로 오지 않는다
+                    if (info.StunDuration > 0f) Popup(fb, stunLabel, stunColor);
                     break;
             }
+        }
+
+        private void OnGrabbed(GameObject target)
+        {
+            MechFeedback victim = Find(target);
+            if (victim != null) Popup(victim, stunLabel, stunColor);
         }
 
         private void Update()
@@ -189,11 +213,9 @@ namespace MyDongari.Feedback
                 bool exhausted = active && fb.Boost != null && fb.Boost.IsExhausted;
                 bool guarding = active && fb.Melee != null && fb.Melee.IsGuarding;
 
-                // 막 그렇게 된 순간만 팝업. 가드 깨짐 직후의 스턴은 GUARD BREAK가 이미 말해 주므로 생략
-                if (stunned && !fb.WasStunned && Time.frameCount - fb.GuardBreakFrame > 1) Popup(fb, stunLabel, stunColor);
+                // 막 그렇게 된 순간만 팝업 (STUN은 피격 이벤트 쪽에서)
                 if (overheated && !fb.WasOverheated) Popup(fb, overheatLabel, overheatColor);
                 if (exhausted && !fb.WasExhausted) Popup(fb, exhaustedLabel, exhaustedColor);
-                fb.WasStunned = stunned;
                 fb.WasOverheated = overheated;
                 fb.WasExhausted = exhausted;
 

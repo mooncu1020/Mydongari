@@ -21,7 +21,7 @@
 - [ ] Scene List: `Assets/Scenes/SampleScene.unity` 하나만 체크 (현재 설정 그대로)
 - [ ] Architecture: **Intel 64-bit**
 - [ ] **Development Build 끔** (켜면 화면 구석에 개발 콘솔이 뜬다). 현장에서 오류 추적이 꼭 필요하면 켜되 Autoconnect Profiler는 끔
-- [ ] 출력 폴더: **쓰기 권한이 있는 곳** (예: `D:\Mydongari_Build\`). `Program Files` 아래에 두면 `Logs` 폴더를 못 만들어 로그가 저장되지 않는다. 프로젝트 안 `Builds/` 폴더도 된다(.gitignore 대상)
+- [ ] 출력 폴더: **쓰기 권한이 있는 곳** (예: `D:\Mydongari_Build\`). `Program Files` 아래에 두면 `Logs/PlayLogs` 폴더를 못 만들어 로그가 저장되지 않는다. 프로젝트 안 `Builds/` 폴더도 된다(.gitignore 대상)
 
 ## 3. Player Settings (Project Settings → Player)
 
@@ -67,10 +67,10 @@
 - [ ] ESC를 짧게 누름 → 아무 일 없음
 - [ ] ESC를 1초 누르고 있음 → 화면 아래 `HOLD ESC TO QUIT [####------]` 진행 표시 후 종료. 중간에 떼면 취소
 - [ ] Alt+Tab으로 나갔다 돌아옴 → 커서 다시 숨김, 패드 입력 정상 (나가 있는 동안에도 게임이 멈추지 않음 — Run In Background)
-- [ ] 실행 파일 옆 **`Logs` 폴더**에 `playlog_*.csv`, `events_*.csv`, `summary_*.csv`가 생김 (실행 시각 이름). 매치가 끝날 때마다 갱신, 매치 도중 종료하면 요약에 미완료 표시
+- [ ] 실행 파일 옆 **`Logs/PlayLogs` 폴더**에 `playlog_*.csv`, `events_*.csv`, `summary_*.csv`가 생김 (실행 시각 이름). 매치가 끝날 때마다 갱신, 매치 도중 종료하면 요약에 미완료 표시
 - [ ] 20분 이상 여러 매치 연속 → 메모리·프레임 저하 없음, 로그 정상
 - [ ] 문제가 생기면 `%USERPROFILE%\AppData\LocalLow\<Company Name>\Mydongari\Player.log`를 챙긴다
 
 **현장 운영 팁**
-- 매 세션 끝에 `Logs` 폴더를 통째로 백업(파일 이름이 실행 시각이라 덮어쓰지 않음)
+- 매 세션 끝에 `Logs/PlayLogs` 폴더를 통째로 백업(파일 이름이 실행 시각이라 덮어쓰지 않음)
 - 패드는 게임 실행 **전에** 두 개 다 꽂아 두는 게 배정이 가장 안정적이다

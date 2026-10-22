@@ -65,3 +65,5 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 43. (C3) `PlayLogger` 저장 위치가 바뀌었다: 에디터 = **프로젝트 루트 `Logs/`** (Unity 자체 로그와 같은 폴더, .gitignore 대상이라 커밋되지 않음), 빌드 = **실행 파일 옆 `Logs/`**. 새 필드 `Log Folder Name`(기본 Logs). 예전 위치(`Assets/`)에 남은 `playlog_*.csv`·`events_*.csv`·`summary_*.csv`와 그 `.meta`는 필요 없으면 지운다.
 44. (C3) `GameManager` 오브젝트에 **`AppRuntime`** (없으면 런타임 자동 부착, `Add Missing Mech Components` 메뉴도 추가): 빌드에서 ESC 1초 길게 누르기 종료(`Quit Hold Seconds`), 커서 숨김(`Hide Cursor In Build`), 시작 시 전체 화면 강제(`Force Fullscreen On Start`). 에디터에서는 기본으로 아무것도 안 한다 — 확인하려면 `Quit In Editor`를 켜면 ESC 1초로 플레이 모드가 끝난다.
 45. (C3) 빌드 설정은 `docs/BUILD.md` 체크리스트대로. 특히 Player Settings → **Run In Background 켜기**(현재 꺼짐), **Force Single Instance 켜기**, Input System → **Background Behavior = Ignore Focus** 권장.
+46. (C4) 로그 폴더가 `Logs/PlayLogs`로 바뀌었다 (에디터: 프로젝트 루트/Logs/PlayLogs, 빌드: 실행 파일 옆/Logs/PlayLogs). `PlayLogger` → 새 필드 `Log Subfolder Name`(기본 PlayLogs, 비우면 Logs 바로 아래). 씬에는 `Log Folder Name = Logs`가 저장돼 있어 그대로 두면 된다.
+47. (C4) `CombatFeedback` → 효과음 칸 `Lunge Hit Clip` 추가 (런지가 그대로 맞았을 때). STUN 팝업은 이제 상대에게 맞아서 생긴 스턴(런지·차징 태클 명중, 앵커 클로 훅)에만 뜬다. 태클 후 자기 경직에는 안 뜬다(틴트는 그대로 노랑).
