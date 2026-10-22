@@ -16,3 +16,4 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 7. (A1) `WeaponSystem`의 `Melee Auto Range`(씬 값 50) 필드는 삭제됐다. 펀치 전환은 하드 락온 진입 거리(6m) 하나로만 정해진다.
 8. (A4) Mech·DummyTarget → `MeleeSystem`: 가드 필드가 바뀌었다. `Guard Damage Reduction`(씬 값 0.7)·`Guard Boost Drain`은 삭제되고 `Guard Melee Reduction 0.5`, `Guard Projectile Reduction 0.7`, `Guard Heat Per Block 10`, `Guard Break Stun 0.9`, `Guard Reraise Delay 0.4`, `Guard Damping 8`, `Guard Release Damping 2`, `Clash Knockback 10`이 새로 생긴다(코드 기본값). 인스펙터에서 값만 확인.
 9. (A5) Mech·DummyTarget → `MeleeSystem`: `Attacker Stun Duration`(씬 값 0.5)은 삭제. 새 필드 `Parry Reflect Ratio 1`, `Parry Reflect Knockback 8`, `Tackle Recovery Stun 0.5`(태클 후 자기 경직 — 기존 SprintState에 0.5로 박혀 있던 값, 패리당하면 미적용).
+10. (A6) `MeleeSystem` → `Punch Half Angle`(기본 45°) 새 필드. DummyTarget → `MeleeDummy` → `Turn Speed`(기본 8) 새 필드: 더미가 상대를 향해 몸을 돌린다.

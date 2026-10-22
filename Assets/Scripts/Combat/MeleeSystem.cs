@@ -10,7 +10,10 @@ namespace MyDongari.Combat
     public class MeleeSystem : MonoBehaviour
     {
         [Header("근접 설정")]
+        [Tooltip("펀치 사거리(m)")]
         [SerializeField] private float meleeRange = 3f;
+        [Tooltip("펀치 판정 부채꼴 반각(°). 기체 정면 기준 ±이 각도 안의 상대만 맞는다")]
+        [SerializeField] private float punchHalfAngle = 45f;
         [SerializeField] private float meleeDamage = 25f;
         [SerializeField] private float meleeCooldown = 0.5f;
         [Tooltip("펀치 한 방(발동 기준)마다 오르는 히트")]
@@ -65,6 +68,8 @@ namespace MyDongari.Combat
 
         /// <summary>내가 맞았을 때(피격자 쪽) 판정 결과가 정해지면 발생. 로그·연출은 여기 구독.</summary>
         public event Action<HitInfo, HitResult> OnHitResolved;
+        /// <summary>내가 공격을 발동했을 때(맞든 안 맞든). 로그의 "발동" 카운트용.</summary>
+        public event Action<AttackType> OnAttackStarted;
 
         private float _meleeTimer = 0f;
         private float _parryTimer = 0f;
@@ -319,6 +324,7 @@ namespace MyDongari.Combat
         {
             if (_tackleTimer < tackleCooldown) return null;
             _tackleTimer = 0f;
+            OnAttackStarted?.Invoke(AttackType.Tackle);
 
             float finalDamage = tackleDamage * (1f + chargePower);
             float finalKnockback = tackleKnockback * (1f + chargePower);
@@ -346,21 +352,28 @@ namespace MyDongari.Combat
             return null;
         }
 
-        public void TryMeleeAttack()
+        /// <summary>
+        /// 너클 펀치. 쿨다운·과열로 안 나가면 null, 휘둘렀는데 빗나가면 null,
+        /// 맞았으면 피격자가 판단한 결과(Hit/Guarded/GuardBroken/Parried/Clash).
+        /// </summary>
+        public HitResult? TryMeleeAttack()
         {
-            if (_meleeTimer < meleeCooldown) return;
+            if (_meleeTimer < meleeCooldown) return null;
             // 과열이면 주먹이 안 나간다. 히트게이지가 없는 기체(더미)는 제한 없음
-            if (_heatGauge != null && !_heatGauge.CanPunch()) return;
+            if (_heatGauge != null && !_heatGauge.CanPunch()) return null;
             _meleeTimer = 0f;
             // 맞든 빗나가든 휘두른 순간 히트가 오른다
             if (_heatGauge != null) _heatGauge.AddHeat(heatPerPunch);
+            OnAttackStarted?.Invoke(AttackType.Punch);
 
+            MechIdentity opponent = _identity.Opponent;
+            if (opponent == null || !IsInPunchArc(opponent.transform)) return null;
+
+            // 거리는 콜라이더 표면 기준(OverlapSphere)이라 덩치 큰 기체도 사거리가 자연스럽다
             Collider[] hits = Physics.OverlapSphere(transform.position, meleeRange);
             foreach (Collider hit in hits)
             {
                 if (!_identity.IsOpponentCollider(hit)) continue;
-                // 상대 기체의 자식 콜라이더에 맞아도 컴포넌트는 루트(MechIdentity가 있는 곳)에서 찾는다
-                GameObject target = _identity.Opponent.gameObject;
 
                 HitInfo info = new HitInfo
                 {
@@ -368,10 +381,22 @@ namespace MyDongari.Combat
                     Damage = meleeDamage,
                     Attacker = gameObject
                 };
-                DeliverHit(target, info);
                 // 콜라이더가 여러 개여도 한 방은 한 번만 맞는다
-                return;
+                return DeliverHit(opponent.gameObject, info);
             }
+            return null;
+        }
+
+        private bool IsInPunchArc(Transform target)
+        {
+            // 위아래 차이는 무시하고 수평 방향만 본다 (지면 밀착 격투)
+            Vector3 toTarget = target.position - transform.position;
+            toTarget.y = 0f;
+            if (toTarget.sqrMagnitude < 0.0001f) return true;
+
+            Vector3 forward = transform.forward;
+            forward.y = 0f;
+            return Vector3.Angle(forward, toTarget) <= punchHalfAngle;
         }
     }
 }

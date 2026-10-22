@@ -54,7 +54,7 @@
 - 태클(과 B3의 런지)이 패리당하면: 공격자가 그 공격 피해의 100%(`parryReflectRatio` 1.0)를 받고 넉백. **기존의 공격자 스턴(`attackerStunDuration` 사용 부분) 제거.**
 - 펀치가 패리당하면 피해 0만 (반사 없음).
 
-### [ ] A6. 펀치 판정 정리
+### [x] A6. 펀치 판정 정리
 - 사거리 3m + 정면 부채꼴 ±45°(`punchHalfAngle`) + Opponent만 판정.
 - 맞딜 판정 유지.
 - 판정 결과를 HitResult로 받아 이벤트를 남길 수 있게 한다 (B6에서 로그 연결).
@@ -121,3 +121,4 @@
 - **A3** 완료. 바뀐 파일: `HeatGauge`(`CanPunch()`), `MeleeSystem`(`heatPerPunch` 6, 과열 시 펀치 불가, 발동 시 히트 증가). `IsSkillActive`는 아무 데서도 안 켜짐 → QUESTIONS. 위험: 더미는 HeatGauge가 없어 펀치 제한 없음(의도).
 - **A4** 완료. 바뀐 파일: 신규 `Combat/HitTypes.cs`(AttackType·HitResult·HitInfo), `MeleeSystem`(`ReceiveHit`/`DeliverHit`/`OnHitResolved`, `ApplyDamage(float, AttackType)`, 가드 재사용 대기, 스턴 중 가드 해제), `Projectile`·`AnchorClaw`(DeliverHit 사용). 위험: `ApplyDamage(float)` 단일 인자 시그니처 삭제(참조 전부 교체 확인). 맞딜 판정을 피격자 쪽 ReceiveHit으로 옮김(결과 동일).
 - **A5** 완료. 바뀐 파일: `MeleeSystem`(`parryReflectRatio`·`parryReflectKnockback`, 런지·태클 패리 반사, `attackerStunDuration` 삭제, `TryTackle` → `HitResult?` 반환, `CanTackle`·`TackleRecoveryStun`), `SprintState`(결과가 Parried면 자기 경직 없음, 쿨다운 중 접촉은 질주 유지). 위험: 쿨다운 중 접촉 시 예전엔 멈추고 경직됐는데 이제 질주가 이어짐.
+- **A6** 완료. 바뀐 파일: `MeleeSystem`(`punchHalfAngle` 45°, Opponent만, `TryMeleeAttack` → `HitResult?` 반환, `OnAttackStarted` 이벤트), `MeleeDummy`(상대 쪽으로 회전). 위험: 기체 정면(transform.forward) 기준이라, 하드 락온이 아닌 상태에서 카메라만 돌리고 기체가 덜 돌았으면 빗나갈 수 있음.

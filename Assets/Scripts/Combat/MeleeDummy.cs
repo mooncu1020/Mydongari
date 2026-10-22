@@ -9,6 +9,8 @@ namespace MyDongari.Combat
         [SerializeField] private float attackRange = 3f;
         [SerializeField] private float attackCooldown = 1f;
         [SerializeField] private float moveSpeed = 5f;
+        [Tooltip("상대 쪽으로 몸을 돌리는 속도. 펀치가 정면 부채꼴 판정이라 안 돌면 안 맞는다")]
+        [SerializeField] private float turnSpeed = 8f;
 
         private Transform _player;
         private MechIdentity _identity;
@@ -54,6 +56,11 @@ namespace MyDongari.Combat
 
             float dist = Vector3.Distance(transform.position, _player.position);
 
+            if (dist <= detectionRange)
+            {
+                FaceTarget();
+            }
+
             if (dist <= detectionRange && dist > attackRange)
             {
                 Vector3 dir = (_player.position - transform.position).normalized;
@@ -66,6 +73,15 @@ namespace MyDongari.Combat
                     _rb.linearVelocity = new Vector3(flat.x, _rb.linearVelocity.y, flat.z);
                 }
             }
+        }
+
+        private void FaceTarget()
+        {
+            Vector3 toTarget = _player.position - transform.position;
+            toTarget.y = 0f;
+            if (toTarget.sqrMagnitude < 0.0001f) return;
+            Quaternion targetRot = Quaternion.LookRotation(toTarget.normalized, Vector3.up);
+            _rb.MoveRotation(Quaternion.Slerp(_rb.rotation, targetRot, turnSpeed * Time.fixedDeltaTime));
         }
 
         private void TryAttack()
