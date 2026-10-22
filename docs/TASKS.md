@@ -102,7 +102,7 @@
 - 매치 종료 화면 → 시작 버튼(아무 패드)으로 재매치(씬 리로드 대신 GameManager 상태 초기화 권장).
 - UI는 기존 Canvas 구조에 맞춰 간단히. 화면 분할이므로 중앙 공용 UI 하나 + 각 화면 HUD.
 
-### [ ] B6. PlayLogger 확장
+### [x] B6. PlayLogger 확장
 - 2인 기준으로 참조 정리, 프레임 로그에 거리 구간 컬럼 추가.
 - 이벤트 로그 `events_*.csv`와 매치 요약(플레이어별 카운트, 거리 구간 체류 시간)을 GAME_SPEC 9장대로.
 - 이벤트는 정적 이벤트 버스나 MeleeSystem 이벤트(`OnHitResolved` 등)를 구독하는 방식으로, 전투 코드에 로거 의존을 넣지 않는다.
@@ -130,3 +130,4 @@
 - **B3** 완료. 바뀐 파일: 신규 `Combat/ThrusterLunge`, 신규 `Movement/LungeState`, 신규 `Editor/MechComponentSetup`(메뉴), `MechStateMachine`(LungeState·`CanStartLunge`·`IsLunging`), `LockOnSystem`(하드 락온 금지 플래그·타이머, 전체 락온 금지, `ResetForRound`), `WeaponSystem`(GAME_SPEC 4장 우선순위, `RangedMode`), `InputReader`(`AttackPressedThisFrame`), `SlideState`(상대 락온 해제), `GameManager`·`VersusSceneSetup`. 위험: 대시 어택 분기는 B4에서 연결(지금은 질주 중 공격 버튼 무반응). 런지 스턴의 히트스톱 이후 시작은 B7.
 - **B4** 완료. 바뀐 파일: `MeleeSystem`(`TryTackle(chargePower, AttackType)` — 참조는 SprintState 1곳, 대시 어택 수치, 대시 어택 패리 반사), `SprintState`(`RequestTackle()`, 버튼·자동 접촉을 FixedUpdate 한 곳에서 한 번만 처리), `WeaponSystem`(우선순위 2 연결). 위험: 대시 어택 수치는 임시값(QUESTIONS).
 - **B5** 완료. 바뀐 파일: `GameManager`(`MatchPhase` Countdown/Fight/RoundOver/MatchOver, 입력 잠금, Start로 재매치 `StartMatch`, `OnRoundStarted`·`OnFight`·`OnMatchStarted` 이벤트, `Invoke` 제거), `InputReader`(`SetInputLocked`, `StartPressed`), `.inputactions`(`Start`), `MeleeDummy`(Fight 아닐 땐 정지), 신규 `UI/RoundUI`, 신규 `Editor/RoundUISetup`(메뉴, Versus 세팅에서도 호출). 위험: 라운드 종료 후 재매치 입력은 각 플레이어 InputReader의 Start만 본다(1인 모드는 P1만).
+- **B6** 완료. 바뀐 파일: `PlayLogger`(재작성: 이벤트 구독, round·dist_band 컬럼, events/summary CSV, 매치 종료 시 저장, 재매치 시 카운트 리셋), `AnchorClaw`(`OnGrabbed`), `MechStateMachine`(`OnStateChanged`). 전투 코드에서 로거 참조 없음. 위험: 로그 파일을 Assets에 쓰는 기존 방식 유지 — 에디터에서 임포트 대상이 된다.

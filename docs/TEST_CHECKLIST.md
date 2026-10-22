@@ -104,3 +104,9 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (B5) 한쪽 HP 0 → "P1 WIN"(또는 P2) 표시, 위쪽 승수 ●가 하나 늘고, 살아남은 쪽도 조작이 멈춤 → 3초 뒤 리셋 + "ROUND 2" 카운트다운
 - [ ] (B5) 2승 → "P1 WINS THE MATCH" + 재매치 안내. 아무 패드 Start(또는 Enter) → 승수 ○○로 초기화, ROUND 1부터 다시 (씬 리로드 없음)
 - [ ] (B5) 카운트다운 중 스틱을 밀고 있다가 FIGHT 순간 → 엉뚱한 제스처(퀵턴 등)가 튀어나오지 않음
+- [ ] (B6) 한 매치 끝까지 플레이 → `Assets/`에 `playlog_*.csv`, `events_*.csv`, `summary_*.csv` 3개 생성 (매치 종료 순간 저장, 종료 시 다시 저장)
+- [ ] (B6) playlog: `round`, `dist_band`(near/mid/far) 컬럼이 있고 값이 거리와 맞음
+- [ ] (B6) events: 펀치·런지·태클·가드·패리·사이드스텝·앵커 등 한 번씩 해 보고 해당 줄(P1/P2, 이벤트명, 거리)이 남는지. `round_start`/`fight`/`round_over`/`match_over` 경계 줄 확인
+- [ ] (B6) summary: 매치 번호별로 P1/P2 각 항목 카운트 + `time_near_sec`/`time_mid_sec`/`time_far_sec`. 합이 실제 전투 시간과 비슷
+- [ ] (B6) 재매치 후 다시 끝까지 → summary에 매치 2가 따로 쌓이고 카운트가 0부터 다시 셈
+- [ ] (B6) 매치 도중 플레이 중지 → summary에 `N_incomplete` 행으로 지금까지 기록

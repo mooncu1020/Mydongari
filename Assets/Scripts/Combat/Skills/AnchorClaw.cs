@@ -1,6 +1,7 @@
 using MyDongari.Combat;
 using MyDongari.Movement;
 using MyDongari.Core;
+using System;
 using UnityEngine;
 
 namespace MyDongari.Combat.Skills
@@ -31,6 +32,9 @@ namespace MyDongari.Combat.Skills
         private bool _isPulling = false;
         private bool _pileDriverReady = false;
         public bool IsPileDriverReady => _pileDriverReady;
+
+        /// <summary>앵커가 상대에게 박혔을 때(끌어오기 시작). 인자는 잡힌 대상. 로그용.</summary>
+        public event Action<GameObject> OnGrabbed;
 
         private LockOnSystem _lockOnSystem;
         private MechStateMachine _stateMachine;
@@ -83,6 +87,8 @@ namespace MyDongari.Combat.Skills
             {
                 _selfRb.linearVelocity = new Vector3(0f, _selfRb.linearVelocity.y, 0f);
             }
+
+            OnGrabbed?.Invoke(_target.gameObject);
         }
 
         private void FixedUpdate()

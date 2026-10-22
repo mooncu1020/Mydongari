@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using MyDongari.Input;
 
@@ -9,6 +10,9 @@ namespace MyDongari.Movement
         public MechController MechController { get; private set; }
 
         private MechState _currentState;
+
+        /// <summary>상태가 실제로 바뀌었을 때(Enter에서 곧바로 다른 상태로 튕겨 나간 경우는 제외). 로그용.</summary>
+        public event Action<MechState> OnStateChanged;
 
         public IdleState IdleState { get; private set; }
         public WalkState WalkState { get; private set; }
@@ -86,6 +90,8 @@ namespace MyDongari.Movement
             }
             _currentState = newState;
             _currentState.Enter();
+            // Enter 안에서 부스트 부족 등으로 다른 상태로 넘어갔으면 그쪽 호출이 이미 알렸다
+            if (_currentState == newState) OnStateChanged?.Invoke(newState);
         }
 
         private void Update()
