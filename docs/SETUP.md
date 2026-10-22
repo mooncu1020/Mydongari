@@ -67,3 +67,12 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 45. (C3) 빌드 설정은 `docs/BUILD.md` 체크리스트대로. 특히 Player Settings → **Run In Background 켜기**(현재 꺼짐), **Force Single Instance 켜기**, Input System → **Background Behavior = Ignore Focus** 권장.
 46. (C4) 로그 폴더가 `Logs/PlayLogs`로 바뀌었다 (에디터: 프로젝트 루트/Logs/PlayLogs, 빌드: 실행 파일 옆/Logs/PlayLogs). `PlayLogger` → 새 필드 `Log Subfolder Name`(기본 PlayLogs, 비우면 Logs 바로 아래). 씬에는 `Log Folder Name = Logs`가 저장돼 있어 그대로 두면 된다.
 47. (C4) `CombatFeedback` → 효과음 칸 `Lunge Hit Clip` 추가 (런지가 그대로 맞았을 때). STUN 팝업은 이제 상대에게 맞아서 생긴 스턴(런지·차징 태클 명중, 앵커 클로 훅)에만 뜬다. 태클 후 자기 경직에는 안 뜬다(틴트는 그대로 노랑).
+
+## Phase D
+
+48. (D1) DummyTarget → `MeleeDummy`가 연습 봇이 됐다. 새 필드 `Mode`(Idle / AlwaysGuard / Approach / Lunger / Parrier / Mixed, 기본 Approach = 예전 동작). 기존 `Detection Range`·`Attack Range`·`Attack Cooldown`·`Move Speed`·`Turn Speed` 값은 그대로 쓰인다.
+    - Lunger: `Lunger Min/Max Distance` 6/12m, `Lunge Interval Min/Max` 1.5~3.5초, `Lunge Aim Angle` 10°.
+    - Parrier: `Parry Chance` 0.6, `Reaction Time` 0.2초(런지에만 의미 있음), `Parry Hold Time` 0.3초, `Counter After Parry` 켬, `Counter Delay` 0.1초.
+    - Mixed: `Mixed Segment Min/Max` 4~8초마다 AlwaysGuard/Approach/Lunger/Parrier 중 하나로 바뀜.
+    - 플레이 중 인스펙터에서 `Mode`를 바꿔도 바로 반영된다.
+49. (D1) 씬 편집 없음: 봇에 필요한 `BotInput`·`HeatGauge`·`BoostGauge`·`ThrusterLunge`는 `MeleeDummy`가 플레이 시작 때 없으면 붙인다(봇도 플레이어와 같은 히트·부스트·런지 규칙). 수치는 모두 `BernardTuning` 에셋에서 읽으므로 따로 넣을 값이 없다.

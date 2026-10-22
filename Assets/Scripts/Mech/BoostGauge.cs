@@ -39,16 +39,16 @@ namespace MyDongari.Mech
 
         private void Update()
         {
-            if (_stateMachine == null) return;
-
-            if (_stateMachine.IsSprinting)
+            if (_stateMachine != null && _stateMachine.IsSprinting)
             {
                 Drain(T.sprintDrainRate * Time.deltaTime);
             }
 
             // 가드를 올리고 있으면 걷기/정지여도 회복하지 않는다 (가드 유지에 대가를 주기 위함)
             bool guarding = _meleeSystem != null && _meleeSystem.IsGuarding;
-            bool canRecover = (_stateMachine.IsWalking || _stateMachine.IsIdle) && !guarding;
+            // 상태 머신이 없는 기체(연습 봇)는 걷기·정지만 하므로 가드 중이 아니면 회복
+            bool calm = _stateMachine == null || _stateMachine.IsWalking || _stateMachine.IsIdle;
+            bool canRecover = calm && !guarding;
             HandleRecovery(canRecover);
             CheckExhaust();
         }

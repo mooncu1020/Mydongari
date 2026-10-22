@@ -113,6 +113,35 @@ namespace MyDongari.Combat
             HandleParry();
         }
 
+        /// <summary>전투 입력 소스를 바꾼다. 연습 봇처럼 런타임에 입력 컴포넌트를 붙이는 기체용.</summary>
+        public void SetInputSource(ICombatInputSource input)
+        {
+            _input = input;
+        }
+
+        /// <summary>
+        /// 같은 오브젝트의 부품(히트 게이지·체력·입력 소스)을 다시 찾는다.
+        /// 연습 봇이 런타임에 HeatGauge 등을 붙였을 때, 이 컴포넌트가 먼저 Awake했어도 같은 규칙(과열 가드 깨짐 등)이 적용되게.
+        /// </summary>
+        public void RebindComponents()
+        {
+            _heatGauge = GetComponent<HeatGauge>();
+            _health = GetComponent<Health>();
+            ICombatInputSource input = GetComponent<ICombatInputSource>();
+            if (input != null) _input = input;
+        }
+
+        /// <summary>
+        /// 가드 입력을 다음 Update까지 기다리지 않고 지금 한 번 처리한다. 규칙은 Update와 같다
+        /// (스턴 중 불가, 재사용 대기, 질주 중 불가, 새로 누른 가드에만 패리 창).
+        /// 같은 프레임에 들어오는 공격에 반응해야 하는 입력 소스(연습 봇의 패리 읽기)용.
+        /// </summary>
+        public void ApplyGuardInputNow()
+        {
+            if (IsStunned) return;
+            HandleGuard();
+        }
+
         private void HandleGuard()
         {
             // 전력질주 중엔 가드 자체를 못 건다 (질주=공격적 상태, 방어자세 병행 불가)

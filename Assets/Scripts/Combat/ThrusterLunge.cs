@@ -44,6 +44,10 @@ namespace MyDongari.Combat
         private LockOnSystem _lockOn;
         private MechIdentity _identity;
         private Rigidbody _rb;
+        private MeleeSystem _melee;
+        private ExternalControlLock _controlLock;
+        // 상태 머신이 없는 기체(연습 봇)는 LungeState 대신 이 컴포넌트가 FixedUpdate에서 돌진을 진행한다
+        private bool _selfDriven;
 
         private Vector3 _direction;
         private Vector3 _startPosition;
@@ -57,20 +61,57 @@ namespace MyDongari.Combat
             _lockOn = GetComponent<LockOnSystem>();
             _identity = MechIdentity.GetOrAdd(gameObject);
             _rb = GetComponent<Rigidbody>();
+            _melee = GetComponent<MeleeSystem>();
         }
 
-        /// <summary>조건이 맞으면 부스트를 쓰고 LungeState로 전환한다.</summary>
+        private bool IsStunned => _stateMachine != null ? _stateMachine.IsStunned : _melee != null && _melee.IsStunned;
+
+        private bool IsExternallyControlled
+        {
+            get
+            {
+                if (_controller != null) return _controller.IsExternallyControlled;
+                // 잠금 컴포넌트는 앵커 클로가 잡을 때 런타임에 붙기도 해서 없으면 다시 찾는다
+                if (_controlLock == null) _controlLock = GetComponent<ExternalControlLock>();
+                return _controlLock != null && _controlLock.IsLocked;
+            }
+        }
+
+        /// <summary>
+        /// 조건이 맞으면 부스트를 쓰고 돌진을 시작한다. 플레이어 기체는 LungeState로 전환,
+        /// 상태 머신이 없는 기체(연습 봇)는 같은 BeginDash/TickDash를 이 컴포넌트가 직접 돌린다.
+        /// </summary>
         public bool TryLunge()
         {
-            if (IsLunging || _stateMachine == null || _rb == null) return false;
-            if (_stateMachine.IsStunned) return false;
-            if (_controller != null && _controller.IsExternallyControlled) return false;
-            if (!_stateMachine.CanStartLunge) return false;
+            if (IsLunging || _rb == null) return false;
+            if (IsStunned) return false;
+            if (IsExternallyControlled) return false;
+            if (_stateMachine != null && !_stateMachine.CanStartLunge) return false;
             // TryConsume은 탈진이면 false
             if (_boostGauge != null && !_boostGauge.TryConsume(T.boostCost)) return false;
 
-            _stateMachine.ChangeState(_stateMachine.LungeState);
+            if (_stateMachine != null)
+            {
+                _stateMachine.ChangeState(_stateMachine.LungeState);
+                return true;
+            }
+
+            _selfDriven = true;
+            BeginDash();
             return true;
+        }
+
+        private void FixedUpdate()
+        {
+            if (!_selfDriven) return;
+            // LungeState.Update와 같은 규칙: 스턴이면 돌진을 끊는다(빗나감)
+            if (IsStunned)
+            {
+                _selfDriven = false;
+                EndDash();
+                return;
+            }
+            if (TickDash()) _selfDriven = false;
         }
 
         public void BeginDash()
@@ -99,7 +140,7 @@ namespace MyDongari.Combat
             if (!IsLunging) return true;
 
             // 앵커 클로 등에 잡히면 돌진을 끊는다 (외부 제어 우선)
-            if (_controller != null && _controller.IsExternallyControlled)
+            if (IsExternallyControlled)
             {
                 Finish(null);
                 return true;
@@ -157,6 +198,7 @@ namespace MyDongari.Combat
         public void ResetForRound()
         {
             IsLunging = false;
+            _selfDriven = false;
             if (_lockOn != null) _lockOn.SetHardLockSuppressed(false);
         }
 

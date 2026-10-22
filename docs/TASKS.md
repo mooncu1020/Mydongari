@@ -136,7 +136,7 @@
 
 ## Phase D — 연습 모드
 
-### [ ] D1. 연습 봇
+### [x] D1. 연습 봇
 - `MeleeDummy`에 행동 모드(enum): Idle(가만히), AlwaysGuard(제자리 가드 유지), Approach(다가와서 펀치, 기존 동작), Lunger(6~12m 유지하다 런지), Parrier(상대 공격 직전에 일정 확률로 패리), Mixed(위 행동을 섞어서).
 - 더미도 실제 기체와 같은 규칙(`MeleeSystem.ReceiveHit`, 히트, 가드 깨짐, 패리 반사)을 그대로 거친다. 더미 전용 판정을 새로 만들지 않는다.
 - 더미 입력은 `ICombatInputSource`를 구현한 봇 입력 컴포넌트로. 런지는 `ThrusterLunge`를 그대로 쓴다.
@@ -179,3 +179,4 @@
 - **C2** 완료. 바뀐 파일: 신규 `Feedback/CombatFeedback`(이벤트 구독 + 상태 프로퍼티 변화 감지, 팝업·틴트·효과음), 신규 `Feedback/StatusPopup`(TextMesh 월드 텍스트, 카메라별 렌더 직전 회전으로 화면 분할 양쪽 정면), 신규 `Feedback/MechTint`(MaterialPropertyBlock), `GameManager`(자동 부착 한 줄), `MechComponentSetup`·`VersusSceneSetup`(GameManager에 HitStop·CombatFeedback 추가). 전투 코드는 수정 없음. 위험: TextMesh 기본 폰트 머티리얼(GUI/Text Shader)이 URP에서 그려지는지 에디터 확인 필요. 틴트는 `_BaseColor`가 있는 셰이더에서만 보임.
 - **C3** 완료. 바뀐 파일: `PlayLogger`(저장 경로 = `Application.dataPath`의 부모/Logs — 에디터는 프로젝트 루트, 빌드는 실행 파일 옆, 폴더 자동 생성, 쓰기 실패 시 경고만), 신규 `Core/AppRuntime`(ESC 1초 홀드 종료 + 진행 표시, 빌드 커서 숨김·잠금, 시작 시 FullScreenWindow 네이티브 해상도), `GameManager`(자동 부착), `MechComponentSetup`(GameManager에 AppRuntime), 신규 `docs/BUILD.md`. 위험: Run In Background가 꺼져 있어 BUILD.md대로 켜지 않으면 포커스를 잃을 때 게임이 멈춘다. 빌드 결과는 아직 확인 안 됨(빌드는 사용자).
 - **C4** (질문 반영, TASKS 외 추가 작업) 완료. 바뀐 파일: `PlayLogger`(`logSubfolderName` = PlayLogs — 씬에 `logFolderName`이 저장돼 있어 기본값 변경 대신 새 필드), `CombatFeedback`(STUN 팝업을 프로퍼티 감시 → 피격 이벤트(Hit + 스턴)·앵커 잡기 이벤트로, `lungeHitClip`), `BUILD.md`. 위험: 낮음. 가드 깨짐 스턴은 GUARD BREAK로만 표시.
+- **D1** 완료. 바뀐 파일: 신규 `Input/BotInput`(ICombatInputSource), `MeleeDummy`(연습 봇 두뇌, `BotMode` 6종, 실행 순서 -50, 필요한 부품 런타임 부착, 상대 공격 이벤트 구독으로 패리), `MeleeSystem`(`SetInputSource`, `RebindComponents`, `ApplyGuardInputNow` — 모두 범용, 판정 로직 변경 없음), `ThrusterLunge`(상태 머신 없는 기체는 스스로 돌진 진행), `HeatGauge`·`BoostGauge`(상태 머신 없이도 냉각·회복). 위험: 봇의 런지 중에도 부스트가 회복된다(상태 머신이 없어 "정지/걷기"로 봄). 봇이 질주를 안 하므로 질주 관련 규칙은 봇에 해당 없음.
