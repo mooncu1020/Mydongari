@@ -493,6 +493,7 @@ MonoBehaviour:
   target: {fileID: 775153504}
   offset: {x: 0, y: 1.5, z: 0}
   mouseSensitivity: 0.1
+  stickSensitivity: 180
   verticalClamp: 60
   quickTurnDuration: 0.2
   baseFov: 70
@@ -791,6 +792,7 @@ GameObject:
   - component: {fileID: 775153510}
   - component: {fileID: 775153511}
   - component: {fileID: 775153512}
+  - component: {fileID: 775153513}
   m_Layer: 0
   m_Name: Mech
   m_TagString: Player
@@ -847,12 +849,13 @@ MonoBehaviour:
   maxRunSpeed: 20
   maxSprintSpeed: 30
   rotationSpeed: 30
+  hardLockTurnSpeed: 10
+  turnResistance: 0.6
+  spinUpTime: 0.25
   boostGauge: {fileID: 775153505}
   meleeSystem: {fileID: 775153509}
   cameraTransform: {fileID: 405262798}
   mechCamera: {fileID: 405262802}
-  turnResistance: 0.6
-  spinUpTime: 0.25
 --- !u!114 &775153498
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -877,6 +880,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 65857f0986909504ebebb12a8e147ba1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Input.InputReader
+  doubleTapWindow: 0.3
+  moveDeadzone: 0.3
+  runThreshold: 0.8
+  gesture:
+    neutralThreshold: 0.3
+    edgeThreshold: 0.8
+    flickReachTime: 0.15
+    flickReleaseTime: 0.25
+    sectorHalfAngle: 30
+    doubleFlickWindow: 0.35
+    slideWindow: 0.2
+    slideMinAngle: 20
+    slideMaxAngle: 55
 --- !u!54 &775153500
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1018,6 +1034,7 @@ MonoBehaviour:
   recoveryDelay: 0.5
   recoveryRate: 25
   sprintDrainRate: 5
+  exhaustRecoverRatio: 0.5
   sideStepCost: 7
   quickTurnCost: 10
   slideCost: 10
@@ -1035,7 +1052,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Mech.HeatGauge
   maxHeat: 100
   coolingRate: 20
-  sprintCoolingPenalty: 0.2
+  sprintCoolingReduction: 0.7
 --- !u!114 &775153507
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1066,11 +1083,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 958c048fc5ebdc44a82504e9dc8ab7b4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Combat.WeaponSystem
+  rangedMode: 0
   projectilePrefab: {fileID: 6913977290687813628, guid: 9ace386bdc29c1e439036ee0f6e415c3, type: 3}
   firePoint: {fileID: 329237979}
   heatPerShot: 10
   fireRate: 0.3
-  meleeAutoRange: 50
 --- !u!114 &775153509
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1084,17 +1101,31 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Combat.MeleeSystem
   meleeRange: 3
+  punchHalfAngle: 45
   meleeDamage: 10
   meleeCooldown: 0.5
-  guardBoostDrain: 15
-  guardDamageReduction: 0.7
+  heatPerPunch: 6
+  guardMeleeReduction: 0.5
+  guardProjectileReduction: 0.7
+  guardHeatPerBlock: 10
+  guardBreakStun: 0.9
+  guardReraiseDelay: 0.4
   parryWindow: 0.15
+  parryReflectRatio: 1
+  parryReflectKnockback: 8
+  guardDamping: 8
+  guardReleaseDamping: 2
+  clashKnockback: 10
   tackleDamage: 10
   tackleKnockback: 8
   tackleRange: 5
+  tackleHalfAngle: 45
   tackleCooldown: 1
-  attackerStunDuration: 0.5
   victimStunDuration: 1.7
+  tackleRecoveryStun: 0.5
+  dashAttackDamage: 20
+  dashAttackKnockback: 6
+  dashAttackStun: 0
 --- !u!114 &775153510
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1143,7 +1174,21 @@ MonoBehaviour:
   slamAngle: 90
   slamDamage: 10
   slamKnockback: 15
+  slamKnockbackLift: 0.3
   cooldown: 2
+--- !u!114 &775153513
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 775153495}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3650ea2e59955f1448b41db70d44b97d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Mech.MechTuning
+  tuning: {fileID: 11400000, guid: 9dd6331b6c9e522449fd003a55f38aed, type: 2}
 --- !u!1 &790466230
 GameObject:
   m_ObjectHideFlags: 0
@@ -1545,6 +1590,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Core.PlayLogger
   logInterval: 0.1
   fileName: playlog
+  eventFileName: events
+  summaryFileName: summary
+  logFolderName: Logs
+  nearRange: 6
+  midRange: 12
   player1: {fileID: 775153495}
   player2: {fileID: 1143339534}
 --- !u!4 &1028945037
@@ -1730,6 +1780,7 @@ MonoBehaviour:
   heatGaugeArc: {fileID: 1423522564}
   boostGaugeArc: {fileID: 1558416259}
   hpBarFill: {fileID: 1604249581}
+  opponentHpBarFill: {fileID: 0}
   tackleBarFill: {fileID: 1707581530}
   lockOnMarker: {fileID: 1912239605}
   heatGauge: {fileID: 775153506}
@@ -1737,6 +1788,7 @@ MonoBehaviour:
   playerHealth: {fileID: 775153510}
   lockOnSystem: {fileID: 775153507}
   mechStateMachine: {fileID: 775153498}
+  viewCamera: {fileID: 0}
 --- !u!1 &1117158606
 GameObject:
   m_ObjectHideFlags: 0
@@ -1874,6 +1926,7 @@ GameObject:
   - component: {fileID: 1143339540}
   - component: {fileID: 1143339541}
   - component: {fileID: 1143339542}
+  - component: {fileID: 1143339543}
   m_Layer: 0
   m_Name: DummyTarget
   m_TagString: Enemy
@@ -2032,6 +2085,7 @@ MonoBehaviour:
   attackRange: 3
   attackCooldown: 1
   moveSpeed: 5
+  turnSpeed: 8
 --- !u!114 &1143339542
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2045,17 +2099,44 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Combat.MeleeSystem
   meleeRange: 3
+  punchHalfAngle: 45
   meleeDamage: 5
   meleeCooldown: 1
-  guardBoostDrain: 15
-  guardDamageReduction: 0.7
+  heatPerPunch: 6
+  guardMeleeReduction: 0.5
+  guardProjectileReduction: 0.7
+  guardHeatPerBlock: 10
+  guardBreakStun: 0.9
+  guardReraiseDelay: 0.4
   parryWindow: 0.15
+  parryReflectRatio: 1
+  parryReflectKnockback: 8
+  guardDamping: 8
+  guardReleaseDamping: 2
+  clashKnockback: 10
   tackleDamage: 30
   tackleKnockback: 8
   tackleRange: 5
+  tackleHalfAngle: 45
   tackleCooldown: 1
-  attackerStunDuration: 0.5
   victimStunDuration: 1.7
+  tackleRecoveryStun: 0.5
+  dashAttackDamage: 20
+  dashAttackKnockback: 6
+  dashAttackStun: 0
+--- !u!114 &1143339543
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1143339534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3650ea2e59955f1448b41db70d44b97d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Mech.MechTuning
+  tuning: {fileID: 11400000, guid: 9dd6331b6c9e522449fd003a55f38aed, type: 2}
 --- !u!1 &1178358904
 GameObject:
   m_ObjectHideFlags: 0
@@ -2230,7 +2311,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d2a6a55c15f6bd46b7efd93ac511289, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Core.GameManager
+  versusMode: 1
+  dummyOpponent: {fileID: 0}
+  versusOnlyObjects: []
+  player1Camera: {fileID: 0}
   roundsToWin: 2
+  countdownDuration: 3
+  fightBannerDuration: 1
   respawnDelay: 3
   player1SpawnPoint: {fileID: 882279695}
   player2SpawnPoint: {fileID: 766054330}
