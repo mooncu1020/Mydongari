@@ -6,6 +6,9 @@ namespace MyDongari.Movement
     public class SprintState : MechState
     {
         private float _tackleChargeTimer = 0f;
+        private bool _tackleRequested = false;
+        // 차징 상태로 이 거리(m) 안에 상대가 닿으면 자동 태클 (기존 동작 유지)
+        private const float ContactRadius = 2f;
         public bool IsTackleCharged => _tackleChargeTimer >= 1.5f;
         public float TackleChargePower => Mathf.Clamp01((_tackleChargeTimer - 1.5f) / 1.5f);
 
@@ -16,6 +19,7 @@ namespace MyDongari.Movement
         public override void Enter()
         {
             _tackleChargeTimer = 0f;
+            _tackleRequested = false;
             StateMachine.MechController.MechCamera.LockToForward();
         }
 
@@ -81,29 +85,42 @@ namespace MyDongari.Movement
                 StateMachine.MechController.SprintSpeed,
                 StateMachine.MechController.MaxSprintSpeed);
 
-            if (IsTackleCharged)
+            bool requested = _tackleRequested;
+            _tackleRequested = false;
+            // 버튼 태클과 차징 자동 접촉 태클을 이 한 곳에서만 처리해 같은 프레임 중복 발동을 막는다
+            if (requested || (IsTackleCharged && IsOpponentInContact()))
             {
-                Collider[] hits = Physics.OverlapSphere(
-                    StateMachine.MechController.transform.position, 2f);
-                foreach (Collider hit in hits)
+                MeleeSystem melee = StateMachine.MechController.MeleeSystem;
+                // 쿨다운 중이면 태클이 안 나가니 질주를 끊지 않는다
+                if (melee == null || !melee.CanTackle) return;
+
+                AttackType type = IsTackleCharged ? AttackType.Tackle : AttackType.DashAttack;
+                // 속도를 먼저 0으로: 패리 반사 넉백이 이 뒤에 들어와야 지워지지 않는다
+                StateMachine.MechController.Rb.linearVelocity = Vector3.zero;
+                HitResult? result = melee.TryTackle(TackleChargePower, type);
+                if (result != HitResult.Parried)
                 {
-                    if (!StateMachine.MechController.Identity.IsOpponentCollider(hit)) continue;
-
-                    MeleeSystem melee = StateMachine.MechController.MeleeSystem;
-                    // 쿨다운 중이면 부딪쳐도 태클이 안 나가니 질주를 끊지 않는다
-                    if (!melee.CanTackle) return;
-
-                    // 속도를 먼저 0으로: 패리 반사 넉백이 이 뒤에 들어와야 지워지지 않는다
-                    StateMachine.MechController.Rb.linearVelocity = Vector3.zero;
-                    HitResult? result = melee.TryTackle(TackleChargePower);
-                    if (result != HitResult.Parried)
-                    {
-                        melee.ApplyStun(melee.TackleRecoveryStun);
-                    }
-                    StateMachine.ChangeState(StateMachine.IdleState);
-                    return;
+                    melee.ApplyStun(melee.TackleRecoveryStun);
                 }
+                StateMachine.ChangeState(StateMachine.IdleState);
             }
+        }
+
+        /// <summary>공격 버튼으로 어깨 태클 요청. 다음 물리 스텝에 처리된다.</summary>
+        public void RequestTackle()
+        {
+            _tackleRequested = true;
+        }
+
+        private bool IsOpponentInContact()
+        {
+            Collider[] hits = Physics.OverlapSphere(
+                StateMachine.MechController.transform.position, ContactRadius);
+            foreach (Collider hit in hits)
+            {
+                if (StateMachine.MechController.Identity.IsOpponentCollider(hit)) return true;
+            }
+            return false;
         }
 
         public override void Exit()

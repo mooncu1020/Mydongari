@@ -40,3 +40,4 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 22. (B3) **메뉴 `Mydongari/Add Missing Mech Components` 실행** → 저장. PlayerInput이 있는 기체(Mech, Mech_P2)에 `ThrusterLunge`를 붙인다. (Versus 세팅 메뉴도 복제 전에 P1에 붙인다. 안 붙여도 런타임에 기본값으로 자동 부착되지만 수치 조정·저장은 씬에 붙어 있어야 한다.)
 23. (B3) `ThrusterLunge` 수치: 거리 8 / 속도 30 / 종료 속도 비율 0.2 / 부스트 15 / 피해 15 / 스턴 0.5 / 넉백 0 / 판정 반경 1.2·전방 1 / 빗나감 락 지연 0.6. 돌진 거리·속도는 테스트로 정한다.
 24. (B3) `WeaponSystem` → `Ranged Mode`: 버나드는 `Lunge`(기본). 사격 기체 테스트 때만 `Projectile`.
+25. (B4) `MeleeSystem` → `Dash Attack Damage 20`, `Dash Attack Knockback 6`, `Dash Attack Stun 0` 새 필드 (스펙에 수치가 없어 임시값). 두 기체 모두 같은 값인지 확인.

@@ -99,7 +99,8 @@ namespace MyDongari.Combat
 
             if (_stateMachine != null && _stateMachine.IsSprinting)
             {
-                // 대시 어택은 B4에서 연결
+                // 질주 중 공격 버튼 = 어깨 태클 (1.5초 미만 대시 어택 / 이상 차징 태클)
+                if (pressed) _stateMachine.SprintState.RequestTackle();
                 return;
             }
 

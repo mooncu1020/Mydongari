@@ -58,6 +58,13 @@ namespace MyDongari.Combat
         [Tooltip("태클을 부딪친 뒤 공격자 자신의 경직(초). 패리당했을 땐 적용 안 함")]
         [SerializeField] private float tackleRecoveryStun = 0.5f;
 
+        [Header("대시 어택 (전력질주 1.5초 미만 어깨 태클)")]
+        [Tooltip("가드에 막힌다(가드 규칙 적용). 차징 태클과 달리 관통·스턴 없음")]
+        [SerializeField] private float dashAttackDamage = 20f;
+        [SerializeField] private float dashAttackKnockback = 6f;
+        [Tooltip("그대로 맞았을 때 상대 스턴(초). 0이면 없음")]
+        [SerializeField] private float dashAttackStun = 0f;
+
         public bool IsGuarding { get; private set; }
         public bool IsParrying { get; private set; }
         public bool IsStunned { get; private set; }
@@ -244,7 +251,7 @@ namespace MyDongari.Combat
             if (IsParrying && !info.IgnoresParry)
             {
                 _parryGrace = true;
-                if (info.Type == AttackType.Tackle || info.Type == AttackType.Lunge)
+                if (info.Type == AttackType.Tackle || info.Type == AttackType.DashAttack || info.Type == AttackType.Lunge)
                 {
                     ReflectToAttacker(info);
                 }
@@ -331,17 +338,21 @@ namespace MyDongari.Combat
         }
 
         /// <summary>
-        /// 태클 판정. 쿨다운 중이거나 범위 안에 상대가 없으면 null.
+        /// 어깨 태클 판정. type은 DashAttack(질주 1.5초 미만, 가드에 막힘) 또는 Tackle(차징, 관통 + 스턴).
+        /// 쿨다운 중이거나 범위 안에 상대가 없으면 null.
         /// 공격자 경직은 호출 쪽(SprintState)이 결과를 보고 건다 — 패리당했으면 경직 없음.
         /// </summary>
-        public HitResult? TryTackle(float chargePower)
+        public HitResult? TryTackle(float chargePower, AttackType type)
         {
             if (_tackleTimer < tackleCooldown) return null;
             _tackleTimer = 0f;
-            OnAttackStarted?.Invoke(AttackType.Tackle);
+            OnAttackStarted?.Invoke(type);
 
-            float finalDamage = tackleDamage * (1f + chargePower);
-            float finalKnockback = tackleKnockback * (1f + chargePower);
+            bool charged = type == AttackType.Tackle;
+            // 차징 태클은 기존 공식(TackleChargePower 반영), 대시 어택은 고정 수치
+            float finalDamage = charged ? tackleDamage * (1f + chargePower) : dashAttackDamage;
+            float finalKnockback = charged ? tackleKnockback * (1f + chargePower) : dashAttackKnockback;
+            float finalStun = charged ? victimStunDuration : dashAttackStun;
 
             Collider[] hits = Physics.OverlapSphere(transform.position, tackleRange);
             foreach (Collider hit in hits)
@@ -352,12 +363,12 @@ namespace MyDongari.Combat
 
                 HitInfo info = new HitInfo
                 {
-                    Type = AttackType.Tackle,
+                    Type = charged ? AttackType.Tackle : AttackType.DashAttack,
                     Damage = finalDamage,
                     Attacker = gameObject,
                     KnockbackDirection = target.transform.position - transform.position,
                     KnockbackForce = finalKnockback,
-                    StunDuration = victimStunDuration
+                    StunDuration = finalStun
                 };
 
                 return DeliverHit(target, info);

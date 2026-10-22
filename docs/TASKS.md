@@ -92,7 +92,7 @@
 - 명중 판정: 돌진 경로 앞쪽 캡슐/스피어로 Opponent 접촉 시 `ReceiveHit(AttackType.Lunge)`. 결과가 Parried면 반사 피해 + 넉백, Hit면 상대 스턴 0.5초(히트스톱 이후 시작) 후 돌진 종료.
 - `WeaponSystem`의 공격 버튼 분기를 GAME_SPEC 4장 표대로 다시 짠다. 기체별 `rangedMode`(Lunge/Projectile) — 버나드는 Lunge. `TryFire`는 Projectile 모드에서만.
 
-### [ ] B4. 대시 어택 / 버튼 태클
+### [x] B4. 대시 어택 / 버튼 태클
 - 전력질주 중 공격 버튼 → 어깨 태클. 차징 1.5초 미만은 `AttackType.DashAttack`(가드에 막힘), 이상은 `AttackType.Tackle`(가드 관통 + 스턴, 기존 TackleChargePower 반영).
 - 기존 자동 접촉 태클과 중복 발동되지 않게 한 번만 처리.
 - 어깨 태클은 히트를 올리지 않는다.
@@ -128,3 +128,4 @@
 - **B1** 완료. 바뀐 파일: 신규 `Input/VersusInputPairing`, 신규 `Editor/VersusSceneSetup`(메뉴), `GameManager`(versusMode·dummyOpponent·versusOnlyObjects·player1Camera, Player1/Player2/VersusMode getter), `HUDController`(상대 체력 바, Screen Space - Camera 락온 마커 좌표, 최대 HP 기준), `Health`(`MaxHealth`). 위험: 장치 페어링은 InputUser API + `actions.devices` 제한으로 처리 — 에디터에서 두 패드 분리 동작을 꼭 확인. 반쪽 화면 HUD 크기는 Canvas Scaler 설정에 따라 달라질 수 있음(SETUP 19).
 - **B2** 완료. 바뀐 파일: 신규 `Input/StickGestureDetector`(설정 클래스 포함), `InputReader`(MoveStick 기반 제스처, RunInput = Shift || 스틱 0.8, `IsMoveInputActive`, `SlideDirection`, 시간은 unscaled), `.inputactions`(`MoveStick`), 상태 7개(이동 판정 하드코딩 0.64 → `IsMoveInputActive`), `SprintState`·`BrakeState`(퀵턴·사이드스텝 허용). 위험: 제스처 수치는 실기 패드로 튜닝 필요. 첫 ↑ 튕기기 동안 잠깐 걷기/달리기 상태가 끼어든다.
 - **B3** 완료. 바뀐 파일: 신규 `Combat/ThrusterLunge`, 신규 `Movement/LungeState`, 신규 `Editor/MechComponentSetup`(메뉴), `MechStateMachine`(LungeState·`CanStartLunge`·`IsLunging`), `LockOnSystem`(하드 락온 금지 플래그·타이머, 전체 락온 금지, `ResetForRound`), `WeaponSystem`(GAME_SPEC 4장 우선순위, `RangedMode`), `InputReader`(`AttackPressedThisFrame`), `SlideState`(상대 락온 해제), `GameManager`·`VersusSceneSetup`. 위험: 대시 어택 분기는 B4에서 연결(지금은 질주 중 공격 버튼 무반응). 런지 스턴의 히트스톱 이후 시작은 B7.
+- **B4** 완료. 바뀐 파일: `MeleeSystem`(`TryTackle(chargePower, AttackType)` — 참조는 SprintState 1곳, 대시 어택 수치, 대시 어택 패리 반사), `SprintState`(`RequestTackle()`, 버튼·자동 접촉을 FixedUpdate 한 곳에서 한 번만 처리), `WeaponSystem`(우선순위 2 연결). 위험: 대시 어택 수치는 임시값(QUESTIONS).
