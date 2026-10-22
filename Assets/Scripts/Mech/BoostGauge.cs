@@ -101,6 +101,15 @@ namespace MyDongari.Mech
             return true;
         }
 
+        /// <summary>라운드 시작: 최대치, 탈진 해제, 회복 타이머 초기화.</summary>
+        public void ResetForRound()
+        {
+            CurrentBoost = maxBoost;
+            IsExhausted = false;
+            _recoveryDelayTimer = 0f;
+            _isRecovering = false;
+        }
+
         public float GetSideStepCost() => sideStepCost;
         public float GetQuickTurnCost() => quickTurnCost;
         public float GetSlideCost() => slideCost;

@@ -2,6 +2,9 @@ using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using MyDongari.Combat;
+using MyDongari.Combat.Skills;
+using MyDongari.Mech;
+using MyDongari.Movement;
 
 namespace MyDongari.Core
 {
@@ -12,6 +15,9 @@ namespace MyDongari.Core
         /// <summary>매치(전체 승부)가 끝났을 때 발생. 인자는 승리한 플레이어 번호(1 또는 2).
         /// HUD/게임오버 화면 등은 여기 구독해서 처리하면 됨.</summary>
         public event Action<int> OnMatchOver;
+
+        /// <summary>라운드가 끝났을 때 발생. 인자는 라운드 승자(1 또는 2), 무승부면 0.</summary>
+        public event Action<int> OnRoundOver;
 
         public bool IsMatchOver { get; private set; }
         public int MatchWinner { get; private set; }
@@ -75,11 +81,19 @@ namespace MyDongari.Core
             Health p1Health = player1 != null ? player1.GetComponent<Health>() : null;
             Health p2Health = player2 != null ? player2.GetComponent<Health>() : null;
 
-            if (p1Health != null && p1Health.IsDead)
+            bool p1Dead = p1Health != null && p1Health.IsDead;
+            bool p2Dead = p2Health != null && p2Health.IsDead;
+
+            if (p1Dead && p2Dead)
+            {
+                // 같은 프레임 동시 사망: 무승부, 승수 없이 다시
+                RoundEnd(winner: 0);
+            }
+            else if (p1Dead)
             {
                 RoundEnd(winner: 2);
             }
-            else if (p2Health != null && p2Health.IsDead)
+            else if (p2Dead)
             {
                 RoundEnd(winner: 1);
             }
@@ -91,24 +105,86 @@ namespace MyDongari.Core
 
             _roundActive = true;
 
-            if (player1 != null && player1SpawnPoint != null)
+            // 앵커 클로는 상대 쪽 잠금을 잡고 있을 수 있어서, 두 기체 모두 클로부터 먼저 놓게 한 뒤 나머지를 리셋한다
+            ReleaseGrabs(player1);
+            ReleaseGrabs(player2);
+            ResetMech(player1, player1SpawnPoint);
+            ResetMech(player2, player2SpawnPoint);
+        }
+
+        private static void ReleaseGrabs(GameObject mech)
+        {
+            if (mech == null) return;
+            AnchorClaw claw = mech.GetComponent<AnchorClaw>();
+            if (claw != null) claw.ResetForRound();
+        }
+
+        /// <summary>
+        /// 기체 하나를 라운드 시작 상태로 되돌린다. 스폰 포인트가 없으면 위치·회전만 그대로 두고 나머지는 리셋.
+        /// 더미처럼 일부 컴포넌트가 없는 기체도 있으니 전부 null 체크.
+        /// </summary>
+        private static void ResetMech(GameObject mech, Transform spawnPoint)
+        {
+            if (mech == null) return;
+
+            Rigidbody rb = mech.GetComponent<Rigidbody>();
+            if (spawnPoint != null)
             {
-                player1.transform.position = player1SpawnPoint.position;
-                Health h = player1.GetComponent<Health>();
-                if (h != null) h.ResetHealth();
+                mech.transform.SetPositionAndRotation(spawnPoint.position, spawnPoint.rotation);
+                if (rb != null)
+                {
+                    // 트랜스폼만 옮기면 다음 물리 스텝에 리지드바디가 예전 자세로 덮어쓸 수 있다
+                    rb.position = spawnPoint.position;
+                    rb.rotation = spawnPoint.rotation;
+                }
+            }
+            if (rb != null && !rb.isKinematic)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
             }
 
-            if (player2 != null && player2SpawnPoint != null)
-            {
-                player2.transform.position = player2SpawnPoint.position;
-                Health h = player2.GetComponent<Health>();
-                if (h != null) h.ResetHealth();
-            }
+            ExternalControlLock controlLock = mech.GetComponent<ExternalControlLock>();
+            if (controlLock != null) controlLock.ResetLock();
+
+            Health health = mech.GetComponent<Health>();
+            if (health != null) health.ResetHealth();
+
+            BoostGauge boost = mech.GetComponent<BoostGauge>();
+            if (boost != null) boost.ResetForRound();
+
+            HeatGauge heat = mech.GetComponent<HeatGauge>();
+            if (heat != null) heat.ResetForRound();
+
+            MeleeSystem melee = mech.GetComponent<MeleeSystem>();
+            if (melee != null) melee.ResetForRound();
+
+            ImpactSlam slam = mech.GetComponent<ImpactSlam>();
+            if (slam != null) slam.ResetForRound();
+
+            LockOnSystem lockOn = mech.GetComponent<LockOnSystem>();
+            if (lockOn != null) lockOn.ForceRelease();
+
+            MechStateMachine stateMachine = mech.GetComponent<MechStateMachine>();
+            if (stateMachine != null) stateMachine.ResetForRound();
+
+            // 카메라 시점도 스폰 방향으로 (안 하면 Idle이 기체를 예전 카메라 방향으로 돌려버림)
+            MechIdentity identity = mech.GetComponent<MechIdentity>();
+            MyDongari.Camera.MechCamera mechCamera = identity != null ? identity.MechCamera : null;
+            if (mechCamera != null) mechCamera.ResetView(mech.transform.eulerAngles.y);
         }
 
         private void RoundEnd(int winner)
         {
             _roundActive = false;
+            OnRoundOver?.Invoke(winner);
+
+            if (winner == 0)
+            {
+                // 무승부: 승수 증가 없이 다음 라운드
+                Invoke(nameof(StartRound), respawnDelay);
+                return;
+            }
 
             if (winner == 1) _player1Wins++;
             else _player2Wins++;

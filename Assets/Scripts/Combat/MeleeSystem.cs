@@ -192,6 +192,20 @@ namespace MyDongari.Combat
             }
         }
 
+        /// <summary>라운드 시작: 스턴·가드·패리·각종 타이머 초기화. 펀치·태클은 바로 쓸 수 있는 상태로.</summary>
+        public void ResetForRound()
+        {
+            IsStunned = false;
+            _stunTimer = 0f;
+            IsGuarding = false;
+            EndParryWindow();
+            _parryGrace = false;
+            _reraiseTimer = 0f;
+            _meleeTimer = meleeCooldown;
+            _tackleTimer = tackleCooldown;
+            if (_stateMachine != null) _stateMachine.MechController.SetBaselineDamping(guardReleaseDamping);
+        }
+
         public void ApplyStun(float duration)
         {
             IsStunned = true;

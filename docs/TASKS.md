@@ -62,7 +62,7 @@
 ### [x] A7. 임팩트 슬램 버그 수정
 - 슬램 피해를 `ReceiveHit(AttackType.Slam)`으로 통과시켜 가드(50%)·패리·깨짐이 적용되게 한다. 패리 시 넉백도 없음.
 
-### [ ] A8. 라운드 리셋 완전하게
+### [x] A8. 라운드 리셋 완전하게
 - 각 시스템에 `ResetForRound()` 추가: BoostGauge, HeatGauge, MeleeSystem(스턴·가드·패리·타이머), AnchorClaw(당김 중단, 잠금 해제, 쿨타임 초기화, 파일드라이버 준비 해제), ImpactSlam(쿨타임), LockOnSystem(ForceRelease), MechStateMachine(Idle), Rigidbody(속도·각속도 0), ExternalControlLock(카운트 0), 회전도 스폰 포인트 회전으로.
 - `GameManager.StartRound`에서 두 기체 모두 위의 리셋을 호출.
 - 동시 사망 시 무승부 라운드(승수 증가 없이 재시작).
@@ -123,3 +123,4 @@
 - **A5** 완료. 바뀐 파일: `MeleeSystem`(`parryReflectRatio`·`parryReflectKnockback`, 런지·태클 패리 반사, `attackerStunDuration` 삭제, `TryTackle` → `HitResult?` 반환, `CanTackle`·`TackleRecoveryStun`), `SprintState`(결과가 Parried면 자기 경직 없음, 쿨다운 중 접촉은 질주 유지). 위험: 쿨다운 중 접촉 시 예전엔 멈추고 경직됐는데 이제 질주가 이어짐.
 - **A6** 완료. 바뀐 파일: `MeleeSystem`(`punchHalfAngle` 45°, Opponent만, `TryMeleeAttack` → `HitResult?` 반환, `OnAttackStarted` 이벤트), `MeleeDummy`(상대 쪽으로 회전). 위험: 기체 정면(transform.forward) 기준이라, 하드 락온이 아닌 상태에서 카메라만 돌리고 기체가 덜 돌았으면 빗나갈 수 있음.
 - **A7** 완료. 바뀐 파일: `ImpactSlam`(`DeliverHit(AttackType.Slam)` 경유 — 가드 50%·패리·깨짐 적용, 패리 시 넉백 없음, `TryActivate` → `HitResult?` 반환, `slamKnockbackLift`). 위험: 낮음. WeaponSystem은 반환값을 무시(호환).
+- **A8** 완료. 바뀐 파일: `ResetForRound()` 추가 — `BoostGauge`, `HeatGauge`, `MeleeSystem`, `AnchorClaw`, `ImpactSlam`, `MechStateMachine`, `ExternalControlLock.ResetLock()`, `MechCamera.ResetView(yaw)`. `GameManager`(클로 먼저 해제 → 위치·회전·속도·잠금·각 시스템 리셋, 동시 사망 무승부, `OnRoundOver(0=무승부)` 이벤트). 위험: 스폰 포인트 회전이 0이면 두 기체가 같은 방향을 봄(SETUP 12). 라운드 사이 3초 동안 이동 입력은 아직 막혀 있지 않음(B5 카운트다운에서 처리).

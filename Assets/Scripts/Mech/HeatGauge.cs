@@ -77,6 +77,14 @@ namespace MyDongari.Mech
 
         public bool CanFire() => !IsOverheated;
 
+        /// <summary>라운드 시작: 히트 0, 과열 해제.</summary>
+        public void ResetForRound()
+        {
+            CurrentHeat = 0f;
+            IsOverheated = false;
+            IsSkillActive = false;
+        }
+
         /// <summary>과열(100%) 중엔 펀치 불가. 해제는 0%까지 식었을 때.</summary>
         public bool CanPunch() => !IsOverheated;
     }

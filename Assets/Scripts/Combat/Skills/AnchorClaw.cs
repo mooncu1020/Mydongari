@@ -124,6 +124,24 @@ namespace MyDongari.Combat.Skills
             _targetLock = null;
         }
 
+        /// <summary>
+        /// 라운드 시작: 당기기 중단(잠금 해제), 파일드라이버 준비 해제, 쿨타임을 비워 바로 쓸 수 있게.
+        /// </summary>
+        public void ResetForRound()
+        {
+            if (_isPulling)
+            {
+                _isPulling = false;
+                ReleaseTargetLock();
+                _selfLock.Release();
+            }
+            _pullTimer = 0f;
+            _pileDriverReady = false;
+            _target = null;
+            _targetRb = null;
+            _cooldownTimer = cooldown;
+        }
+
         public void TryPileDriver()
         {
             if (!_pileDriverReady) return;

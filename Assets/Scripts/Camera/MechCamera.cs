@@ -88,6 +88,20 @@ namespace MyDongari.Camera
             _hardLockTarget = null;
         }
 
+        /// <summary>
+        /// 라운드 시작: 퀵턴·하드락 추적을 끊고 시점을 스폰 방향으로.
+        /// 안 하면 Idle의 RotateToCamera가 기체를 이전 라운드 카메라 방향으로 다시 돌려버린다.
+        /// </summary>
+        public void ResetView(float yaw)
+        {
+            StopAllCoroutines();
+            _isQuickTurning = false;
+            _hardLockTarget = null;
+            _yaw = yaw;
+            _pitch = 0f;
+            if (_camera != null) _camera.fieldOfView = baseFov;
+        }
+
         private void Start()
         {
             Cursor.lockState = CursorLockMode.Locked;

@@ -51,6 +51,14 @@ namespace MyDongari.Movement
             ChangeState(IdleState);
         }
 
+        /// <summary>라운드 시작: 사망으로 꺼졌던 상태머신을 켜고 Idle로.</summary>
+        public void ResetForRound()
+        {
+            enabled = true;
+            LastMoveDirection = Vector3.zero;
+            ChangeState(IdleState);
+        }
+
         public void ChangeState(MechState newState)
         {
             _currentState?.Exit();

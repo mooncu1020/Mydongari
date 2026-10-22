@@ -22,6 +22,12 @@ namespace MyDongari.Combat.Skills
             _identity = MechIdentity.GetOrAdd(gameObject);
         }
 
+        /// <summary>라운드 시작: 쿨타임을 비워 바로 쓸 수 있게.</summary>
+        public void ResetForRound()
+        {
+            _cooldownTimer = cooldown;
+        }
+
         private void Update()
         {
             _cooldownTimer += Time.deltaTime;
