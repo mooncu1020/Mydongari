@@ -16,6 +16,7 @@ namespace MyDongari.Combat
         private BernardTuning.ParryValues Parry => _tuning.Get(this).Parry;
         private BernardTuning.TackleValues Tackle => _tuning.Get(this).Tackle;
         private BernardTuning.DashAttackValues DashAttack => _tuning.Get(this).DashAttack;
+        private BernardTuning.AttackStartupValues Startup => _tuning.Get(this).Startup;
 
         public bool IsGuarding { get; private set; }
         public bool IsParrying { get; private set; }
@@ -27,10 +28,19 @@ namespace MyDongari.Combat
 
         /// <summary>내가 맞았을 때(피격자 쪽) 판정 결과가 정해지면 발생. 로그·연출은 여기 구독.</summary>
         public event Action<HitInfo, HitResult> OnHitResolved;
-        /// <summary>내가 공격을 발동했을 때(맞든 안 맞든). 로그의 "발동" 카운트용.</summary>
+        /// <summary>내가 공격 버튼으로 공격을 시작했을 때(발생 시간 전, 맞든 안 맞든). 로그의 "발동" 카운트·예비 동작용.</summary>
         public event Action<AttackType> OnAttackStarted;
+        /// <summary>발생 시간 도중 스턴·가드 깨짐 등으로 공격이 취소됐을 때.</summary>
+        public event Action<AttackType> OnAttackCanceled;
+
+        /// <summary>펀치 발생 시간 중(버튼은 눌렀고 아직 판정 전)인지.</summary>
+        public bool IsPunchPending => _punchElapsed >= 0f;
 
         private float _meleeTimer = 0f;
+        // 펀치 발생 시간 경과(초). 음수면 발생 중인 펀치 없음
+        private float _punchElapsed = -1f;
+        // 마지막으로 펀치 판정을 한 시각 (맞딜 창 판정용)
+        private float _lastPunchResolveTime = -999f;
         private float _parryTimer = 0f;
         private float _tackleTimer = 999f;
         private float _stunTimer = 0f;
@@ -61,6 +71,13 @@ namespace MyDongari.Combat
 
         private void Update()
         {
+            // 발생 시간이 지난 프레임에 판정. 스턴(가드 깨짐 포함)이면 ApplyStun에서 이미 취소됐다
+            if (_punchElapsed >= 0f)
+            {
+                _punchElapsed += Time.deltaTime;
+                if (_punchElapsed >= Startup.punch) ResolvePunch();
+            }
+
             _meleeTimer += Time.deltaTime;
             _tackleTimer += Time.deltaTime;
             if (_reraiseTimer > 0f) _reraiseTimer -= Time.deltaTime;
@@ -191,11 +208,19 @@ namespace MyDongari.Combat
             _reraiseTimer = 0f;
             _meleeTimer = Punch.cooldown;
             _tackleTimer = Tackle.cooldown;
+            _punchElapsed = -1f;
+            _lastPunchResolveTime = -999f;
             if (_stateMachine != null) _stateMachine.MechController.SetBaselineDamping(Guard.releaseDamping);
         }
 
         public void ApplyStun(float duration)
         {
+            // 발생 시간 중에 스턴·가드 깨짐을 당하면 그 펀치는 나가지 않는다
+            if (_punchElapsed >= 0f)
+            {
+                _punchElapsed = -1f;
+                OnAttackCanceled?.Invoke(AttackType.Punch);
+            }
             IsStunned = true;
             _stunTimer = -duration;
         }
@@ -221,9 +246,11 @@ namespace MyDongari.Combat
         {
             HitResult result;
 
-            // 1) 맞딜: 내가 방금 펀치를 냈는데(쿨다운 절반 이내) 상대 펀치가 들어오면 둘 다 0 피해 + 밀려남
-            if (info.Type == AttackType.Punch && _meleeTimer < Punch.cooldown * 0.5f)
+            // 1) 맞딜: 양쪽 펀치의 판정 시점이 clashWindow 이내면 둘 다 0 피해 + 밀려남.
+            //    내 펀치가 방금 판정됐거나, 아직 발생 중인데 창 안에 판정될 예정이면 맞딜 (그 펀치는 맞딜로 소진)
+            if (info.Type == AttackType.Punch && IsInClashWindow())
             {
+                _punchElapsed = -1f;
                 ApplyClash(info);
                 return Resolve(info, HitResult.Clash);
             }
@@ -319,18 +346,51 @@ namespace MyDongari.Combat
             return HitResult.Hit;
         }
 
-        /// <summary>
-        /// 어깨 태클 판정. type은 DashAttack(질주 1.5초 미만, 가드에 막힘) 또는 Tackle(차징, 관통 + 스턴).
-        /// 쿨다운 중이거나 범위 안에 상대가 없으면 null.
-        /// 공격자 경직은 호출 쪽(SprintState)이 결과를 보고 건다 — 패리당했으면 경직 없음.
-        /// </summary>
-        public HitResult? TryTackle(float chargePower, AttackType type)
+        private bool IsInClashWindow()
         {
-            BernardTuning.TackleValues tackle = Tackle;
-            if (_tackleTimer < tackle.cooldown) return null;
+            BernardTuning.AttackStartupValues startup = Startup;
+            if (Time.time - _lastPunchResolveTime <= startup.clashWindow) return true;
+            return _punchElapsed >= 0f && startup.punch - _punchElapsed <= startup.clashWindow;
+        }
+
+        /// <summary>대시 어택·차징 태클의 발생 시간(초). 0이면 즉시 판정.</summary>
+        public float TackleStartup(AttackType type)
+        {
+            return type == AttackType.Tackle ? Startup.chargedTackle : Startup.dashAttack;
+        }
+
+        /// <summary>
+        /// 어깨 태클 시작(버튼을 누른 순간): 쿨다운을 쓰고 OnAttackStarted를 알린다. 쿨다운 중이면 false.
+        /// 판정은 발생 시간 뒤 ResolveTackle (SprintState가 진행).
+        /// </summary>
+        public bool BeginTackle(AttackType type)
+        {
+            if (_tackleTimer < Tackle.cooldown) return false;
             _tackleTimer = 0f;
             OnAttackStarted?.Invoke(type);
+            return true;
+        }
 
+        /// <summary>발생 시간 중이던 태클이 스턴 등으로 취소됐음을 알린다 (외형·로그용).</summary>
+        public void CancelTackle(AttackType type)
+        {
+            OnAttackCanceled?.Invoke(type);
+        }
+
+        /// <summary>발생 시간 없이 바로: BeginTackle + ResolveTackle.</summary>
+        public HitResult? TryTackle(float chargePower, AttackType type)
+        {
+            if (!BeginTackle(type)) return null;
+            return ResolveTackle(chargePower, type);
+        }
+
+        /// <summary>
+        /// 어깨 태클 판정(판정하는 순간의 위치·방향 기준). type은 DashAttack(질주 1.5초 미만, 가드에 막힘) 또는 Tackle(차징, 관통 + 스턴).
+        /// 범위 안에 상대가 없으면 null. 공격자 경직은 호출 쪽(SprintState)이 결과를 보고 건다 — 패리당했으면 경직 없음.
+        /// </summary>
+        public HitResult? ResolveTackle(float chargePower, AttackType type)
+        {
+            BernardTuning.TackleValues tackle = Tackle;
             bool charged = type == AttackType.Tackle;
             // 차징 태클은 기존 공식(TackleChargePower 반영), 대시 어택은 고정 수치
             BernardTuning.DashAttackValues dash = DashAttack;
@@ -365,11 +425,15 @@ namespace MyDongari.Combat
         }
 
         /// <summary>
-        /// 너클 펀치. 쿨다운·과열로 안 나가면 null, 휘둘렀는데 빗나가면 null,
-        /// 맞았으면 피격자가 판단한 결과(Hit/Guarded/GuardBroken/Parried/Clash).
+        /// 너클 펀치 시작. 쿨다운·과열·발생 중이면 안 나간다(null). 발생 시간이 있으면 지금은 예비 동작만 시작하고
+        /// null을 돌려준 뒤, 시간이 지난 프레임에 판정한다. 발생 시간이 0이면 지금 판정해서
+        /// 빗나가면 null, 맞았으면 피격자가 판단한 결과(Hit/Guarded/GuardBroken/Parried/Clash).
         /// </summary>
         public HitResult? TryMeleeAttack()
         {
+            if (_punchElapsed >= 0f) return null;
+            // 스턴 중엔 펀치를 시작할 수 없다 (런지·가드와 같은 규칙. 발생 중 스턴이면 취소되는 것과 짝)
+            if (IsStunned) return null;
             BernardTuning.PunchValues punch = Punch;
             if (_meleeTimer < punch.cooldown) return null;
             // 과열이면 주먹이 안 나간다. 히트게이지가 없는 기체(더미)는 제한 없음
@@ -378,6 +442,18 @@ namespace MyDongari.Combat
             // 맞든 빗나가든 휘두른 순간 히트가 오른다
             if (_heatGauge != null) _heatGauge.AddHeat(punch.heatPerPunch);
             OnAttackStarted?.Invoke(AttackType.Punch);
+
+            if (Startup.punch <= 0f) return ResolvePunch();
+            _punchElapsed = 0f;
+            return null;
+        }
+
+        /// <summary>펀치 판정: 판정하는 순간의 내 정면·상대 위치 기준.</summary>
+        private HitResult? ResolvePunch()
+        {
+            _punchElapsed = -1f;
+            _lastPunchResolveTime = Time.time;
+            BernardTuning.PunchValues punch = Punch;
 
             MechIdentity opponent = _identity.Opponent;
             if (opponent == null || !IsInFrontArc(opponent.transform, punch.halfAngle)) return null;

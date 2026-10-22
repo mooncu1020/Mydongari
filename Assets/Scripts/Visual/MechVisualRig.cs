@@ -82,6 +82,19 @@ namespace MyDongari.Visual
 
         private TuningRef _tuning;
         private BernardTuning.VisualValues V => _tuning.Get(this).Visual;
+        private BernardTuning.AttackStartupValues Startup => _tuning.Get(this).Startup;
+
+        // 예비 동작 길이 = 그 공격의 발생 시간(버튼 → 판정). 발생 시간이 0(즉시 판정)이면 Visual의 기본 예비 동작 길이
+        private float PunchWindup => Startup.punch > 0f ? Startup.punch : V.anticipationTime;
+        private float TackleWindup
+        {
+            get
+            {
+                float startup = _tackleType == AttackType.Tackle ? Startup.chargedTackle : Startup.dashAttack;
+                return startup > 0f ? startup : V.anticipationTime;
+            }
+        }
+        private AttackType _tackleType = AttackType.DashAttack;
 
         private Rigidbody _rb;
         private MeleeSystem _melee;
@@ -118,6 +131,7 @@ namespace MyDongari.Visual
             if (_melee != null)
             {
                 _melee.OnAttackStarted += OnAttackStarted;
+                _melee.OnAttackCanceled += OnAttackCanceled;
                 _melee.OnHitResolved += OnHitResolved;
             }
             if (_claw != null)
@@ -133,6 +147,7 @@ namespace MyDongari.Visual
             if (_melee != null)
             {
                 _melee.OnAttackStarted -= OnAttackStarted;
+                _melee.OnAttackCanceled -= OnAttackCanceled;
                 _melee.OnHitResolved -= OnHitResolved;
             }
             if (_claw != null)
@@ -212,8 +227,16 @@ namespace MyDongari.Visual
                 case AttackType.DashAttack:
                 case AttackType.Tackle:
                     _tackleStart = _clock;
+                    _tackleType = type;
                     break;
             }
+        }
+
+        /// <summary>발생 중 스턴 등으로 공격이 취소되면 뻗는 동작도 하지 않는다.</summary>
+        private void OnAttackCanceled(AttackType type)
+        {
+            if (type == AttackType.Punch) _punchStart = None;
+            else if (type == AttackType.DashAttack || type == AttackType.Tackle) _tackleStart = None;
         }
 
         private void OnHitResolved(HitInfo info, HitResult result)
@@ -359,12 +382,13 @@ namespace MyDongari.Visual
         {
             // 펀치: 예비 동작(뒤로) → 뻗기 → 복귀. 판정은 이벤트 프레임에 이미 끝났다
             float t = _clock - _punchStart;
-            if (t >= 0f && t < v.anticipationTime + v.punchExtendTime + v.punchHoldTime)
+            float punchWindup = PunchWindup;
+            if (t >= 0f && t < punchWindup + v.punchExtendTime + v.punchHoldTime)
             {
                 Joint upper = _punchRight ? _armRUpper : _armLUpper;
                 Joint lower = _punchRight ? _armRLower : _armLLower;
                 float twist = _punchRight ? -v.punchBodyTwist : v.punchBodyTwist;
-                if (t < v.anticipationTime)
+                if (t < punchWindup)
                 {
                     SetRotation(upper, new Vector3(v.anticipationPullback, 0f, 0f));
                     AddRotation(_body, new Vector3(0f, -twist * 0.3f, 0f));
@@ -387,9 +411,10 @@ namespace MyDongari.Visual
 
             // 대시 어택·태클: 예비 동작 뒤 오른 어깨 앞으로
             t = _clock - _tackleStart;
-            if (t >= 0f && t < v.anticipationTime + v.tackleTime)
+            float tackleWindup = TackleWindup;
+            if (t >= 0f && t < tackleWindup + v.tackleTime)
             {
-                if (t < v.anticipationTime)
+                if (t < tackleWindup)
                 {
                     AddRotation(_body, new Vector3(0f, -v.tackleTwist * 0.3f, 0f));
                 }

@@ -98,3 +98,5 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 65. (E3) 예외 기록: PlayLogger·CombatFeedback·StatusPopup·HitStop·MechVisualRig·연습 봇의 이벤트 처리와 매 프레임 처리를 감쌌다. 예외가 나도 게임과 전투 판정은 계속되고, 내용은 `Logs/PlayLogs/errors.txt`(빌드는 실행 파일 옆)에 쌓인다(같은 예외는 1·2·4·8…번째만). 처리 안 된 다른 예외도 같은 파일에. 에디터에선 Console에도 보인다.
 66. (E3) `GameManager` → `Idle Return To Title`(기본 끔), `Idle Timeout`(120초): 켜면 타이틀이 아닌 화면에서 2분 동안 아무 플레이어 입력이 없을 때 타이틀로 돌아간다.
 67. (E3) 10/27 최종 빌드 전 확인은 `docs/RELEASE_CHECKLIST.md`.
+68. (E4) `BernardTuning` → **공격 발생 시간** 묶음: `Punch` 0.1, `Dash Attack` 0.12, `Charged Tackle` 0.1(초), `Clash Window` 0.1. 각 값을 0으로 하면 그 공격은 예전처럼 누른 프레임에 즉시 판정. 외형 예비 동작 길이는 이 값을 따른다(0일 때만 `Visual → Anticipation Time`).
+69. (E4) DummyTarget → `MeleeDummy` → `Reaction Time` 기본값이 0.08초로 바뀌었다(씬에 저장돼 있지 않아 새 기본값 적용). 패리 연습 난이도는 이 값과 `Parry Chance`로 조절.

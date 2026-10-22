@@ -140,9 +140,12 @@ namespace MyDongari.Core
             {
                 Action<AttackType> onStart = type => ErrorLog.Run(() => OnAttackStarted(index, type), "PlayLogger.onStart");
                 Action<HitInfo, HitResult> onHit = (info, result) => ErrorLog.Run(() => OnHitResolved(index, info, result), "PlayLogger.onHit");
+                // 발생 시간 중 스턴 등으로 취소된 공격 (punch_canceled 등)
+                Action<AttackType> onCancel = type => ErrorLog.Run(() => Count(index, AttackKey(type) + "_canceled"), "PlayLogger.onCancel");
                 melee.OnAttackStarted += onStart;
+                melee.OnAttackCanceled += onCancel;
                 melee.OnHitResolved += onHit;
-                _unsubscribers.Add(() => { melee.OnAttackStarted -= onStart; melee.OnHitResolved -= onHit; });
+                _unsubscribers.Add(() => { melee.OnAttackStarted -= onStart; melee.OnAttackCanceled -= onCancel; melee.OnHitResolved -= onHit; });
             }
 
             ThrusterLunge lunge = mech.GetComponent<ThrusterLunge>();

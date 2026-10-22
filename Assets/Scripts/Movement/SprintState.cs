@@ -8,6 +8,10 @@ namespace MyDongari.Movement
     {
         private float _tackleChargeTimer = 0f;
         private bool _tackleRequested = false;
+        // 어깨 태클 발생 시간 경과(초). 음수면 발생 중인 태클 없음. 종류·차징은 버튼을 누른 순간 값으로 고정
+        private float _pendingTackleElapsed = -1f;
+        private AttackType _pendingTackleType;
+        private float _pendingTacklePower;
         private BernardTuning.TackleValues Tackle => StateMachine.MechController.Tuning.Tackle;
         // 차징 상태로 이 거리(m) 안에 상대가 닿으면 자동 태클 (기존 동작 유지)
         private float ContactRadius => Tackle.contactRadius;
@@ -31,16 +35,21 @@ namespace MyDongari.Movement
         {
             _tackleChargeTimer = 0f;
             _tackleRequested = false;
+            _pendingTackleElapsed = -1f;
             StateMachine.MechController.MechCamera.LockToForward();
         }
 
         public override void Update()
         {
+            // 스턴(가드 깨짐 포함)이면 질주 종료 — 발생 중이던 태클은 Exit에서 취소된다
             if (StateMachine.IsStunned)
             {
                 StateMachine.ChangeState(StateMachine.IdleState);
                 return;
             }
+
+            // 태클 발생 시간 동안은 어깨를 내민 채 그대로 돌진한다 (제동·퀵턴·사이드스텝·탈진 전환 안 받음)
+            if (_pendingTackleElapsed >= 0f) return;
 
             if (StateMachine.MechController.BoostGauge.IsExhausted)
             {
@@ -96,25 +105,53 @@ namespace MyDongari.Movement
                 StateMachine.MechController.SprintSpeed,
                 StateMachine.MechController.MaxSprintSpeed);
 
+            MeleeSystem melee = StateMachine.MechController.MeleeSystem;
+
+            // 발생 시간이 지난 물리 스텝에 판정 (판정 범위·상대 위치는 이 순간 기준)
+            if (_pendingTackleElapsed >= 0f)
+            {
+                _tackleRequested = false;
+                _pendingTackleElapsed += Time.fixedDeltaTime;
+                if (melee != null && _pendingTackleElapsed >= melee.TackleStartup(_pendingTackleType))
+                {
+                    _pendingTackleElapsed = -1f;
+                    FinishTackle(melee, _pendingTacklePower, _pendingTackleType);
+                }
+                return;
+            }
+
             bool requested = _tackleRequested;
             _tackleRequested = false;
             // 버튼 태클과 차징 자동 접촉 태클을 이 한 곳에서만 처리해 같은 프레임 중복 발동을 막는다
             if (requested || (IsTackleCharged && IsOpponentInContact()))
             {
-                MeleeSystem melee = StateMachine.MechController.MeleeSystem;
                 // 쿨다운 중이면 태클이 안 나가니 질주를 끊지 않는다
                 if (melee == null || !melee.CanTackle) return;
 
                 AttackType type = IsTackleCharged ? AttackType.Tackle : AttackType.DashAttack;
-                // 속도를 먼저 0으로: 패리 반사 넉백이 이 뒤에 들어와야 지워지지 않는다
-                StateMachine.MechController.Rb.linearVelocity = Vector3.zero;
-                HitResult? result = melee.TryTackle(TackleChargePower, type);
-                if (result != HitResult.Parried)
+                if (!melee.BeginTackle(type)) return;
+
+                if (melee.TackleStartup(type) <= 0f)
                 {
-                    melee.ApplyStun(melee.TackleRecoveryStun);
+                    FinishTackle(melee, TackleChargePower, type);
+                    return;
                 }
-                StateMachine.ChangeState(StateMachine.IdleState);
+                _pendingTackleElapsed = 0f;
+                _pendingTackleType = type;
+                _pendingTacklePower = TackleChargePower;
             }
+        }
+
+        private void FinishTackle(MeleeSystem melee, float power, AttackType type)
+        {
+            // 속도를 먼저 0으로: 패리 반사 넉백이 이 뒤에 들어와야 지워지지 않는다
+            StateMachine.MechController.Rb.linearVelocity = Vector3.zero;
+            HitResult? result = melee.ResolveTackle(power, type);
+            if (result != HitResult.Parried)
+            {
+                melee.ApplyStun(melee.TackleRecoveryStun);
+            }
+            StateMachine.ChangeState(StateMachine.IdleState);
         }
 
         /// <summary>공격 버튼으로 어깨 태클 요청. 다음 물리 스텝에 처리된다.</summary>
@@ -140,6 +177,13 @@ namespace MyDongari.Movement
 
         public override void Exit()
         {
+            // 발생 중에 질주가 끝났다면(스턴·라운드 리셋 등) 그 태클은 나가지 않는다
+            if (_pendingTackleElapsed >= 0f)
+            {
+                _pendingTackleElapsed = -1f;
+                MeleeSystem melee = StateMachine.MechController.MeleeSystem;
+                if (melee != null) melee.CancelTackle(_pendingTackleType);
+            }
         }
     }
 }

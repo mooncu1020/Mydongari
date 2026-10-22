@@ -100,6 +100,19 @@ namespace MyDongari.Mech
         }
 
         [Serializable]
+        public class AttackStartupValues
+        {
+            [Tooltip("버튼을 누른 뒤 펀치 판정까지(초). 이 동안 예비 동작이 보인다. 0이면 누른 프레임에 즉시 판정")]
+            public float punch = 0.1f;
+            [Tooltip("대시 어택(질주 1.5초 미만 어깨 태클) 발생 시간(초). 0이면 즉시")]
+            public float dashAttack = 0.12f;
+            [Tooltip("차징 태클(질주 1.5초 이상) 발생 시간(초). 0이면 즉시")]
+            public float chargedTackle = 0.1f;
+            [Tooltip("양쪽 펀치의 판정 시점이 이 시간(초) 이내면 맞딜")]
+            public float clashWindow = 0.1f;
+        }
+
+        [Serializable]
         public class GuardValues
         {
             [Tooltip("가드로 받은 근접 계열(펀치·대시 어택·슬램) 피해 감쇄율. 0.5 = 절반만 들어감")]
@@ -277,8 +290,8 @@ namespace MyDongari.Mech
             [Tooltip("감쇠비. 1 = 출렁임 없이 멈춤, 작을수록 더 출렁인다")]
             [Range(0.05f, 1.5f)] public float springDamping = 0.6f;
 
-            [Header("예비 동작 (공격 시작 직후, 판정 타이밍과 무관)")]
-            [Tooltip("팔을 살짝 뒤로 빼는 시간(초). 0.033 ≈ 60fps 2프레임")]
+            [Header("예비 동작 (버튼 → 판정 사이. 길이는 공격 발생 시간을 따른다)")]
+            [Tooltip("발생 시간이 0(즉시 판정)인 공격에만 쓰는 예비 동작 길이(초). 0.033 ≈ 60fps 2프레임")]
             public float anticipationTime = 0.033f;
             [Tooltip("예비 동작 때 위팔을 뒤로 빼는 각도(°)")]
             public float anticipationPullback = 25f;
@@ -352,6 +365,8 @@ namespace MyDongari.Mech
         [SerializeField] private HeatValues heat = new HeatValues();
         [Header("펀치 / 맞딜")]
         [SerializeField] private PunchValues punch = new PunchValues();
+        [Header("공격 발생 시간 (버튼 → 판정)")]
+        [SerializeField] private AttackStartupValues startup = new AttackStartupValues();
         [Header("가드")]
         [SerializeField] private GuardValues guard = new GuardValues();
         [Header("패리")]
@@ -377,6 +392,7 @@ namespace MyDongari.Mech
         public BoostValues Boost => boost;
         public HeatValues Heat => heat;
         public PunchValues Punch => punch;
+        public AttackStartupValues Startup => startup;
         public GuardValues Guard => guard;
         public ParryValues Parry => parry;
         public TackleValues Tackle => tackle;

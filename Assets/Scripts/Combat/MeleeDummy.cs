@@ -55,8 +55,9 @@ namespace MyDongari.Combat
         [Header("Parrier")]
         [Tooltip("상대 공격 하나마다 패리를 시도할 확률")]
         [Range(0f, 1f)] [SerializeField] private float parryChance = 0.6f;
-        [Tooltip("상대 런지 돌진을 보고 가드를 누를 수 있을 때까지 걸리는 시간(초). 이보다 빨리 도착하는 런지는 못 막는다")]
-        [SerializeField] private float reactionTime = 0.2f;
+        [Tooltip("상대 공격 시작(예비 동작)을 보고 가드를 누를 수 있을 때까지 걸리는 시간(초). " +
+                 "공격 발생 시간(펀치 0.1·대시 어택 0.12·태클 0.1)이나 런지 도착보다 늦으면 못 막는다")]
+        [SerializeField] private float reactionTime = 0.08f;
         [Tooltip("패리 시도로 누른 가드를 유지하는 시간(초). 놓으면 재사용 대기 규칙이 그대로 걸린다")]
         [SerializeField] private float parryHoldTime = 0.3f;
         [Tooltip("패리에 성공하면 반격 펀치")]
@@ -349,7 +350,14 @@ namespace MyDongari.Combat
             if (!ParrierActive) return;
             if (type != AttackType.Punch && type != AttackType.DashAttack && type != AttackType.Tackle) return;
             if (Random.value >= parryChance) return;
-            PressGuard();
+
+            // 런지와 같은 반응 방식: 상대 예비 동작을 보고 reactionTime 뒤, 판정 시각에 패리 창이 걸치도록 누른다.
+            // 발생 시간이 반응 시간보다 짧으면(0 = 즉시 판정 포함) 늦어서 못 막는다
+            BernardTuning.AttackStartupValues startup = TuningOf(_watchedOpponent).Startup;
+            float hitIn = type == AttackType.Punch ? startup.punch
+                : type == AttackType.Tackle ? startup.chargedTackle : startup.dashAttack;
+            float window = _tuning.Get(this).Parry.window;
+            _pendingGuardTime = Time.time + Mathf.Max(reactionTime, hitIn - window * 0.5f);
         }
 
         /// <summary>상대가 런지 돌진을 시작했다. 반응 시간 뒤, 예상 도착에 패리 창이 걸치도록 누른다.</summary>
