@@ -3,12 +3,15 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using MyDongari.Combat;
+using MyDongari.Core;
+using MyDongari.Feedback;
 
 namespace MyDongari.EditorTools
 {
     /// <summary>
-    /// 새로 생긴 기체 컴포넌트(스러스터 런지 등)를 씬의 플레이어 기체(PlayerInput이 있는 오브젝트)에 붙인다.
-    /// 런타임 자동 부착도 되지만, 인스펙터에서 수치를 조정·저장하려면 씬에 붙어 있어야 한다.
+    /// 새로 생긴 기체 컴포넌트(스러스터 런지, 튜닝 참조)를 씬의 플레이어 기체(PlayerInput이 있는 오브젝트)에,
+    /// 공용 컴포넌트(히트스톱, 상태 피드백)를 GameManager 오브젝트에 붙인다.
+    /// 런타임 자동 부착도 되지만, 인스펙터에서 값·효과음을 넣고 저장하려면 씬에 붙어 있어야 한다.
     /// </summary>
     public static class MechComponentSetup
     {
@@ -35,8 +38,25 @@ namespace MyDongari.EditorTools
                 EditorSceneManager.MarkSceneDirty(mech.scene);
             }
 
+            GameManager gameManager = Object.FindFirstObjectByType<GameManager>(FindObjectsInactive.Include);
+            if (gameManager != null)
+            {
+                added += AddIfMissing<HitStop>(gameManager.gameObject);
+                added += AddIfMissing<CombatFeedback>(gameManager.gameObject);
+            }
+
             Undo.CollapseUndoOperations(undoGroup);
-            EditorUtility.DisplayDialog("Mech Components", $"추가한 컴포넌트: {added}개 (ThrusterLunge, MechTuning). 수치 에셋: {AssetDatabase.GetAssetPath(tuning)}. 씬을 저장하세요.", "확인");
+            EditorUtility.DisplayDialog("Mech Components",
+                $"추가한 컴포넌트: {added}개 (기체: ThrusterLunge, MechTuning / GameManager: HitStop, CombatFeedback).\n" +
+                $"수치 에셋: {AssetDatabase.GetAssetPath(tuning)}. 씬을 저장하세요.", "확인");
+        }
+
+        private static int AddIfMissing<T>(GameObject go) where T : Component
+        {
+            if (go.GetComponent<T>() != null) return 0;
+            Undo.AddComponent<T>(go);
+            EditorSceneManager.MarkSceneDirty(go.scene);
+            return 1;
         }
     }
 }

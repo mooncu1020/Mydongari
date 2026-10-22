@@ -121,7 +121,7 @@
 - 기본 에셋 생성 메뉴, 현재 P1 기체 인스펙터 값을 에셋으로 복사하는 메뉴. `Setup Versus Scene`도 이 에셋을 두 기체에 연결.
 - 컴포넌트에 남은 같은 이름의 개별 필드는 제거하거나 `[HideInInspector]` 처리하고, 어느 쪽인지 SETUP.md에 적는다.
 
-### [ ] C2. 상태 피드백
+### [x] C2. 상태 피드백
 - 기체 머리 위 짧은 월드 텍스트 팝업: PARRY, GUARD BREAK, CLASH, STUN, OVERHEAT, EXHAUSTED. 각 플레이어 카메라를 향하고 화면 분할 양쪽에 다 보인다.
 - 가드 중·스턴 중·과열 중 상태를 기체 머티리얼 색 틴트로 표시 (원래 색 복귀 보장).
 - 효과음 훅: 펀치 명중, 가드로 막힘, 패리, 가드 깨짐, 맞딜, 런지 발동, 태클 명중. AudioClip 필드만, 비어 있으면 무음.
@@ -155,3 +155,4 @@
 - **B7** 완료. 바뀐 파일: 신규 `Core/HitStop`(OnHitResolved 구독, timeScale 0을 실제 시간으로 유지), `GameManager`(없으면 자동 부착), `VersusSceneSetup`(GameManager에 추가). 스턴·쿨다운은 scaled 시간이라 히트스톱 동안 멈춤 → 런지 스턴이 히트스톱 뒤부터 흐름. 입력 타이밍(제스처·더블탭)은 이미 unscaled. 위험: 히트스톱 중에도 마우스 시점 회전은 움직인다(카메라 입력은 시간 배율 무관).
 - **B8** (질문 반영, TASKS 외 추가 작업) 완료. 바뀐 파일: `MeleeSystem`(`tackleHalfAngle` 45°, `IsOpponentInTackleArc()`, 펀치·태클 부채꼴 판정 공용화), `SprintState`(자동 접촉 태클도 부채꼴 안일 때만), `GAME_SPEC.md`(5장 태클 판정 범위), `QUESTIONS.md`(B 질문 답 기록). 위험: 낮음. 정면 판정은 기체 몸통 방향(transform.forward) 기준이라 질주 중 카메라와 몸통이 어긋나 있으면 체감 범위가 다를 수 있음.
 - **C1** 완료. 바뀐 파일: 신규 `Mech/BernardTuning`(ScriptableObject, 묶음 13개), 신규 `Mech/MechTuning`(기체 참조 + `TuningRef` 지연 조회), 신규 `Editor/TuningSetup`(메뉴 2개: 생성·연결, P1 값 복사), `MechController`·상태 5개(SideStep/Slide/QuickTurn/Brake/Sprint의 const 포함), `BoostGauge`, `HeatGauge`(`MaxHeat`), `MeleeSystem`, `ThrusterLunge`, `LockOnSystem`, `AnchorClaw`(박혀 있던 3m/4m도), `ImpactSlam`, `HitStop`, `HUDController`(히트 게이지 /100 → MaxHeat), `VersusSceneSetup`·`MechComponentSetup`(에셋 연결). 기존 필드는 `[HideInInspector]`로 숨김(복사 메뉴용, 런타임 미사용 — 스크립트로 확인). 위험: 에셋 연결 전엔 코드 기본값으로 동작하므로 씬에서 튜닝한 값(예: 하드 락온 추적 속도 10)이 Copy 메뉴 실행 전까지 적용되지 않는다. 플레이 중 바꾼 에셋 값은 멈춰도 남는다.
+- **C2** 완료. 바뀐 파일: 신규 `Feedback/CombatFeedback`(이벤트 구독 + 상태 프로퍼티 변화 감지, 팝업·틴트·효과음), 신규 `Feedback/StatusPopup`(TextMesh 월드 텍스트, 카메라별 렌더 직전 회전으로 화면 분할 양쪽 정면), 신규 `Feedback/MechTint`(MaterialPropertyBlock), `GameManager`(자동 부착 한 줄), `MechComponentSetup`·`VersusSceneSetup`(GameManager에 HitStop·CombatFeedback 추가). 전투 코드는 수정 없음. 위험: TextMesh 기본 폰트 머티리얼(GUI/Text Shader)이 URP에서 그려지는지 에디터 확인 필요. 틴트는 `_BaseColor`가 있는 셰이더에서만 보임.

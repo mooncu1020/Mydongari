@@ -58,3 +58,7 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 36. (C1) 에셋으로 옮기지 않은 수치(컴포넌트에 그대로 있음): `Health → Max Health`(더미·기타 오브젝트와 공용), `InputReader`(스틱 데드존·달리기 경계·제스처·더블탭), `MechCamera`(감도·FOV), `WeaponSystem`·`Projectile`(사격 기체용), `MeleeDummy`(더미 AI), `GameManager`(라운드), `PlayLogger`.
 37. (C1) DummyTarget도 같은 에셋 값을 쓴다(연결이 없어도 `Resources/BernardTuning`을 읽음). 예전에 더미의 `MeleeSystem`에 따로 넣어 둔 값은 더 이상 쓰이지 않는다.
 38. (C1) 새로 에셋으로 들어온 값(예전엔 코드에 박혀 있던 것): 사이드스텝 0.3초·20, 슬라이딩 0.8초·25, 초신지선회 0.15초, 제동 1초·슬라이딩 입력 창 0.5초, 태클 차징 시작 1.5초·최대 3초·자동 접촉 반경 2, 앵커 당김 종료 거리 3·파일드라이버 거리 4. 값은 예전과 같다.
+39. (C2) `GameManager` 오브젝트에 **`CombatFeedback`** 컴포넌트(상태 팝업·색 틴트·효과음). 없으면 런타임에 자동으로 붙지만, 효과음 클립을 넣고 저장하려면 씬에 있어야 한다 → **`Mydongari/Add Missing Mech Components`** 를 다시 실행하면 GameManager에 `HitStop`·`CombatFeedback`이 붙는다(Versus 세팅 전이면 그 메뉴도 붙인다). 저장.
+40. (C2) `CombatFeedback` → `효과음` 칸 7개: Punch Hit / Guard Block / Parry / Guard Break / Clash / Lunge Start / Tackle Hit(대시 어택·차징 태클 명중). 비워 두면 무음. 2D로 재생되어 화면 분할 양쪽에 같은 크기로 들린다. 볼륨은 `Sfx Volume`.
+41. (C2) 팝업 문구·색, 크기(`Popup Style`: 수명 0.8초, 상승 1m, 글자 크기 0.08, 거리 10m 이상은 최대 3배까지 확대), 머리 위 여유(`Popup Head Margin` 0.5m)는 `CombatFeedback`에서 조정. 폰트는 Unity 기본 `LegacyRuntime.ttf`(영문).
+42. (C2) 색 틴트: 스턴(노랑) > 과열(빨강, 초당 3회 깜빡임) > 가드(파랑), 섞는 비율 `Tint Strength` 0.5. 머티리얼 에셋은 바꾸지 않고 MaterialPropertyBlock으로 `_BaseColor`(·`_Color`)만 덮어쓴다 → 상태가 끝나거나 컴포넌트가 꺼지면 원래 색. 다른 셰이더로 바꿔 `_BaseColor`/`_Color`가 없으면 틴트가 안 보인다.
