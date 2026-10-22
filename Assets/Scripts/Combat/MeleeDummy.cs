@@ -21,7 +21,8 @@ namespace MyDongari.Combat
     /// <summary>
     /// 연습 봇 두뇌. 판정은 하나도 직접 하지 않는다 — 가드는 BotInput(ICombatInputSource)으로 "버튼을 눌러"
     /// MeleeSystem이 플레이어와 같은 규칙(재사용 대기·패리 창·가드 히트·과열 가드 깨짐·패리 반사)으로 처리하고,
-    /// 펀치는 MeleeSystem.TryMeleeAttack, 런지는 ThrusterLunge.TryLunge를 그대로 부른다.
+    /// 공격은 BotInput 공격 버튼을 "누르고", 플레이어와 같은 입력 버퍼(AttackInputBuffer)가 발동 시점 상황으로
+    /// 펀치(MeleeSystem.TryMeleeAttack) 또는 런지(ThrusterLunge.TryLunge)를 고른다.
     /// 다른 컴포넌트보다 먼저 Awake해야(실행 순서 -50) 런타임에 붙인 히트 게이지·입력 소스를 MeleeSystem이 찾는다.
     /// </summary>
     [DefaultExecutionOrder(-50)]
@@ -78,6 +79,10 @@ namespace MyDongari.Combat
         public BotMode ActiveBehaviour => _active;
         /// <summary>모드가 바뀌었을 때(순환 단축키 등). UI 표시용.</summary>
         public event Action<BotMode> OnModeChanged;
+        /// <summary>입력 버퍼로(누른 프레임보다 뒤에) 발동한 공격. 로그용 (플레이어의 WeaponSystem과 같은 이벤트).</summary>
+        public event Action<AttackType> OnBufferedAttack;
+
+        private readonly AttackInputBuffer _attackBuffer = new AttackInputBuffer();
 
         private Transform _player;
         private MechIdentity _identity;
@@ -169,6 +174,7 @@ namespace MyDongari.Combat
         private void ResetBehaviour()
         {
             _botInput.Clear();
+            _attackBuffer.Clear();
             _guardHoldUntil = -1f;
             _pendingGuardTime = -1f;
             _pendingCounterTime = -1f;
@@ -227,6 +233,36 @@ namespace MyDongari.Combat
                     UpdateParrier();
                     break;
             }
+
+            UpdateAttackInput();
+        }
+
+        /// <summary>이번 프레임 누른 공격 버튼 + 버퍼에 남은 입력을 플레이어와 같은 규칙으로 처리.</summary>
+        private void UpdateAttackInput()
+        {
+            if (_botInput.AttackPressedThisFrame) _attackBuffer.Press();
+            float bufferTime = _tuning.Get(this).Startup.inputBuffer;
+            if (_attackBuffer.Tick(bufferTime, TryStartAttack, out AttackType started, out bool fromBuffer) && fromBuffer)
+            {
+                OnBufferedAttack?.Invoke(started);
+            }
+        }
+
+        /// <summary>
+        /// 발동 시점 상황으로 공격을 고른다 — 플레이어와 같은 기준: 하드 락온 진입 거리 안이면 펀치, 밖이면 런지.
+        /// 스턴·쿨다운·발생 중·런지 중이면 null (버퍼가 다시 시도).
+        /// </summary>
+        private AttackType? TryStartAttack()
+        {
+            if (_player == null) return null;
+            if (_meleeSystem != null && _meleeSystem.IsStunned) return null;
+
+            float dist = Vector3.Distance(transform.position, _player.position);
+            if (dist <= _tuning.Get(this).LockOn.hardEnterRange)
+            {
+                return _meleeSystem != null && _meleeSystem.TryMeleeAttack() ? AttackType.Punch : (AttackType?)null;
+            }
+            return _lunge != null && _lunge.TryLunge() ? AttackType.Lunge : (AttackType?)null;
         }
 
         private void FixedUpdate()
@@ -280,7 +316,7 @@ namespace MyDongari.Combat
         {
             if (_attackTimer < attackCooldown) return;
             _attackTimer = 0f;
-            if (_meleeSystem != null) _meleeSystem.TryMeleeAttack();
+            _botInput.PressAttack();
         }
 
         private void UpdateLunger(float dist)
@@ -290,8 +326,8 @@ namespace MyDongari.Combat
             if (dist < lungerMinDistance || dist > lungerMaxDistance) return;
             if (!IsAimed(lungeAimAngle)) return;
 
-            // 부스트 부족·스턴 등으로 안 나가면 조금 뒤 다시 시도
-            _lunge.TryLunge();
+            // 런지 거리(하드 락온 밖)라 버튼을 누르면 런지가 나간다. 부스트 부족 등으로 안 나가면 버퍼가 잠깐 다시 시도
+            _botInput.PressAttack();
             _nextLungeTime = Time.time + Random.Range(lungeIntervalMin, lungeIntervalMax);
         }
 
@@ -315,7 +351,7 @@ namespace MyDongari.Combat
                 _guardHoldUntil = -1f;
                 _botInput.SetGuard(false);
                 // 반격도 일반 펀치 (쿨다운·과열·정면 부채꼴 규칙 그대로)
-                if (_meleeSystem != null) _meleeSystem.TryMeleeAttack();
+                _botInput.PressAttack();
             }
         }
 

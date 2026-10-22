@@ -110,6 +110,8 @@ namespace MyDongari.Mech
             public float chargedTackle = 0.1f;
             [Tooltip("양쪽 펀치의 판정 시점이 이 시간(초) 이내면 맞딜")]
             public float clashWindow = 0.1f;
+            [Tooltip("공격 버튼 입력 버퍼(초). 쿨다운·발생 시간·런지·스턴 등으로 지금 못 나가는 공격은 이 시간 동안 기억했다가 가능해지는 순간 발동")]
+            public float inputBuffer = 0.15f;
         }
 
         [Serializable]
@@ -365,7 +367,7 @@ namespace MyDongari.Mech
         [SerializeField] private HeatValues heat = new HeatValues();
         [Header("펀치 / 맞딜")]
         [SerializeField] private PunchValues punch = new PunchValues();
-        [Header("공격 발생 시간 (버튼 → 판정)")]
+        [Header("공격 발생 시간·입력 버퍼 (버튼 → 판정)")]
         [SerializeField] private AttackStartupValues startup = new AttackStartupValues();
         [Header("가드")]
         [SerializeField] private GuardValues guard = new GuardValues();

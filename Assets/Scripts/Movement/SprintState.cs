@@ -154,10 +154,17 @@ namespace MyDongari.Movement
             StateMachine.ChangeState(StateMachine.IdleState);
         }
 
-        /// <summary>공격 버튼으로 어깨 태클 요청. 다음 물리 스텝에 처리된다.</summary>
-        public void RequestTackle()
+        /// <summary>
+        /// 공격 버튼으로 어깨 태클 요청. 받아들이면 true(다음 물리 스텝에 시작), 쿨다운·발생 중이면 false
+        /// (입력 버퍼가 다시 시도한다).
+        /// </summary>
+        public bool RequestTackle()
         {
+            MeleeSystem melee = StateMachine.MechController.MeleeSystem;
+            if (_tackleRequested) return true;
+            if (_pendingTackleElapsed >= 0f || melee == null || !melee.CanTackle) return false;
             _tackleRequested = true;
+            return true;
         }
 
         private bool IsOpponentInContact()

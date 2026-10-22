@@ -425,27 +425,26 @@ namespace MyDongari.Combat
         }
 
         /// <summary>
-        /// 너클 펀치 시작. 쿨다운·과열·발생 중이면 안 나간다(null). 발생 시간이 있으면 지금은 예비 동작만 시작하고
-        /// null을 돌려준 뒤, 시간이 지난 프레임에 판정한다. 발생 시간이 0이면 지금 판정해서
-        /// 빗나가면 null, 맞았으면 피격자가 판단한 결과(Hit/Guarded/GuardBroken/Parried/Clash).
+        /// 너클 펀치 시작. 쿨다운·과열·스턴·발생 중이면 안 나가고 false (입력 버퍼가 다시 시도한다).
+        /// 시작했으면 true: 발생 시간이 있으면 예비 동작만 시작하고 시간이 지난 프레임에, 0이면 지금 판정한다.
         /// </summary>
-        public HitResult? TryMeleeAttack()
+        public bool TryMeleeAttack()
         {
-            if (_punchElapsed >= 0f) return null;
+            if (_punchElapsed >= 0f) return false;
             // 스턴 중엔 펀치를 시작할 수 없다 (런지·가드와 같은 규칙. 발생 중 스턴이면 취소되는 것과 짝)
-            if (IsStunned) return null;
+            if (IsStunned) return false;
             BernardTuning.PunchValues punch = Punch;
-            if (_meleeTimer < punch.cooldown) return null;
+            if (_meleeTimer < punch.cooldown) return false;
             // 과열이면 주먹이 안 나간다. 히트게이지가 없는 기체(더미)는 제한 없음
-            if (_heatGauge != null && !_heatGauge.CanPunch()) return null;
+            if (_heatGauge != null && !_heatGauge.CanPunch()) return false;
             _meleeTimer = 0f;
             // 맞든 빗나가든 휘두른 순간 히트가 오른다
             if (_heatGauge != null) _heatGauge.AddHeat(punch.heatPerPunch);
             OnAttackStarted?.Invoke(AttackType.Punch);
 
-            if (Startup.punch <= 0f) return ResolvePunch();
-            _punchElapsed = 0f;
-            return null;
+            if (Startup.punch <= 0f) ResolvePunch();
+            else _punchElapsed = 0f;
+            return true;
         }
 
         /// <summary>펀치 판정: 판정하는 순간의 내 정면·상대 위치 기준.</summary>

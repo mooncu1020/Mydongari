@@ -100,3 +100,4 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 67. (E3) 10/27 최종 빌드 전 확인은 `docs/RELEASE_CHECKLIST.md`.
 68. (E4) `BernardTuning` → **공격 발생 시간** 묶음: `Punch` 0.1, `Dash Attack` 0.12, `Charged Tackle` 0.1(초), `Clash Window` 0.1. 각 값을 0으로 하면 그 공격은 예전처럼 누른 프레임에 즉시 판정. 외형 예비 동작 길이는 이 값을 따른다(0일 때만 `Visual → Anticipation Time`).
 69. (E4) DummyTarget → `MeleeDummy` → `Reaction Time` 기본값이 0.08초로 바뀌었다(씬에 저장돼 있지 않아 새 기본값 적용). 패리 연습 난이도는 이 값과 `Parry Chance`로 조절.
+70. (E4.1) 공격은 이제 **버튼을 누른 순간에만** 나간다(누르고 있으면 반복 안 함). `BernardTuning → 공격 발생 시간·입력 버퍼 → Input Buffer`(0.15초): 못 나갈 때 누른 입력을 이 시간 동안 기억. 0이면 버퍼 없음(누른 프레임에 못 나가면 버림). 로그 요약에 `buffered_attack`(종류별 `buffered_punch` 등).

@@ -49,7 +49,9 @@ namespace MyDongari.Core
             "lunge_start", "lunge_hit", "lunge_miss", "lunge_parried",
             "tackle_start", "tackle_landed", "dash_attack_start", "dash_attack_landed",
             "guard_block", "parry", "guard_break", "clash",
-            "sidestep", "anchor_hit", "slam_landed"
+            "sidestep", "anchor_hit", "slam_landed",
+            // 입력 버퍼로(누른 프레임보다 뒤에) 발동한 공격 수. 종류별은 buffered_punch 등으로 따로
+            "buffered_attack"
         };
         private static readonly string[] BandNames = { "near", "mid", "far" };
 
@@ -146,6 +148,25 @@ namespace MyDongari.Core
                 melee.OnAttackCanceled += onCancel;
                 melee.OnHitResolved += onHit;
                 _unsubscribers.Add(() => { melee.OnAttackStarted -= onStart; melee.OnAttackCanceled -= onCancel; melee.OnHitResolved -= onHit; });
+            }
+
+            // 버퍼 발동은 플레이어면 WeaponSystem, 연습 봇이면 MeleeDummy가 알린다
+            Action<AttackType> onBuffered = type => ErrorLog.Run(() =>
+            {
+                Count(index, "buffered_attack", AttackKey(type));
+                CountSilent(index, "buffered_" + AttackKey(type));
+            }, "PlayLogger.onBuffered");
+            WeaponSystem weapon = mech.GetComponent<WeaponSystem>();
+            if (weapon != null)
+            {
+                weapon.OnBufferedAttack += onBuffered;
+                _unsubscribers.Add(() => weapon.OnBufferedAttack -= onBuffered);
+            }
+            MeleeDummy bot = mech.GetComponent<MeleeDummy>();
+            if (bot != null)
+            {
+                bot.OnBufferedAttack += onBuffered;
+                _unsubscribers.Add(() => bot.OnBufferedAttack -= onBuffered);
             }
 
             ThrusterLunge lunge = mech.GetComponent<ThrusterLunge>();

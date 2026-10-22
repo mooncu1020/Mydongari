@@ -141,13 +141,14 @@ namespace MyDongari.Combat.Skills
             _cooldownTimer = T.cooldown;
         }
 
-        public void TryPileDriver()
+        /// <summary>파일드라이버. 준비 안 됐거나 너무 멀면 false (입력 버퍼가 다시 시도한다).</summary>
+        public bool TryPileDriver()
         {
-            if (!_pileDriverReady) return;
-            if (_target == null) return;
+            if (!_pileDriverReady) return false;
+            if (_target == null) return false;
 
             float dist = Vector3.Distance(transform.position, _target.position);
-            if (dist > T.pileDriverRange) return;
+            if (dist > T.pileDriverRange) return false;
 
             _pileDriverReady = false;
             OnPileDriverStarted?.Invoke();
@@ -162,6 +163,7 @@ namespace MyDongari.Combat.Skills
             MeleeSystem.DeliverHit(_target.gameObject, info);
 
             _target = null;
+            return true;
         }
     }
 }
