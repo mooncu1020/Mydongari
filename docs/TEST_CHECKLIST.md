@@ -217,3 +217,9 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (E4.1) 카운트다운 중 공격 버튼 → FIGHT 순간 아무것도 안 나감
 - [ ] (E4.1) PRACTICE Approach·Lunger·Parrier 봇이 예전처럼 펀치·런지·반격 (봇도 누른 순간 방식)
 - [ ] (E4.1) `Logs/PlayLogs/summary_*.csv`에 `buffered_attack`과 `buffered_punch` 등, `events`에 `buffered_attack`
+- [ ] (E5) 임시 상자 기체: 펀치·가드·걷기 동작이 E1과 같게 보임 (축 자동 변환 후 회귀 없음)
+- [ ] (E5) `Create Locomotion Animator Controller` → `Assets/Animations/MechLocomotion.controller` 생성, 파라미터 Speed·MoveState, 상태 4개(Motion 비어 있음). 모델 Animator가 없으면 "0대 연결" 안내
+- [ ] (E5) 리깅 모델로 `Apply Model To Mechs` → 뼈 10개 연결(메시 이름이 같아도 뼈가 선택됨), 리그 `Animator` 칸 채워짐, 루트 모션 꺼짐
+- [ ] (E5) 클립을 하나도 안 넣은 상태로 플레이 → 모델이 쉴 때 자세 + 코드 걷기·공격 동작 (E1과 같음), 자세가 점점 틀어지지 않음
+- [ ] (E5) Walk에만 클립을 넣고 걷기 → 키프레임 걷기가 나오고 코드 다리 흔들림은 꺼짐. 걷는 중 펀치·가드 → 키프레임 위에 덧씌워짐. Run(클립 없음)으로 바뀌면 코드 걷기 동작으로 돌아옴
+- [ ] (E5) Animator 창에서 MoveState가 정지 0 / 걷기 1 / 달리기 2 / 질주 3으로 바뀜, 제동·슬라이딩 중엔 직전 값

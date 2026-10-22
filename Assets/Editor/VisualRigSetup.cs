@@ -99,12 +99,29 @@ namespace MyDongari.EditorTools
             SerializedObject so = new SerializedObject(rig);
             for (int i = 0; i < MechVisualRig.SlotNames.Length; i++)
             {
-                Transform found = FindDeep(searchRoot, MechVisualRig.SlotNames[i]);
+                Transform found = FindSlotTransform(searchRoot, MechVisualRig.SlotNames[i]);
                 if (found == null) missing.Add(MechVisualRig.SlotNames[i]);
                 so.FindProperty(MechVisualRig.SlotFieldNames[i] + ".target").objectReferenceValue = found;
             }
             so.ApplyModifiedProperties();
             return missing;
+        }
+
+        /// <summary>
+        /// 슬롯 이름의 Transform을 찾는다. 리깅된 모델은 같은 이름의 뼈와 메시가 둘 다 있을 수 있어서
+        /// 메시가 없는 Transform(뼈·빈 오브젝트)을 먼저 고르고, 없으면 메시 오브젝트(리깅 안 한 모델)를 쓴다.
+        /// </summary>
+        public static Transform FindSlotTransform(Transform root, string name)
+        {
+            Transform meshMatch = null;
+            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name != name) continue;
+                bool hasMesh = t.GetComponent<MeshFilter>() != null || t.GetComponent<Renderer>() != null;
+                if (!hasMesh) return t;
+                if (meshMatch == null) meshMatch = t;
+            }
+            return meshMatch;
         }
 
         public static Transform FindDeep(Transform parent, string name)

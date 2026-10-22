@@ -93,6 +93,13 @@ namespace MyDongari.EditorTools
 
             List<string> missing = VisualRigSetup.AssignSlots(rig, instance.transform);
 
+            // 리깅된 모델(Generic)이면 Animator를 리그에 연결하고, 반복 동작 컨트롤러가 있으면 붙인다
+            Animator animator = instance.GetComponentInChildren<Animator>(true);
+            SerializedObject rigSo = new SerializedObject(rig);
+            rigSo.FindProperty("animator").objectReferenceValue = animator;
+            rigSo.ApplyModifiedProperties();
+            if (animator != null) AnimatorSetup.Configure(animator, AnimatorSetup.LoadController());
+
             Transform placeholder = mech.Find(VisualRigSetup.PlaceholderName);
             if (placeholder != null)
             {

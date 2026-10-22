@@ -4,6 +4,7 @@ using UnityEngine;
 using MyDongari.Combat;
 using MyDongari.Combat.Skills;
 using MyDongari.Mech;
+using MyDongari.Movement;
 
 namespace MyDongari.Visual
 {
@@ -13,7 +14,7 @@ namespace MyDongari.Visual
     {
         [Tooltip("움직일 부품. 피벗이 관절(어깨·팔꿈치·손목·엉덩이·목·허리)에 있어야 한다")]
         public Transform target;
-        [Tooltip("모델 부품의 축이 기준(X 오른쪽, Y 위, Z 앞)과 다를 때 맞추는 회전(°). 임시 상자는 0")]
+        [Tooltip("추가 회전 보정(°). 축은 처음 자세의 뼈 방향으로 자동으로 맞추므로 보통 0. 동작 방향이 여전히 어긋날 때만")]
         public Vector3 rotationCorrection;
     }
 
@@ -21,7 +22,10 @@ namespace MyDongari.Visual
     /// 리깅 없이 코드로 부품을 움직이는 절차적 애니메이션. 콜라이더·리지드바디는 루트에 그대로 두고
     /// 시각 전용 부품만 LateUpdate에서 움직인다. 전투 코드는 이 컴포넌트를 모른다 —
     /// 기존 이벤트(공격 시작, 피격 결과, 잡기, 파일드라이버, 슬램)를 구독하고 상태(가드·스턴·런지·속도)를 읽기만 한다.
-    /// 모든 부품은 쉴 때 자세(rest) 위에 오프셋을 얹고, 그 오프셋은 감쇠 스프링으로 목표를 따라간다.
+    /// 모든 부품은 기준 자세 위에 오프셋을 얹고, 그 오프셋은 감쇠 스프링으로 목표를 따라간다.
+    /// 기준 자세 = Animator가 있으면 그 프레임 Animator가 만든 자세(반복 동작 키프레임), 없거나 그 뼈를 안 건드렸으면 쉴 때 자세(rest).
+    /// 오프셋 각도는 기체 축(X 오른쪽, Y 위, Z 앞) 기준이고, 처음 자세에서 잰 뼈 방향으로 각 부품 축에 맞춰 바꿔 넣는다
+    /// (임포트된 뼈의 축·롤이 제각각이어도 같은 각도가 같은 방향으로 움직이게).
     /// 수치는 BernardTuning의 Visual 묶음.
     /// </summary>
     public class MechVisualRig : MonoBehaviour
@@ -47,6 +51,15 @@ namespace MyDongari.Visual
         [Header("동작")]
         [SerializeField] private bool animate = true;
 
+        [Header("키프레임 반복 동작 (선택)")]
+        [Tooltip("리깅된 모델의 Animator (Idle/Walk/Run/Sprint). 비워 두면 모델 아래에서 자동으로 찾는다. 없으면 코드 동작만")]
+        [SerializeField] private Animator animator;
+
+        /// <summary>반복 동작 Animator Controller 파라미터·상태 이름 (에디터 메뉴와 같이 쓴다).</summary>
+        public const string SpeedParameter = "Speed";
+        public const string MoveStateParameter = "MoveState";
+        public static readonly string[] LocomotionStates = { "Idle", "Walk", "Run", "Sprint" };
+
         [Header("몸통")]
         [SerializeField] private RigSlot body = new RigSlot();
         [SerializeField] private RigSlot head = new RigSlot();
@@ -69,6 +82,15 @@ namespace MyDongari.Visual
             public Transform Target;
             public Vector3 RestPosition;
             public Quaternion RestRotation;
+            // 처음 자세에서 잰 "기체 기준 → 이 부품 기준" 변환 (회전 오프셋·위치 오프셋용)
+            public Quaternion BoneFromMech = Quaternion.identity;
+            public Quaternion ParentFromMech = Quaternion.identity;
+            // 이번 프레임 기준 자세, 지난 프레임에 직접 써 넣은 값 (Animator가 안 건드린 뼈 구분용)
+            public Vector3 BasePosition;
+            public Quaternion BaseRotation;
+            public Vector3 WrittenPosition;
+            public Quaternion WrittenRotation;
+            public bool HasWritten;
             public Vector3 Position;
             public Vector3 PositionVelocity;
             public Vector3 Rotation;          // 오일러(°), 기준 축 기준
@@ -97,6 +119,8 @@ namespace MyDongari.Visual
         private AttackType _tackleType = AttackType.DashAttack;
 
         private Rigidbody _rb;
+        private MechStateMachine _stateMachine;
+        private int _moveState;
         private MeleeSystem _melee;
         private ThrusterLunge _lunge;
         private AnchorClaw _claw;
@@ -118,6 +142,14 @@ namespace MyDongari.Visual
         {
             _rb = GetComponent<Rigidbody>();
             _melee = GetComponent<MeleeSystem>();
+            _stateMachine = GetComponent<MechStateMachine>();
+            if (animator == null) animator = GetComponentInChildren<Animator>(true);
+            if (animator != null)
+            {
+                // 모델 애니메이션이 기체(물리)를 움직이면 안 된다
+                animator.applyRootMotion = false;
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            }
             BindJoints();
         }
 
@@ -188,13 +220,17 @@ namespace MyDongari.Visual
             _joints = new[] { _body, _head, _armLUpper, _armLLower, _fistL, _armRUpper, _armRLower, _fistR, _legL, _legR };
         }
 
-        private static Joint Bind(RigSlot slot)
+        private Joint Bind(RigSlot slot)
         {
             var joint = new Joint { Slot = slot, Target = slot != null ? slot.target : null };
             if (joint.Target != null)
             {
                 joint.RestPosition = joint.Target.localPosition;
                 joint.RestRotation = joint.Target.localRotation;
+                Quaternion mechInverse = Quaternion.Inverse(transform.rotation);
+                joint.BoneFromMech = Quaternion.Inverse(mechInverse * joint.Target.rotation);
+                Transform parent = joint.Target.parent;
+                joint.ParentFromMech = parent != null ? Quaternion.Inverse(mechInverse * parent.rotation) : Quaternion.identity;
             }
             return joint;
         }
@@ -303,10 +339,12 @@ namespace MyDongari.Visual
             _clock += dt;
             BernardTuning.VisualValues v = V;
 
+            bool animated = animator != null && animator.isActiveAndEnabled && animator.runtimeAnimatorController != null;
             foreach (Joint joint in _joints)
             {
                 joint.TargetPosition = Vector3.zero;
                 joint.TargetRotation = Vector3.zero;
+                if (joint.Target != null) CaptureBase(joint, animated);
             }
 
             PoseMovement(v, dt);
@@ -335,13 +373,49 @@ namespace MyDongari.Visual
             x += velocity * dt;
         }
 
+        /// <summary>
+        /// 이번 프레임 기준 자세. Animator가 이번 프레임에 이 뼈를 썼으면 그 자세, 아니면(클립 없음·안 움직이는 뼈)
+        /// 지난 프레임에 우리가 써 둔 값이 그대로 남아 있으므로 쉴 때 자세로 — 오프셋이 누적되지 않게.
+        /// </summary>
+        private static void CaptureBase(Joint joint, bool animated)
+        {
+            Transform t = joint.Target;
+            bool untouched = joint.HasWritten && SameExactly(t.localRotation, joint.WrittenRotation) && SameExactly(t.localPosition, joint.WrittenPosition);
+            if (animated && !untouched)
+            {
+                joint.BasePosition = t.localPosition;
+                joint.BaseRotation = t.localRotation;
+            }
+            else
+            {
+                joint.BasePosition = joint.RestPosition;
+                joint.BaseRotation = joint.RestRotation;
+            }
+        }
+
+        private static bool SameExactly(Quaternion a, Quaternion b)
+        {
+            // Quaternion·Vector3의 ==는 근사 비교라 정확히 같은지 성분으로 본다
+            return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
+        }
+
+        private static bool SameExactly(Vector3 a, Vector3 b)
+        {
+            return a.x == b.x && a.y == b.y && a.z == b.z;
+        }
+
         private static void Apply(Joint joint)
         {
-            // 오프셋은 기준 축(X 오른쪽, Y 위, Z 앞)으로 정의 → 슬롯 보정으로 부품 축에 맞춘 뒤 쉴 때 자세 위에 얹는다
+            // 오프셋은 기체 축(X 오른쪽, Y 위, Z 앞)으로 정의 → 슬롯 추가 보정 → 처음 자세의 뼈 방향으로 부품 축에 맞춰
+            // 기준 자세 위에 얹는다
             Quaternion correction = Quaternion.Euler(joint.Slot.rotationCorrection);
-            Quaternion offset = correction * Quaternion.Euler(joint.Rotation) * Quaternion.Inverse(correction);
-            joint.Target.localRotation = joint.RestRotation * offset;
-            joint.Target.localPosition = joint.RestPosition + joint.Position;
+            Quaternion mechOffset = correction * Quaternion.Euler(joint.Rotation) * Quaternion.Inverse(correction);
+            Quaternion localOffset = joint.BoneFromMech * mechOffset * Quaternion.Inverse(joint.BoneFromMech);
+            joint.Target.localRotation = joint.BaseRotation * localOffset;
+            joint.Target.localPosition = joint.BasePosition + joint.ParentFromMech * joint.Position;
+            joint.WrittenRotation = joint.Target.localRotation;
+            joint.WrittenPosition = joint.Target.localPosition;
+            joint.HasWritten = true;
         }
 
         // ---------------- 자세 ----------------
@@ -358,7 +432,9 @@ namespace MyDongari.Visual
                 Mathf.Clamp(local.z * v.leanPerSpeed, -v.maxLean, v.maxLean), 0f,
                 Mathf.Clamp(-local.x * v.leanPerSpeed, -v.maxLean, v.maxLean)));
 
-            // 걷기: 이동 거리에 맞춰 다리 교차 + 몸통 상하
+            // 걷기: 이동 거리에 맞춰 다리 교차 + 몸통 상하.
+            // Animator의 지금 상태에 키프레임 클립이 들어 있으면 그 클립이 맡으므로 코드는 끈다 (기울기는 계속)
+            if (IsLocomotionClipPlaying()) return;
             float amount = v.walkReferenceSpeed > 0f ? Mathf.Clamp01(speed / v.walkReferenceSpeed) : 0f;
             _walkPhase += speed * v.stepsPerMeter * 2f * Mathf.PI * dt;
             float swing = Mathf.Sin(_walkPhase) * v.strideAngle * amount;
@@ -366,6 +442,57 @@ namespace MyDongari.Visual
             AddRotation(_legL, new Vector3(-swing, 0f, 0f));
             AddRotation(_legR, new Vector3(swing, 0f, 0f));
             AddPosition(_body, new Vector3(0f, Mathf.Abs(Mathf.Sin(_walkPhase)) * v.bobHeight * amount, 0f));
+        }
+
+        private bool IsLocomotionClipPlaying()
+        {
+            return animator != null && animator.isActiveAndEnabled && animator.runtimeAnimatorController != null &&
+                   animator.GetCurrentAnimatorClipInfoCount(0) > 0;
+        }
+
+        // ---------------- Animator 파라미터 ----------------
+
+        private void Update()
+        {
+            // Animator가 이번 프레임을 계산하기 전에 파라미터를 넣는다 (LateUpdate에선 한 프레임 늦음)
+            try
+            {
+                UpdateAnimatorParameters();
+            }
+            catch (Exception e)
+            {
+                ErrorLog.Report(e, "MechVisualRig.Update");
+            }
+        }
+
+        private void UpdateAnimatorParameters()
+        {
+            if (!animate || animator == null || !animator.isActiveAndEnabled || animator.runtimeAnimatorController == null) return;
+
+            float speed = 0f;
+            if (_rb != null)
+            {
+                Vector3 velocity = _rb.linearVelocity;
+                velocity.y = 0f;
+                speed = velocity.magnitude;
+            }
+
+            // 상태 → 0 Idle, 1 Walk, 2 Run, 3 Sprint. 제동·슬라이딩·사이드스텝·퀵턴·런지는 직전 반복 동작 유지
+            if (_stateMachine != null)
+            {
+                if (_stateMachine.IsIdle) _moveState = 0;
+                else if (_stateMachine.IsWalking) _moveState = 1;
+                else if (_stateMachine.IsRunning) _moveState = 2;
+                else if (_stateMachine.IsSprinting) _moveState = 3;
+            }
+            else
+            {
+                // 상태 머신이 없는 기체(연습 봇)는 속도로만
+                _moveState = speed > 0.5f ? 1 : 0;
+            }
+
+            animator.SetFloat(SpeedParameter, speed);
+            animator.SetInteger(MoveStateParameter, _moveState);
         }
 
         private void PoseGuard(BernardTuning.VisualValues v)
