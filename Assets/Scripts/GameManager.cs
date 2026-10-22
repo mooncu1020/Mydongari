@@ -106,6 +106,8 @@ namespace MyDongari.Core
             Instance = this;
             ApplyMode();
             LinkOpponents();
+            // 씬에 안 붙여 둔 경우에도 히트스톱이 동작하게 (수치 조정은 인스펙터에서 직접 추가해서)
+            if (GetComponent<HitStop>() == null) gameObject.AddComponent<HitStop>();
         }
 
         /// <summary>

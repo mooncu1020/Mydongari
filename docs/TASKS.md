@@ -107,7 +107,7 @@
 - 이벤트 로그 `events_*.csv`와 매치 요약(플레이어별 카운트, 거리 구간 체류 시간)을 GAME_SPEC 9장대로.
 - 이벤트는 정적 이벤트 버스나 MeleeSystem 이벤트(`OnHitResolved` 등)를 구독하는 방식으로, 전투 코드에 로거 의존을 넣지 않는다.
 
-### [ ] B7. 히트스톱 (여유가 있으면)
+### [x] B7. 히트스톱 (여유가 있으면)
 - `Time.timeScale` 방식은 화면 분할에서 두 플레이어를 같이 멈추므로 1대1에서는 허용. 명중 결과별 길이(펀치 0.05, 런지·태클 0.08, 맞딜 0.12초 — 조정값).
 - 런지 스턴 타이머가 히트스톱 이후부터 흐르도록 unscaled/scaled 시간을 구분.
 
@@ -131,3 +131,4 @@
 - **B4** 완료. 바뀐 파일: `MeleeSystem`(`TryTackle(chargePower, AttackType)` — 참조는 SprintState 1곳, 대시 어택 수치, 대시 어택 패리 반사), `SprintState`(`RequestTackle()`, 버튼·자동 접촉을 FixedUpdate 한 곳에서 한 번만 처리), `WeaponSystem`(우선순위 2 연결). 위험: 대시 어택 수치는 임시값(QUESTIONS).
 - **B5** 완료. 바뀐 파일: `GameManager`(`MatchPhase` Countdown/Fight/RoundOver/MatchOver, 입력 잠금, Start로 재매치 `StartMatch`, `OnRoundStarted`·`OnFight`·`OnMatchStarted` 이벤트, `Invoke` 제거), `InputReader`(`SetInputLocked`, `StartPressed`), `.inputactions`(`Start`), `MeleeDummy`(Fight 아닐 땐 정지), 신규 `UI/RoundUI`, 신규 `Editor/RoundUISetup`(메뉴, Versus 세팅에서도 호출). 위험: 라운드 종료 후 재매치 입력은 각 플레이어 InputReader의 Start만 본다(1인 모드는 P1만).
 - **B6** 완료. 바뀐 파일: `PlayLogger`(재작성: 이벤트 구독, round·dist_band 컬럼, events/summary CSV, 매치 종료 시 저장, 재매치 시 카운트 리셋), `AnchorClaw`(`OnGrabbed`), `MechStateMachine`(`OnStateChanged`). 전투 코드에서 로거 참조 없음. 위험: 로그 파일을 Assets에 쓰는 기존 방식 유지 — 에디터에서 임포트 대상이 된다.
+- **B7** 완료. 바뀐 파일: 신규 `Core/HitStop`(OnHitResolved 구독, timeScale 0을 실제 시간으로 유지), `GameManager`(없으면 자동 부착), `VersusSceneSetup`(GameManager에 추가). 스턴·쿨다운은 scaled 시간이라 히트스톱 동안 멈춤 → 런지 스턴이 히트스톱 뒤부터 흐름. 입력 타이밍(제스처·더블탭)은 이미 unscaled. 위험: 히트스톱 중에도 마우스 시점 회전은 움직인다(카메라 입력은 시간 배율 무관).

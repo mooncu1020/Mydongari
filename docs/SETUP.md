@@ -45,3 +45,4 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 27. (B5) 가운데 공용 라운드 UI: `Mydongari/Setup Versus Scene`을 이미 실행했다면 **`Mydongari/Setup Round UI`** 를 따로 실행 → 저장. (아직 안 했다면 Versus 세팅이 같이 만든다.) `RoundUI` Overlay 캔버스에 카운트다운/FIGHT/승자 텍스트와 위쪽 가운데 승수(●○)가 생긴다.
 28. (B5) `GameManager` → `Countdown Duration 3`, `Fight Banner Duration 1`, `Respawn Delay 3`(라운드 종료 후 대기), `Rounds To Win 2`.
 29. (B6) `PlayLogger`: Player1/Player2를 비워 두면 GameManager의 현재 대결 기체(1인 모드면 P2 = 더미)를 쓴다. 새 필드 `Event File Name`(events), `Summary File Name`(summary), `Near Range 6`, `Mid Range 12`. 로그 파일은 기존처럼 `Assets/` 폴더(빌드에선 `*_Data/`)에 `playlog_*.csv`, `events_*.csv`, `summary_*.csv`로 생긴다. 에디터에서 로그가 Assets에 쌓이면 임포트되니 테스트 후 정리.
+30. (B7) `GameManager` 오브젝트에 `HitStop` 컴포넌트(Versus 세팅 메뉴가 추가, 없으면 런타임 자동 부착). `Enable Hit Stop`, 길이: 펀치 0.05 / 런지·태클·대시 어택 0.08 / 맞딜 0.12 / 그 외 0(슬램·파일드라이버). 이미 Versus 세팅을 했다면 GameManager에 `HitStop`을 직접 Add Component 해야 수치가 저장된다.

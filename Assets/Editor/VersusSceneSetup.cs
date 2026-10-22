@@ -121,6 +121,9 @@ namespace MyDongari.EditorTools
             pairSo.FindProperty("player2Input").objectReferenceValue = p2.GetComponent<PlayerInput>();
             pairSo.ApplyModifiedProperties();
 
+            // 5-1) 히트스톱 (없으면 런타임에 자동으로 붙지만, 수치 조정을 저장하려면 씬에 있어야 한다)
+            if (gameManager.GetComponent<HitStop>() == null) Undo.AddComponent<HitStop>(gameManager.gameObject);
+
             // 6) 로거
             PlayLogger logger = Object.FindFirstObjectByType<PlayLogger>();
             if (logger != null)

@@ -1,0 +1,112 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+using MyDongari.Combat;
+
+namespace MyDongari.Core
+{
+    /// <summary>
+    /// 명중 순간 아주 짧게 시간을 멈춰 타격감을 준다. Time.timeScale 방식이라 화면 분할 두 사람이 같이 멈추는데,
+    /// 1대1에서는 어차피 둘 다 그 타격의 당사자라 허용한다.
+    /// 스턴 타이머 등 게임 로직은 scaled deltaTime을 쓰므로 히트스톱 동안 자동으로 멈추고,
+    /// 결과적으로 런지 스턴은 히트스톱이 끝난 뒤부터 흐른다. 히트스톱 자체 길이는 실제 시간(unscaled)으로 잰다.
+    /// 전투 코드는 히트스톱을 모른다. 각 기체 MeleeSystem.OnHitResolved를 구독만 한다.
+    /// </summary>
+    public class HitStop : MonoBehaviour
+    {
+        [Header("히트스톱")]
+        [SerializeField] private bool enableHitStop = true;
+
+        [Header("길이 (초, 실제 시간)")]
+        [SerializeField] private float punchDuration = 0.05f;
+        [Tooltip("런지·차징 태클·대시 어택")]
+        [SerializeField] private float lungeTackleDuration = 0.08f;
+        [SerializeField] private float clashDuration = 0.12f;
+        [Tooltip("슬램·파일드라이버·투사체. 0이면 없음")]
+        [SerializeField] private float otherDuration = 0f;
+
+        private float _endTime;
+        private bool _active;
+        private float _savedTimeScale = 1f;
+        private readonly List<Action> _unsubscribers = new List<Action>();
+
+        private void Start()
+        {
+            GameManager gm = GameManager.Instance;
+            if (gm == null) return;
+            Subscribe(gm.Player1);
+            Subscribe(gm.Player2);
+        }
+
+        private void Subscribe(GameObject mech)
+        {
+            if (mech == null) return;
+            MeleeSystem melee = mech.GetComponent<MeleeSystem>();
+            if (melee == null) return;
+
+            Action<HitInfo, HitResult> onHit = OnHitResolved;
+            melee.OnHitResolved += onHit;
+            _unsubscribers.Add(() => melee.OnHitResolved -= onHit);
+        }
+
+        private void OnHitResolved(HitInfo info, HitResult result)
+        {
+            if (!enableHitStop) return;
+            Request(DurationFor(info.Type, result));
+        }
+
+        private float DurationFor(AttackType type, HitResult result)
+        {
+            // 패리는 "안 맞음"이라 멈추지 않는다
+            if (result == HitResult.Parried) return 0f;
+            if (result == HitResult.Clash) return clashDuration;
+
+            switch (type)
+            {
+                case AttackType.Punch: return punchDuration;
+                case AttackType.Lunge:
+                case AttackType.Tackle:
+                case AttackType.DashAttack: return lungeTackleDuration;
+                default: return otherDuration;
+            }
+        }
+
+        /// <summary>지금부터 duration(실제 시간) 동안 멈춘다. 겹치면 더 늦게 끝나는 쪽으로 늘린다.</summary>
+        public void Request(float duration)
+        {
+            if (duration <= 0f) return;
+
+            _endTime = Mathf.Max(_endTime, Time.unscaledTime + duration);
+            if (_active) return;
+
+            _active = true;
+            _savedTimeScale = Time.timeScale;
+            Time.timeScale = 0f;
+        }
+
+        private void Update()
+        {
+            // timeScale이 0이어도 Update는 돈다 (deltaTime만 0)
+            if (_active && Time.unscaledTime >= _endTime) Restore();
+        }
+
+        private void Restore()
+        {
+            if (!_active) return;
+            _active = false;
+            Time.timeScale = _savedTimeScale > 0f ? _savedTimeScale : 1f;
+        }
+
+        private void OnDisable()
+        {
+            // 멈춘 채로 꺼지면 게임 전체가 정지 상태로 남는다
+            Restore();
+        }
+
+        private void OnDestroy()
+        {
+            foreach (Action unsubscribe in _unsubscribers) unsubscribe();
+            _unsubscribers.Clear();
+        }
+    }
+}
