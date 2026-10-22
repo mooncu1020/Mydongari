@@ -94,3 +94,4 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
     - Versus 세팅(`Mech_P2` 복제) 전에 실행해도 되고 후에 실행해도 된다(복제하면 부품·연결도 같이 복제됨).
 62. (E1) `MechVisualRig`: `Animate` 끄면 정지. 슬롯 10개(부품 + `Rotation Correction`). 동작 크기·속도는 `BernardTuning` → **Visual** 묶음(스프링 8Hz·감쇠 0.6, 예비 동작 0.033초·25°, 펀치, 가드·패리, 런지, 태클, 클로, 파일드라이버·슬램, 스턴, 가드 깨짐, 이동). 플레이 중 바꾸면 바로 반영(에셋에 남음).
 63. (E1) `AnchorClaw`에 `OnPileDriverStarted`, `ImpactSlam`에 `OnSlamStarted` 이벤트를 추가했다(외형용, 판정 변화 없음).
+64. (E2) 모델이 오면 `docs/MODEL_IMPORT.md` 순서대로: FBX를 `Assets/Models/`에 넣고 → (기체 선택, 또는 아무것도 선택 안 하면 전체) **`Mydongari/Visual/Apply Model To Mechs`** → FBX 선택. `VisualModel`로 붙고 부품 10개가 리그에 연결되며 임시 상자는 꺼진다. 못 찾은 부품 이름은 다이얼로그에 나온다. 축이 다른 부품은 `MechVisualRig` → 슬롯 → `Rotation Correction`.
