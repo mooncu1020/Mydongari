@@ -14,7 +14,7 @@ namespace MyDongari.Input
         [SerializeField] private float moveDeadzone = 0.3f;
         [Tooltip("스틱 크기가 이 값 이상이면 달리기 (스펙: 80% 경계)")]
         [SerializeField] private float runThreshold = 0.8f;
-        [Tooltip("튕기기(↑↑ 전력질주, ↓ 초신지선회, ←→ 사이드스텝, 중립 후 ↗↖ 슬라이딩) 판정 수치")]
+        [Tooltip("튕기기(↓ 초신지선회, ←→ 사이드스텝) 판정 수치. 전력질주·슬라이딩은 두 스틱 조작이라 BernardTuning(이동)에 있다")]
         [SerializeField] private StickGestureSettings gesture = new StickGestureSettings();
 
         [Header("메뉴")]
@@ -28,14 +28,18 @@ namespace MyDongari.Input
         public Vector2 MoveInput { get; private set; }
         public Vector2 LookInput { get; private set; }
         public bool RunInput { get; private set; }
+        /// <summary>버튼 전력질주(키보드 Space, 패드 L3 바인딩)를 누르고 있는지. 패드 두 스틱 전력질주는 MoveStickRaw/LookStickRaw로 상태머신이 판정한다.</summary>
         public bool SprintInput { get; private set; }
+        /// <summary>버튼 슬라이딩(키보드 Ctrl)을 이번 프레임에 눌렀는지. 패드 두 스틱 슬라이딩은 SprintState가 판정한다.</summary>
         public bool SlideInput { get; private set; }
         public bool QuickTurnInput { get; private set; }
         public bool Skill1Input { get; private set; }
         public bool Skill2Input { get; private set; }
         public int SideStepDirection { get; private set; }
-        /// <summary>슬라이딩 방향(스틱 ↗ = 1, ↖ = -1, 키보드 = 0). 지금은 기록용, 슬라이드는 질주 방향으로 나간다.</summary>
-        public int SlideDirection { get; private set; }
+        /// <summary>패드 왼쪽 스틱 원래 값 (키보드 WASD 제외). 두 스틱 전력질주·슬라이딩 방향 비교용.</summary>
+        public Vector2 MoveStickRaw { get; private set; }
+        /// <summary>패드 오른쪽 스틱 원래 값 (마우스 제외). 두 스틱 전력질주·슬라이딩 방향 비교용.</summary>
+        public Vector2 LookStickRaw { get; private set; }
 
         /// <summary>이동 입력이 걷기를 시작할 만큼 있는지. 상태들의 이동 시작/정지 판정은 이걸 쓴다.</summary>
         public bool IsMoveInputActive => MoveInput.magnitude >= moveDeadzone;
@@ -92,6 +96,7 @@ namespace MyDongari.Input
         private InputAction _stepLeftAction;
         private InputAction _stepRightAction;
         private InputAction _moveStickAction;
+        private InputAction _lookStickAction;
         private InputAction _startAction;
         private InputAction _submitAction;
         private InputAction _menuNavigateAction;
@@ -131,6 +136,8 @@ namespace MyDongari.Input
             _stepRightAction = _playerInput.actions["StepRight"];
             // 패드 스틱만 바인딩된 액션. 키보드 WASD가 튕기기로 오인되지 않게 제스처는 이것만 본다
             _moveStickAction = _playerInput.actions["MoveStick"];
+            // 오른쪽 스틱만 바인딩된 액션. 마우스 델타가 가속 스틱으로 오인되지 않게 전력질주 판정은 이것만 본다
+            _lookStickAction = _playerInput.actions["LookStick"];
             _startAction = _playerInput.actions["Start"];
             _submitAction = _playerInput.actions["Submit"];
             _menuNavigateAction = _playerInput.actions["MenuNavigate"];
@@ -156,12 +163,14 @@ namespace MyDongari.Input
             // 히트스톱(timeScale 0) 중에도 입력 타이밍은 실제 시간으로 잰다
             Vector2 stick = _moveStickAction.ReadValue<Vector2>();
             _gesture.Tick(stick, Time.unscaledTime, gesture);
+            MoveStickRaw = stick;
+            LookStickRaw = _lookStickAction.ReadValue<Vector2>();
 
-            // 키보드 경로(Shift/Space/Ctrl/R/A·D 더블탭)와 패드 스틱 경로를 같은 프로퍼티로 합친다
+            // 키보드 경로(Shift/R/A·D 더블탭)와 패드 스틱 경로를 같은 프로퍼티로 합친다.
+            // 전력질주·슬라이딩의 패드 경로는 두 스틱 조작이라 상태머신 쪽(TwinStickSprintInput)에서 판정한다
             RunInput = _runAction.IsPressed() || stick.magnitude >= runThreshold;
-            SprintInput = _sprintAction.IsPressed() || _gesture.SprintHeld;
-            SlideInput = _slideAction.WasPressedThisFrame() || _gesture.SlideTriggered;
-            SlideDirection = _gesture.SlideTriggered ? _gesture.SlideDirection : 0;
+            SprintInput = _sprintAction.IsPressed();
+            SlideInput = _slideAction.WasPressedThisFrame();
 
             AttackHeld = _attackAction.IsPressed();
             AttackPressedThisFrame = _attackAction.WasPressedThisFrame();
@@ -263,7 +272,8 @@ namespace MyDongari.Input
             RunInput = false;
             SprintInput = false;
             SlideInput = false;
-            SlideDirection = 0;
+            MoveStickRaw = Vector2.zero;
+            LookStickRaw = Vector2.zero;
             QuickTurnInput = false;
             Skill1Input = false;
             Skill2Input = false;

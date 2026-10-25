@@ -51,8 +51,32 @@ namespace MyDongari.Mech
             public float quickTurnDuration = 0.15f;
             [Tooltip("전력질주를 놓은 뒤 제동 상태 시간(초)")]
             public float brakeDuration = 1f;
-            [Tooltip("제동 시작 후 이 시간(초) 안에 슬라이딩 입력이 들어오면 슬라이딩")]
+            [Tooltip("제동 시작 후 이 시간(초) 안에 슬라이딩 입력이 들어오면 슬라이딩 (키보드 Ctrl 경로)")]
             public float brakeSlideWindow = 0.5f;
+
+            [Header("전력질주 (패드 두 스틱: 왼쪽 = 방향, 오른쪽 = 가속)")]
+            [Tooltip("오른쪽 스틱 크기가 이 값 미만이면 중립")]
+            public float sprintStickNeutral = 0.3f;
+            [Tooltip("두 스틱 크기가 이 값 이상이어야 전력질주 진입·유지 (왼쪽은 달리기 80% 경계와 같게 둔다)")]
+            public float sprintStickThreshold = 0.8f;
+            [Tooltip("오른쪽 스틱이 중립을 벗어난 뒤 이 시간(초) 안에 임계값까지 꺾여야 진입")]
+            public float sprintEntryTime = 0.15f;
+            [Tooltip("진입 순간 두 스틱 방향 차이가 이 각도(°) 이하여야 진입")]
+            public float sprintEntryAngle = 20f;
+            [Tooltip("유지 중 두 스틱 방향 차이가 이 각도(°)를 넘으면 해제")]
+            public float sprintExitAngle = 20f;
+
+            [Header("슬라이딩 (패드 두 스틱)")]
+            [Tooltip("전력질주가 스틱을 놓아서 풀린 뒤 이 시간(초) 안에 슬라이딩 입력을 받는다. 이 동안은 제동으로 안 넘어가고 대기")]
+            public float slideInputWindow = 0.2f;
+            [Tooltip("두 스틱 크기가 이 값 이상이어야 슬라이딩")]
+            public float slideStickThreshold = 0.8f;
+            [Tooltip("왼쪽 스틱 목표 각도(°, 오른쪽 = 0, 위 = 90). 45 = ↗")]
+            public float slideLeftAngle = 45f;
+            [Tooltip("오른쪽 스틱 목표 각도(°). 135 = ↖")]
+            public float slideRightAngle = 135f;
+            [Tooltip("목표 각도에서 이만큼(°) 벗어나도 인정")]
+            public float slideAngleTolerance = 25f;
         }
 
         [Serializable]

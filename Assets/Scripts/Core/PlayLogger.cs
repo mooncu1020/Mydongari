@@ -51,7 +51,10 @@ namespace MyDongari.Core
             "guard_block", "parry", "guard_break", "clash",
             "sidestep", "anchor_hit", "slam_landed",
             // 입력 버퍼로(누른 프레임보다 뒤에) 발동한 공격 수. 종류별은 buffered_punch 등으로 따로
-            "buffered_attack"
+            "buffered_attack",
+            // E6 두 스틱 전력질주: 진입 수와 해제 이유별 수 (버튼 경로·퀵턴·스턴 등 나머지 이유는 0이 아닐 때만 추가로 나온다)
+            "sprint_enter", "sprint_exit_angle", "sprint_exit_left_release", "sprint_exit_right_release",
+            "sprint_exit_exhausted", "slide"
         };
         private static readonly string[] BandNames = { "near", "mid", "far" };
 
@@ -193,9 +196,26 @@ namespace MyDongari.Core
                 Action<MechState> onState = state => ErrorLog.Run(() =>
                 {
                     if (state is SideStepState) Count(index, "sidestep");
+                    else if (state is SlideState) Count(index, "slide");
                 }, "PlayLogger.onState");
                 sm.OnStateChanged += onState;
                 _unsubscribers.Add(() => sm.OnStateChanged -= onState);
+
+                SprintState sprint = sm.SprintState;
+                if (sprint != null)
+                {
+                    Action<bool> onSprintStart = byStick => ErrorLog.Run(
+                        () => Count(index, "sprint_enter", byStick ? "stick" : "button"), "PlayLogger.onSprintStart");
+                    Action<SprintExitReason> onSprintEnd = reason => ErrorLog.Run(
+                        () => Count(index, "sprint_exit_" + SprintExitKey(reason)), "PlayLogger.onSprintEnd");
+                    sprint.OnSprintStarted += onSprintStart;
+                    sprint.OnSprintEnded += onSprintEnd;
+                    _unsubscribers.Add(() =>
+                    {
+                        sprint.OnSprintStarted -= onSprintStart;
+                        sprint.OnSprintEnded -= onSprintEnd;
+                    });
+                }
             }
         }
 
@@ -317,6 +337,23 @@ namespace MyDongari.Core
                 case AttackType.Slam: return "slam";
                 case AttackType.PileDriver: return "piledriver";
                 default: return "projectile";
+            }
+        }
+
+        private static string SprintExitKey(SprintExitReason reason)
+        {
+            switch (reason)
+            {
+                case SprintExitReason.Angle: return "angle";
+                case SprintExitReason.LeftReleased: return "left_release";
+                case SprintExitReason.RightReleased: return "right_release";
+                case SprintExitReason.ButtonReleased: return "button_release";
+                case SprintExitReason.Exhausted: return "exhausted";
+                case SprintExitReason.QuickTurn: return "quickturn";
+                case SprintExitReason.SideStep: return "sidestep";
+                case SprintExitReason.Stun: return "stun";
+                case SprintExitReason.Tackle: return "tackle";
+                default: return "other";
             }
         }
 

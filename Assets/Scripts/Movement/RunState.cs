@@ -1,4 +1,5 @@
 using UnityEngine;
+using MyDongari.Input;
 
 namespace MyDongari.Movement
 {
@@ -50,8 +51,17 @@ namespace MyDongari.Movement
                 return;
             }
 
-            if (StateMachine.InputReader.SprintInput)
+            // 버튼(Space·L3)은 누르고 있으면 진입, 패드는 두 스틱 조작(오른쪽 스틱을 왼쪽 방향으로 꺾기)
+            InputReader input = StateMachine.InputReader;
+            if (input.SprintInput)
             {
+                StateMachine.SprintState.PrepareEntry(byStick: false);
+                StateMachine.ChangeState(StateMachine.SprintState);
+            }
+            else if (StateMachine.TwinStick.ConsumeEntry(
+                         input.MoveStickRaw, input.LookStickRaw, StateMachine.MechController.Tuning.Movement))
+            {
+                StateMachine.SprintState.PrepareEntry(byStick: true);
                 StateMachine.ChangeState(StateMachine.SprintState);
             }
         }

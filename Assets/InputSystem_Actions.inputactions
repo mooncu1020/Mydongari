@@ -124,6 +124,15 @@
                     "initialStateCheck": true
                 },
                 {
+                    "name": "LookStick",
+                    "type": "Value",
+                    "id": "2c7e4a91-5d3b-4f6e-9a18-7b0c3e5d9f21",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
                     "name": "Start",
                     "type": "Button",
                     "id": "f02ef882-eba4-4ac3-ba09-70082f1eed75",
@@ -619,6 +628,17 @@
                     "processors": "",
                     "groups": ";Gamepad",
                     "action": "MoveStick",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "8f1d3b6a-2e4c-4a7b-b5d9-6c0e1f2a3b47",
+                    "path": "<Gamepad>/rightStick",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Gamepad",
+                    "action": "LookStick",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

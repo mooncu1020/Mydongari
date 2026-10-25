@@ -24,6 +24,9 @@ namespace MyDongari.Movement
         public QuickTurnState QuickTurnState { get; private set; }
         public LungeState LungeState { get; private set; }
 
+        /// <summary>패드 두 스틱 전력질주·슬라이딩 판정기 (E6). 매 프레임 상태 Update 전에 갱신된다.</summary>
+        public TwinStickSprintInput TwinStick { get; } = new TwinStickSprintInput();
+
         public bool IsSprinting => _currentState is SprintState;
 
         public bool IsStunned => MechController.MeleeSystem != null && MechController.MeleeSystem.IsStunned;
@@ -78,6 +81,7 @@ namespace MyDongari.Movement
         {
             enabled = true;
             LastMoveDirection = Vector3.zero;
+            TwinStick.Reset();
             ChangeState(IdleState);
         }
 
@@ -96,6 +100,12 @@ namespace MyDongari.Movement
 
         private void Update()
         {
+            // InputReader와 같이 히트스톱(timeScale 0) 중에도 실제 시간으로 잰다
+            if (InputReader != null)
+            {
+                TwinStick.Tick(InputReader.MoveStickRaw, InputReader.LookStickRaw,
+                    Time.unscaledTime, MechController.Tuning.Movement);
+            }
             _currentState?.Update();
         }
 

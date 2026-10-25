@@ -174,6 +174,12 @@
 - 2분 무입력 시 타이틀 복귀 옵션(기본 꺼짐).
 - `docs/RELEASE_CHECKLIST.md`: 10/27 최종 빌드 전 확인 항목(메뉴 실행, 튜닝 값, Player Settings, 패드 2개, 로그 생성, 3판 2선승 완주, 타이틀 복귀).
 
+### [x] E6. 전력질주·슬라이딩 두 스틱 조작 (원안 정정)
+- 전력질주: 달리기 중 오른쪽 스틱(가속)을 중립에서 0.15초 안에 0.8 이상, 왼쪽 스틱과 ±20° 안으로 꺾으면 진입. 두 스틱 0.8 이상·20° 이하 동안 유지. 각도 초과·어느 스틱이든 놓음·탈진이면 해제. 질주 중 R스틱은 카메라에 안 씀. 수치는 튜닝 에셋.
+- 슬라이딩: 스틱을 놓아 질주가 풀린 뒤 0.2초 안에 L ↗(45°±25°) + R ↖(135°±25°) 둘 다 0.8 이상. 대기 중엔 제동으로 안 넘어감.
+- 왼쪽 스틱 ↑↑ 질주·왼쪽 스틱만 쓰는 슬라이딩 삭제. 초신지선회·사이드스텝·키보드 조작은 그대로.
+- PlayLogger `sprint_enter`, `sprint_exit_*`(이유별).
+
 ---
 
 ## 작업 메모 (Claude Code가 태스크마다 추가)
@@ -211,3 +217,4 @@
 - **E4** (질문 반영 — 공격 발생 시간, TASKS 외 추가 작업) 완료. 바뀐 파일: `BernardTuning`(`Startup` 묶음: 펀치 0.1·대시 어택 0.12·차징 태클 0.1·맞딜 창 0.1), `MeleeSystem`(펀치 시작/판정 분리, 발생 중 스턴 취소 `OnAttackCanceled`, 스턴 중 펀치 시작 불가, 맞딜 = 판정 시점 0.1초 이내, 태클 `BeginTackle`/`ResolveTackle`/`TackleStartup`/`CancelTackle`), `SprintState`(태클 발생 시간 동안 질주 유지 후 판정, 퇴장 시 취소), `MechVisualRig`(예비 동작 길이 = 발생 시간, 취소 시 뻗기 생략), `MeleeDummy`(Parrier 반응 시간 방식, 기본 0.08초), `PlayLogger`(`*_canceled`), `GAME_SPEC.md`(5장 발생 시간, 맞딜), `QUESTIONS.md`(E 답, 런지 후속타 계산). 위험: 판정이 0.1초 늦어져 체감이 달라진다 — 어색하면 값을 0으로 끄면 예전과 같다.
 - **E4.1** (공격 입력 = 누른 순간 + 입력 버퍼, TASKS 외 추가 작업) 완료. 바뀐 파일: 신규 `Combat/AttackInputBuffer`(누른 시각 기억, 매 프레임 발동 시점 상황으로 재판단), `WeaponSystem`(AttackHeld 반복 제거, 버퍼, 스턴 중 공격 불가, `OnBufferedAttack`, Projectile 사격만 연사 예외), `MeleeSystem`(`TryMeleeAttack` → bool), `AnchorClaw`(`TryPileDriver` → bool), `SprintState`(`RequestTackle` → bool), `BotInput`(`PressAttack`), `MeleeDummy`(같은 버퍼·같은 펀치/런지 판단), `PlayLogger`(`buffered_attack`), `BernardTuning`(`inputBuffer` 0.15), `GAME_SPEC.md`(4장 입력 규칙). 위험: 플레이 감각이 바뀐다(꾹 누르기 안 됨). 버퍼 0이면 버퍼 없이 누른 순간만.
 - **E5** (리깅 모델 지원, TASKS 외 추가 작업) 완료. 바뀐 파일: `MechVisualRig`(Animator 칸·자동 탐색, 기준 자세 = Animator 현재 자세 / 안 건드린 뼈는 쉴 때 자세(정확 비교로 누적 방지), Speed·MoveState 파라미터 구동, 클립 재생 중이면 코드 걷기 끔, 오프셋 축 자동 변환), `Editor/VisualRigSetup`(뼈 우선 탐색 `FindSlotTransform`), `Editor/ModelImportSetup`(Animator 연결·컨트롤러 부착), 신규 `Editor/AnimatorSetup`(`Create Locomotion Animator Controller`), `MODEL_IMPORT.md`(8장 리깅 방식). 위험: 실제 리깅 FBX로는 아직 확인 안 됨 — 특히 Optimize Game Objects·Only Deform Bones 설정이 틀리면 뼈를 못 찾음(문서 8-6).
+- **E6** (스틱 조작 원안 정정 — 전력질주·슬라이딩 두 스틱) 완료. 바뀐 파일: `InputSystem_Actions.inputactions`(오른쪽 스틱만 바인딩된 `LookStick` 액션 추가), `InputReader`(`MoveStickRaw`·`LookStickRaw`, Sprint/SlideInput은 버튼 경로만, `SlideDirection` 삭제), `StickGestureDetector`(↑↑·↗↖ 판정 삭제), 신규 `Movement/TwinStickSprintInput`(진입 추적·유지·슬라이딩 판정, `SprintExitReason`), `MechStateMachine`(`TwinStick` 매 프레임 갱신), `RunState`(두 스틱 진입), `SprintState`(두 스틱 유지·해제, 0.2초 슬라이딩 대기, 해제 이유 이벤트), `BrakeState`(주석), `BernardTuning`(이동: 질주·슬라이딩 두 스틱 수치), `PlayLogger`(`sprint_enter`, `sprint_exit_*`, `slide`), `GAME_SPEC.md` 2·9장, `QUESTIONS.md`. 봇은 상태머신·InputReader를 안 써서 영향 없음(MeleeDummy는 리지드바디 직접 이동). 위험: 패드 실기로 아직 확인 안 됨 — 진입 시간 0.15초가 빡빡하면 `sprintEntryTime`을 늘린다. 스틱을 굴려서 슬라이딩하면 각도 해제로 제동된다(QUESTIONS E6).

@@ -23,6 +23,7 @@ namespace MyDongari.Movement
         {
             _brakeTimer += Time.deltaTime;
 
+            // 버튼 슬라이딩(키보드 Ctrl) 경로. 패드 두 스틱 슬라이딩은 제동 전에 SprintState가 대기하며 받는다
             if (_slideWindowOpen)
             {
                 if (_brakeTimer <= SlideWindowDuration &&
