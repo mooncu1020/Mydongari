@@ -9,9 +9,11 @@ namespace MyDongari.Movement
         Other,
         // 패드 두 스틱 경로
         Angle,
+        // 각도로 풀렸지만 L은 시계(↗ 쪽)·R은 반시계(↖ 쪽)로 안쪽으로 굴린 경우. 중립 해제처럼 슬라이딩 대기를 건다
+        AngleRoll,
         LeftReleased,
         RightReleased,
-        // 버튼 경로 (키보드 Space / 패드 L3)
+        // 버튼 경로 (키보드 Space)
         ButtonReleased,
         Exhausted,
         QuickTurn,
@@ -86,6 +88,19 @@ namespace MyDongari.Movement
             if (right.magnitude < m.sprintStickThreshold) return SprintExitReason.RightReleased;
             if (Vector2.Angle(left, right) > m.sprintExitAngle) return SprintExitReason.Angle;
             return SprintExitReason.Other;
+        }
+
+        /// <summary>
+        /// 각도 해제가 "슬라이딩으로 굴리기"인지: 마지막 유지 방향(두 스틱 사이) 기준으로
+        /// 왼쪽 스틱은 시계 방향, 오른쪽 스틱은 반시계 방향으로 둘 다 돌았을 때만 true.
+        /// 한쪽만 돌았거나 반대로 벌어지면 false (바로 제동).
+        /// </summary>
+        public static bool IsInwardRoll(Vector2 heldHeading, Vector2 left, Vector2 right)
+        {
+            if (heldHeading == Vector2.zero) return false;
+            // SignedAngle은 반시계가 +
+            return Vector2.SignedAngle(heldHeading, left) < 0f &&
+                   Vector2.SignedAngle(heldHeading, right) > 0f;
         }
 
         /// <summary>슬라이딩 입력: 왼쪽 ↗ + 오른쪽 ↖ (각도는 오른쪽 = 0°, 위 = 90°).</summary>

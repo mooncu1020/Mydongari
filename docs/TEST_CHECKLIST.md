@@ -235,3 +235,7 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (E6) PRACTICE 봇(모든 모드)이 예전처럼 움직이고 공격함 (봇은 질주·슬라이딩을 안 씀)
 - [ ] (E6) `summary_*.csv`에 `sprint_enter`, `sprint_exit_angle`, `sprint_exit_left_release`, `sprint_exit_right_release`, `sprint_exit_exhausted`, `slide`. `events`의 `sprint_enter` 상세가 stick/button
 - [ ] (E6) `BernardTuning → 이동 → 전력질주/슬라이딩 (패드 두 스틱)` 값을 플레이 중 바꾸면 바로 반영 (예: 진입 각도 60 → 비스듬히 꺾어도 진입)
+- [ ] (E6.1) 두 스틱 위로 질주 중, 스틱을 놓지 않고 L은 ↗로·R은 ↖로 동시에 굴림 → 슬라이딩. `events`에 `sprint_exit_angle_roll` 뒤 슬라이딩
+- [ ] (E6.1) 굴려서 풀린 뒤 0.2초 안에 ↗/↖를 못 맞춤 → 0.2초 관성 뒤 제동
+- [ ] (E6.1) 반대로 굴림(L ↖ 쪽·R ↗ 쪽) / 둘 다 같은 쪽으로 돌림 / R만 ↖로 돌림 → 바로 제동 (`sprint_exit_angle`), 슬라이딩 안 됨
+- [ ] (E6.1) 패드 L3를 누르고 있어도 질주 안 됨. 키보드 Space 질주는 그대로

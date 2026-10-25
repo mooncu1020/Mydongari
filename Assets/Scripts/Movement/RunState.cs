@@ -51,7 +51,7 @@ namespace MyDongari.Movement
                 return;
             }
 
-            // 버튼(Space·L3)은 누르고 있으면 진입, 패드는 두 스틱 조작(오른쪽 스틱을 왼쪽 방향으로 꺾기)
+            // 키보드 Space는 누르고 있으면 진입, 패드는 두 스틱 조작(오른쪽 스틱을 왼쪽 방향으로 꺾기)
             InputReader input = StateMachine.InputReader;
             if (input.SprintInput)
             {

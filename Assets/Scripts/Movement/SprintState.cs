@@ -17,12 +17,14 @@ namespace MyDongari.Movement
         private BernardTuning.TackleValues Tackle => StateMachine.MechController.Tuning.Tackle;
         private BernardTuning.MovementValues Move => StateMachine.MechController.Tuning.Movement;
 
-        // 패드 두 스틱으로 들어왔는지 (false = 버튼 Space·L3). 유지·해제 규칙이 다르다
+        // 패드 두 스틱으로 들어왔는지 (false = 키보드 Space). 유지·해제 규칙이 다르다
         private bool _byStick;
         // 두 스틱 질주를 스틱을 놓아서 끝낸 뒤 슬라이딩 입력을 기다린 시간(초). 음수면 대기 아님
         private float _slideWaitTimer = -1f;
         private SprintExitReason _exitReason;
         private bool _exitReported;
+        // 마지막으로 유지 조건을 만족한 프레임의 두 스틱 사이 방향. 각도 해제가 굴리기인지 볼 기준
+        private Vector2 _heldHeading;
 
         /// <summary>전력질주가 실제로 시작됐을 때 (true = 패드 두 스틱, false = 버튼). 로그용.</summary>
         public event Action<bool> OnSprintStarted;
@@ -63,6 +65,10 @@ namespace MyDongari.Movement
             _slideWaitTimer = -1f;
             _exitReason = SprintExitReason.Other;
             _exitReported = false;
+            InputReader entryInput = StateMachine.InputReader;
+            _heldHeading = entryInput != null
+                ? entryInput.MoveStickRaw.normalized + entryInput.LookStickRaw.normalized
+                : Vector2.zero;
             StateMachine.MechController.MechCamera.LockToForward();
             OnSprintStarted?.Invoke(_byStick);
         }
@@ -133,16 +139,35 @@ namespace MyDongari.Movement
 
             if (_byStick)
             {
-                SprintExitReason reason = TwinStickSprintInput.CheckHold(input.MoveStickRaw, input.LookStickRaw, Move);
-                if (reason == SprintExitReason.LeftReleased || reason == SprintExitReason.RightReleased)
+                Vector2 left = input.MoveStickRaw;
+                Vector2 right = input.LookStickRaw;
+                SprintExitReason reason = TwinStickSprintInput.CheckHold(left, right, Move);
+                if (reason == SprintExitReason.Other)
                 {
-                    // 스틱 중립으로 풀림 → 질주는 끝, 슬라이딩 입력 대기 (각도로 풀린 경우는 대기 없이 제동)
-                    ReportExit(reason);
-                    _slideWaitTimer = 0f;
+                    _heldHeading = left.normalized + right.normalized;
+                    return;
                 }
-                else if (reason == SprintExitReason.Angle)
+
+                // 각도로 풀렸어도 L ↗ 쪽·R ↖ 쪽으로 안쪽 굴리기면 중립 해제와 같이 슬라이딩 대기
+                if (reason == SprintExitReason.Angle && TwinStickSprintInput.IsInwardRoll(_heldHeading, left, right))
+                {
+                    reason = SprintExitReason.AngleRoll;
+                }
+
+                if (reason == SprintExitReason.Angle)
                 {
                     Leave(reason, StateMachine.BrakeState);
+                }
+                else
+                {
+                    // 스틱 중립 해제·안쪽 굴리기 → 질주는 끝, 슬라이딩 입력 대기
+                    ReportExit(reason);
+                    _slideWaitTimer = 0f;
+                    // 굴리기는 이미 ↗/↖에 닿아 있을 수 있어 이 프레임에도 바로 본다
+                    if (TwinStickSprintInput.IsSlideInput(left, right, Move))
+                    {
+                        StateMachine.ChangeState(StateMachine.SlideState);
+                    }
                 }
                 return;
             }

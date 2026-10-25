@@ -180,6 +180,10 @@
 - 왼쪽 스틱 ↑↑ 질주·왼쪽 스틱만 쓰는 슬라이딩 삭제. 초신지선회·사이드스텝·키보드 조작은 그대로.
 - PlayLogger `sprint_enter`, `sprint_exit_*`(이유별).
 
+### [x] E6.1. E6 질문 답 반영
+- 안쪽 굴리기 슬라이딩: 각도 해제 때 L이 시계(↗ 쪽)·R이 반시계(↖ 쪽)로 모이며 벌어졌으면 0.2초 슬라이딩 대기, 다른 방향은 바로 제동.
+- Sprint 액션 패드 L3 바인딩 삭제 (키보드 Space 유지).
+
 ---
 
 ## 작업 메모 (Claude Code가 태스크마다 추가)
@@ -218,3 +222,4 @@
 - **E4.1** (공격 입력 = 누른 순간 + 입력 버퍼, TASKS 외 추가 작업) 완료. 바뀐 파일: 신규 `Combat/AttackInputBuffer`(누른 시각 기억, 매 프레임 발동 시점 상황으로 재판단), `WeaponSystem`(AttackHeld 반복 제거, 버퍼, 스턴 중 공격 불가, `OnBufferedAttack`, Projectile 사격만 연사 예외), `MeleeSystem`(`TryMeleeAttack` → bool), `AnchorClaw`(`TryPileDriver` → bool), `SprintState`(`RequestTackle` → bool), `BotInput`(`PressAttack`), `MeleeDummy`(같은 버퍼·같은 펀치/런지 판단), `PlayLogger`(`buffered_attack`), `BernardTuning`(`inputBuffer` 0.15), `GAME_SPEC.md`(4장 입력 규칙). 위험: 플레이 감각이 바뀐다(꾹 누르기 안 됨). 버퍼 0이면 버퍼 없이 누른 순간만.
 - **E5** (리깅 모델 지원, TASKS 외 추가 작업) 완료. 바뀐 파일: `MechVisualRig`(Animator 칸·자동 탐색, 기준 자세 = Animator 현재 자세 / 안 건드린 뼈는 쉴 때 자세(정확 비교로 누적 방지), Speed·MoveState 파라미터 구동, 클립 재생 중이면 코드 걷기 끔, 오프셋 축 자동 변환), `Editor/VisualRigSetup`(뼈 우선 탐색 `FindSlotTransform`), `Editor/ModelImportSetup`(Animator 연결·컨트롤러 부착), 신규 `Editor/AnimatorSetup`(`Create Locomotion Animator Controller`), `MODEL_IMPORT.md`(8장 리깅 방식). 위험: 실제 리깅 FBX로는 아직 확인 안 됨 — 특히 Optimize Game Objects·Only Deform Bones 설정이 틀리면 뼈를 못 찾음(문서 8-6).
 - **E6** (스틱 조작 원안 정정 — 전력질주·슬라이딩 두 스틱) 완료. 바뀐 파일: `InputSystem_Actions.inputactions`(오른쪽 스틱만 바인딩된 `LookStick` 액션 추가), `InputReader`(`MoveStickRaw`·`LookStickRaw`, Sprint/SlideInput은 버튼 경로만, `SlideDirection` 삭제), `StickGestureDetector`(↑↑·↗↖ 판정 삭제), 신규 `Movement/TwinStickSprintInput`(진입 추적·유지·슬라이딩 판정, `SprintExitReason`), `MechStateMachine`(`TwinStick` 매 프레임 갱신), `RunState`(두 스틱 진입), `SprintState`(두 스틱 유지·해제, 0.2초 슬라이딩 대기, 해제 이유 이벤트), `BrakeState`(주석), `BernardTuning`(이동: 질주·슬라이딩 두 스틱 수치), `PlayLogger`(`sprint_enter`, `sprint_exit_*`, `slide`), `GAME_SPEC.md` 2·9장, `QUESTIONS.md`. 봇은 상태머신·InputReader를 안 써서 영향 없음(MeleeDummy는 리지드바디 직접 이동). 위험: 패드 실기로 아직 확인 안 됨 — 진입 시간 0.15초가 빡빡하면 `sprintEntryTime`을 늘린다. 스틱을 굴려서 슬라이딩하면 각도 해제로 제동된다(QUESTIONS E6).
+- **E6.1** 완료. 바뀐 파일: `TwinStickSprintInput`(`AngleRoll` 이유, `IsInwardRoll` — 마지막 유지 프레임의 두 스틱 사이 방향 기준, L은 시계·R은 반시계로 둘 다 돌아야 함), `SprintState`(유지 방향 기억, 안쪽 굴리기면 대기 + 그 프레임에 바로 슬라이딩 판정), `PlayLogger`(`sprint_exit_angle_roll`), `InputSystem_Actions.inputactions`(Sprint L3 바인딩 삭제), 주석·`GAME_SPEC`·`QUESTIONS`(E6 답 기록)·`TEST_CHECKLIST`. 위험: 한쪽 스틱만 먼저 크게 돌리면(다른 쪽이 아직 그대로) 각도 해제 순간 "둘 다 돎"이 아니라 제동된다 — 실기에서 자주 그러면 기준을 "한쪽은 돌고 다른 쪽은 반대로 안 돎"으로 완화.

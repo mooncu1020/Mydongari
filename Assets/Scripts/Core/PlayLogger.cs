@@ -53,7 +53,7 @@ namespace MyDongari.Core
             // 입력 버퍼로(누른 프레임보다 뒤에) 발동한 공격 수. 종류별은 buffered_punch 등으로 따로
             "buffered_attack",
             // E6 두 스틱 전력질주: 진입 수와 해제 이유별 수 (버튼 경로·퀵턴·스턴 등 나머지 이유는 0이 아닐 때만 추가로 나온다)
-            "sprint_enter", "sprint_exit_angle", "sprint_exit_left_release", "sprint_exit_right_release",
+            "sprint_enter", "sprint_exit_angle", "sprint_exit_angle_roll", "sprint_exit_left_release", "sprint_exit_right_release",
             "sprint_exit_exhausted", "slide"
         };
         private static readonly string[] BandNames = { "near", "mid", "far" };
@@ -345,6 +345,7 @@ namespace MyDongari.Core
             switch (reason)
             {
                 case SprintExitReason.Angle: return "angle";
+                case SprintExitReason.AngleRoll: return "angle_roll";
                 case SprintExitReason.LeftReleased: return "left_release";
                 case SprintExitReason.RightReleased: return "right_release";
                 case SprintExitReason.ButtonReleased: return "button_release";

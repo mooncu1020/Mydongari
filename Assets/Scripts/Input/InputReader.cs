@@ -28,7 +28,7 @@ namespace MyDongari.Input
         public Vector2 MoveInput { get; private set; }
         public Vector2 LookInput { get; private set; }
         public bool RunInput { get; private set; }
-        /// <summary>버튼 전력질주(키보드 Space, 패드 L3 바인딩)를 누르고 있는지. 패드 두 스틱 전력질주는 MoveStickRaw/LookStickRaw로 상태머신이 판정한다.</summary>
+        /// <summary>버튼 전력질주(키보드 Space)를 누르고 있는지. 패드 두 스틱 전력질주는 MoveStickRaw/LookStickRaw로 상태머신이 판정한다.</summary>
         public bool SprintInput { get; private set; }
         /// <summary>버튼 슬라이딩(키보드 Ctrl)을 이번 프레임에 눌렀는지. 패드 두 스틱 슬라이딩은 SprintState가 판정한다.</summary>
         public bool SlideInput { get; private set; }
