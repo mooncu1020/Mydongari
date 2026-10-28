@@ -196,6 +196,20 @@
 ### [x] F3. 대기 자세와 숨쉬기
 - 대기 포즈 오프셋, 숨쉬기(Body 상하·가슴, 팔 지연), 걷기 이상이면 0.2초에 걸쳐 끔, 무릎 뼈(Shin.L/R) 선택.
 
+## Phase H — bernard 런타임 구조 (Blender 재내보내기 없음. 이후 G는 이 구조 기준)
+
+### [x] H1. 런타임 뼈 구조 변경 (Root → Pelvis → Body)
+### [x] H2. 파츠 누락 점검 (메뉴가 bernard 렌더러를 건드리지 않고 전부 켬)
+### [ ] H3. 접지 보정 (낮은 발바닥을 콜라이더 바닥에)
+### [ ] H4. 대기 자세 다리 (벌림·무릎·발목 평행·앞뒤 엇갈림, 숨쉬기 무릎)
+
+## Phase G — 이동 연출 (H 구조 기준)
+
+### [ ] G1. 새 선택 슬롯 (Pelvis, Hip, Shin, Ankle, Skirt)
+### [ ] G2. 상하체 분리 (하체 = 이동 방향, 상체 = 카메라/상대, 비틀림 ±100°, 공격 방향 = 상체 방향, 머리 ±30° 지연)
+### [ ] G3. 무게감 있는 걸음 (거리 기반 위상, 착지 연출·발소리·카메라 흔들림, 팔 스윙, 가감속 숙임, 스커트)
+### [ ] G4. 제자리 회전 스텝 (60° 이상 벌어지면 두세 걸음)
+
 ---
 
 ## 작업 메모 (Claude Code가 태스크마다 추가)
@@ -245,3 +259,4 @@
 - **E5.4** 완료. 바뀐 파일: `Editor/BernardModelSetup`(회전 계산 대신 `ModelLocalRotation` 필드(-90,0,0)를 그대로 넣음, 그다음 높이 측정·발바닥 맞춤), `SETUP` 73. 이전엔 회전을 계산하지 않고 `Apply`에서 FBX 프리팹 루트의 `localRotation`을 그대로 복사했음.
 - **E5.5** 완료. 원인: `MechVisualRig.Apply`가 위치 오프셋(기체 축 m)을 회전만 바꿔 부모 로컬 좌표에 그대로 더해서, 부모 뼈 배율이 1이 아닌 bernard에선 숨쉬기·걷기 상하가 배율만큼 커져 몸통이 뜨고 메시가 늘어났음(회전은 원래부터 원래 회전 * 오프셋). Animator는 컨트롤러 에셋이 프로젝트에 없어 원인 아님. 바뀐 파일: `MechVisualRig`(위치 오프셋을 부모 `InverseTransformVector`로 변환, `ParentFromMech` 삭제, 컨트롤러 없는 Animator는 Awake에서 끔), `Editor/BernardModelSetup`(bernard Animator 컨트롤러 비우고 끔, 리그 Animator 칸 비움 — AnimatorSetup.Configure 호출 제거). 위험: 플레이로 확인 안 됨.
 - **H1** 완료. 바뀐 파일: `MechVisualRig`(Awake에서 `RestructureLowerBody` — Pelvis가 Body 아래에 있으면 Pelvis → Body 원래 부모(Root), Body → Pelvis로 `SetParent(…, true)` 후 `BindJoints`, `FindBone` 공용). bernard FBX 실제 계층: Mecha_Rig(-90, ×100) → Root → Body → Pelvis → Hip → Leg → Shin → Ankle, 메시는 뼈 자식(스킨 아님). 위험: 슬롯 `Body`가 비어 있으면 바꾸지 않음.
+- **H2** 완료. 바뀐 파일: `Editor/BernardModelSetup`(임시 부품 렌더러 끄기·높이 측정에서 `IsUnderModel` 제외, 새 bernard 아래 꺼진 렌더러를 전부 켜고 이름 출력 — Blender 숨김이 Import Visibility로 꺼져 들어오는 경우). 켜기는 높이 측정 전이라 숨겨졌던 파츠도 키에 들어간다.

@@ -78,12 +78,14 @@ namespace MyDongari.EditorTools
             Transform visualRoot = placeholder != null ? placeholder : mech;
 
             // 2. 임시 부품은 렌더러만 끈다. 높이는 메시로 재므로 이미 꺼져 있어도 된다
+            // bernard는 임시 부품 루트 아래에 들어가므로, 임시 부품을 다룰 때 bernard 아래 오브젝트는 절대 건드리지 않는다 (H2)
             float placeholderHeight = 0f;
             if (placeholder != null)
             {
-                if (TryGetMeshBounds(placeholder, out Bounds placeholderBounds)) placeholderHeight = placeholderBounds.size.y;
+                if (TryGetMeshBounds(placeholder, out Bounds placeholderBounds, IsUnderModel)) placeholderHeight = placeholderBounds.size.y;
                 foreach (Renderer renderer in placeholder.GetComponentsInChildren<Renderer>(true))
                 {
+                    if (IsUnderModel(renderer.transform)) continue;
                     Undo.RecordObject(renderer, "Hide Placeholder Renderer");
                     renderer.enabled = false;
                 }
@@ -108,6 +110,19 @@ namespace MyDongari.EditorTools
 
             // 모델 부품은 보이기만: FBX에 콜라이더가 들어 있으면 끈다 (피격은 루트 캡슐)
             foreach (Collider col in instance.GetComponentsInChildren<Collider>(true)) col.enabled = false;
+
+            // 파츠 누락 점검: bernard 아래 렌더러는 전부 켠다 (Blender에서 숨긴 오브젝트는 Import Visibility로 꺼진 채 들어온다)
+            var wasOff = new List<string>();
+            foreach (Renderer renderer in instance.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer.enabled) continue;
+                renderer.enabled = true;
+                wasOff.Add(renderer.name);
+            }
+            if (wasOff.Count > 0)
+                Debug.LogWarning($"[Apply Bernard Model] {label}: 꺼져 있던 bernard 렌더러 {wasOff.Count}개를 켰습니다: {string.Join(", ", wasOff)}");
+            else
+                Debug.Log($"[Apply Bernard Model] {label}: bernard 렌더러가 모두 켜져 있습니다.");
 
             // 4. 배율 = 임시 부품 높이 / bernard 높이. 회전을 적용한(선 자세) 상태의 렌더러 바운드로 잰다
             if (!TryGetRendererBounds(instance.transform, out Bounds modelBounds) || modelBounds.size.y <= 0f)
@@ -155,6 +170,18 @@ namespace MyDongari.EditorTools
             EditorSceneManager.MarkSceneDirty(mech.gameObject.scene);
         }
 
+        /// <summary>bernard 인스턴스(이름 Bernard 또는 bernard.fbx 프리팹 인스턴스) 아래인지.</summary>
+        private static bool IsUnderModel(Transform t)
+        {
+            for (Transform p = t; p != null; p = p.parent)
+            {
+                if (p.name == InstanceName) return true;
+                GameObject go = p.gameObject;
+                if (PrefabUtility.IsOutermostPrefabInstanceRoot(go) && PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(go) == ModelPath) return true;
+            }
+            return false;
+        }
+
         private static void RemovePreviousInstances(Transform mech)
         {
             var old = new List<GameObject>();
@@ -183,13 +210,14 @@ namespace MyDongari.EditorTools
         /// 아래 모든 메시의 월드 경계. 렌더러가 꺼져 있어도 재야 해서(임시 부품) Renderer.bounds 대신
         /// 메시 경계 상자의 꼭짓점 8개를 월드로 옮겨 잰다. 스킨 메시는 렌더러 경계를 쓴다.
         /// </summary>
-        private static bool TryGetMeshBounds(Transform root, out Bounds bounds)
+        private static bool TryGetMeshBounds(Transform root, out Bounds bounds, System.Func<Transform, bool> exclude = null)
         {
             bounds = default;
             bool any = false;
             foreach (MeshFilter filter in root.GetComponentsInChildren<MeshFilter>(true))
             {
                 if (filter.sharedMesh == null) continue;
+                if (exclude != null && exclude(filter.transform)) continue;
                 Bounds local = filter.sharedMesh.bounds;
                 for (int i = 0; i < 8; i++)
                 {
@@ -201,6 +229,7 @@ namespace MyDongari.EditorTools
             foreach (SkinnedMeshRenderer skinned in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
             {
                 if (skinned.sharedMesh == null) continue;
+                if (exclude != null && exclude(skinned.transform)) continue;
                 Encapsulate(ref bounds, ref any, skinned.bounds.min);
                 Encapsulate(ref bounds, ref any, skinned.bounds.max);
             }
