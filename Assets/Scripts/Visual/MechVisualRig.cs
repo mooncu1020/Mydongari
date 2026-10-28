@@ -28,7 +28,7 @@ namespace MyDongari.Visual
     /// (임포트된 뼈의 축·롤이 제각각이어도 같은 각도가 같은 방향으로 움직이게).
     /// 수치는 BernardTuning의 Visual 묶음.
     /// </summary>
-    public partial class MechVisualRig : MonoBehaviour
+    public partial class MechVisualRig : MonoBehaviour, IUpperBodyFacing
     {
         /// <summary>슬롯 이름 = 모델 부품 이름 (E2 모델 교체 메뉴가 이 이름으로 찾는다).</summary>
         public static readonly string[] SlotNames =
@@ -145,6 +145,8 @@ namespace MyDongari.Visual
             public Vector3 RotationVelocity;
             public Vector3 TargetPosition;
             public Vector3 TargetRotation;
+            // 수평 회전(°, 기체 위 축). 상하체 분리·머리 돌리기(G2)가 스프링 없이 직접 넣는다
+            public float Yaw;
         }
 
         private Joint _body, _head, _armLUpper, _armLLower, _fistL, _armRUpper, _armRLower, _fistR, _legL, _legR, _shinL, _shinR, _ankleL, _ankleR,
@@ -176,6 +178,8 @@ namespace MyDongari.Visual
         private ThrusterLunge _lunge;
         private AnchorClaw _claw;
         private ImpactSlam _slam;
+        private LockOnSystem _lockOn;
+        private MechIdentity _identity;
 
         // 리그 자체 시계(scaled). 히트스톱(timeScale 0) 동안 동작도 같이 멈춘다
         private float _clock;
@@ -249,6 +253,8 @@ namespace MyDongari.Visual
             _lunge = GetComponent<ThrusterLunge>();
             _claw = GetComponent<AnchorClaw>();
             _slam = GetComponent<ImpactSlam>();
+            _lockOn = GetComponent<LockOnSystem>();
+            _identity = GetComponent<MechIdentity>();
 
             if (_melee != null)
             {
@@ -517,6 +523,8 @@ namespace MyDongari.Visual
                 if (joint.Target != null) CaptureBase(joint, animated);
             }
 
+            // 상하체 방향(G2)을 먼저 정하고 나머지 포즈를 얹는다
+            UpdateFacing(v, dt);
             PoseMovement(v, dt);
             PoseIdle(v, dt);
             PoseGuard(v);
@@ -586,7 +594,9 @@ namespace MyDongari.Visual
             // 오프셋은 기체 축(X 오른쪽, Y 위, Z 앞)으로 정의 → 슬롯 추가 보정 → 처음 자세의 뼈 방향으로 부품 축에 맞춰
             // 기준 자세(원래 회전) 위에 얹는다: 원래 회전 * 오프셋 회전
             Quaternion correction = Quaternion.Euler(joint.Slot.rotationCorrection);
-            Quaternion mechOffset = correction * Quaternion.Euler(joint.Rotation) * Quaternion.Inverse(correction);
+            Vector3 euler = joint.Rotation;
+            euler.y += joint.Yaw;
+            Quaternion mechOffset = correction * Quaternion.Euler(euler) * Quaternion.Inverse(correction);
             Quaternion localOffset = joint.BoneFromMech * mechOffset * Quaternion.Inverse(joint.BoneFromMech);
             joint.Target.localRotation = joint.BaseRotation * localOffset;
 

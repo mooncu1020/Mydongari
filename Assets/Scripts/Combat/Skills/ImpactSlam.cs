@@ -47,7 +47,8 @@ namespace MyDongari.Combat.Skills
             if (opponent == null) return null;
 
             Vector3 dirToTarget = (opponent.transform.position - transform.position).normalized;
-            float angle = Vector3.Angle(transform.forward, dirToTarget);
+            // 부채꼴 기준 = 상체 방향 (G2)
+            float angle = Vector3.Angle(MechFacing.AttackForward(transform), dirToTarget);
             if (angle > t.angle * 0.5f) return null;
 
             Collider[] hits = Physics.OverlapSphere(transform.position, t.range);

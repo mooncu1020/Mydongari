@@ -452,6 +452,24 @@ namespace MyDongari.Mech
             [Tooltip("상태 머신이 없는 기체(연습 봇)는 이 속도(m/s) 이상이면 움직이는 것으로 본다")]
             public float breathStopSpeed = 0.5f;
 
+            [Header("상하체 분리 (Pelvis 뼈가 있는 모델만)")]
+            [Tooltip("하체가 이동 방향으로 도는 최대 속도(°/초). 작을수록 묵직하다")]
+            public float pelvisTurnSpeed = 180f;
+            [Tooltip("이 속도(m/s) 이상 움직일 때만 하체가 이동 방향을 따라 돈다")]
+            public float pelvisMoveMinSpeed = 0.5f;
+            [Tooltip("이동 방향이 상체와 이 각도(°)보다 벌어지면 뒷걸음으로 보고 하체는 반대 방향을 향한다")]
+            public float pelvisBackpedalAngle = 110f;
+            [Tooltip("상체가 카메라·상대 쪽으로 도는 최대 속도(°/초). 공격 방향이 이 상체 방향을 쓴다")]
+            public float upperBodyTurnSpeed = 720f;
+            [Tooltip("상체·하체 비틀림 한계(°). 넘으면 하체가 끌려 돈다")]
+            public float twistLimit = 100f;
+            [Tooltip("머리가 상체 방향에서 더 돌아볼 수 있는 각도(°)")]
+            public float headLookLimit = 30f;
+            [Tooltip("머리가 볼 방향을 따라가는 지연(초, 시간 상수)")]
+            public float headLookLag = 0.2f;
+            [Tooltip("한 프레임에 기체가 이 거리(m) 넘게 옮겨지면(라운드 리셋 등) 상하체 방향을 기체 정면으로 바로 맞춘다")]
+            public float facingSnapDistance = 3f;
+
             [Header("접지 보정 (낮은 쪽 발바닥을 물리 콜라이더 바닥에 맞춤)")]
             public bool groundingEnabled = true;
             [Tooltip("비주얼 루트 Y를 목표로 옮기는 시간 상수(초)")]

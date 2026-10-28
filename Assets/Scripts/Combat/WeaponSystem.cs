@@ -168,7 +168,8 @@ namespace MyDongari.Combat
 
             // 화면 분할이라 조준 기준은 반드시 "내" 카메라
             Transform aimCamera = _identity.CameraTransform;
-            Vector3 fireDirection = aimCamera != null ? aimCamera.forward : transform.forward;
+            // 카메라가 없으면 상체 방향 (G2)
+            Vector3 fireDirection = aimCamera != null ? aimCamera.forward : MechFacing.AttackForward(transform);
             Transform target = _lockOnSystem != null ? _lockOnSystem.Target : null;
 
             GameObject proj = Instantiate(projectilePrefab, firePoint.position, Quaternion.identity);

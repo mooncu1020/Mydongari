@@ -472,8 +472,8 @@ namespace MyDongari.Combat
         {
             Vector3 toTarget = _player.position - transform.position;
             toTarget.y = 0f;
-            Vector3 forward = transform.forward;
-            forward.y = 0f;
+            // 조준 판정도 공격과 같은 상체 방향 (G2)
+            Vector3 forward = MechFacing.AttackForward(transform);
             return toTarget.sqrMagnitude < 0.0001f || Vector3.Angle(forward, toTarget) <= maxAngle;
         }
 

@@ -128,9 +128,11 @@ namespace MyDongari.Combat.Skills
         {
             // 발사 순간의 상대 위치를 향해 일직선. 이후 상대가 움직여도 방향은 그대로(유도 없음)
             _headPosition = LaunchPoint();
-            Vector3 aim = _target != null ? _target.position : _headPosition + transform.forward;
+            // 목표가 사라졌으면 상체 방향으로 (G2)
+            Vector3 attackForward = MechFacing.AttackForward(transform);
+            Vector3 aim = _target != null ? _target.position : _headPosition + attackForward;
             Vector3 direction = aim - _headPosition;
-            _flightDirection = direction.sqrMagnitude > 0.0001f ? direction.normalized : transform.forward;
+            _flightDirection = direction.sqrMagnitude > 0.0001f ? direction.normalized : attackForward;
             _flownDistance = 0f;
             _phase = ClawPhase.Flying;
             _cooldownTimer = 0f;

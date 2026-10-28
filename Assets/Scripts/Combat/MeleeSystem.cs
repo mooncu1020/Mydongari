@@ -489,8 +489,8 @@ namespace MyDongari.Combat
             toTarget.y = 0f;
             if (toTarget.sqrMagnitude < 0.0001f) return true;
 
-            Vector3 forward = transform.forward;
-            forward.y = 0f;
+            // 공격 방향 = 상체 방향 (G2. 상하체 분리가 없는 기체는 기체 정면)
+            Vector3 forward = MechFacing.AttackForward(transform);
             return Vector3.Angle(forward, toTarget) <= halfAngle;
         }
     }

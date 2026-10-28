@@ -102,9 +102,10 @@ namespace MyDongari.Combat
         public void BeginDash()
         {
             Transform cam = _identity.CameraTransform;
-            Vector3 forward = cam != null ? cam.forward : transform.forward;
+            // 카메라 정면 우선(상체도 카메라를 향한다). 카메라가 없거나 수직이면 상체 방향 (G2)
+            Vector3 forward = cam != null ? cam.forward : MechFacing.AttackForward(transform);
             forward.y = 0f;
-            if (forward.sqrMagnitude < 0.0001f) forward = transform.forward;
+            if (forward.sqrMagnitude < 0.0001f) forward = MechFacing.AttackForward(transform);
             _direction = forward.normalized;
 
             _startPosition = _rb.position;
