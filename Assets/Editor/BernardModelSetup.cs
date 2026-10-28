@@ -90,32 +90,39 @@ namespace MyDongari.EditorTools
                 Debug.LogWarning($"[Apply Bernard Model] {label}: 임시 부품 높이를 못 재서 캡슐 높이 {placeholderHeight:0.###}를 기준으로 씁니다.");
             }
 
-            // 3. 비주얼 루트 자식, 위치·회전 0
+            // 3. 비주얼 루트 자식, 위치만 0. 회전·배율은 FBX 프리팹 루트 값을 그대로 둔다 —
+            // Bake Axis Conversion을 끈 FBX는 루트에 축 변환 회전(X -90 등)이 들어 있어서 0으로 덮으면 모델이 눕는다
             GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(model, visualRoot);
             Undo.RegisterCreatedObjectUndo(instance, "Instantiate Bernard");
             instance.name = InstanceName;
+            Vector3 baseScale = model.transform.localScale;
             instance.transform.localPosition = Vector3.zero;
-            instance.transform.localRotation = Quaternion.identity;
-            instance.transform.localScale = Vector3.one;
+            instance.transform.localRotation = model.transform.localRotation;
+            instance.transform.localScale = baseScale;
 
             // 모델 부품은 보이기만: FBX에 콜라이더가 들어 있으면 끈다 (피격은 루트 캡슐)
             foreach (Collider col in instance.GetComponentsInChildren<Collider>(true)) col.enabled = false;
 
-            // 4. 배율 = 임시 부품 높이 / bernard 높이
-            if (!TryGetMeshBounds(instance.transform, out Bounds modelBounds) || modelBounds.size.y <= 0f)
+            // 4. 배율 = 임시 부품 높이 / bernard 높이. 회전을 적용한(선 자세) 상태의 렌더러 바운드로 잰다
+            if (!TryGetRendererBounds(instance.transform, out Bounds modelBounds) || modelBounds.size.y <= 0f)
             {
-                Debug.LogWarning($"[Apply Bernard Model] {label}: bernard에서 메시를 찾지 못해 배율을 1로 둡니다.");
+                Debug.LogWarning($"[Apply Bernard Model] {label}: bernard에서 렌더러를 찾지 못해 배율을 그대로 둡니다.");
             }
             else
             {
-                float scale = placeholderHeight / modelBounds.size.y;
-                instance.transform.localScale = Vector3.one * scale;
-                Debug.Log($"[Apply Bernard Model] {label}: 배율 {scale:0.#####} (임시 부품 높이 {placeholderHeight:0.###} / bernard 높이 {modelBounds.size.y:0.###})");
+                float modelHeight = modelBounds.size.y;
+                float ratio = placeholderHeight / modelHeight;
+                instance.transform.localScale = baseScale * ratio;
 
-                // 3. 발바닥(메시 맨 아래)을 기체 바닥(캡슐 아래)에 맞춘다
-                TryGetMeshBounds(instance.transform, out modelBounds);
+                // 3. 크기를 맞춘 뒤 다시 재서 발바닥(바운드 최저점)을 기체 바닥(캡슐 아래)에 맞춘다
+                TryGetRendererBounds(instance.transform, out modelBounds);
                 float feetY = mech.TransformPoint(new Vector3(0f, FeetHeight(mech), 0f)).y;
                 instance.transform.position += Vector3.up * (feetY - modelBounds.min.y);
+                TryGetRendererBounds(instance.transform, out modelBounds);
+
+                Debug.Log($"[Apply Bernard Model] {label}: 임시 파츠 높이 {placeholderHeight:0.###} m, bernard 높이 {modelHeight:0.###} m(원래 크기), " +
+                          $"적용 배율 {ratio:0.#####} (최종 localScale {instance.transform.localScale.x:0.#####}), " +
+                          $"맞춘 뒤 높이 {modelBounds.size.y:0.###} m · 발바닥 y {modelBounds.min.y:0.###} (기체 바닥 y {feetY:0.###})");
             }
 
             // 5. 슬롯을 bernard의 같은 이름 뼈로 다시 연결. 못 찾은 슬롯은 경고
@@ -143,9 +150,18 @@ namespace MyDongari.EditorTools
             foreach (Transform t in mech.GetComponentsInChildren<Transform>(true))
             {
                 GameObject go = t.gameObject;
+                // 이미 지울 목록에 든 bernard의 자식은 부모와 같이 지워진다 (프리팹 인스턴스 자식은 따로 못 지움)
+                if (old.Exists(o => t.IsChildOf(o.transform))) continue;
+                // 이 메뉴가 넣은 것(이름) — 프리팹 연결이 끊겼어도(Unpack) 지운다
+                if (go.name == InstanceName && t != mech)
+                {
+                    old.Add(go);
+                    continue;
+                }
                 if (!PrefabUtility.IsOutermostPrefabInstanceRoot(go)) continue;
                 if (PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(go) == ModelPath) old.Add(go);
             }
+            if (old.Count > 0) Debug.Log($"[Apply Bernard Model] {mech.name}: 이전 bernard {old.Count}개를 지우고 새로 붙입니다.");
             foreach (GameObject go in old)
             {
                 if (go != null) Undo.DestroyObjectImmediate(go);
@@ -178,6 +194,24 @@ namespace MyDongari.EditorTools
                 Encapsulate(ref bounds, ref any, skinned.bounds.max);
             }
             return any;
+        }
+
+        /// <summary>
+        /// 아래 모든 렌더러(메시·스킨 메시)의 월드 바운드. 방금 넣은 bernard는 렌더러가 켜져 있어 회전·배율이 반영된 값이 나온다.
+        /// 켜진 렌더러가 하나도 없으면 메시 꼭짓점 방식으로 잰다.
+        /// </summary>
+        private static bool TryGetRendererBounds(Transform root, out Bounds bounds)
+        {
+            bounds = default;
+            bool any = false;
+            foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!renderer.enabled || !renderer.gameObject.activeInHierarchy) continue;
+                if (!(renderer is MeshRenderer) && !(renderer is SkinnedMeshRenderer)) continue;
+                Encapsulate(ref bounds, ref any, renderer.bounds.min);
+                Encapsulate(ref bounds, ref any, renderer.bounds.max);
+            }
+            return any || TryGetMeshBounds(root, out bounds);
         }
 
         private static void Encapsulate(ref Bounds bounds, ref bool any, Vector3 point)
