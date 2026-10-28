@@ -5,6 +5,7 @@ using MyDongari.Combat;
 using MyDongari.Combat.Skills;
 using MyDongari.Core;
 using MyDongari.Mech;
+using MyDongari.Visual;
 
 namespace MyDongari.Feedback
 {
@@ -66,6 +67,10 @@ namespace MyDongari.Feedback
         [SerializeField] private AudioClip anchorHitClip;
         [Tooltip("앵커 클로가 빗나가 감겨 돌아올 때")]
         [SerializeField] private AudioClip anchorMissClip;
+        [Tooltip("발이 땅에 닿을 때 (하체 뼈가 있는 모델의 걸음·제자리 회전 스텝)")]
+        [SerializeField] private AudioClip footstepClip;
+        [Tooltip("발소리 크기 (sfxVolume에 곱함. 걸음 세기도 곱해진다)")]
+        [Range(0f, 1f)] [SerializeField] private float footstepVolume = 0.6f;
         [Range(0f, 1f)] [SerializeField] private float sfxVolume = 1f;
 
         /// <summary>기체 하나의 피드백 상태 (이전 프레임 플래그로 "막 그렇게 됐다"를 감지).</summary>
@@ -155,6 +160,18 @@ namespace MyDongari.Feedback
                     claw.OnMissed -= onMiss;
                 });
             }
+
+            RegisterFootsteps(mech);
+        }
+
+        private void RegisterFootsteps(GameObject mech)
+        {
+            MechVisualRig rig = mech.GetComponent<MechVisualRig>();
+            if (rig == null) return;
+            Action<bool, float> onStep = (left, intensity) => ErrorLog.Run(
+                () => Play(footstepClip, footstepVolume * intensity), "CombatFeedback.onFootstep");
+            rig.OnFootstep += onStep;
+            _unsubscribers.Add(() => rig.OnFootstep -= onStep);
         }
 
         private float MeasureHeadHeight(GameObject mech)
@@ -287,9 +304,9 @@ namespace MyDongari.Feedback
             StatusPopup.Spawn(fb.Mech.transform, fb.HeadHeight, label, color, popupStyle);
         }
 
-        private void Play(AudioClip clip)
+        private void Play(AudioClip clip, float volumeScale = 1f)
         {
-            if (clip != null && _audio != null) _audio.PlayOneShot(clip, sfxVolume);
+            if (clip != null && _audio != null) _audio.PlayOneShot(clip, sfxVolume * volumeScale);
         }
 
         private MechFeedback Find(GameObject mech)

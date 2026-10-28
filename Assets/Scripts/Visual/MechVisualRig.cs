@@ -334,6 +334,7 @@ namespace MyDongari.Visual
                 _skirtFront, _skirtBack, _skirtSideL, _skirtSideR
             };
             SetupGrounding();
+            SetupGait();
         }
 
         /// <summary>칸이 비어 있으면 같은 이름의 Transform을 찾아 런타임 슬롯을 만든다 (뼈 우선, 없으면 그대로 빈 칸).</summary>
@@ -525,7 +526,9 @@ namespace MyDongari.Visual
 
             // 상하체 방향(G2)을 먼저 정하고 나머지 포즈를 얹는다
             UpdateFacing(v, dt);
-            PoseMovement(v, dt);
+            // 하체 뼈가 있는 모델은 무게감 걸음(G3), 없으면(임시 상자) 예전 걷기
+            if (HasLowerBody) PoseGait(v, dt);
+            else PoseMovement(v, dt);
             PoseIdle(v, dt);
             PoseGuard(v);
             PoseActions(v);
@@ -537,7 +540,9 @@ namespace MyDongari.Visual
             {
                 if (joint.Target == null) continue;
                 Spring(ref joint.Position, ref joint.PositionVelocity, joint.TargetPosition, v, step);
-                Spring(ref joint.Rotation, ref joint.RotationVelocity, joint.TargetRotation, v, step);
+                // 스커트는 따로 느슨한 스프링으로 허벅지를 늦게 따라간다 (G3)
+                if (IsSkirt(joint)) Spring(ref joint.Rotation, ref joint.RotationVelocity, joint.TargetRotation, v.skirtSpringFrequency, v.skirtSpringDamping, step);
+                else Spring(ref joint.Rotation, ref joint.RotationVelocity, joint.TargetRotation, v, step);
                 // 발목은 위쪽 사슬이 이번 프레임 각도로 정해진 뒤(배열에서 다리·정강이 다음) 평행 보정
                 if (joint == _ankleL) LevelAnkle(joint, v, _pelvis, _hipL, _legL, _shinL);
                 else if (joint == _ankleR) LevelAnkle(joint, v, _pelvis, _hipR, _legR, _shinR);
@@ -550,10 +555,15 @@ namespace MyDongari.Visual
 
         private static void Spring(ref Vector3 x, ref Vector3 velocity, Vector3 target, BernardTuning.VisualValues v, float dt)
         {
+            Spring(ref x, ref velocity, target, v.springFrequency, v.springDamping, dt);
+        }
+
+        private static void Spring(ref Vector3 x, ref Vector3 velocity, Vector3 target, float frequency, float damping, float dt)
+        {
             if (dt <= 0f) return;
-            float omega = 2f * Mathf.PI * Mathf.Max(0.1f, v.springFrequency);
+            float omega = 2f * Mathf.PI * Mathf.Max(0.1f, frequency);
             // 반암시 오일러: 감쇠 스프링 a = ω²(목표 - x) - 2ζω·v
-            Vector3 acceleration = omega * omega * (target - x) - 2f * v.springDamping * omega * velocity;
+            Vector3 acceleration = omega * omega * (target - x) - 2f * damping * omega * velocity;
             velocity += acceleration * dt;
             x += velocity * dt;
         }
@@ -706,8 +716,10 @@ namespace MyDongari.Visual
             }
 
             float breathTarget = acting || moving ? 0f : 1f;
-            _breathWeight = v.breathFadeTime > 0f
-                ? Mathf.MoveTowards(_breathWeight, breathTarget, dt / v.breathFadeTime)
+            // 움직이면 breathFadeTime에 걸쳐 끄고, 멈추면 stopBlendTime에 걸쳐 대기 자세와 같이 돌아온다 (G3)
+            float breathFade = breathTarget > _breathWeight ? v.stopBlendTime : v.breathFadeTime;
+            _breathWeight = breathFade > 0f
+                ? Mathf.MoveTowards(_breathWeight, breathTarget, dt / breathFade)
                 : breathTarget;
 
             if (!acting)

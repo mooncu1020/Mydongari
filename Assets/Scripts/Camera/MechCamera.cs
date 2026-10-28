@@ -2,6 +2,8 @@ using System.Collections;
 using UnityEngine;
 using MyDongari.Input;
 using MyDongari.Movement;
+using MyDongari.Visual;
+using MyDongari.Mech;
 
 namespace MyDongari.Camera
 {
@@ -32,6 +34,34 @@ namespace MyDongari.Camera
         private bool _isQuickTurning = false;
         private Transform _hardLockTarget;
         private float _hardLockTrackSpeed;
+        // 약한 흔들림 (발소리 등). 남은 시간이 줄수록 작아진다
+        private float _shakeAmplitude;
+        private float _shakeDuration;
+        private float _shakeTimer;
+        private MechVisualRig _rig;
+
+        /// <summary>약한 카메라 흔들림. 지금 흔들림보다 크면 덮어쓴다.</summary>
+        public void AddShake(float amplitude, float duration)
+        {
+            if (amplitude <= 0f || duration <= 0f) return;
+            float current = _shakeDuration > 0f ? _shakeAmplitude * (_shakeTimer / _shakeDuration) : 0f;
+            if (amplitude < current) return;
+            _shakeAmplitude = amplitude;
+            _shakeDuration = duration;
+            _shakeTimer = duration;
+        }
+
+        private void OnFootstep(bool left, float intensity)
+        {
+            if (_mechController == null) return;
+            BernardTuning.VisualValues v = _mechController.Tuning.Visual;
+            AddShake(v.footstepShake * intensity, v.footstepShakeTime);
+        }
+
+        private void OnDestroy()
+        {
+            if (_rig != null) _rig.OnFootstep -= OnFootstep;
+        }
 
         public void LockToForward()
         {
@@ -97,6 +127,7 @@ namespace MyDongari.Camera
             StopAllCoroutines();
             _isQuickTurning = false;
             _hardLockTarget = null;
+            _shakeTimer = 0f;
             _yaw = yaw;
             _pitch = 0f;
             if (_camera != null) _camera.fieldOfView = baseFov;
@@ -111,6 +142,9 @@ namespace MyDongari.Camera
             {
                 _inputReader = target.GetComponent<InputReader>();
                 _mechController = target.GetComponent<MechController>();
+                // 내 기체 발소리에만 흔들린다 (화면 분할이라 상대 발소리는 상대 카메라 몫)
+                _rig = target.GetComponent<MechVisualRig>();
+                if (_rig != null) _rig.OnFootstep += OnFootstep;
             }
 
             _camera = GetComponent<UnityEngine.Camera>();
@@ -180,6 +214,11 @@ namespace MyDongari.Camera
 
             transform.position = target.position + offset;
             transform.rotation = Quaternion.Euler(_pitch, _yaw, 0f);
+            if (_shakeTimer > 0f)
+            {
+                transform.position += UnityEngine.Random.insideUnitSphere * (_shakeAmplitude * (_shakeTimer / _shakeDuration));
+                _shakeTimer -= Time.deltaTime;
+            }
 
             UpdateFov();
         }

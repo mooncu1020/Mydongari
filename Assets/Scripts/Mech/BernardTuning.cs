@@ -470,6 +470,55 @@ namespace MyDongari.Mech
             [Tooltip("한 프레임에 기체가 이 거리(m) 넘게 옮겨지면(라운드 리셋 등) 상하체 방향을 기체 정면으로 바로 맞춘다")]
             public float facingSnapDistance = 3f;
 
+            [Header("무게감 걸음 (Pelvis 뼈가 있는 모델만. 위상은 이동 거리로 진행)")]
+            [Tooltip("걷기 한 걸음(한 발 디딤 → 다른 발 디딤) 거리(m)")]
+            public float walkStepLength = 1.6f;
+            public float runStepLength = 2.4f;
+            public float sprintStepLength = 3.0f;
+            [Tooltip("이 속도(m/s) 미만이면 멈춘 것으로 보고 걸음을 줄여 대기 자세로")]
+            public float gaitMinSpeed = 0.3f;
+            [Tooltip("걷기 시작할 때 걸음 동작이 다 나오기까지(초)")]
+            public float gaitFadeInTime = 0.15f;
+            [Tooltip("멈출 때 걸음 동작이 대기 자세·숨쉬기로 돌아가는 시간(초)")]
+            public float stopBlendTime = 0.3f;
+            [Tooltip("엉덩이 앞뒤 스윙 최대 각도(°). 실제 각도는 보폭·다리 길이로 정하고 이 값으로 자른다")]
+            public float maxHipSwing = 45f;
+            [Tooltip("발 드는 동안 무릎이 가장 많이 굽는 시점(0~1). 클수록 천천히 들고 빨리 내려놓는다")]
+            [Range(0.3f, 0.95f)] public float swingLiftPeak = 0.7f;
+            [Tooltip("발을 들 때 무릎을 굽히는 최대 각도(°)")]
+            public float swingKneeAngle = 55f;
+
+            [Header("착지")]
+            [Tooltip("착지 순간 골반이 꺼지는 깊이(m). 디딘 다리 무릎을 굽혀 만든다(발은 땅에 붙은 채)")]
+            public float landPelvisDrop = 0.05f;
+            [Tooltip("꺼졌다 돌아오는 시간(초)")]
+            public float landDropTime = 0.18f;
+            [Tooltip("상체(Body)가 골반보다 늦게 따라오는 시간(초)")]
+            public float landBodyLag = 0.1f;
+            [Tooltip("디딘 발 쪽으로 골반이 기우는 각도(°)")]
+            public float landPelvisTilt = 4f;
+            [Tooltip("발소리 때 내 카메라가 흔들리는 크기(m). 0이면 안 흔들림")]
+            public float footstepShake = 0.02f;
+            public float footstepShakeTime = 0.12f;
+
+            [Header("팔 스윙·가감속")]
+            [Tooltip("팔이 반대쪽 다리 스윙을 따라 흔드는 비율")]
+            public float armSwingRatio = 0.3f;
+            [Tooltip("걸을 때 팔꿈치가 굽었다 펴지는 각도(°)")]
+            public float elbowSwingAngle = 8f;
+            [Tooltip("팔꿈치가 위팔보다 늦는 위상(걸음 주기 비율). 0.25 = 반 걸음")]
+            public float elbowSwingLag = 0.25f;
+            [Tooltip("가속도 1m/s²당 상체 숙임(°). 감속(브레이크)이면 뒤로 젖힌다")]
+            public float accelLeanPerMs2 = 0.8f;
+            public float maxAccelLean = 12f;
+            [Tooltip("가속도를 부드럽게 하는 시간 상수(초)")]
+            public float accelSmoothTime = 0.1f;
+
+            [Header("스커트 (허벅지를 늦게 따라가는 스프링)")]
+            public float skirtFollow = 0.8f;
+            public float skirtSpringFrequency = 4f;
+            [Range(0.05f, 1.5f)] public float skirtSpringDamping = 0.35f;
+
             [Header("접지 보정 (낮은 쪽 발바닥을 물리 콜라이더 바닥에 맞춤)")]
             public bool groundingEnabled = true;
             [Tooltip("비주얼 루트 Y를 목표로 옮기는 시간 상수(초)")]

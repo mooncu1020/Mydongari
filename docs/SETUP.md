@@ -107,3 +107,4 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 74. (F1) GameManager의 `CombatFeedback` → 새 효과음 칸 `Anchor Fire Clip`(발사)·`Anchor Hit Clip`(명중)·`Anchor Miss Clip`(빗나감). 비우면 무음. 앵커 클로 투사체 수치는 `BernardTuning → 스킬: 앵커 클로 → 발사 / 와이어·발광 표시`(에셋에 없던 칸이라 코드 기본값으로 채워짐).
 75. (F3) `MechVisualRig` → 새 칸 `Shin L`·`Shin R`(선택). 비워 두면 플레이 때 기체 아래에서 `Shin.L`·`Shin.R` 이름의 뼈를 찾고, 없으면 무릎 동작만 빠진다. 대기 자세·숨쉬기 수치는 `BernardTuning → 외형 애니메이션 → 대기 자세 / 숨쉬기`.
 76. (H4) `BernardTuning` 에셋에 `Idle Knee Bend`가 이미 10으로 저장돼 있으면 12로 바꾼다(코드 기본값은 12로 바뀜). 새 칸 `Idle Leg Spread`(6)·`Idle Foot Stagger`(0.15)·`Ankle Level Weight`(1)·`Breath Knee Angle`(1.5)·접지 보정 4칸은 에셋에 없던 칸이라 기본값으로 채워진다.
+77. (G3) GameManager의 `CombatFeedback` → 새 칸 `Footstep Clip`(발소리, 비우면 무음)·`Footstep Volume`(0.6). 걸음·상하체 수치는 `BernardTuning → 외형 애니메이션 → 상하체 분리 / 무게감 걸음 / 착지 / 팔 스윙·가감속 / 스커트`.

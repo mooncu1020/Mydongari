@@ -20,8 +20,6 @@ namespace MyDongari.Visual
         private Collider[] _groundColliders;
         private float _groundOffset;
         private float _groundLogTimer;
-        // 일부러 내린 높이(m, 착지 꺼짐 등 G3). 접지 보정이 이것까지 되돌리지 않게 목표에서 뺀다
-        private float _intentionalDrop;
 
         /// <summary>지금 접지 보정량(m, +면 비주얼을 올림).</summary>
         public float GroundOffset => _groundOffset;
@@ -56,7 +54,6 @@ namespace MyDongari.Visual
         {
             if (_visualRoot != null) _visualRoot.localPosition = _visualRootRest;
             _groundOffset = 0f;
-            _intentionalDrop = 0f;
         }
 
         /// <summary>몸통(없으면 다리) 뼈에서 위로 올라가 기체 바로 아래 자식을 찾는다 = 모델 전체를 담은 비주얼 루트.</summary>
@@ -127,8 +124,9 @@ namespace MyDongari.Visual
             if ((!hasL && !hasR) || !TryGroundHeight(out float ground)) return;
             float lowest = Mathf.Min(hasL ? soleL : float.MaxValue, hasR ? soleR : float.MaxValue);
 
-            // 지금 발바닥은 이미 현재 보정이 들어간 위치라, 목표 = 현재 보정 + 남은 차이. 일부러 내린 만큼은 되돌리지 않는다
-            float target = Mathf.Clamp(_groundOffset + (ground - lowest) - _intentionalDrop, -v.groundingMaxOffset, v.groundingMaxOffset);
+            // 지금 발바닥은 이미 현재 보정이 들어간 위치라, 목표 = 현재 보정 + 남은 차이.
+            // (착지 때 골반이 꺼지는 연출은 무릎을 굽혀 만든다 — 발이 붙은 채 골반이 내려가므로 이 보정과 다투지 않는다)
+            float target = Mathf.Clamp(_groundOffset + (ground - lowest), -v.groundingMaxOffset, v.groundingMaxOffset);
             float k = v.groundingSmoothTime > 0f ? 1f - Mathf.Exp(-dt / v.groundingSmoothTime) : 1f;
             _groundOffset += (target - _groundOffset) * k;
 

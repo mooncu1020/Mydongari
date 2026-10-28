@@ -207,7 +207,7 @@
 
 ### [x] G1. 새 선택 슬롯 (Pelvis, Hip, Shin, Ankle, Skirt)
 ### [x] G2. 상하체 분리 (하체 = 이동 방향, 상체 = 카메라/상대, 비틀림 ±100°, 공격 방향 = 상체 방향, 머리 ±30° 지연)
-### [ ] G3. 무게감 있는 걸음 (거리 기반 위상, 착지 연출·발소리·카메라 흔들림, 팔 스윙, 가감속 숙임, 스커트)
+### [x] G3. 무게감 있는 걸음 (거리 기반 위상, 착지 연출·발소리·카메라 흔들림, 팔 스윙, 가감속 숙임, 스커트)
 ### [ ] G4. 제자리 회전 스텝 (60° 이상 벌어지면 두세 걸음)
 
 ---
@@ -264,3 +264,4 @@
 - **H4** 완료. 바뀐 파일: `MechVisualRig`(`PoseIdleLegs` — 다리 벌림 6°·무릎 12°·왼발 앞 0.15m 상당(다리 길이로 각도), 걸음 세기 `_gaitWeight`만큼 줄임, 숨쉬기 무릎 `breathKneeAngle`, 스프링 뒤 `LevelAnkle`로 발목이 다리·정강이 기울기를 되돌림), `MechVisualRig.Grounding`(다리 길이 측정), `BernardTuning`(대기 자세 다리 4칸·숨쉬기 무릎, idleKneeBend 기본 10→12), `SETUP` 76. 위험: 발목 평행은 작은 각도 근사(각도 합을 빼기).
 - **G1** 완료. 바뀐 파일: `MechVisualRig`(선택 슬롯 pelvis·hipL/R·skirtFront/Back/SideL/SideR + 이름 자동 탐색(Shin·Ankle은 H3·F3에서), `HasLowerBody`, 관절 순서(골반 먼저·발목은 사슬 뒤), 발목 평행 보정 사슬에 골반·엉덩이 포함, H1 구조 변경도 pelvis 칸 우선). 필수 슬롯 목록(`SlotNames`)은 그대로라 메뉴 경고 없음.
 - **G2** 완료. 신규 `Core/MechFacing.cs`(`IUpperBodyFacing`, `MechFacing.AttackForward` — 상하체 분리 리그면 상체 방향, 아니면 transform.forward), 신규 `Visual/MechVisualRig.Locomotion.cs`(하체 = 이동 방향·회전 속도 상한·뒷걸음, 상체 = 카메라/하드 락온 상대, 비틀림 ±100° 넘으면 하체 끌림, 머리 ±30°·0.2초 지연, 순간이동 시 맞춤), `MechVisualRig`(`IUpperBodyFacing` 구현, `Joint.Yaw`), `BernardTuning`(상하체 분리 8칸). 공격 방향 transform.forward → AttackForward로 바꾼 곳: `MeleeSystem.IsInFrontArc`(펀치·태클 부채꼴), `ImpactSlam.TryActivate`(슬램 부채꼴), `AnchorClaw.Fire`(목표 없을 때), `ThrusterLunge.BeginDash`(카메라 없을 때), `MeleeDummy.IsAimed`(봇 조준), `WeaponSystem.TryFire`(카메라 없을 때 사격). 위험: 하드 락온 중 상체가 기체 루트보다 빨리 상대를 향해 펀치 부채꼴 판정이 조금 후해질 수 있음.
+- **G3** 완료. 바뀐 파일: `MechVisualRig.Locomotion`(`PoseGait` — 거리 기반 위상·보폭 걷기/달리기/질주, 엉덩이 각도 = 보폭·다리 길이, 스윙 ease-in 들기·빠른 내려놓기 무릎, 착지 이벤트 `OnFootstep`, 착지 꺼짐 = 디딘 다리 무릎 추가 굽힘(`KneeBendForDrop`), 상체 0.1초 지연, 골반 기울임, 팔 반대 스윙·팔꿈치 지연, 가감속 숙임, 스커트 느슨한 스프링), `MechVisualRig`(하체 있으면 `PoseGait`/없으면 예전 `PoseMovement`, 스커트 스프링 분기, 숨쉬기 복귀 `stopBlendTime`), `MechVisualRig.Grounding`(쓰지 않게 된 의도적 하강 제거), `CombatFeedback`(`Footstep Clip`·`Footstep Volume`), `MechCamera`(`AddShake`, 내 기체 발소리 흔들림), `BernardTuning`(무게감 걸음·착지·팔 스윙·가감속·스커트 23칸). 위험: 실제 bernard 뼈 축으로 각도 방향 확인 안 됨 — 거꾸로면 각 값 부호로 조정.
