@@ -78,7 +78,8 @@ namespace MyDongari.Movement
         /// </summary>
         public bool ConsumeEntry(Vector2 left, Vector2 right, BernardTuning.MovementValues m)
         {
-            if (Time.frameCount - _entryFrame > 1) return false;
+            // 진입 입력이 없으면(int.MinValue) 바로 false. 빼기부터 하면 넘쳐 음수가 돼 "빠르게 꺾기" 조건이 무시됐다 (F2.1)
+            if (_entryFrame == int.MinValue || Time.frameCount - _entryFrame > 1) return false;
             _entryFrame = int.MinValue;
             return left.magnitude >= m.sprintStickThreshold &&
                    right.magnitude >= m.sprintStickThreshold &&
