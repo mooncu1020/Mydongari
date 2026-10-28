@@ -57,14 +57,24 @@ namespace MyDongari.Mech
             [Header("전력질주 (패드 두 스틱: 왼쪽 = 방향, 오른쪽 = 가속)")]
             [Tooltip("오른쪽 스틱 크기가 이 값 미만이면 중립")]
             public float sprintStickNeutral = 0.3f;
-            [Tooltip("두 스틱 크기가 이 값 이상이어야 전력질주 진입·유지 (왼쪽은 달리기 80% 경계와 같게 둔다)")]
+            [Tooltip("두 스틱 크기가 이 값 이상이어야 전력질주 진입 (왼쪽은 달리기 80% 경계와 같게 둔다)")]
             public float sprintStickThreshold = 0.8f;
+            [Tooltip("두 스틱 크기가 이 값 이상이어야 전력질주 유지. 진입 기준과 따로 조정한다 (이 값 미만 = 스틱 크기 미달, 중립 미만 = 스틱 놓음)")]
+            public float sprintHoldStickThreshold = 0.8f;
+            [Tooltip("해제 조건(각도 초과·스틱 크기 미달·놓음)이 이 시간(초) 이상 계속돼야 해제. 순간적인 흔들림 무시. 0이면 즉시")]
+            public float sprintExitConfirmTime = 0.1f;
             [Tooltip("오른쪽 스틱이 중립을 벗어난 뒤 이 시간(초) 안에 임계값까지 꺾여야 진입")]
             public float sprintEntryTime = 0.15f;
             [Tooltip("진입 순간 두 스틱 방향 차이가 이 각도(°) 이하여야 진입")]
             public float sprintEntryAngle = 20f;
             [Tooltip("유지 중 두 스틱 방향 차이가 이 각도(°)를 넘으면 해제")]
             public float sprintExitAngle = 20f;
+
+            [Header("전력질주 카메라 (패드 오른쪽 스틱)")]
+            [Tooltip("진입 판정 중·전력질주 중 카메라가 기체 진행 방향 뒤로 따라오는 빠르기 (클수록 빨리)")]
+            public float sprintCameraFollowSpeed = 5f;
+            [Tooltip("전력질주가 풀린 뒤 오른쪽 스틱 크기가 이 값 미만(중립)으로 한 번 돌아와야 카메라 회전 입력을 다시 받는다")]
+            public float cameraLookResumeNeutral = 0.3f;
 
             [Header("슬라이딩 (패드 두 스틱)")]
             [Tooltip("전력질주가 스틱을 놓아서 풀린 뒤 이 시간(초) 안에 슬라이딩 입력을 받는다. 이 동안은 제동으로 안 넘어가고 대기")]

@@ -25,6 +25,14 @@ namespace MyDongari.Movement
         private bool _exitReported;
         // 마지막으로 유지 조건을 만족한 프레임의 두 스틱 사이 방향. 각도 해제가 굴리기인지 볼 기준
         private Vector2 _heldHeading;
+        // 해제 조건이 이어진 시간(초). 음수면 해제 조건 아님. sprintExitConfirmTime을 넘어야 실제로 해제
+        private float _exitPendingTimer = -1f;
+        private SprintExitReason _pendingExitReason;
+        private bool _exitSticksCaptured;
+
+        /// <summary>해제 이유가 정해진 순간의 패드 왼쪽·오른쪽 스틱 원래 값. 로그용 (OnSprintEnded 때 읽는다).</summary>
+        public Vector2 ExitLeftStick { get; private set; }
+        public Vector2 ExitRightStick { get; private set; }
 
         /// <summary>전력질주가 실제로 시작됐을 때 (true = 패드 두 스틱, false = 버튼). 로그용.</summary>
         public event Action<bool> OnSprintStarted;
@@ -65,6 +73,8 @@ namespace MyDongari.Movement
             _slideWaitTimer = -1f;
             _exitReason = SprintExitReason.Other;
             _exitReported = false;
+            _exitPendingTimer = -1f;
+            _exitSticksCaptured = false;
             InputReader entryInput = StateMachine.InputReader;
             _heldHeading = entryInput != null
                 ? entryInput.MoveStickRaw.normalized + entryInput.LookStickRaw.normalized
@@ -83,7 +93,20 @@ namespace MyDongari.Movement
         {
             if (_exitReported) return;
             _exitReported = true;
+            // 디바운스로 처음 어긋난 순간을 이미 잡아 뒀으면 그 값, 아니면(탈진·스턴 등) 지금 값
+            if (!_exitSticksCaptured)
+            {
+                InputReader input = StateMachine.InputReader;
+                CaptureExitSticks(input != null ? input.MoveStickRaw : Vector2.zero, input != null ? input.LookStickRaw : Vector2.zero);
+            }
             OnSprintEnded?.Invoke(reason);
+        }
+
+        private void CaptureExitSticks(Vector2 left, Vector2 right)
+        {
+            ExitLeftStick = left;
+            ExitRightStick = right;
+            _exitSticksCaptured = true;
         }
 
         public override void Update()
@@ -145,14 +168,28 @@ namespace MyDongari.Movement
                 if (reason == SprintExitReason.Other)
                 {
                     _heldHeading = left.normalized + right.normalized;
+                    _exitPendingTimer = -1f;
+                    _exitSticksCaptured = false;
                     return;
                 }
 
-                // 각도로 풀렸어도 L ↗ 쪽·R ↖ 쪽으로 안쪽 굴리기면 중립 해제와 같이 슬라이딩 대기
-                if (reason == SprintExitReason.Angle && TwinStickSprintInput.IsInwardRoll(_heldHeading, left, right))
+                // 순간적인 흔들림은 무시: 해제 조건이 sprintExitConfirmTime 동안 이어져야 해제한다.
+                // 이유·스틱 값은 처음 어긋난 순간 것으로 정한다 (그 뒤 슬라이딩 입력으로 스틱이 움직여도 이유가 안 바뀌게)
+                if (_exitPendingTimer < 0f)
                 {
-                    reason = SprintExitReason.AngleRoll;
+                    // 각도로 풀렸어도 L ↗ 쪽·R ↖ 쪽으로 안쪽 굴리기면 중립 해제와 같이 슬라이딩 대기
+                    if (reason == SprintExitReason.Angle && TwinStickSprintInput.IsInwardRoll(_heldHeading, left, right))
+                    {
+                        reason = SprintExitReason.AngleRoll;
+                    }
+                    _pendingExitReason = reason;
+                    CaptureExitSticks(left, right);
+                    _exitPendingTimer = 0f;
                 }
+                _exitPendingTimer += Time.deltaTime;
+                if (_exitPendingTimer < Move.sprintExitConfirmTime) return;
+                reason = _pendingExitReason;
+                _exitPendingTimer = -1f;
 
                 if (reason == SprintExitReason.Angle)
                 {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
 using System.Text;
+using System.Globalization;
 using MyDongari.Combat;
 using MyDongari.Combat.Skills;
 using MyDongari.Mech;
@@ -215,8 +216,9 @@ namespace MyDongari.Core
                 {
                     Action<bool> onSprintStart = byStick => ErrorLog.Run(
                         () => Count(index, "sprint_enter", byStick ? "stick" : "button"), "PlayLogger.onSprintStart");
+                    // 상세: 해제 이유가 정해진 순간의 두 스틱 원래 값과 사이 각도 (F2 — 질주가 왜 풀렸는지 추적)
                     Action<SprintExitReason> onSprintEnd = reason => ErrorLog.Run(
-                        () => Count(index, "sprint_exit_" + SprintExitKey(reason)), "PlayLogger.onSprintEnd");
+                        () => Count(index, "sprint_exit_" + SprintExitKey(reason), SprintExitDetail(sprint)), "PlayLogger.onSprintEnd");
                     sprint.OnSprintStarted += onSprintStart;
                     sprint.OnSprintEnded += onSprintEnd;
                     _unsubscribers.Add(() =>
@@ -349,6 +351,18 @@ namespace MyDongari.Core
             }
         }
 
+        /// <summary>"L=(x y) R=(x y) Lmag=.. Rmag=.. angle=..". CSV 칸이 갈리지 않게 쉼표 없이 쓴다.</summary>
+        private static string SprintExitDetail(SprintState sprint)
+        {
+            Vector2 l = sprint.ExitLeftStick;
+            Vector2 r = sprint.ExitRightStick;
+            string angle = l.sqrMagnitude > 0f && r.sqrMagnitude > 0f
+                ? Vector2.Angle(l, r).ToString("F1", CultureInfo.InvariantCulture)
+                : "-";
+            return string.Format(CultureInfo.InvariantCulture, "L=({0:F2} {1:F2}) R=({2:F2} {3:F2}) Lmag={4:F2} Rmag={5:F2} angle={6}",
+                l.x, l.y, r.x, r.y, l.magnitude, r.magnitude, angle);
+        }
+
         private static string SprintExitKey(SprintExitReason reason)
         {
             switch (reason)
@@ -357,6 +371,8 @@ namespace MyDongari.Core
                 case SprintExitReason.AngleRoll: return "angle_roll";
                 case SprintExitReason.LeftReleased: return "left_release";
                 case SprintExitReason.RightReleased: return "right_release";
+                case SprintExitReason.LeftWeak: return "left_weak";
+                case SprintExitReason.RightWeak: return "right_weak";
                 case SprintExitReason.ButtonReleased: return "button_release";
                 case SprintExitReason.Exhausted: return "exhausted";
                 case SprintExitReason.QuickTurn: return "quickturn";

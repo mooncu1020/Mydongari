@@ -190,7 +190,7 @@
 - 예비 동작 0.2초(팔 당김 + 손끝 발광) → 발사 순간 상대 위치로 일직선 40m/s·사거리 12m, 와이어 LineRenderer. 유도 없음.
 - 빗나가면 감겨 돌아옴. 쿨다운 5초는 발사 순간부터. 발사·명중·빗나감 SFX 슬롯(CombatFeedback).
 
-### [ ] F2. 전력질주 풀림과 카메라 튐 수정
+### [x] F2. 전력질주 풀림과 카메라 튐 수정
 - 해제 이유·스틱 값·각도 로그, 원시 스틱끼리 각도 비교, 진입 판정·질주 중·해제 후 R스틱 중립 복귀까지 카메라 회전 입력 차단(카메라는 진행 방향 뒤로), 해제 조건 0.1초 연속, 유지 스틱 크기 기준 분리.
 
 ### [ ] F3. 대기 자세와 숨쉬기
@@ -238,3 +238,4 @@
 - **E5.1** (주먹 슬롯 선택 사항, TASKS 외 추가 작업) 완료. 바뀐 파일: `MechVisualRig`(`OptionalSlotNames`·`IsOptionalSlot`, `GetPunchPoint` — 주먹 → 아래팔 끝 → 루트, 선택 시 빨간 구 기즈모), `Editor/VisualRigSetup`(`AssignSlots`가 주먹은 경고 목록에서 빼고 따로 담음), `Editor/ModelImportSetup`(주먹 없음 안내), `MODEL_IMPORT.md`. 펀치 판정(`MeleeSystem.ResolvePunch`)은 여전히 기체 루트 중심이라 `GetPunchPoint`를 쓰는 곳은 아직 없음. 위험: 끝 뼈 없는 리그는 '아래팔 = 위팔 길이' 근사.
 - **E5.2** (bernard 모델 적용 메뉴, TASKS 외 추가 작업) 완료. 신규 `Editor/BernardModelSetup`(`Tools/Apply Bernard Model` — Mech·Mech_P2 이름으로 찾음, 임시 부품 렌더러만 끔, 메시 경계로 높이 비교 배율, 캡슐 바닥에 발 맞춤, `AssignSlots` 재사용, 이전 bernard 프리팹 인스턴스 삭제), `SETUP.md` 73, `TEST_CHECKLIST`. 위험: bernard의 메시 높이에 안테나 등 돌출부가 있으면 키 기준이 달라져 조금 작게 맞춰짐 — 그럴 땐 배율을 손으로 조정.
 - **F1** 완료. 바뀐 파일: `AnchorClaw`(단계 Ready/Windup/Flying/Retracting/Pulling, SphereCastAll로 지나간 길 판정, 발사 위치 = 리그 `GetPunchPoint(false)`, 와이어·클로 머리·발광을 기체 밖 오브젝트로 생성(Sprites/Default), 이벤트 `OnWindupStarted`·`OnFired`·`OnMissed`), `BernardTuning`(앵커 클로 발사·표시 수치), `MechVisualRig`(예비 동작 팔 당김·비행 중 팔 뻗기), `CombatFeedback`(SFX 3칸), `PlayLogger`(`anchor_fire`·`anchor_miss`), `GAME_SPEC` 7장, `SETUP` 74, `QUESTIONS`. 위험: 예전엔 락온만 되면 50m에서도 잡혔는데 이제 12m 제한 — 연습 봇 등 거리가 먼 상황에서 체감이 달라짐. 대기 0.2초 동안 상대가 리그에 없는 위치로 사라지면(파괴) 정면으로 쏨.
+- **F2** 완료. 바뀐 파일: `TwinStickSprintInput`(`LeftWeak`·`RightWeak` 이유, 유지 기준 `sprintHoldStickThreshold`, `IsJudgingEntry`), `SprintState`(해제 디바운스 `sprintExitConfirmTime`, 처음 어긋난 순간의 이유·스틱 값 `ExitLeftStick`/`ExitRightStick`), `MechStateMachine`(`IsLookInputBlocked`·`IsCameraFollowingVelocity`), `MechCamera`(차단·진행 방향 따라가기, 속도 튜닝 값), `PlayLogger`(sprint_exit detail, left/right_weak), `BernardTuning`, `GAME_SPEC` 2장, `QUESTIONS`. 각도 비교는 원래부터 원시 스틱끼리였음(확인만). 위험: `ConsumeEntry` 정수 넘침 버그는 그대로 둠(QUESTIONS F2).

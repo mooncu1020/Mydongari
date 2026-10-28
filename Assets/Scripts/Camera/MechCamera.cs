@@ -124,9 +124,11 @@ namespace MyDongari.Camera
         {
             if (target == null || _inputReader == null) return;
 
-            bool isSprinting = _mechController != null &&
-                               _mechController.StateMachine != null &&
-                               _mechController.StateMachine.IsSprinting;
+            // 전력질주 진입 판정 중·질주 중엔 진행 방향 뒤로 따라가고, 질주가 풀린 뒤 오른쪽 스틱이 중립으로 돌아올 때까지
+            // 시점 입력을 막는다 (F2: 질주 조작용 오른쪽 스틱이 카메라를 돌려 화면이 튀던 문제)
+            MechStateMachine stateMachine = _mechController != null ? _mechController.StateMachine : null;
+            bool followVelocity = stateMachine != null && stateMachine.IsCameraFollowingVelocity;
+            bool lookBlocked = stateMachine != null && stateMachine.IsLookInputBlocked;
 
             if (!_isQuickTurning)
             {
@@ -152,7 +154,18 @@ namespace MyDongari.Camera
 
                     _pitch = Mathf.Clamp(_pitch, -verticalClamp, verticalClamp);
                 }
-                else if (!isSprinting)
+                else if (followVelocity)
+                {
+                    Vector3 velocity = _mechController.Rb.linearVelocity;
+                    velocity.y = 0f;
+                    if (velocity.sqrMagnitude > 0.1f)
+                    {
+                        float targetYaw = Mathf.Atan2(velocity.x, velocity.z) * Mathf.Rad2Deg;
+                        float followSpeed = _mechController.Tuning.Movement.sprintCameraFollowSpeed;
+                        _yaw = Mathf.LerpAngle(_yaw, targetYaw, followSpeed * Time.deltaTime);
+                    }
+                }
+                else if (!lookBlocked)
                 {
                     // 마우스 델타는 이미 프레임당 이동량이라 그대로, 스틱은 기울기라 시간 비례로
                     float lookScale = _inputReader.IsLookFromGamepad
@@ -162,16 +175,7 @@ namespace MyDongari.Camera
                     _pitch -= _inputReader.LookInput.y * lookScale;
                     _pitch = Mathf.Clamp(_pitch, -verticalClamp, verticalClamp);
                 }
-                else if (_mechController != null)
-                {
-                    Vector3 velocity = _mechController.Rb.linearVelocity;
-                    velocity.y = 0f;
-                    if (velocity.sqrMagnitude > 0.1f)
-                    {
-                        float targetYaw = Mathf.Atan2(velocity.x, velocity.z) * Mathf.Rad2Deg;
-                        _yaw = Mathf.LerpAngle(_yaw, targetYaw, 5f * Time.deltaTime);
-                    }
-                }
+                // 막혀 있고 따라가기도 아니면(질주 해제 후 스틱 중립 대기) 시점을 그대로 둔다
             }
 
             transform.position = target.position + offset;

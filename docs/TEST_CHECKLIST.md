@@ -255,3 +255,11 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (F1) 클로가 날아가는 중 라운드 종료·리셋 → 다음 라운드에 와이어·클로가 남아 있지 않음
 - [ ] (F1) GameManager의 `CombatFeedback` → `Anchor Fire/Hit/Miss Clip`에 소리를 넣으면 발사·명중·빗나감에 각각 남. `summary_*.csv`에 `anchor_fire`, `anchor_hit`, `anchor_miss`
 - [ ] (F1) `BernardTuning → 스킬: 앵커 클로 → 발사` 값(속도·사거리·예비 동작·판정 반지름)을 플레이 중 바꾸면 바로 반영
+- [ ] (F2) 패드 질주 후 각 방식으로 풀기 → `events_*.csv`에 `sprint_exit_angle` / `sprint_exit_left_weak`·`right_weak`(스틱을 0.3~0.8로 덜 기울임) / `sprint_exit_left_release`·`right_release`(놓음) / `sprint_exit_exhausted`, detail 칸에 `L=(x y) R=(x y) Lmag= Rmag= angle=`
+- [ ] (F2) 질주 중 스틱을 순간적으로 살짝 흔들기(0.1초 미만 각도 초과·크기 미달) → 질주가 안 풀림. 0.1초 넘게 벌리면 풀림
+- [ ] (F2) 달리기 중 R스틱을 빠르게 꺾어 질주 진입 → 진입 순간 카메라가 R스틱 방향으로 휙 돌지 않고, 기체 진행 방향 뒤로 부드럽게 따라옴
+- [ ] (F2) 질주 중 R스틱을 옆으로 돌려 각도 해제 → 제동 동안 R스틱을 계속 옆으로 들고 있어도 카메라가 안 돎. R스틱을 한 번 중립으로 놓았다가 다시 밀면 그때부터 카메라가 돎
+- [ ] (F2) 슬라이딩(L ↗ + R ↖) → 슬라이딩 중 카메라가 R ↖ 때문에 돌지 않음. R스틱 중립 후 다시 정상
+- [ ] (F2) 걷기(L스틱 80% 미만) 중 R스틱 → 예전처럼 바로 카메라가 돎 (진입 판정 차단 없음). 하드 락온 중 카메라 추적은 예전과 같음
+- [ ] (F2) 키보드: Space 질주 중 마우스로 시점 안 돎(예전과 같음), 질주 끝나면 마우스 시점 바로 됨
+- [ ] (F2) `BernardTuning → 이동` 새 칸 `Sprint Hold Stick Threshold`(0.8)·`Sprint Exit Confirm Time`(0.1)·`Sprint Camera Follow Speed`(5)·`Camera Look Resume Neutral`(0.3)을 플레이 중 바꾸면 바로 반영

@@ -11,8 +11,12 @@ namespace MyDongari.Movement
         Angle,
         // 각도로 풀렸지만 L은 시계(↗ 쪽)·R은 반시계(↖ 쪽)로 안쪽으로 굴린 경우. 중립 해제처럼 슬라이딩 대기를 건다
         AngleRoll,
+        // 스틱을 놓음(중립 미만)
         LeftReleased,
         RightReleased,
+        // 스틱 크기 미달(중립 이상 · 유지 기준 미만). 흐름은 놓음과 같다(슬라이딩 대기), 로그만 구분
+        LeftWeak,
+        RightWeak,
         // 버튼 경로 (키보드 Space)
         ButtonReleased,
         Exhausted,
@@ -81,11 +85,31 @@ namespace MyDongari.Movement
                    Vector2.Angle(left, right) <= m.sprintEntryAngle;
         }
 
-        /// <summary>두 스틱 전력질주 유지 판정. 유지면 Other, 아니면 해제 이유. 놓음을 각도보다 먼저 본다.</summary>
+        /// <summary>
+        /// 오른쪽 스틱 진입 판정 중인지: 왼쪽 스틱이 진입 크기 이상인 채로 오른쪽 스틱이 중립을 벗어났고
+        /// 아직 진입 시간 안에 판정이 안 났거나, 진입 조건을 막 만족해 다음 프레임 질주 전환을 기다리는 중.
+        /// 이 동안 오른쪽 스틱을 카메라 회전에 쓰면 진입 순간 카메라(= 이동 기준)가 돌아가 버린다.
+        /// </summary>
+        public bool IsJudgingEntry(Vector2 left, float now, BernardTuning.MovementValues m)
+        {
+            // int.MinValue(없음)에서 빼면 넘쳐 음수가 되므로 먼저 거른다
+            if (_entryFrame != int.MinValue && Time.frameCount - _entryFrame <= 1) return true;
+            if (left.magnitude < m.sprintStickThreshold) return false;
+            return !_rightInNeutral && !_rightReachJudged && now - _rightLeaveNeutralTime <= m.sprintEntryTime;
+        }
+
+        /// <summary>
+        /// 두 스틱 전력질주 유지 판정. 유지면 Other, 아니면 해제 이유. 놓음·크기 미달을 각도보다 먼저 본다.
+        /// 스틱은 둘 다 패드 원래 값(카메라 기준 변환 없음)이라 각도 비교도 스틱끼리만 한다.
+        /// </summary>
         public static SprintExitReason CheckHold(Vector2 left, Vector2 right, BernardTuning.MovementValues m)
         {
-            if (left.magnitude < m.sprintStickThreshold) return SprintExitReason.LeftReleased;
-            if (right.magnitude < m.sprintStickThreshold) return SprintExitReason.RightReleased;
+            float leftMag = left.magnitude;
+            float rightMag = right.magnitude;
+            if (leftMag < m.sprintHoldStickThreshold)
+                return leftMag < m.sprintStickNeutral ? SprintExitReason.LeftReleased : SprintExitReason.LeftWeak;
+            if (rightMag < m.sprintHoldStickThreshold)
+                return rightMag < m.sprintStickNeutral ? SprintExitReason.RightReleased : SprintExitReason.RightWeak;
             if (Vector2.Angle(left, right) > m.sprintExitAngle) return SprintExitReason.Angle;
             return SprintExitReason.Other;
         }

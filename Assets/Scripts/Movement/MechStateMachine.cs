@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using MyDongari.Input;
+using MyDongari.Mech;
 
 namespace MyDongari.Movement
 {
@@ -55,6 +56,17 @@ namespace MyDongari.Movement
 
         public Vector3 LastMoveDirection { get; set; }
 
+        /// <summary>
+        /// 카메라가 오른쪽 스틱(시점) 입력을 무시해야 하는지 (F2): 전력질주 진입 판정 중, 전력질주 중,
+        /// 그리고 전력질주가 풀린 뒤 오른쪽 스틱이 중립으로 한 번 돌아올 때까지.
+        /// 질주 조작에 쓰던 오른쪽 스틱이 그대로 카메라를 돌려 화면이 튀는 것을 막는다.
+        /// </summary>
+        public bool IsLookInputBlocked { get; private set; }
+        /// <summary>카메라가 기체 진행 방향 뒤로 따라가야 하는지 (진입 판정 중·전력질주 중).</summary>
+        public bool IsCameraFollowingVelocity { get; private set; }
+        private bool _lookBlockedUntilNeutral;
+        private bool _wasSprinting;
+
         private void Awake()
         {
             InputReader = GetComponent<InputReader>();
@@ -82,6 +94,8 @@ namespace MyDongari.Movement
             enabled = true;
             LastMoveDirection = Vector3.zero;
             TwinStick.Reset();
+            _lookBlockedUntilNeutral = false;
+            _wasSprinting = false;
             ChangeState(IdleState);
         }
 
@@ -107,6 +121,31 @@ namespace MyDongari.Movement
                     Time.unscaledTime, MechController.Tuning.Movement);
             }
             _currentState?.Update();
+            UpdateLookBlock();
+        }
+
+        /// <summary>상태 Update 뒤(이번 프레임 상태가 정해진 뒤)에 카메라 입력 차단을 정한다. 카메라는 LateUpdate에서 읽는다.</summary>
+        private void UpdateLookBlock()
+        {
+            if (InputReader == null)
+            {
+                IsLookInputBlocked = false;
+                IsCameraFollowingVelocity = false;
+                return;
+            }
+
+            BernardTuning.MovementValues m = MechController.Tuning.Movement;
+            bool rightNeutral = InputReader.LookStickRaw.magnitude < m.cameraLookResumeNeutral;
+            bool sprinting = IsSprinting;
+
+            // 질주가 끝나는 프레임에 오른쪽 스틱이 아직 기울어 있으면(슬라이딩 ↖ 입력 포함) 중립으로 돌아올 때까지 막는다
+            if (_wasSprinting && !sprinting) _lookBlockedUntilNeutral = !rightNeutral;
+            else if (rightNeutral) _lookBlockedUntilNeutral = false;
+            _wasSprinting = sprinting;
+
+            bool judging = !sprinting && TwinStick.IsJudgingEntry(InputReader.MoveStickRaw, Time.unscaledTime, m);
+            IsCameraFollowingVelocity = sprinting || judging;
+            IsLookInputBlocked = IsCameraFollowingVelocity || _lookBlockedUntilNeutral;
         }
 
         private void FixedUpdate()
