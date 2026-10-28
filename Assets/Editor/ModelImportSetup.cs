@@ -40,17 +40,22 @@ namespace MyDongari.EditorTools
             int undoGroup = Undo.GetCurrentGroup();
 
             List<string> missing = null;
+            List<string> optionalMissing = null;
             foreach (MechVisualRig rig in rigs)
             {
-                missing = Apply(rig, model);
+                optionalMissing = new List<string>();
+                missing = Apply(rig, model, optionalMissing);
             }
 
             Undo.CollapseUndoOperations(undoGroup);
             string names = string.Join(", ", rigs.ConvertAll(r => r.name));
             string message = $"{model.name}을(를) {rigs.Count}대({names})에 붙였습니다.\n";
             message += missing == null || missing.Count == 0
-                ? "부품 10개를 모두 찾았습니다."
+                ? "필수 부품을 모두 찾았습니다."
                 : $"⚠ 모델에서 찾지 못한 부품 {missing.Count}개 (이 부품은 움직이지 않음):\n- " + string.Join("\n- ", missing);
+            // 주먹은 선택 사항: 없으면 경고 대신 대체 방식만 알려 준다
+            if (optionalMissing != null && optionalMissing.Count > 0)
+                message += $"\n주먹 없음({string.Join(", ", optionalMissing)}) → 아래팔 끝을 펀치 지점으로 씁니다.";
             message += "\n\n정면(+Z)·크기·피벗을 확인하고, 축이 다른 부품은 MechVisualRig의 Rotation Correction으로 맞추세요. 씬을 저장하세요.";
             EditorUtility.DisplayDialog("Apply Model", message, "확인");
         }
@@ -69,7 +74,7 @@ namespace MyDongari.EditorTools
             return rigs;
         }
 
-        private static List<string> Apply(MechVisualRig rig, GameObject model)
+        private static List<string> Apply(MechVisualRig rig, GameObject model, List<string> optionalMissing)
         {
             Transform mech = rig.transform;
 
@@ -91,7 +96,7 @@ namespace MyDongari.EditorTools
                 col.enabled = false;
             }
 
-            List<string> missing = VisualRigSetup.AssignSlots(rig, instance.transform);
+            List<string> missing = VisualRigSetup.AssignSlots(rig, instance.transform, optionalMissing);
 
             // 리깅된 모델(Generic)이면 Animator를 리그에 연결하고, 반복 동작 컨트롤러가 있으면 붙인다
             Animator animator = instance.GetComponentInChildren<Animator>(true);

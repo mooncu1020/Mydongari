@@ -48,6 +48,14 @@ namespace MyDongari.Visual
             "legL", "legR"
         };
 
+        /// <summary>
+        /// 없어도 되는 슬롯. 주먹 뼈가 없는 모델이 많아서, 없으면 아래팔 끝을 펀치 지점으로 쓴다 (GetPunchPoint).
+        /// 모델 교체 메뉴는 이 슬롯을 못 찾아도 경고하지 않는다.
+        /// </summary>
+        public static readonly string[] OptionalSlotNames = { "Fist_L", "Fist_R" };
+
+        public static bool IsOptionalSlot(string slotName) => Array.IndexOf(OptionalSlotNames, slotName) >= 0;
+
         [Header("동작")]
         [SerializeField] private bool animate = true;
 
@@ -66,10 +74,12 @@ namespace MyDongari.Visual
         [Header("왼팔")]
         [SerializeField] private RigSlot armLUpper = new RigSlot();
         [SerializeField] private RigSlot armLLower = new RigSlot();
+        [Tooltip("선택 사항. 비워 두면 아래팔 끝을 펀치 지점으로 쓴다")]
         [SerializeField] private RigSlot fistL = new RigSlot();
         [Header("오른팔")]
         [SerializeField] private RigSlot armRUpper = new RigSlot();
         [SerializeField] private RigSlot armRLower = new RigSlot();
+        [Tooltip("선택 사항. 비워 두면 아래팔 끝을 펀치 지점으로 쓴다")]
         [SerializeField] private RigSlot fistR = new RigSlot();
         [Header("다리")]
         [SerializeField] private RigSlot legL = new RigSlot();
@@ -233,6 +243,61 @@ namespace MyDongari.Visual
                 joint.ParentFromMech = parent != null ? Quaternion.Inverse(mechInverse * parent.rotation) : Quaternion.identity;
             }
             return joint;
+        }
+
+        // ---------------- 펀치 지점 ----------------
+
+        /// <summary>
+        /// 펀치 지점(월드). 주먹 슬롯이 있으면 주먹(손목) 위치, 없으면 아래팔 끝, 아래팔도 없으면 기체 루트.
+        /// 슬롯 Transform을 매번 직접 읽으므로 플레이 전(에디터)에도 맞는 값이 나온다.
+        /// </summary>
+        public Vector3 GetPunchPoint(bool right)
+        {
+            RigSlot fist = right ? fistR : fistL;
+            if (fist != null && fist.target != null) return fist.target.position;
+            RigSlot lower = right ? armRLower : armLLower;
+            RigSlot upper = right ? armRUpper : armLUpper;
+            if (lower != null && lower.target != null) return LowerArmEnd(lower.target, upper != null ? upper.target : null);
+            return transform.position;
+        }
+
+        /// <summary>
+        /// 아래팔 끝(손목) 추정. 뼈는 시작점(팔꿈치)만 있고 끝점이 Transform에 없어서:
+        /// 1) 메시 없는 자식(손 뼈, Blender의 _end 끝 뼈)이 있으면 그중 가장 먼 것
+        /// 2) 없으면 위팔과 같은 축 규칙이라 보고, 어깨→팔꿈치 벡터를 위팔 기준으로 잰 그대로 아래팔 기준에 얹는다
+        ///    (아래팔이 위팔과 같은 길이라고 보는 근사. 임시 상자는 0.42 vs 0.38로 거의 같다)
+        /// 3) 위팔도 없으면 팔꿈치 위치
+        /// </summary>
+        private static Vector3 LowerArmEnd(Transform lower, Transform upper)
+        {
+            Transform farthest = null;
+            float farthestSqr = 0f;
+            foreach (Transform child in lower)
+            {
+                if (child.GetComponent<Renderer>() != null || child.GetComponent<MeshFilter>() != null) continue;
+                float sqr = (child.position - lower.position).sqrMagnitude;
+                if (sqr > farthestSqr)
+                {
+                    farthest = child;
+                    farthestSqr = sqr;
+                }
+            }
+            if (farthest != null) return farthest.position;
+
+            if (upper != null)
+            {
+                Vector3 upperBoneLocal = Quaternion.Inverse(upper.rotation) * (lower.position - upper.position);
+                return lower.position + lower.rotation * upperBoneLocal;
+            }
+            return lower.position;
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            // 펀치 지점 확인용: 주먹이 없는 모델에서 아래팔 끝이 제대로 잡혔는지 씬 뷰에서 본다
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(GetPunchPoint(false), 0.08f);
+            Gizmos.DrawWireSphere(GetPunchPoint(true), 0.08f);
         }
 
         // ---------------- 이벤트 ----------------

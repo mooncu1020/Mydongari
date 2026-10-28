@@ -92,15 +92,23 @@ namespace MyDongari.EditorTools
             CreateBox(fist, new Vector3(0f, -0.1f, 0f), new Vector3(0.24f, 0.24f, 0.24f), material);
         }
 
-        /// <summary>리그 슬롯 이름으로 계층에서 찾아 연결한다 (모델 교체 메뉴도 같은 함수를 쓴다).</summary>
-        public static System.Collections.Generic.List<string> AssignSlots(MechVisualRig rig, Transform searchRoot)
+        /// <summary>
+        /// 리그 슬롯 이름으로 계층에서 찾아 연결한다 (모델 교체 메뉴도 같은 함수를 쓴다).
+        /// 반환값은 못 찾은 필수 슬롯만. 선택 슬롯(주먹)을 못 찾았으면 optionalMissing에 따로 담는다.
+        /// </summary>
+        public static System.Collections.Generic.List<string> AssignSlots(MechVisualRig rig, Transform searchRoot,
+            System.Collections.Generic.List<string> optionalMissing = null)
         {
             var missing = new System.Collections.Generic.List<string>();
             SerializedObject so = new SerializedObject(rig);
             for (int i = 0; i < MechVisualRig.SlotNames.Length; i++)
             {
                 Transform found = FindSlotTransform(searchRoot, MechVisualRig.SlotNames[i]);
-                if (found == null) missing.Add(MechVisualRig.SlotNames[i]);
+                if (found == null)
+                {
+                    if (!MechVisualRig.IsOptionalSlot(MechVisualRig.SlotNames[i])) missing.Add(MechVisualRig.SlotNames[i]);
+                    else optionalMissing?.Add(MechVisualRig.SlotNames[i]);
+                }
                 so.FindProperty(MechVisualRig.SlotFieldNames[i] + ".target").objectReferenceValue = found;
             }
             so.ApplyModifiedProperties();
