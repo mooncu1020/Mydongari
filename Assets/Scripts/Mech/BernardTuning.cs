@@ -415,6 +415,34 @@ namespace MyDongari.Mech
             public float bobHeight = 0.06f;
             [Tooltip("이 속도(m/s)에서 걷기 동작이 최대 크기")]
             public float walkReferenceSpeed = 5f;
+
+            [Header("대기 자세 (쉴 때 자세 위에 얹는 오프셋. 가드·공격·스턴 중엔 빠짐)")]
+            [Tooltip("어깨를 바깥으로 벌리는 각도(°)")]
+            public float idleShoulderSpread = 8f;
+            [Tooltip("팔꿈치를 더 굽히는 각도(°)")]
+            public float idleElbowBend = 25f;
+            [Tooltip("위팔을 앞으로 내미는 각도(°). 주먹이 몸 앞쪽으로 온다")]
+            public float idleArmForward = 10f;
+            [Tooltip("상체를 앞으로 숙이는 각도(°)")]
+            public float idleLean = 5f;
+            [Tooltip("무릎(Shin.L·Shin.R 뼈가 있을 때만)을 굽히는 각도(°)")]
+            public float idleKneeBend = 10f;
+
+            [Header("숨쉬기 (정지 중에만. 걷기 이상·가드·공격·스턴이면 줄여서 끔)")]
+            [Tooltip("몸통이 위아래로 움직이는 전체 폭(m)")]
+            public float breathHeight = 0.03f;
+            [Tooltip("한 번 숨쉬는 주기(초)")]
+            public float breathPeriod = 2.5f;
+            [Tooltip("들숨 때 가슴이 들리는(상체가 살짝 젖혀지는) 각도(°)")]
+            public float breathChestAngle = 1.5f;
+            [Tooltip("팔이 출렁이는 각도(°)")]
+            public float breathArmAngle = 2f;
+            [Tooltip("팔이 몸통보다 늦게 따라오는 시간(초)")]
+            public float breathArmLag = 0.3f;
+            [Tooltip("움직이기 시작하면 숨쉬기를 이 시간(초)에 걸쳐 줄여 없앤다 (다시 멈추면 같은 시간에 걸쳐 돌아옴)")]
+            public float breathFadeTime = 0.2f;
+            [Tooltip("상태 머신이 없는 기체(연습 봇)는 이 속도(m/s) 이상이면 움직이는 것으로 본다")]
+            public float breathStopSpeed = 0.5f;
         }
 
         [Header("이동")]

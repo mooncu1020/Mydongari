@@ -105,3 +105,4 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 72. (E5) `MechVisualRig` 회전 오프셋은 이제 처음 자세의 부품 방향으로 자동 변환된다. 임시 상자에서는 동작이 이전과 사실상 같다(어긋나면 `Rotation Correction`).
 73. (E5.2) **메뉴 `Tools/Apply Bernard Model`** → 저장. `Assets/Models/bernard.fbx`를 `Mech`·`Mech_P2`의 `VisualPlaceholder` 아래 `Bernard`로 넣는다. 임시 부품은 렌더러만 끄고(콜라이더·Rigidbody 그대로), 배율은 임시 부품 전체 높이에 맞추고(콘솔에 출력), 발바닥을 캡슐 바닥에 맞추고, `MechVisualRig` 슬롯을 bernard의 같은 이름 뼈로 다시 연결한다(못 찾은 슬롯은 콘솔 경고). 다시 누르면 이전 bernard를 지우고 새로. Ctrl+Z 한 번으로 되돌림. 씬에 직접 끌어다 놓은 bernard는 건드리지 않으니 따로 지운다.
 74. (F1) GameManager의 `CombatFeedback` → 새 효과음 칸 `Anchor Fire Clip`(발사)·`Anchor Hit Clip`(명중)·`Anchor Miss Clip`(빗나감). 비우면 무음. 앵커 클로 투사체 수치는 `BernardTuning → 스킬: 앵커 클로 → 발사 / 와이어·발광 표시`(에셋에 없던 칸이라 코드 기본값으로 채워짐).
+75. (F3) `MechVisualRig` → 새 칸 `Shin L`·`Shin R`(선택). 비워 두면 플레이 때 기체 아래에서 `Shin.L`·`Shin.R` 이름의 뼈를 찾고, 없으면 무릎 동작만 빠진다. 대기 자세·숨쉬기 수치는 `BernardTuning → 외형 애니메이션 → 대기 자세 / 숨쉬기`.

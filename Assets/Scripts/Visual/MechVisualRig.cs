@@ -84,6 +84,15 @@ namespace MyDongari.Visual
         [Header("다리")]
         [SerializeField] private RigSlot legL = new RigSlot();
         [SerializeField] private RigSlot legR = new RigSlot();
+        [Header("무릎 (선택 — 비우면 모델에서 이름으로 찾고, 없으면 무시)")]
+        [Tooltip("왼 정강이 뼈. 비워 두면 기체 아래에서 'Shin.L'을 찾는다")]
+        [SerializeField] private RigSlot shinL = new RigSlot();
+        [Tooltip("오른 정강이 뼈. 비워 두면 기체 아래에서 'Shin.R'을 찾는다")]
+        [SerializeField] private RigSlot shinR = new RigSlot();
+
+        /// <summary>무릎 뼈 이름. 필수 슬롯이 아니라 SlotNames(모델 교체 메뉴 경고 대상)에 넣지 않는다.</summary>
+        public const string ShinLName = "Shin.L";
+        public const string ShinRName = "Shin.R";
 
         /// <summary>슬롯 하나의 런타임 상태: 쉴 때 자세 + 스프링(위치·회전 오프셋).</summary>
         private class Joint
@@ -109,7 +118,7 @@ namespace MyDongari.Visual
             public Vector3 TargetRotation;
         }
 
-        private Joint _body, _head, _armLUpper, _armLLower, _fistL, _armRUpper, _armRLower, _fistR, _legL, _legR;
+        private Joint _body, _head, _armLUpper, _armLLower, _fistL, _armRUpper, _armRLower, _fistR, _legL, _legR, _shinL, _shinR;
         private Joint[] _joints;
 
         private TuningRef _tuning;
@@ -147,6 +156,8 @@ namespace MyDongari.Visual
         private float _clawStart = None;
         private float _pileStart = None;
         private float _slamStart = None;
+        // 숨쉬기 세기(0~1). 움직이거나 다른 동작 중이면 breathFadeTime에 걸쳐 0으로
+        private float _breathWeight = 1f;
 
         private void Awake()
         {
@@ -227,7 +238,29 @@ namespace MyDongari.Visual
             _fistR = Bind(fistR);
             _legL = Bind(legL);
             _legR = Bind(legR);
-            _joints = new[] { _body, _head, _armLUpper, _armLLower, _fistL, _armRUpper, _armRLower, _fistR, _legL, _legR };
+            // 무릎은 선택: 칸이 비어 있으면 모델 아래에서 이름으로 찾는다 (모델 교체 메뉴는 이 칸을 안 채운다)
+            _shinL = Bind(ResolveOptionalSlot(shinL, ShinLName));
+            _shinR = Bind(ResolveOptionalSlot(shinR, ShinRName));
+            _joints = new[] { _body, _head, _armLUpper, _armLLower, _fistL, _armRUpper, _armRLower, _fistR, _legL, _legR, _shinL, _shinR };
+        }
+
+        /// <summary>칸이 비어 있으면 같은 이름의 Transform을 찾아 런타임 슬롯을 만든다 (뼈 우선, 없으면 그대로 빈 칸).</summary>
+        private RigSlot ResolveOptionalSlot(RigSlot slot, string boneName)
+        {
+            if (slot != null && slot.target != null) return slot;
+            Transform found = null;
+            foreach (Transform t in GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name != boneName) continue;
+                // 같은 이름의 뼈와 메시가 둘 다 있으면 뼈(메시 없는 Transform)를 고른다 (모델 교체 메뉴와 같은 규칙)
+                if (t.GetComponent<Renderer>() == null && t.GetComponent<MeshFilter>() == null)
+                {
+                    found = t;
+                    break;
+                }
+                if (found == null) found = t;
+            }
+            return new RigSlot { target = found, rotationCorrection = slot != null ? slot.rotationCorrection : Vector3.zero };
         }
 
         private Joint Bind(RigSlot slot)
@@ -413,6 +446,7 @@ namespace MyDongari.Visual
             }
 
             PoseMovement(v, dt);
+            PoseIdle(v, dt);
             PoseGuard(v);
             PoseActions(v);
             PoseStun(v);
@@ -558,6 +592,70 @@ namespace MyDongari.Visual
 
             animator.SetFloat(SpeedParameter, speed);
             animator.SetInteger(MoveStateParameter, _moveState);
+        }
+
+        /// <summary>
+        /// 대기 자세 + 숨쉬기 (F3). 가드·공격·스턴 중엔 대기 자세를 빼서 기존 포즈를 그대로 둔다.
+        /// 숨쉬기는 걷기 이상으로 움직이거나 그런 동작 중이면 breathFadeTime에 걸쳐 줄여 없앤다.
+        /// </summary>
+        private void PoseIdle(BernardTuning.VisualValues v, float dt)
+        {
+            bool acting = IsActionPoseActive(v);
+            bool moving;
+            if (_stateMachine != null) moving = !_stateMachine.IsIdle;
+            else
+            {
+                Vector3 velocity = _rb != null ? _rb.linearVelocity : Vector3.zero;
+                velocity.y = 0f;
+                moving = velocity.magnitude >= v.breathStopSpeed;
+            }
+
+            float breathTarget = acting || moving ? 0f : 1f;
+            _breathWeight = v.breathFadeTime > 0f
+                ? Mathf.MoveTowards(_breathWeight, breathTarget, dt / v.breathFadeTime)
+                : breathTarget;
+
+            if (!acting)
+            {
+                // 어깨 바깥(L = Z-, R = Z+), 위팔 앞으로(X-), 팔꿈치 더 굽힘(X-), 상체 앞으로(X+), 무릎 굽힘(정강이 뒤로 X+)
+                AddRotation(_armLUpper, new Vector3(-v.idleArmForward, 0f, -v.idleShoulderSpread));
+                AddRotation(_armRUpper, new Vector3(-v.idleArmForward, 0f, v.idleShoulderSpread));
+                AddRotation(_armLLower, new Vector3(-v.idleElbowBend, 0f, 0f));
+                AddRotation(_armRLower, new Vector3(-v.idleElbowBend, 0f, 0f));
+                AddRotation(_body, new Vector3(v.idleLean, 0f, 0f));
+                AddRotation(_shinL, new Vector3(v.idleKneeBend, 0f, 0f));
+                AddRotation(_shinR, new Vector3(v.idleKneeBend, 0f, 0f));
+            }
+
+            if (_breathWeight <= 0f || v.breathPeriod <= 0f) return;
+            float omega = 2f * Mathf.PI / v.breathPeriod;
+            float breath = Mathf.Sin(_clock * omega) * _breathWeight;
+            // 팔은 몸통보다 breathArmLag만큼 늦은 위상으로 출렁인다
+            float armBreath = Mathf.Sin((_clock - v.breathArmLag) * omega) * _breathWeight;
+            AddPosition(_body, new Vector3(0f, breath * v.breathHeight * 0.5f, 0f));
+            // 들숨(올라갈 때) 가슴이 들린다 = 상체를 살짝 뒤로(X-)
+            AddRotation(_body, new Vector3(-breath * v.breathChestAngle, 0f, 0f));
+            AddRotation(_armLUpper, new Vector3(armBreath * v.breathArmAngle, 0f, 0f));
+            AddRotation(_armRUpper, new Vector3(armBreath * v.breathArmAngle, 0f, 0f));
+        }
+
+        /// <summary>가드·스턴·펀치·런지·태클·앵커 클로·파일드라이버·슬램 포즈가 나오는 중인지 (대기 자세·숨쉬기보다 우선).</summary>
+        private bool IsActionPoseActive(BernardTuning.VisualValues v)
+        {
+            if (_melee != null && (_melee.IsGuarding || _melee.IsStunned)) return true;
+            if (_lunge != null && _lunge.IsLunging) return true;
+            if (_claw != null && _claw.Phase != AnchorClaw.ClawPhase.Ready) return true;
+            if (InWindow(_punchStart, PunchWindup + v.punchExtendTime + v.punchHoldTime)) return true;
+            if (InWindow(_tackleStart, TackleWindup + v.tackleTime)) return true;
+            if (InWindow(_clawStart, v.clawHoldTime)) return true;
+            float smash = v.smashRaiseTime + v.smashDownTime;
+            return InWindow(_pileStart, smash) || InWindow(_slamStart, smash);
+        }
+
+        private bool InWindow(float start, float length)
+        {
+            float t = _clock - start;
+            return t >= 0f && t < length;
         }
 
         private void PoseGuard(BernardTuning.VisualValues v)
