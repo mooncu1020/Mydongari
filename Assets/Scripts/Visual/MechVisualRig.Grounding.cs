@@ -39,6 +39,17 @@ namespace MyDongari.Visual
             _footR = _ankleR != null && _ankleR.Target != null ? _ankleR.Target : _legR != null ? _legR.Target : null;
             _soleL = MeasureSole(_footL);
             _soleR = MeasureSole(_footR);
+            // 다리 길이(엉덩이 관절 → 발바닥 높이 차, 쉴 때 자세). 발 엇갈림·보폭 각도 계산용
+            _legLengthL = MeasureLegLength(_legL, _footL, _soleL);
+            _legLengthR = MeasureLegLength(_legR, _footR, _soleR);
+        }
+
+        private float _legLengthL, _legLengthR;
+
+        private static float MeasureLegLength(Joint leg, Transform foot, Vector3[] sole)
+        {
+            if (leg == null || leg.Target == null || !TrySoleHeight(foot, sole, out float soleY)) return 0f;
+            return Mathf.Max(0f, leg.Target.position.y - soleY);
         }
 
         private void ResetGrounding()

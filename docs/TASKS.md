@@ -201,7 +201,7 @@
 ### [x] H1. 런타임 뼈 구조 변경 (Root → Pelvis → Body)
 ### [x] H2. 파츠 누락 점검 (메뉴가 bernard 렌더러를 건드리지 않고 전부 켬)
 ### [x] H3. 접지 보정 (낮은 발바닥을 콜라이더 바닥에)
-### [ ] H4. 대기 자세 다리 (벌림·무릎·발목 평행·앞뒤 엇갈림, 숨쉬기 무릎)
+### [x] H4. 대기 자세 다리 (벌림·무릎·발목 평행·앞뒤 엇갈림, 숨쉬기 무릎)
 
 ## Phase G — 이동 연출 (H 구조 기준)
 
@@ -261,3 +261,4 @@
 - **H1** 완료. 바뀐 파일: `MechVisualRig`(Awake에서 `RestructureLowerBody` — Pelvis가 Body 아래에 있으면 Pelvis → Body 원래 부모(Root), Body → Pelvis로 `SetParent(…, true)` 후 `BindJoints`, `FindBone` 공용). bernard FBX 실제 계층: Mecha_Rig(-90, ×100) → Root → Body → Pelvis → Hip → Leg → Shin → Ankle, 메시는 뼈 자식(스킨 아님). 위험: 슬롯 `Body`가 비어 있으면 바꾸지 않음.
 - **H2** 완료. 바뀐 파일: `Editor/BernardModelSetup`(임시 부품 렌더러 끄기·높이 측정에서 `IsUnderModel` 제외, 새 bernard 아래 꺼진 렌더러를 전부 켜고 이름 출력 — Blender 숨김이 Import Visibility로 꺼져 들어오는 경우). 켜기는 높이 측정 전이라 숨겨졌던 파츠도 키에 들어간다.
 - **H3** 완료. 바뀐 파일: 신규 `Visual/MechVisualRig.Grounding.cs`(partial — 발목 뼈(없으면 다리 뼈) 아래 메시 경계 꼭짓점을 Awake에 뼈 기준으로 캐시, LateUpdate 마지막에 낮은 발바닥 vs 기체 루트 콜라이더 바닥, 비주얼 루트 Y만 0.05초 시간 상수로 보정, `OnGroundSample`), `MechVisualRig`(partial, 선택 슬롯 `ankleL/R` 자동 탐색, `BindJoints` 끝에 `SetupGrounding`, OnDisable 복원), `BernardTuning`(접지 보정 4칸), `PlayLogger`(`ground_offset` 이벤트), `Editor/BernardModelSetup`(발 기준 = 루트 콜라이더 바운드 최저점). 위험: 렌더러 대신 메시 경계로 잼(꺼진 임시 부품도 재려고).
+- **H4** 완료. 바뀐 파일: `MechVisualRig`(`PoseIdleLegs` — 다리 벌림 6°·무릎 12°·왼발 앞 0.15m 상당(다리 길이로 각도), 걸음 세기 `_gaitWeight`만큼 줄임, 숨쉬기 무릎 `breathKneeAngle`, 스프링 뒤 `LevelAnkle`로 발목이 다리·정강이 기울기를 되돌림), `MechVisualRig.Grounding`(다리 길이 측정), `BernardTuning`(대기 자세 다리 4칸·숨쉬기 무릎, idleKneeBend 기본 10→12), `SETUP` 76. 위험: 발목 평행은 작은 각도 근사(각도 합을 빼기).

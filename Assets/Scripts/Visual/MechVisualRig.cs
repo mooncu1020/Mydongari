@@ -166,6 +166,8 @@ namespace MyDongari.Visual
         private float _slamStart = None;
         // 숨쉬기 세기(0~1). 움직이거나 다른 동작 중이면 breathFadeTime에 걸쳐 0으로
         private float _breathWeight = 1f;
+        // 걸음 동작 세기(0~1, G3). 0이면 대기 자세 다리가 그대로 나온다
+        private float _gaitWeight;
 
         private void Awake()
         {
@@ -491,6 +493,9 @@ namespace MyDongari.Visual
                 if (joint.Target == null) continue;
                 Spring(ref joint.Position, ref joint.PositionVelocity, joint.TargetPosition, v, step);
                 Spring(ref joint.Rotation, ref joint.RotationVelocity, joint.TargetRotation, v, step);
+                // 발목은 위쪽 사슬이 이번 프레임 각도로 정해진 뒤(배열에서 다리·정강이 다음) 평행 보정
+                if (joint == _ankleL) LevelAnkle(joint, v, _legL, _shinL);
+                else if (joint == _ankleR) LevelAnkle(joint, v, _legR, _shinR);
                 Apply(joint);
             }
 
@@ -666,8 +671,8 @@ namespace MyDongari.Visual
                 AddRotation(_armLLower, new Vector3(-v.idleElbowBend, 0f, 0f));
                 AddRotation(_armRLower, new Vector3(-v.idleElbowBend, 0f, 0f));
                 AddRotation(_body, new Vector3(v.idleLean, 0f, 0f));
-                AddRotation(_shinL, new Vector3(v.idleKneeBend, 0f, 0f));
-                AddRotation(_shinR, new Vector3(v.idleKneeBend, 0f, 0f));
+                // 다리 자세는 걷는 동안 걸음 동작에 자리를 내준다 (걸음 세기만큼 줄임)
+                PoseIdleLegs(v, 1f - _gaitWeight);
             }
 
             if (_breathWeight <= 0f || v.breathPeriod <= 0f) return;
@@ -680,7 +685,40 @@ namespace MyDongari.Visual
             AddRotation(_body, new Vector3(-breath * v.breathChestAngle, 0f, 0f));
             AddRotation(_armLUpper, new Vector3(armBreath * v.breathArmAngle, 0f, 0f));
             AddRotation(_armRUpper, new Vector3(armBreath * v.breathArmAngle, 0f, 0f));
+            // 날숨에 무릎이 아주 살짝 굽고 들숨에 펴진다 (접지 보정이 발을 붙여 두므로 몸이 같이 가라앉는다)
+            AddRotation(_shinL, new Vector3(-breath * v.breathKneeAngle, 0f, 0f));
+            AddRotation(_shinR, new Vector3(-breath * v.breathKneeAngle, 0f, 0f));
         }
+
+        /// <summary>
+        /// 대기 자세 다리 (H4): 11자 대신 바깥으로 벌림(L = Z-, R = Z+), 무릎 굽힘(정강이 X+),
+        /// 왼발을 앞으로(앞뒤 엇갈림 idleFootStagger m 상당 각도, 다리 앞으로 = X-). 발목 평행 보정은 스프링 뒤 LevelAnkle.
+        /// </summary>
+        private void PoseIdleLegs(BernardTuning.VisualValues v, float weight)
+        {
+            if (weight <= 0f) return;
+            float stagger = _legLengthL > 0.01f ? Mathf.Atan2(v.idleFootStagger, _legLengthL) * Mathf.Rad2Deg : 0f;
+            AddRotation(_legL, new Vector3(-stagger, 0f, -v.idleLegSpread) * weight);
+            AddRotation(_legR, new Vector3(0f, 0f, v.idleLegSpread) * weight);
+            AddRotation(_shinL, new Vector3(v.idleKneeBend, 0f, 0f) * weight);
+            AddRotation(_shinR, new Vector3(v.idleKneeBend, 0f, 0f) * weight);
+        }
+
+        /// <summary>
+        /// 발목 평행 보정: 위쪽 사슬(골반·엉덩이·다리·정강이)의 앞뒤(X)·좌우(Z) 기울기를 발목에서 되돌려 발바닥을 지면과 평행하게.
+        /// 오프셋 각도가 모두 기체 축 기준이라 작은 각도에선 더해서 빼는 근사로 충분하다. 스프링을 거친 실제 각도로 계산한다.
+        /// </summary>
+        private static void LevelAnkle(Joint ankle, BernardTuning.VisualValues v, Joint a, Joint b, Joint c = null, Joint d = null)
+        {
+            if (ankle == null || ankle.Target == null) return;
+            // 매 프레임 배열을 만들지 않게 사슬은 인자 넷까지
+            Vector3 sum = ChainRotation(a) + ChainRotation(b) + ChainRotation(c) + ChainRotation(d);
+            float w = v.ankleLevelWeight;
+            ankle.Rotation = new Vector3(-sum.x * w, ankle.Rotation.y, -sum.z * w);
+            ankle.RotationVelocity = Vector3.zero;
+        }
+
+        private static Vector3 ChainRotation(Joint j) => j != null && j.Target != null ? j.Rotation : Vector3.zero;
 
         /// <summary>가드·스턴·펀치·런지·태클·앵커 클로·파일드라이버·슬램 포즈가 나오는 중인지 (대기 자세·숨쉬기보다 우선).</summary>
         private bool IsActionPoseActive(BernardTuning.VisualValues v)

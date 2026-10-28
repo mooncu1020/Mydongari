@@ -285,3 +285,6 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (H3) `BernardTuning → 외형 애니메이션 → 접지 보정 → Grounding Enabled` 끄기 → 예전처럼 비주얼 루트가 고정(보정 0)
 - [ ] (H3) `events_*.csv`에 약 1초마다 `ground_offset` 줄(detail = 보정량 m). 정지 때 0 근처, 걸을 때 작게 바뀜
 - [ ] (H3) `Tools/Apply Bernard Model` 콘솔의 "기체 바닥 y"가 캡슐 콜라이더 바닥과 같음
+- [ ] (H4) 서 있기 → 다리가 11자가 아니라 바깥으로 살짝 벌어지고 무릎이 굽음, 왼발이 오른발보다 한 뼘(0.15m)쯤 앞. 발바닥은 지면과 평행(발끝·뒤꿈치가 들리지 않음), 두 발 다 바닥에 닿음(낮은 쪽 기준이라 엇갈린 발도 거의 붙음)
+- [ ] (H4) 숨쉬기 때 무릎이 아주 살짝 굽었다 펴지며 몸 전체가 미세하게 오르내림
+- [ ] (H4) `BernardTuning → 외형 애니메이션 → 대기 자세`의 `Idle Leg Spread`·`Idle Knee Bend`·`Idle Foot Stagger`·`Ankle Level Weight`, 숨쉬기의 `Breath Knee Angle`을 바꾸면 바로 반영
