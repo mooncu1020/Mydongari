@@ -210,6 +210,12 @@
 ### [x] G3. 무게감 있는 걸음 (거리 기반 위상, 착지 연출·발소리·카메라 흔들림, 팔 스윙, 가감속 숙임, 스커트)
 ### [x] G4. 제자리 회전 스텝 (60° 이상 벌어지면 두세 걸음)
 
+## Phase J — 2인 대전 점검
+
+### [x] J1. 뼈/슬롯 탐색이 자기 기체 안에서만 되는지
+### [ ] J2. 공유 에셋·static에 런타임 상태가 있는지
+### [ ] J3. P2 락온 떨림
+
 ---
 
 ## 작업 메모 (Claude Code가 태스크마다 추가)
@@ -266,3 +272,4 @@
 - **G2** 완료. 신규 `Core/MechFacing.cs`(`IUpperBodyFacing`, `MechFacing.AttackForward` — 상하체 분리 리그면 상체 방향, 아니면 transform.forward), 신규 `Visual/MechVisualRig.Locomotion.cs`(하체 = 이동 방향·회전 속도 상한·뒷걸음, 상체 = 카메라/하드 락온 상대, 비틀림 ±100° 넘으면 하체 끌림, 머리 ±30°·0.2초 지연, 순간이동 시 맞춤), `MechVisualRig`(`IUpperBodyFacing` 구현, `Joint.Yaw`), `BernardTuning`(상하체 분리 8칸). 공격 방향 transform.forward → AttackForward로 바꾼 곳: `MeleeSystem.IsInFrontArc`(펀치·태클 부채꼴), `ImpactSlam.TryActivate`(슬램 부채꼴), `AnchorClaw.Fire`(목표 없을 때), `ThrusterLunge.BeginDash`(카메라 없을 때), `MeleeDummy.IsAimed`(봇 조준), `WeaponSystem.TryFire`(카메라 없을 때 사격). 위험: 하드 락온 중 상체가 기체 루트보다 빨리 상대를 향해 펀치 부채꼴 판정이 조금 후해질 수 있음.
 - **G3** 완료. 바뀐 파일: `MechVisualRig.Locomotion`(`PoseGait` — 거리 기반 위상·보폭 걷기/달리기/질주, 엉덩이 각도 = 보폭·다리 길이, 스윙 ease-in 들기·빠른 내려놓기 무릎, 착지 이벤트 `OnFootstep`, 착지 꺼짐 = 디딘 다리 무릎 추가 굽힘(`KneeBendForDrop`), 상체 0.1초 지연, 골반 기울임, 팔 반대 스윙·팔꿈치 지연, 가감속 숙임, 스커트 느슨한 스프링), `MechVisualRig`(하체 있으면 `PoseGait`/없으면 예전 `PoseMovement`, 스커트 스프링 분기, 숨쉬기 복귀 `stopBlendTime`), `MechVisualRig.Grounding`(쓰지 않게 된 의도적 하강 제거), `CombatFeedback`(`Footstep Clip`·`Footstep Volume`), `MechCamera`(`AddShake`, 내 기체 발소리 흔들림), `BernardTuning`(무게감 걸음·착지·팔 스윙·가감속·스커트 23칸). 위험: 실제 bernard 뼈 축으로 각도 방향 확인 안 됨 — 거꾸로면 각 값 부호로 조정.
 - **G4** 완료. 바뀐 파일: `MechVisualRig.Locomotion`(`UpdateTurnSteps` — 서 있고 상하체가 60° 이상 벌어지면 2~3걸음(각 0.25초, 남은 각도 ÷ 남은 걸음)으로 하체 yaw를 끊어 돌림, 도는 쪽 발부터 번갈아 들기 `PoseTurnStep`, 걸음마다 `Land`로 발소리·흔들림, 움직이면 취소), `BernardTuning`(제자리 회전 스텝 6칸). 위험: 디딘 발도 골반과 같이 돌아 바닥에서 약간 비틀려 보일 수 있음(IK 없음).
+- **J1** 완료. 점검 결과: 런타임(`MechVisualRig`·H1 구조 변경·G1 자동 탐색·접지 보정·`MechFacing`)엔 GameObject.Find/FindObjectOfType/FindObjectsByType/씬 이름 검색이 없음 — 전부 자기 기체 `GetComponentsInChildren`/`GetComponent`. 씬 검색은 에디터 메뉴뿐(`BernardModelSetup`·`ModelImportSetup`·`AnimatorSetup`의 `FindObjectsByType<MechVisualRig>`는 기체 자체를 찾는 용도, 뼈는 각 기체 bernard 아래에서만 찾음). 바뀐 파일: `MechVisualRig`(`OwnBone` — 슬롯 뼈·구조 변경 대상이 자기 자식이 아니면 에러 후 비움), `Editor/BernardModelSetup`(연결 후 슬롯 소유 검사). 원인 아님(방어만 추가).

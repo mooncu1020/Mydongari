@@ -149,6 +149,14 @@ namespace MyDongari.EditorTools
             // 5. 슬롯을 bernard의 같은 이름 뼈로 다시 연결. 못 찾은 슬롯은 경고
             var optionalMissing = new List<string>();
             List<string> missing = VisualRigSetup.AssignSlots(rig, instance.transform, optionalMissing);
+            // 연결한 슬롯 뼈가 전부 이 기체의 bernard 아래인지 확인 (J1: 다른 기체의 뼈를 가리키면 두 기체가 같은 뼈를 덮어쓴다)
+            SerializedObject check = new SerializedObject(rig);
+            foreach (string field in MechVisualRig.SlotFieldNames)
+            {
+                Transform bone = check.FindProperty(field + ".target").objectReferenceValue as Transform;
+                if (bone != null && !bone.IsChildOf(instance.transform))
+                    Debug.LogError($"[Apply Bernard Model] {label}: 슬롯 {field}의 뼈 '{bone.name}'가 이 기체의 bernard 아래가 아닙니다.", rig);
+            }
             foreach (string slot in missing)
                 Debug.LogWarning($"[Apply Bernard Model] {label}: '{slot}' 뼈를 찾지 못했습니다 (이 부품은 움직이지 않음).");
             foreach (string slot in optionalMissing)

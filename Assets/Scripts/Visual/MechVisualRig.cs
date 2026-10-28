@@ -223,15 +223,31 @@ namespace MyDongari.Visual
         /// </summary>
         private void RestructureLowerBody()
         {
-            Transform bodyBone = body != null ? body.target : null;
+            Transform bodyBone = OwnBone(body != null ? body.target : null);
             if (bodyBone == null) return;
-            Transform pelvisBone = pelvis != null && pelvis.target != null ? pelvis.target : FindBone(PelvisName);
+            Transform pelvisBone = OwnBone(pelvis != null && pelvis.target != null ? pelvis.target : FindBone(PelvisName));
             if (pelvisBone == null || pelvisBone == bodyBone || !pelvisBone.IsChildOf(bodyBone)) return;
             Transform root = bodyBone.parent;
             if (root == null) return;
 
             pelvisBone.SetParent(root, true);
             bodyBone.SetParent(pelvisBone, true);
+        }
+
+        /// <summary>
+        /// 슬롯 뼈가 이 기체 아래에 있는지 검사한다 (J1). 다른 기체(복제 전 원본 등)의 뼈를 가리키면 두 기체가 같은 뼈를
+        /// 서로 덮어써서 파츠가 튄다 — 에러를 남기고 그 슬롯은 비운다(움직이지 않음).
+        /// </summary>
+        private Transform OwnBone(Transform bone)
+        {
+            if (bone == null) return null;
+            if (bone == transform || !bone.IsChildOf(transform))
+            {
+                Debug.LogError($"[MechVisualRig] {name}: 슬롯 뼈 '{bone.name}'({bone.root.name} 아래)가 이 기체 아래가 아니라 무시합니다. " +
+                               "Tools/Apply Bernard Model을 다시 실행하세요.", this);
+                return null;
+            }
+            return bone;
         }
 
         /// <summary>기체 아래에서 이름으로 뼈를 찾는다. 같은 이름의 뼈와 메시가 둘 다 있으면 뼈(메시 없는 Transform)를 고른다.</summary>
@@ -346,7 +362,7 @@ namespace MyDongari.Visual
 
         private Joint Bind(RigSlot slot)
         {
-            var joint = new Joint { Slot = slot, Target = slot != null ? slot.target : null };
+            var joint = new Joint { Slot = slot, Target = OwnBone(slot != null ? slot.target : null) };
             if (joint.Target != null)
             {
                 joint.RestPosition = joint.Target.localPosition;

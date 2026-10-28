@@ -306,3 +306,5 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (G4) bernard로 가만히 서서 카메라를 천천히 옆으로 60° 넘게 돌림 → 상체가 먼저 돌고, 하체가 두세 걸음(발을 번갈아 들며) 끊어서 돌아 따라옴. 걸음마다 발소리(Footstep Clip)·약한 흔들림
 - [ ] (G4) 60° 미만이면 하체가 안 돎. 스텝 중에 걷기 시작하면 바로 걸음 동작으로 바뀜
 - [ ] (G4) `BernardTuning → 제자리 회전 스텝` 값(Trigger·Max Angle·Time·Knee·Hip Lift·Intensity)을 바꾸면 바로 반영
+- [ ] (J1) 2인 대전 시작 → 콘솔에 `[MechVisualRig] …이 기체 아래가 아니라 무시합니다` 에러가 없음. 있으면 그 기체 이름·뼈 이름을 보고 `Tools/Apply Bernard Model` 다시 실행
+- [ ] (J1) `Tools/Apply Bernard Model` → `슬롯 …의 뼈가 이 기체의 bernard 아래가 아닙니다` 에러 없음
