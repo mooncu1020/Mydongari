@@ -60,6 +60,12 @@ namespace MyDongari.Feedback
         [SerializeField] private AudioClip tackleHitClip;
         [Tooltip("런지가 그대로 맞았을 때")]
         [SerializeField] private AudioClip lungeHitClip;
+        [Tooltip("앵커 클로가 손을 떠날 때")]
+        [SerializeField] private AudioClip anchorFireClip;
+        [Tooltip("앵커 클로가 박혔을 때")]
+        [SerializeField] private AudioClip anchorHitClip;
+        [Tooltip("앵커 클로가 빗나가 감겨 돌아올 때")]
+        [SerializeField] private AudioClip anchorMissClip;
         [Range(0f, 1f)] [SerializeField] private float sfxVolume = 1f;
 
         /// <summary>기체 하나의 피드백 상태 (이전 프레임 플래그로 "막 그렇게 됐다"를 감지).</summary>
@@ -133,11 +139,21 @@ namespace MyDongari.Feedback
                 MechTuning tuning = mech.GetComponent<MechTuning>();
                 Action<GameObject> onGrab = target => ErrorLog.Run(() =>
                 {
+                    Play(anchorHitClip);
                     BernardTuning values = tuning != null ? tuning.Values : BernardTuning.Fallback;
                     if (values.AnchorClaw.hookImpactStun > 0f) OnGrabbed(target);
                 }, "CombatFeedback.onGrab");
+                Action onFire = () => ErrorLog.Run(() => Play(anchorFireClip), "CombatFeedback.onClawFire");
+                Action onMiss = () => ErrorLog.Run(() => Play(anchorMissClip), "CombatFeedback.onClawMiss");
                 claw.OnGrabbed += onGrab;
-                _unsubscribers.Add(() => claw.OnGrabbed -= onGrab);
+                claw.OnFired += onFire;
+                claw.OnMissed += onMiss;
+                _unsubscribers.Add(() =>
+                {
+                    claw.OnGrabbed -= onGrab;
+                    claw.OnFired -= onFire;
+                    claw.OnMissed -= onMiss;
+                });
             }
         }
 

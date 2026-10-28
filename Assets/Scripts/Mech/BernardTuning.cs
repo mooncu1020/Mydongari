@@ -245,7 +245,31 @@ namespace MyDongari.Mech
             public float pullDuration = 1.5f;
             [Tooltip("상대가 이 거리(m) 안으로 끌려오면 당김 종료")]
             public float pullStopDistance = 3f;
+            [Tooltip("쿨다운(초). 클로가 손을 떠난 순간(예비 동작 끝)부터 센다")]
             public float cooldown = 5f;
+
+            [Header("발사 (투사체 — 유도 없음, 발사 순간 상대 위치로 일직선)")]
+            [Tooltip("예비 동작(초): 팔을 뒤로 당기고 손끝이 빛난다. 이 동안 스턴되면 취소(쿨다운 안 씀)")]
+            public float windupTime = 0.2f;
+            [Tooltip("클로가 날아가는 속도(m/s)")]
+            public float projectileSpeed = 40f;
+            [Tooltip("사거리(m). 손에서 이만큼 날아가도 못 맞으면 빗나감")]
+            public float range = 12f;
+            [Tooltip("클로 판정 반지름(m). 이 굵기로 지나간 길을 훑는다")]
+            public float hitRadius = 0.5f;
+            [Tooltip("빗나간 뒤 와이어가 감겨 돌아오는 속도(m/s)")]
+            public float retractSpeed = 40f;
+            [Tooltip("외형 리그가 없는 기체의 발사 위치(기체 기준 로컬 m). 리그가 있으면 왼손 끝")]
+            public Vector3 launchOffset = new Vector3(-0.55f, 0.6f, 0.5f);
+
+            [Header("와이어·발광 표시")]
+            public float wireWidth = 0.06f;
+            public Color wireColor = new Color(0.75f, 0.75f, 0.8f);
+            [Tooltip("날아가는 클로 머리 크기(m)")]
+            public float clawHeadSize = 0.3f;
+            [Tooltip("예비 동작 끝에 손끝 발광 구의 크기(m). 0에서 이 크기로 커진다")]
+            public float glowSize = 0.45f;
+            public Color glowColor = new Color(1f, 0.85f, 0.3f);
 
             [Header("훅 연출")]
             [Tooltip("그랩이 박히는 순간 확 끌려오는 초기 속도. pullSpeed보다 커야 '훅' 느낌이 남")]

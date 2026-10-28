@@ -184,6 +184,18 @@
 - 안쪽 굴리기 슬라이딩: 각도 해제 때 L이 시계(↗ 쪽)·R이 반시계(↖ 쪽)로 모이며 벌어졌으면 0.2초 슬라이딩 대기, 다른 방향은 바로 제동.
 - Sprint 액션 패드 L3 바인딩 삭제 (키보드 Space 유지).
 
+## Phase F — 로케 피드백 반영
+
+### [x] F1. 앵커 클로를 피할 수 있게 (투사체)
+- 예비 동작 0.2초(팔 당김 + 손끝 발광) → 발사 순간 상대 위치로 일직선 40m/s·사거리 12m, 와이어 LineRenderer. 유도 없음.
+- 빗나가면 감겨 돌아옴. 쿨다운 5초는 발사 순간부터. 발사·명중·빗나감 SFX 슬롯(CombatFeedback).
+
+### [ ] F2. 전력질주 풀림과 카메라 튐 수정
+- 해제 이유·스틱 값·각도 로그, 원시 스틱끼리 각도 비교, 진입 판정·질주 중·해제 후 R스틱 중립 복귀까지 카메라 회전 입력 차단(카메라는 진행 방향 뒤로), 해제 조건 0.1초 연속, 유지 스틱 크기 기준 분리.
+
+### [ ] F3. 대기 자세와 숨쉬기
+- 대기 포즈 오프셋, 숨쉬기(Body 상하·가슴, 팔 지연), 걷기 이상이면 0.2초에 걸쳐 끔, 무릎 뼈(Shin.L/R) 선택.
+
 ---
 
 ## 작업 메모 (Claude Code가 태스크마다 추가)
@@ -225,3 +237,4 @@
 - **E6.1** 완료. 바뀐 파일: `TwinStickSprintInput`(`AngleRoll` 이유, `IsInwardRoll` — 마지막 유지 프레임의 두 스틱 사이 방향 기준, L은 시계·R은 반시계로 둘 다 돌아야 함), `SprintState`(유지 방향 기억, 안쪽 굴리기면 대기 + 그 프레임에 바로 슬라이딩 판정), `PlayLogger`(`sprint_exit_angle_roll`), `InputSystem_Actions.inputactions`(Sprint L3 바인딩 삭제), 주석·`GAME_SPEC`·`QUESTIONS`(E6 답 기록)·`TEST_CHECKLIST`. 위험: 한쪽 스틱만 먼저 크게 돌리면(다른 쪽이 아직 그대로) 각도 해제 순간 "둘 다 돎"이 아니라 제동된다 — 실기에서 자주 그러면 기준을 "한쪽은 돌고 다른 쪽은 반대로 안 돎"으로 완화.
 - **E5.1** (주먹 슬롯 선택 사항, TASKS 외 추가 작업) 완료. 바뀐 파일: `MechVisualRig`(`OptionalSlotNames`·`IsOptionalSlot`, `GetPunchPoint` — 주먹 → 아래팔 끝 → 루트, 선택 시 빨간 구 기즈모), `Editor/VisualRigSetup`(`AssignSlots`가 주먹은 경고 목록에서 빼고 따로 담음), `Editor/ModelImportSetup`(주먹 없음 안내), `MODEL_IMPORT.md`. 펀치 판정(`MeleeSystem.ResolvePunch`)은 여전히 기체 루트 중심이라 `GetPunchPoint`를 쓰는 곳은 아직 없음. 위험: 끝 뼈 없는 리그는 '아래팔 = 위팔 길이' 근사.
 - **E5.2** (bernard 모델 적용 메뉴, TASKS 외 추가 작업) 완료. 신규 `Editor/BernardModelSetup`(`Tools/Apply Bernard Model` — Mech·Mech_P2 이름으로 찾음, 임시 부품 렌더러만 끔, 메시 경계로 높이 비교 배율, 캡슐 바닥에 발 맞춤, `AssignSlots` 재사용, 이전 bernard 프리팹 인스턴스 삭제), `SETUP.md` 73, `TEST_CHECKLIST`. 위험: bernard의 메시 높이에 안테나 등 돌출부가 있으면 키 기준이 달라져 조금 작게 맞춰짐 — 그럴 땐 배율을 손으로 조정.
+- **F1** 완료. 바뀐 파일: `AnchorClaw`(단계 Ready/Windup/Flying/Retracting/Pulling, SphereCastAll로 지나간 길 판정, 발사 위치 = 리그 `GetPunchPoint(false)`, 와이어·클로 머리·발광을 기체 밖 오브젝트로 생성(Sprites/Default), 이벤트 `OnWindupStarted`·`OnFired`·`OnMissed`), `BernardTuning`(앵커 클로 발사·표시 수치), `MechVisualRig`(예비 동작 팔 당김·비행 중 팔 뻗기), `CombatFeedback`(SFX 3칸), `PlayLogger`(`anchor_fire`·`anchor_miss`), `GAME_SPEC` 7장, `SETUP` 74, `QUESTIONS`. 위험: 예전엔 락온만 되면 50m에서도 잡혔는데 이제 12m 제한 — 연습 봇 등 거리가 먼 상황에서 체감이 달라짐. 대기 0.2초 동안 상대가 리그에 없는 위치로 사라지면(파괴) 정면으로 쏨.

@@ -617,7 +617,22 @@ namespace MyDongari.Visual
                 }
             }
 
-            // 앵커 클로: 왼팔 뻗기
+            // 앵커 클로 발사: 예비 동작 = 왼팔을 뒤로 당김, 날아가는·감겨 오는 동안 = 왼팔 뻗기
+            if (_claw != null)
+            {
+                AnchorClaw.ClawPhase phase = _claw.Phase;
+                if (phase == AnchorClaw.ClawPhase.Windup)
+                {
+                    SetRotation(_armLUpper, new Vector3(v.anticipationPullback, 0f, 0f));
+                }
+                else if (phase == AnchorClaw.ClawPhase.Flying || phase == AnchorClaw.ClawPhase.Retracting)
+                {
+                    SetRotation(_armLUpper, new Vector3(v.clawArmAngle, 0f, 0f));
+                    SetRotation(_armLLower, new Vector3(v.punchElbowAngle, 0f, 0f));
+                }
+            }
+
+            // 앵커 클로 명중: 왼팔 뻗기
             t = _clock - _clawStart;
             if (t >= 0f && t < v.clawHoldTime)
             {

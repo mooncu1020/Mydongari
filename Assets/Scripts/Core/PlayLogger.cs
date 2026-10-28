@@ -186,8 +186,17 @@ namespace MyDongari.Core
             if (claw != null)
             {
                 Action<GameObject> onGrab = _ => ErrorLog.Run(() => Count(index, "anchor_hit"), "PlayLogger.onGrab");
+                Action onFire = () => ErrorLog.Run(() => Count(index, "anchor_fire"), "PlayLogger.onClawFire");
+                Action onMiss = () => ErrorLog.Run(() => Count(index, "anchor_miss"), "PlayLogger.onClawMiss");
                 claw.OnGrabbed += onGrab;
-                _unsubscribers.Add(() => claw.OnGrabbed -= onGrab);
+                claw.OnFired += onFire;
+                claw.OnMissed += onMiss;
+                _unsubscribers.Add(() =>
+                {
+                    claw.OnGrabbed -= onGrab;
+                    claw.OnFired -= onFire;
+                    claw.OnMissed -= onMiss;
+                });
             }
 
             MechStateMachine sm = mech.GetComponent<MechStateMachine>();
