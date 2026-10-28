@@ -139,12 +139,17 @@ namespace MyDongari.EditorTools
             foreach (string slot in optionalMissing)
                 Debug.LogWarning($"[Apply Bernard Model] {label}: '{slot}' 뼈를 찾지 못했습니다 (선택 슬롯 — 아래팔 끝을 펀치 지점으로 씀).");
 
-            // Apply Model To Mechs와 같게 Animator를 리그에 연결하고, 반복 동작 컨트롤러가 있으면 붙인다
-            Animator animator = instance.GetComponentInChildren<Animator>(true);
+            // bernard는 MechVisualRig만 움직인다: FBX가 붙인 Animator는 컨트롤러를 비우고 끈다
+            // (반복 동작 컨트롤러가 붙으면 같은 이름의 뼈를 Animator도 움직여서 리그와 다툰다). 리그의 Animator 칸도 비운다
+            foreach (Animator animator in instance.GetComponentsInChildren<Animator>(true))
+            {
+                animator.runtimeAnimatorController = null;
+                animator.applyRootMotion = false;
+                animator.enabled = false;
+            }
             SerializedObject rigSo = new SerializedObject(rig);
-            rigSo.FindProperty("animator").objectReferenceValue = animator;
+            rigSo.FindProperty("animator").objectReferenceValue = null;
             rigSo.ApplyModifiedProperties();
-            if (animator != null) AnimatorSetup.Configure(animator, AnimatorSetup.LoadController());
 
             // 7. 저장 표시
             EditorSceneManager.MarkSceneDirty(mech.gameObject.scene);

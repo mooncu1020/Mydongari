@@ -101,9 +101,8 @@ namespace MyDongari.Visual
             public Transform Target;
             public Vector3 RestPosition;
             public Quaternion RestRotation;
-            // 처음 자세에서 잰 "기체 기준 → 이 부품 기준" 변환 (회전 오프셋·위치 오프셋용)
+            // 처음 자세에서 잰 "기체 기준 → 이 부품 기준" 회전 (회전 오프셋용)
             public Quaternion BoneFromMech = Quaternion.identity;
-            public Quaternion ParentFromMech = Quaternion.identity;
             // 이번 프레임 기준 자세, 지난 프레임에 직접 써 넣은 값 (Animator가 안 건드린 뼈 구분용)
             public Vector3 BasePosition;
             public Quaternion BaseRotation;
@@ -170,6 +169,8 @@ namespace MyDongari.Visual
                 // 모델 애니메이션이 기체(물리)를 움직이면 안 된다
                 animator.applyRootMotion = false;
                 animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                // 컨트롤러가 없는 Animator(FBX가 자동으로 붙인 것)는 할 일이 없으니 꺼서 뼈를 절대 건드리지 않게 한다
+                if (animator.runtimeAnimatorController == null) animator.enabled = false;
             }
             BindJoints();
         }
@@ -272,8 +273,6 @@ namespace MyDongari.Visual
                 joint.RestRotation = joint.Target.localRotation;
                 Quaternion mechInverse = Quaternion.Inverse(transform.rotation);
                 joint.BoneFromMech = Quaternion.Inverse(mechInverse * joint.Target.rotation);
-                Transform parent = joint.Target.parent;
-                joint.ParentFromMech = parent != null ? Quaternion.Inverse(mechInverse * parent.rotation) : Quaternion.identity;
             }
             return joint;
         }
@@ -503,15 +502,22 @@ namespace MyDongari.Visual
             return a.x == b.x && a.y == b.y && a.z == b.z;
         }
 
-        private static void Apply(Joint joint)
+        private void Apply(Joint joint)
         {
             // 오프셋은 기체 축(X 오른쪽, Y 위, Z 앞)으로 정의 → 슬롯 추가 보정 → 처음 자세의 뼈 방향으로 부품 축에 맞춰
-            // 기준 자세 위에 얹는다
+            // 기준 자세(원래 회전) 위에 얹는다: 원래 회전 * 오프셋 회전
             Quaternion correction = Quaternion.Euler(joint.Slot.rotationCorrection);
             Quaternion mechOffset = correction * Quaternion.Euler(joint.Rotation) * Quaternion.Inverse(correction);
             Quaternion localOffset = joint.BoneFromMech * mechOffset * Quaternion.Inverse(joint.BoneFromMech);
             joint.Target.localRotation = joint.BaseRotation * localOffset;
-            joint.Target.localPosition = joint.BasePosition + joint.ParentFromMech * joint.Position;
+
+            // 원래 위치 + 오프셋 위치. 오프셋은 기체 축의 미터 값이라 부모의 회전·배율로 부모 로컬 단위로 바꿔 더한다.
+            // (예전엔 회전만 바꾸고 미터 값을 그대로 더해서, 부모 뼈 배율이 큰 FBX(bernard)는 숨쉬기 1.5cm가 수 m로 커져
+            // 몸통이 공중으로 뜨고 메시가 늘어났다. 임시 상자는 부모 배율 1이라 결과가 같다)
+            Vector3 worldOffset = transform.TransformDirection(joint.Position);
+            Transform parent = joint.Target.parent;
+            Vector3 localPositionOffset = parent != null ? parent.InverseTransformVector(worldOffset) : worldOffset;
+            joint.Target.localPosition = joint.BasePosition + localPositionOffset;
             joint.WrittenRotation = joint.Target.localRotation;
             joint.WrittenPosition = joint.Target.localPosition;
             joint.HasWritten = true;
