@@ -9,6 +9,7 @@ using MyDongari.Combat.Skills;
 using MyDongari.Mech;
 using MyDongari.Movement;
 using MyDongari.Input;
+using MyDongari.Visual;
 
 namespace MyDongari.Core
 {
@@ -198,6 +199,16 @@ namespace MyDongari.Core
                     claw.OnFired -= onFire;
                     claw.OnMissed -= onMiss;
                 });
+            }
+
+            // 접지 보정량을 가끔(튜닝 groundLogInterval) 이벤트로. 카운트는 안 올린다
+            MechVisualRig rig = mech.GetComponent<MechVisualRig>();
+            if (rig != null)
+            {
+                Action<float> onGround = offset => ErrorLog.Run(
+                    () => LogEvent(index, "ground_offset", offset.ToString("F3", CultureInfo.InvariantCulture)), "PlayLogger.onGround");
+                rig.OnGroundSample += onGround;
+                _unsubscribers.Add(() => rig.OnGroundSample -= onGround);
             }
 
             MechStateMachine sm = mech.GetComponent<MechStateMachine>();

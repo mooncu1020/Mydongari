@@ -137,7 +137,7 @@ namespace MyDongari.EditorTools
 
                 // 3. 크기를 맞춘 뒤 다시 재서 발바닥(바운드 최저점)을 기체 바닥(캡슐 아래)에 맞춘다
                 TryGetRendererBounds(instance.transform, out modelBounds);
-                float feetY = mech.TransformPoint(new Vector3(0f, FeetHeight(mech), 0f)).y;
+                float feetY = GroundWorldY(mech);
                 instance.transform.position += Vector3.up * (feetY - modelBounds.min.y);
                 TryGetRendererBounds(instance.transform, out modelBounds);
 
@@ -264,12 +264,19 @@ namespace MyDongari.EditorTools
             else bounds.Encapsulate(point);
         }
 
-        /// <summary>루트 기준 발바닥 높이: 캡슐 콜라이더 바닥 (없으면 -1). ModelImportSetup과 같은 기준.</summary>
-        private static float FeetHeight(Transform mech)
+        /// <summary>
+        /// 기체 바닥(월드 y) = 기체 루트의 물리 콜라이더(트리거 제외) 바운드 최저점. 런타임 접지 보정(MechVisualRig)과 같은 기준.
+        /// 콜라이더가 없으면 루트 기준 -1 m.
+        /// </summary>
+        private static float GroundWorldY(Transform mech)
         {
-            CapsuleCollider capsule = mech.GetComponent<CapsuleCollider>();
-            if (capsule == null || capsule.direction != 1) return -1f;
-            return capsule.center.y - capsule.height * 0.5f;
+            float lowest = float.MaxValue;
+            foreach (Collider col in mech.GetComponents<Collider>())
+            {
+                if (col == null || !col.enabled || col.isTrigger) continue;
+                if (col.bounds.min.y < lowest) lowest = col.bounds.min.y;
+            }
+            return lowest < float.MaxValue ? lowest : mech.TransformPoint(new Vector3(0f, -1f, 0f)).y;
         }
     }
 }

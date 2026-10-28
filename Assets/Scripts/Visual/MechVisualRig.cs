@@ -28,7 +28,7 @@ namespace MyDongari.Visual
     /// (임포트된 뼈의 축·롤이 제각각이어도 같은 각도가 같은 방향으로 움직이게).
     /// 수치는 BernardTuning의 Visual 묶음.
     /// </summary>
-    public class MechVisualRig : MonoBehaviour
+    public partial class MechVisualRig : MonoBehaviour
     {
         /// <summary>슬롯 이름 = 모델 부품 이름 (E2 모델 교체 메뉴가 이 이름으로 찾는다).</summary>
         public static readonly string[] SlotNames =
@@ -89,12 +89,19 @@ namespace MyDongari.Visual
         [SerializeField] private RigSlot shinL = new RigSlot();
         [Tooltip("오른 정강이 뼈. 비워 두면 기체 아래에서 'Shin.R'을 찾는다")]
         [SerializeField] private RigSlot shinR = new RigSlot();
+        [Header("발목 (선택 — 비우면 이름으로 찾고, 없으면 다리 끝으로 접지)")]
+        [Tooltip("왼 발목 뼈. 비워 두면 기체 아래에서 'Ankle.L'을 찾는다")]
+        [SerializeField] private RigSlot ankleL = new RigSlot();
+        [Tooltip("오른 발목 뼈. 비워 두면 기체 아래에서 'Ankle.R'을 찾는다")]
+        [SerializeField] private RigSlot ankleR = new RigSlot();
 
         /// <summary>무릎 뼈 이름. 필수 슬롯이 아니라 SlotNames(모델 교체 메뉴 경고 대상)에 넣지 않는다.</summary>
         public const string ShinLName = "Shin.L";
         public const string ShinRName = "Shin.R";
         /// <summary>하체 뼈 이름. bernard 원본 계층(Root → Body → Pelvis)을 시작할 때 Root → Pelvis → Body로 바꾸는 데 쓴다 (H1).</summary>
         public const string PelvisName = "Pelvis";
+        public const string AnkleLName = "Ankle.L";
+        public const string AnkleRName = "Ankle.R";
 
         /// <summary>슬롯 하나의 런타임 상태: 쉴 때 자세 + 스프링(위치·회전 오프셋).</summary>
         private class Joint
@@ -119,7 +126,7 @@ namespace MyDongari.Visual
             public Vector3 TargetRotation;
         }
 
-        private Joint _body, _head, _armLUpper, _armLLower, _fistL, _armRUpper, _armRLower, _fistR, _legL, _legR, _shinL, _shinR;
+        private Joint _body, _head, _armLUpper, _armLLower, _fistL, _armRUpper, _armRLower, _fistR, _legL, _legR, _shinL, _shinR, _ankleL, _ankleR;
         private Joint[] _joints;
 
         private TuningRef _tuning;
@@ -257,6 +264,7 @@ namespace MyDongari.Visual
                 joint.Target.localPosition = joint.RestPosition;
                 joint.Target.localRotation = joint.RestRotation;
             }
+            ResetGrounding();
         }
 
         /// <summary>
@@ -277,7 +285,10 @@ namespace MyDongari.Visual
             // 무릎은 선택: 칸이 비어 있으면 모델 아래에서 이름으로 찾는다 (모델 교체 메뉴는 이 칸을 안 채운다)
             _shinL = Bind(ResolveOptionalSlot(shinL, ShinLName));
             _shinR = Bind(ResolveOptionalSlot(shinR, ShinRName));
-            _joints = new[] { _body, _head, _armLUpper, _armLLower, _fistL, _armRUpper, _armRLower, _fistR, _legL, _legR, _shinL, _shinR };
+            _ankleL = Bind(ResolveOptionalSlot(ankleL, AnkleLName));
+            _ankleR = Bind(ResolveOptionalSlot(ankleR, AnkleRName));
+            _joints = new[] { _body, _head, _armLUpper, _armLLower, _fistL, _armRUpper, _armRLower, _fistR, _legL, _legR, _shinL, _shinR, _ankleL, _ankleR };
+            SetupGrounding();
         }
 
         /// <summary>칸이 비어 있으면 같은 이름의 Transform을 찾아 런타임 슬롯을 만든다 (뼈 우선, 없으면 그대로 빈 칸).</summary>
@@ -482,6 +493,9 @@ namespace MyDongari.Visual
                 Spring(ref joint.Rotation, ref joint.RotationVelocity, joint.TargetRotation, v, step);
                 Apply(joint);
             }
+
+            // 포즈를 다 적용한 다음 발바닥 높이로 비주얼 루트 Y를 맞춘다 (H3)
+            UpdateGrounding(v, dt);
         }
 
         private static void Spring(ref Vector3 x, ref Vector3 velocity, Vector3 target, BernardTuning.VisualValues v, float dt)

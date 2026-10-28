@@ -443,6 +443,15 @@ namespace MyDongari.Mech
             public float breathFadeTime = 0.2f;
             [Tooltip("상태 머신이 없는 기체(연습 봇)는 이 속도(m/s) 이상이면 움직이는 것으로 본다")]
             public float breathStopSpeed = 0.5f;
+
+            [Header("접지 보정 (낮은 쪽 발바닥을 물리 콜라이더 바닥에 맞춤)")]
+            public bool groundingEnabled = true;
+            [Tooltip("비주얼 루트 Y를 목표로 옮기는 시간 상수(초)")]
+            public float groundingSmoothTime = 0.05f;
+            [Tooltip("보정 최대량(m). 이보다 크게 어긋나면 이 값까지만 맞춘다")]
+            public float groundingMaxOffset = 0.5f;
+            [Tooltip("보정량을 PlayLogger 이벤트(ground_offset)로 남기는 간격(초). 0이면 안 남김")]
+            public float groundLogInterval = 1f;
         }
 
         [Header("이동")]

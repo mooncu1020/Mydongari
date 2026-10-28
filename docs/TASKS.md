@@ -200,7 +200,7 @@
 
 ### [x] H1. 런타임 뼈 구조 변경 (Root → Pelvis → Body)
 ### [x] H2. 파츠 누락 점검 (메뉴가 bernard 렌더러를 건드리지 않고 전부 켬)
-### [ ] H3. 접지 보정 (낮은 발바닥을 콜라이더 바닥에)
+### [x] H3. 접지 보정 (낮은 발바닥을 콜라이더 바닥에)
 ### [ ] H4. 대기 자세 다리 (벌림·무릎·발목 평행·앞뒤 엇갈림, 숨쉬기 무릎)
 
 ## Phase G — 이동 연출 (H 구조 기준)
@@ -260,3 +260,4 @@
 - **E5.5** 완료. 원인: `MechVisualRig.Apply`가 위치 오프셋(기체 축 m)을 회전만 바꿔 부모 로컬 좌표에 그대로 더해서, 부모 뼈 배율이 1이 아닌 bernard에선 숨쉬기·걷기 상하가 배율만큼 커져 몸통이 뜨고 메시가 늘어났음(회전은 원래부터 원래 회전 * 오프셋). Animator는 컨트롤러 에셋이 프로젝트에 없어 원인 아님. 바뀐 파일: `MechVisualRig`(위치 오프셋을 부모 `InverseTransformVector`로 변환, `ParentFromMech` 삭제, 컨트롤러 없는 Animator는 Awake에서 끔), `Editor/BernardModelSetup`(bernard Animator 컨트롤러 비우고 끔, 리그 Animator 칸 비움 — AnimatorSetup.Configure 호출 제거). 위험: 플레이로 확인 안 됨.
 - **H1** 완료. 바뀐 파일: `MechVisualRig`(Awake에서 `RestructureLowerBody` — Pelvis가 Body 아래에 있으면 Pelvis → Body 원래 부모(Root), Body → Pelvis로 `SetParent(…, true)` 후 `BindJoints`, `FindBone` 공용). bernard FBX 실제 계층: Mecha_Rig(-90, ×100) → Root → Body → Pelvis → Hip → Leg → Shin → Ankle, 메시는 뼈 자식(스킨 아님). 위험: 슬롯 `Body`가 비어 있으면 바꾸지 않음.
 - **H2** 완료. 바뀐 파일: `Editor/BernardModelSetup`(임시 부품 렌더러 끄기·높이 측정에서 `IsUnderModel` 제외, 새 bernard 아래 꺼진 렌더러를 전부 켜고 이름 출력 — Blender 숨김이 Import Visibility로 꺼져 들어오는 경우). 켜기는 높이 측정 전이라 숨겨졌던 파츠도 키에 들어간다.
+- **H3** 완료. 바뀐 파일: 신규 `Visual/MechVisualRig.Grounding.cs`(partial — 발목 뼈(없으면 다리 뼈) 아래 메시 경계 꼭짓점을 Awake에 뼈 기준으로 캐시, LateUpdate 마지막에 낮은 발바닥 vs 기체 루트 콜라이더 바닥, 비주얼 루트 Y만 0.05초 시간 상수로 보정, `OnGroundSample`), `MechVisualRig`(partial, 선택 슬롯 `ankleL/R` 자동 탐색, `BindJoints` 끝에 `SetupGrounding`, OnDisable 복원), `BernardTuning`(접지 보정 4칸), `PlayLogger`(`ground_offset` 이벤트), `Editor/BernardModelSetup`(발 기준 = 루트 콜라이더 바운드 최저점). 위험: 렌더러 대신 메시 경계로 잼(꺼진 임시 부품도 재려고).
