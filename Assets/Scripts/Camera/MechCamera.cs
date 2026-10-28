@@ -164,28 +164,23 @@ namespace MyDongari.Camera
             bool followVelocity = stateMachine != null && stateMachine.IsCameraFollowingVelocity;
             bool lookBlocked = stateMachine != null && stateMachine.IsLookInputBlocked;
 
+            // 이번 프레임 카메라 위치. 하드 락온 방향도 이 위치에서 잰다 (예전엔 지난 프레임 위치로 재서 내가 움직이는 프레임마다 방향이 튐)
+            Vector3 pivot = target.position + offset;
+
             if (!_isQuickTurning)
             {
                 if (_hardLockTarget != null)
                 {
-                    Vector3 dir = (_hardLockTarget.position - transform.position).normalized;
+                    // 목표 = 상대 기체 루트(보간된 트랜스폼, 출렁이는 뼈 아님)
+                    Vector3 dir = (_hardLockTarget.position - pivot).normalized;
                     float targetYaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
-                    float targetPitch = -Mathf.Asin(dir.y) * Mathf.Rad2Deg;
+                    float targetPitch = -Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f)) * Mathf.Rad2Deg;
 
-                    float yawDiff = Mathf.Abs(Mathf.DeltaAngle(_yaw, targetYaw));
-                    float pitchDiff = Mathf.Abs(targetPitch - _pitch);
-
-                    if (yawDiff < 1f && pitchDiff < 1f)
-                    {
-                        _yaw = targetYaw;
-                        _pitch = targetPitch;
-                    }
-                    else
-                    {
-                        _yaw = Mathf.LerpAngle(_yaw, targetYaw, _hardLockTrackSpeed * Time.deltaTime);
-                        _pitch = Mathf.Lerp(_pitch, targetPitch, _hardLockTrackSpeed * Time.deltaTime);
-                    }
-
+                    // 예전엔 1° 안이면 딱 붙이고 밖이면 따라가기를 번갈아 해서, 목표가 계단처럼 움직이면 화면이 떨렸다.
+                    // 지수 감쇠 한 가지로만 따라간다 (속도 의미는 그대로: 작은 dt에서 hardTrackSpeed·dt와 같음)
+                    float k = 1f - Mathf.Exp(-_hardLockTrackSpeed * Time.deltaTime);
+                    _yaw = Mathf.LerpAngle(_yaw, targetYaw, k);
+                    _pitch = Mathf.Lerp(_pitch, targetPitch, k);
                     _pitch = Mathf.Clamp(_pitch, -verticalClamp, verticalClamp);
                 }
                 else if (followVelocity)
@@ -212,7 +207,7 @@ namespace MyDongari.Camera
                 // 막혀 있고 따라가기도 아니면(질주 해제 후 스틱 중립 대기) 시점을 그대로 둔다
             }
 
-            transform.position = target.position + offset;
+            transform.position = pivot;
             transform.rotation = Quaternion.Euler(_pitch, _yaw, 0f);
             if (_shakeTimer > 0f)
             {

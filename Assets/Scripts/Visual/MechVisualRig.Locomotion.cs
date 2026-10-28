@@ -25,7 +25,8 @@ namespace MyDongari.Visual
         private float _landTime = None;
         private bool _landLeft;
         private float _landIntensity;
-        private Vector3 _lastVelocity;
+        private Vector3 _lastFixedVelocity;
+        private Vector3 _physicsAccel;
         private Vector3 _smoothedAccel;
         // 허벅지(엉덩이 → 무릎)·정강이(무릎 → 발목) 길이(m, 쉴 때 자세). 착지 꺼짐 깊이를 무릎 각도로 바꿀 때 쓴다
         private float _thighL, _thighR, _shinLenL, _shinLenR;
@@ -69,7 +70,8 @@ namespace MyDongari.Visual
             _bodyYaw = yaw;
             _headYaw = yaw;
             _lastRootPosition = transform.position;
-            _lastVelocity = HorizontalVelocity();
+            _lastFixedVelocity = HorizontalVelocity();
+            _physicsAccel = Vector3.zero;
             _smoothedAccel = Vector3.zero;
             _facingReady = true;
         }
@@ -344,16 +346,24 @@ namespace MyDongari.Visual
             return v.elbowSwingAngle * 0.5f * (1f + Mathf.Sin(2f * Mathf.PI * (legPhase - v.elbowSwingLag)));
         }
 
+        private void FixedUpdate()
+        {
+            // 가속도는 물리 스텝마다 잰다. 속도는 물리 스텝에서만 바뀌어서, 렌더 프레임마다 재면
+            // 스텝이 없는 프레임은 0, 있는 프레임은 크게 튀어(프레임이 물리 주기에 가까운 화면 분할에서 특히) 상체가 떨린다 (J3)
+            if (!HasLowerBody) return;
+            Vector3 velocity = HorizontalVelocity();
+            if (Time.fixedDeltaTime > 0f) _physicsAccel = (velocity - _lastFixedVelocity) / Time.fixedDeltaTime;
+            _lastFixedVelocity = velocity;
+        }
+
         /// <summary>가속하면 상체를 숙이고, 브레이크(감속)하면 뒤로 젖힌다. 가속도는 상체 기준으로 본다.</summary>
         private void PoseAccelLean(BernardTuning.VisualValues v, float dt, Vector3 velocity)
         {
             if (dt > 0f)
             {
-                Vector3 accel = (velocity - _lastVelocity) / dt;
                 float k = v.accelSmoothTime > 0f ? 1f - Mathf.Exp(-dt / v.accelSmoothTime) : 1f;
-                _smoothedAccel += (accel - _smoothedAccel) * k;
+                _smoothedAccel += (_physicsAccel - _smoothedAccel) * k;
             }
-            _lastVelocity = velocity;
 
             Vector3 local = Quaternion.Inverse(Quaternion.Euler(0f, _bodyYaw, 0f)) * _smoothedAccel;
             float leanForward = Mathf.Clamp(local.z * v.accelLeanPerMs2, -v.maxAccelLean, v.maxAccelLean);

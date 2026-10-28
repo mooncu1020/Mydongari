@@ -214,7 +214,7 @@
 
 ### [x] J1. 뼈/슬롯 탐색이 자기 기체 안에서만 되는지
 ### [x] J2. 공유 에셋·static에 런타임 상태가 있는지
-### [ ] J3. P2 락온 떨림
+### [x] J3. P2 락온 떨림
 
 ---
 
@@ -274,3 +274,4 @@
 - **G4** 완료. 바뀐 파일: `MechVisualRig.Locomotion`(`UpdateTurnSteps` — 서 있고 상하체가 60° 이상 벌어지면 2~3걸음(각 0.25초, 남은 각도 ÷ 남은 걸음)으로 하체 yaw를 끊어 돌림, 도는 쪽 발부터 번갈아 들기 `PoseTurnStep`, 걸음마다 `Land`로 발소리·흔들림, 움직이면 취소), `BernardTuning`(제자리 회전 스텝 6칸). 위험: 디딘 발도 골반과 같이 돌아 바닥에서 약간 비틀려 보일 수 있음(IK 없음).
 - **J1** 완료. 점검 결과: 런타임(`MechVisualRig`·H1 구조 변경·G1 자동 탐색·접지 보정·`MechFacing`)엔 GameObject.Find/FindObjectOfType/FindObjectsByType/씬 이름 검색이 없음 — 전부 자기 기체 `GetComponentsInChildren`/`GetComponent`. 씬 검색은 에디터 메뉴뿐(`BernardModelSetup`·`ModelImportSetup`·`AnimatorSetup`의 `FindObjectsByType<MechVisualRig>`는 기체 자체를 찾는 용도, 뼈는 각 기체 bernard 아래에서만 찾음). 바뀐 파일: `MechVisualRig`(`OwnBone` — 슬롯 뼈·구조 변경 대상이 자기 자식이 아니면 에러 후 비움), `Editor/BernardModelSetup`(연결 후 슬롯 소유 검사). 원인 아님(방어만 추가).
 - **J2** 점검만(코드 변경 없음). `BernardTuning`(ScriptableObject)에 실행 중 쓰는 곳 없음 — 모든 컴포넌트가 읽기만 하고, 위상·스프링·타이머·속도는 전부 각 컴포넌트 인스턴스 필드(`MechVisualRig`의 Joint·_gaitPhase 등). `TuningRef`는 컴포넌트마다 가진 구조체 필드. static 필드는 `GameManager.Instance`·`ErrorLog`(폴더·훅)·`StatusPopup._font`(공용 폰트)·`BernardTuning._fallback`(읽기 전용 기본 에셋)뿐이라 기체별 상태 없음. 틴트(`MechTint`)는 공유 머티리얼 대신 기체별 `MaterialPropertyBlock`, 앵커 클로 머티리얼은 기체별 생성. 원인 아님.
+- **J3** 완료. 점검: 씬의 Mech·Mech_P2 Rigidbody Interpolate 둘 다 None(`m_Interpolate: 0`) — 같았음. 락온 기준점은 상대 루트(소프트는 콜라이더 중심)라 뼈 아님. 몸체 자동 회전(FixedUpdate, 루트 MoveRotation)과 카메라(LateUpdate, 카메라 yaw)는 서로 다른 것을 돌림. 바뀐 파일: `MechController`(`forceInterpolation` — 시작 시 Interpolate, `ApplyHardLockFacing`이 보간 트랜스폼 대신 두 rb.position 사용), `MechCamera`(하드 락온 방향을 이번 프레임 위치에서 계산, 1° 딱 붙이기/따라가기 번갈아 하던 것을 지수 감쇠 하나로), `MechVisualRig.Locomotion`(가속도를 FixedUpdate에서 물리 스텝마다 계산), `MechVisualRig.Grounding`(보간 위치 기준 바닥). 위험: 보간을 켜면 Update에서 읽는 transform.position이 물리 위치보다 최대 한 스텝 뒤 — 펀치 OverlapSphere 중심이 질주 중 최대 0.4m 늦을 수 있음(판정 수치는 그대로).

@@ -107,7 +107,10 @@ namespace MyDongari.Visual
                 if (col == null || !col.enabled || col.isTrigger) continue;
                 if (col.bounds.min.y < height) height = col.bounds.min.y;
             }
-            return height < float.MaxValue;
+            if (height == float.MaxValue) return false;
+            // 콜라이더 바운드는 물리 위치, 발(트랜스폼)은 보간 위치라 둘의 차이만큼 맞춘다 (Interpolate를 켜면 한 스텝 어긋남, J3)
+            if (_rb != null) height += transform.position.y - _rb.position.y;
+            return true;
         }
 
         private void UpdateGrounding(BernardTuning.VisualValues v, float dt)

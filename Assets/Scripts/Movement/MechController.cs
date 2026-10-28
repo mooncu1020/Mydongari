@@ -26,7 +26,10 @@ namespace MyDongari.Movement
         public InputReader InputReader { get; private set; }
         public MechStateMachine StateMachine { get; private set; }
 
-
+        [Header("물리 보간")]
+        [Tooltip("켜면 시작할 때 Rigidbody Interpolate를 강제로 켠다. 끄면(None) 물리 스텝(50Hz)마다 위치가 계단처럼 바뀌어 " +
+                 "화면 분할처럼 프레임이 물리 주기에 가까울 때 카메라·락온·외형이 떨린다 (J3)")]
+        [SerializeField] private bool forceInterpolation = true;
 
         [Header("카메라")]
         [SerializeField] private BoostGauge boostGauge;
@@ -49,6 +52,7 @@ namespace MyDongari.Movement
         private void Awake()
         {
             Rb = GetComponent<Rigidbody>();
+            if (forceInterpolation && Rb != null) Rb.interpolation = RigidbodyInterpolation.Interpolate;
             InputReader = GetComponent<InputReader>();
             StateMachine = GetComponent<MechStateMachine>();
 
@@ -124,7 +128,10 @@ namespace MyDongari.Movement
         {
             if (!IsHardLockFacing) return;
 
-            Vector3 toTarget = LockOn.Target.position - transform.position;
+            // 물리 스텝이라 보간된 트랜스폼이 아니라 두 리지드바디의 물리 위치로 방향을 잰다 (보간을 켜면 트랜스폼은 한 스텝 뒤라 J3)
+            Rigidbody targetRb = LockOn.Target.GetComponent<Rigidbody>();
+            Vector3 targetPosition = targetRb != null ? targetRb.position : LockOn.Target.position;
+            Vector3 toTarget = targetPosition - Rb.position;
             toTarget.y = 0f;
             if (toTarget.sqrMagnitude < 0.0001f) return;
             Quaternion targetRot = Quaternion.LookRotation(toTarget.normalized, Vector3.up);

@@ -308,3 +308,7 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (G4) `BernardTuning → 제자리 회전 스텝` 값(Trigger·Max Angle·Time·Knee·Hip Lift·Intensity)을 바꾸면 바로 반영
 - [ ] (J1) 2인 대전 시작 → 콘솔에 `[MechVisualRig] …이 기체 아래가 아니라 무시합니다` 에러가 없음. 있으면 그 기체 이름·뼈 이름을 보고 `Tools/Apply Bernard Model` 다시 실행
 - [ ] (J1) `Tools/Apply Bernard Model` → `슬롯 …의 뼈가 이 기체의 bernard 아래가 아닙니다` 에러 없음
+- [ ] (J3) 2인 대전: P1·P2 둘 다 하드 락온(6m 안)한 채 서로 돌며 이동 → P2(와 P1) 화면이 떨리지 않고 부드럽게 상대를 따라감
+- [ ] (J3) 플레이 중 Mech·Mech_P2의 Rigidbody → Interpolate가 `Interpolate`로 표시됨 (`MechController → Force Interpolation` 끄면 None 그대로)
+- [ ] (J3) 2인 대전에서 두 기체가 걷기·달리기·멈추기 할 때 상체·파츠가 튀지 않음. 발이 바닥에 붙어 있음
+- [ ] (J3) 회귀: 라운드 시작 때 기체가 스폰 위치에서 미끄러져 들어오지 않고 바로 서 있음. 펀치 사거리·락온 거리 체감이 예전과 같음
