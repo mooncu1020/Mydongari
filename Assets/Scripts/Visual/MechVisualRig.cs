@@ -93,6 +93,8 @@ namespace MyDongari.Visual
         /// <summary>무릎 뼈 이름. 필수 슬롯이 아니라 SlotNames(모델 교체 메뉴 경고 대상)에 넣지 않는다.</summary>
         public const string ShinLName = "Shin.L";
         public const string ShinRName = "Shin.R";
+        /// <summary>하체 뼈 이름. bernard 원본 계층(Root → Body → Pelvis)을 시작할 때 Root → Pelvis → Body로 바꾸는 데 쓴다 (H1).</summary>
+        public const string PelvisName = "Pelvis";
 
         /// <summary>슬롯 하나의 런타임 상태: 쉴 때 자세 + 스프링(위치·회전 오프셋).</summary>
         private class Joint
@@ -172,7 +174,40 @@ namespace MyDongari.Visual
                 // 컨트롤러가 없는 Animator(FBX가 자동으로 붙인 것)는 할 일이 없으니 꺼서 뼈를 절대 건드리지 않게 한다
                 if (animator.runtimeAnimatorController == null) animator.enabled = false;
             }
+            // 계층을 먼저 바꾸고 나서 원래 자세를 잰다 (바꾼 뒤의 로컬 값이 기준 자세)
+            RestructureLowerBody();
             BindJoints();
+        }
+
+        /// <summary>
+        /// bernard 원본 계층은 Root → Body → Pelvis(→ 다리)라서 상체(Body)를 기울이거나 올리면 다리까지 같이 움직인다.
+        /// 시작할 때 Pelvis를 Root(= Body의 원래 부모) 자식으로, Body를 Pelvis 자식으로 옮긴다 (월드 위치·회전·배율 유지).
+        /// Pelvis가 없거나(임시 상자) Body 아래에 있지 않으면(이미 바뀐 구조) 아무것도 안 한다.
+        /// </summary>
+        private void RestructureLowerBody()
+        {
+            Transform bodyBone = body != null ? body.target : null;
+            if (bodyBone == null) return;
+            Transform pelvisBone = FindBone(PelvisName);
+            if (pelvisBone == null || pelvisBone == bodyBone || !pelvisBone.IsChildOf(bodyBone)) return;
+            Transform root = bodyBone.parent;
+            if (root == null) return;
+
+            pelvisBone.SetParent(root, true);
+            bodyBone.SetParent(pelvisBone, true);
+        }
+
+        /// <summary>기체 아래에서 이름으로 뼈를 찾는다. 같은 이름의 뼈와 메시가 둘 다 있으면 뼈(메시 없는 Transform)를 고른다.</summary>
+        private Transform FindBone(string boneName)
+        {
+            Transform found = null;
+            foreach (Transform t in GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name != boneName) continue;
+                if (t.GetComponent<Renderer>() == null && t.GetComponent<MeshFilter>() == null) return t;
+                if (found == null) found = t;
+            }
+            return found;
         }
 
         private void Start()
@@ -249,19 +284,7 @@ namespace MyDongari.Visual
         private RigSlot ResolveOptionalSlot(RigSlot slot, string boneName)
         {
             if (slot != null && slot.target != null) return slot;
-            Transform found = null;
-            foreach (Transform t in GetComponentsInChildren<Transform>(true))
-            {
-                if (t.name != boneName) continue;
-                // 같은 이름의 뼈와 메시가 둘 다 있으면 뼈(메시 없는 Transform)를 고른다 (모델 교체 메뉴와 같은 규칙)
-                if (t.GetComponent<Renderer>() == null && t.GetComponent<MeshFilter>() == null)
-                {
-                    found = t;
-                    break;
-                }
-                if (found == null) found = t;
-            }
-            return new RigSlot { target = found, rotationCorrection = slot != null ? slot.rotationCorrection : Vector3.zero };
+            return new RigSlot { target = FindBone(boneName), rotationCorrection = slot != null ? slot.rotationCorrection : Vector3.zero };
         }
 
         private Joint Bind(RigSlot slot)
