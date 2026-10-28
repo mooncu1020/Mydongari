@@ -18,6 +18,12 @@ namespace MyDongari.EditorTools
         private const string InstanceName = "Bernard";
         private static readonly string[] MechNames = { "Mech", "Mech_P2" };
 
+        /// <summary>
+        /// 모델 로컬 회전(°). 회전은 계산하지 않고 이 값을 그대로 넣는다 — bernard.fbx는 Bake Axis Conversion을 꺼서
+        /// Blender 축(Z 위)을 Unity 축(Y 위)으로 세우려면 X -90이 필요하다. 다른 모델이면 이 값을 바꾼다.
+        /// </summary>
+        public static Vector3 ModelLocalRotation = new Vector3(-90f, 0f, 0f);
+
         [MenuItem("Tools/Apply Bernard Model")]
         private static void ApplyBernard()
         {
@@ -90,14 +96,14 @@ namespace MyDongari.EditorTools
                 Debug.LogWarning($"[Apply Bernard Model] {label}: 임시 부품 높이를 못 재서 캡슐 높이 {placeholderHeight:0.###}를 기준으로 씁니다.");
             }
 
-            // 3. 비주얼 루트 자식, 위치만 0. 회전·배율은 FBX 프리팹 루트 값을 그대로 둔다 —
-            // Bake Axis Conversion을 끈 FBX는 루트에 축 변환 회전(X -90 등)이 들어 있어서 0으로 덮으면 모델이 눕는다
+            // 3. 비주얼 루트 자식, 위치 0, 회전 = 모델 로컬 회전 필드 값 그대로. 배율은 FBX 프리팹 루트 값에서 시작한다.
+            // 높이 측정·발바닥 맞추기는 회전을 넣은 뒤(선 자세)에 한다
             GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(model, visualRoot);
             Undo.RegisterCreatedObjectUndo(instance, "Instantiate Bernard");
             instance.name = InstanceName;
             Vector3 baseScale = model.transform.localScale;
             instance.transform.localPosition = Vector3.zero;
-            instance.transform.localRotation = model.transform.localRotation;
+            instance.transform.localRotation = Quaternion.Euler(ModelLocalRotation);
             instance.transform.localScale = baseScale;
 
             // 모델 부품은 보이기만: FBX에 콜라이더가 들어 있으면 끈다 (피격은 루트 캡슐)
