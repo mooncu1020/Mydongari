@@ -514,6 +514,20 @@ namespace MyDongari.Mech
             [Tooltip("가속도를 부드럽게 하는 시간 상수(초)")]
             public float accelSmoothTime = 0.1f;
 
+            [Header("제자리 회전 스텝 (서 있을 때 상체를 하체가 따라감)")]
+            [Tooltip("서 있을 때 상체·하체가 이 각도(°) 이상 벌어지면 하체가 스텝으로 돈다")]
+            public float turnStepTrigger = 60f;
+            [Tooltip("한 걸음에 도는 최대 각도(°). 걸음 수 = 각도 / 이 값을 올림, 2~3걸음으로 자른다")]
+            public float turnStepMaxAngle = 45f;
+            [Tooltip("한 걸음 시간(초)")]
+            public float turnStepTime = 0.25f;
+            [Tooltip("드는 발 무릎 각도(°)")]
+            public float turnStepKnee = 35f;
+            [Tooltip("드는 발 엉덩이를 앞으로 드는 각도(°)")]
+            public float turnStepHipLift = 10f;
+            [Tooltip("스텝 착지 세기(0~1). 발소리 크기·골반 꺼짐·카메라 흔들림에 곱한다")]
+            [Range(0f, 1f)] public float turnStepIntensity = 0.5f;
+
             [Header("스커트 (허벅지를 늦게 따라가는 스프링)")]
             public float skirtFollow = 0.8f;
             public float skirtSpringFrequency = 4f;

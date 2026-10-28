@@ -63,6 +63,7 @@ namespace MyDongari.Visual
 
         private void ResetFacing()
         {
+            _turnStepsLeft = 0;
             float yaw = RootYaw;
             _pelvisYaw = yaw;
             _bodyYaw = yaw;
@@ -112,8 +113,68 @@ namespace MyDongari.Visual
             if (_head != null) _head.Yaw = headOffset;
         }
 
-        // G4에서 채운다. 제자리 회전 스텝이 하체를 돌리는 중이면 true
-        private bool UpdateTurnSteps(BernardTuning.VisualValues v, float dt) => false;
+        // ---------------- G4 제자리 회전 스텝 ----------------
+
+        private int _turnStepsLeft;
+        private float _turnStepT;
+        private float _turnFrom, _turnTo;
+        private bool _turnStepLeftLeg;
+
+        /// <summary>
+        /// 서 있을 때 상체가 하체와 turnStepTrigger(60°) 이상 벌어지면 하체가 두세 걸음으로 끊어 돌아 따라온다.
+        /// 걸음마다 남은 각도를 남은 걸음 수로 나눠 돌고, 도는 쪽 발부터 번갈아 든다. 하체를 돌리는 중이면 true.
+        /// 움직이기 시작하면 바로 그만두고 걸음(G3)에 넘긴다.
+        /// </summary>
+        private bool UpdateTurnSteps(BernardTuning.VisualValues v, float dt)
+        {
+            bool standing = HorizontalVelocity().magnitude < v.pelvisMoveMinSpeed;
+            if (!standing)
+            {
+                _turnStepsLeft = 0;
+                return false;
+            }
+
+            if (_turnStepsLeft <= 0)
+            {
+                float gap = Mathf.DeltaAngle(_pelvisYaw, _bodyYaw);
+                if (Mathf.Abs(gap) < v.turnStepTrigger) return false;
+                _turnStepsLeft = Mathf.Clamp(Mathf.CeilToInt(Mathf.Abs(gap) / Mathf.Max(1f, v.turnStepMaxAngle)), 2, 3);
+                // 오른쪽(+)으로 돌면 오른발부터
+                _turnStepLeftLeg = gap > 0f;
+                BeginTurnStep();
+            }
+
+            _turnStepT += v.turnStepTime > 0f ? dt / v.turnStepTime : 1f;
+            _pelvisYaw = Mathf.LerpAngle(_turnFrom, _turnTo, Mathf.SmoothStep(0f, 1f, Mathf.Min(1f, _turnStepT)));
+            if (_turnStepT >= 1f)
+            {
+                Land(_turnStepLeftLeg, v.turnStepIntensity);
+                _turnStepsLeft--;
+                if (_turnStepsLeft > 0) BeginTurnStep();
+            }
+            return true;
+        }
+
+        private void BeginTurnStep()
+        {
+            // 남은 각도(그 사이 상체가 더 돌았을 수 있음)를 남은 걸음 수로 나눈다. 발은 번갈아
+            float gap = Mathf.DeltaAngle(_pelvisYaw, _bodyYaw);
+            _turnFrom = _pelvisYaw;
+            _turnTo = _pelvisYaw + gap / Mathf.Max(1, _turnStepsLeft);
+            _turnStepLeftLeg = !_turnStepLeftLeg;
+            _turnStepT = 0f;
+        }
+
+        /// <summary>회전 스텝 중 드는 발: 무릎을 굽히고 엉덩이를 살짝 앞으로 (반 사인으로 들었다 내림).</summary>
+        private void PoseTurnStep(BernardTuning.VisualValues v)
+        {
+            if (_turnStepsLeft <= 0) return;
+            float lift = Mathf.Sin(Mathf.PI * Mathf.Clamp01(_turnStepT));
+            Joint leg = _turnStepLeftLeg ? _legL : _legR;
+            Joint shin = _turnStepLeftLeg ? _shinL : _shinR;
+            AddRotation(leg, new Vector3(-v.turnStepHipLift * lift, 0f, 0f));
+            AddRotation(shin, new Vector3(v.turnStepKnee * lift, 0f, 0f));
+        }
 
         // ---------------- G3 걸음 ----------------
 
@@ -184,6 +245,7 @@ namespace MyDongari.Visual
                 AddRotation(_pelvis, new Vector3(0f, 0f, tilt));
             }
 
+            PoseTurnStep(v);
             PoseSkirts(v);
         }
 
