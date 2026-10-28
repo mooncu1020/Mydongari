@@ -94,6 +94,21 @@ namespace MyDongari.Visual
         [SerializeField] private RigSlot ankleL = new RigSlot();
         [Tooltip("오른 발목 뼈. 비워 두면 기체 아래에서 'Ankle.R'을 찾는다")]
         [SerializeField] private RigSlot ankleR = new RigSlot();
+        [Header("하체·스커트 (선택 — 비우면 이름으로 찾고, 없으면 무시. 임시 상자엔 없음)")]
+        [Tooltip("하체(골반) 뼈. 비워 두면 'Pelvis'. 있으면 상하체 분리(G2)·착지 꺼짐(G3)을 쓴다")]
+        [SerializeField] private RigSlot pelvis = new RigSlot();
+        [Tooltip("왼 엉덩이 뼈. 비워 두면 'Hip.L'")]
+        [SerializeField] private RigSlot hipL = new RigSlot();
+        [Tooltip("오른 엉덩이 뼈. 비워 두면 'Hip.R'")]
+        [SerializeField] private RigSlot hipR = new RigSlot();
+        [Tooltip("비워 두면 'Skirt_Front'")]
+        [SerializeField] private RigSlot skirtFront = new RigSlot();
+        [Tooltip("비워 두면 'Skirt_Back'")]
+        [SerializeField] private RigSlot skirtBack = new RigSlot();
+        [Tooltip("비워 두면 'Skirt_Side.L'")]
+        [SerializeField] private RigSlot skirtSideL = new RigSlot();
+        [Tooltip("비워 두면 'Skirt_Side.R'")]
+        [SerializeField] private RigSlot skirtSideR = new RigSlot();
 
         /// <summary>무릎 뼈 이름. 필수 슬롯이 아니라 SlotNames(모델 교체 메뉴 경고 대상)에 넣지 않는다.</summary>
         public const string ShinLName = "Shin.L";
@@ -102,6 +117,12 @@ namespace MyDongari.Visual
         public const string PelvisName = "Pelvis";
         public const string AnkleLName = "Ankle.L";
         public const string AnkleRName = "Ankle.R";
+        public const string HipLName = "Hip.L";
+        public const string HipRName = "Hip.R";
+        public const string SkirtFrontName = "Skirt_Front";
+        public const string SkirtBackName = "Skirt_Back";
+        public const string SkirtSideLName = "Skirt_Side.L";
+        public const string SkirtSideRName = "Skirt_Side.R";
 
         /// <summary>슬롯 하나의 런타임 상태: 쉴 때 자세 + 스프링(위치·회전 오프셋).</summary>
         private class Joint
@@ -126,7 +147,10 @@ namespace MyDongari.Visual
             public Vector3 TargetRotation;
         }
 
-        private Joint _body, _head, _armLUpper, _armLLower, _fistL, _armRUpper, _armRLower, _fistR, _legL, _legR, _shinL, _shinR, _ankleL, _ankleR;
+        private Joint _body, _head, _armLUpper, _armLLower, _fistL, _armRUpper, _armRLower, _fistR, _legL, _legR, _shinL, _shinR, _ankleL, _ankleR,
+            _pelvis, _hipL, _hipR, _skirtFront, _skirtBack, _skirtSideL, _skirtSideR;
+        /// <summary>하체(Pelvis) 뼈가 있는 모델인지. 상하체 분리·무게감 걸음(G2~G4)은 이 구조에서만 쓴다 (임시 상자는 예전 동작).</summary>
+        private bool HasLowerBody => _pelvis != null && _pelvis.Target != null;
         private Joint[] _joints;
 
         private TuningRef _tuning;
@@ -197,7 +221,7 @@ namespace MyDongari.Visual
         {
             Transform bodyBone = body != null ? body.target : null;
             if (bodyBone == null) return;
-            Transform pelvisBone = FindBone(PelvisName);
+            Transform pelvisBone = pelvis != null && pelvis.target != null ? pelvis.target : FindBone(PelvisName);
             if (pelvisBone == null || pelvisBone == bodyBone || !pelvisBone.IsChildOf(bodyBone)) return;
             Transform root = bodyBone.parent;
             if (root == null) return;
@@ -289,7 +313,20 @@ namespace MyDongari.Visual
             _shinR = Bind(ResolveOptionalSlot(shinR, ShinRName));
             _ankleL = Bind(ResolveOptionalSlot(ankleL, AnkleLName));
             _ankleR = Bind(ResolveOptionalSlot(ankleR, AnkleRName));
-            _joints = new[] { _body, _head, _armLUpper, _armLLower, _fistL, _armRUpper, _armRLower, _fistR, _legL, _legR, _shinL, _shinR, _ankleL, _ankleR };
+            _pelvis = Bind(ResolveOptionalSlot(pelvis, PelvisName));
+            _hipL = Bind(ResolveOptionalSlot(hipL, HipLName));
+            _hipR = Bind(ResolveOptionalSlot(hipR, HipRName));
+            _skirtFront = Bind(ResolveOptionalSlot(skirtFront, SkirtFrontName));
+            _skirtBack = Bind(ResolveOptionalSlot(skirtBack, SkirtBackName));
+            _skirtSideL = Bind(ResolveOptionalSlot(skirtSideL, SkirtSideLName));
+            _skirtSideR = Bind(ResolveOptionalSlot(skirtSideR, SkirtSideRName));
+            // 순서: 발목 평행 보정이 위쪽 사슬(골반·엉덩이·다리·정강이)의 이번 프레임 각도를 쓰므로 그 뒤에 발목
+            _joints = new[]
+            {
+                _pelvis, _body, _head, _armLUpper, _armLLower, _fistL, _armRUpper, _armRLower, _fistR,
+                _hipL, _hipR, _legL, _legR, _shinL, _shinR, _ankleL, _ankleR,
+                _skirtFront, _skirtBack, _skirtSideL, _skirtSideR
+            };
             SetupGrounding();
         }
 
@@ -494,8 +531,8 @@ namespace MyDongari.Visual
                 Spring(ref joint.Position, ref joint.PositionVelocity, joint.TargetPosition, v, step);
                 Spring(ref joint.Rotation, ref joint.RotationVelocity, joint.TargetRotation, v, step);
                 // 발목은 위쪽 사슬이 이번 프레임 각도로 정해진 뒤(배열에서 다리·정강이 다음) 평행 보정
-                if (joint == _ankleL) LevelAnkle(joint, v, _legL, _shinL);
-                else if (joint == _ankleR) LevelAnkle(joint, v, _legR, _shinR);
+                if (joint == _ankleL) LevelAnkle(joint, v, _pelvis, _hipL, _legL, _shinL);
+                else if (joint == _ankleR) LevelAnkle(joint, v, _pelvis, _hipR, _legR, _shinR);
                 Apply(joint);
             }
 

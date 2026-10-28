@@ -205,7 +205,7 @@
 
 ## Phase G — 이동 연출 (H 구조 기준)
 
-### [ ] G1. 새 선택 슬롯 (Pelvis, Hip, Shin, Ankle, Skirt)
+### [x] G1. 새 선택 슬롯 (Pelvis, Hip, Shin, Ankle, Skirt)
 ### [ ] G2. 상하체 분리 (하체 = 이동 방향, 상체 = 카메라/상대, 비틀림 ±100°, 공격 방향 = 상체 방향, 머리 ±30° 지연)
 ### [ ] G3. 무게감 있는 걸음 (거리 기반 위상, 착지 연출·발소리·카메라 흔들림, 팔 스윙, 가감속 숙임, 스커트)
 ### [ ] G4. 제자리 회전 스텝 (60° 이상 벌어지면 두세 걸음)
@@ -262,3 +262,4 @@
 - **H2** 완료. 바뀐 파일: `Editor/BernardModelSetup`(임시 부품 렌더러 끄기·높이 측정에서 `IsUnderModel` 제외, 새 bernard 아래 꺼진 렌더러를 전부 켜고 이름 출력 — Blender 숨김이 Import Visibility로 꺼져 들어오는 경우). 켜기는 높이 측정 전이라 숨겨졌던 파츠도 키에 들어간다.
 - **H3** 완료. 바뀐 파일: 신규 `Visual/MechVisualRig.Grounding.cs`(partial — 발목 뼈(없으면 다리 뼈) 아래 메시 경계 꼭짓점을 Awake에 뼈 기준으로 캐시, LateUpdate 마지막에 낮은 발바닥 vs 기체 루트 콜라이더 바닥, 비주얼 루트 Y만 0.05초 시간 상수로 보정, `OnGroundSample`), `MechVisualRig`(partial, 선택 슬롯 `ankleL/R` 자동 탐색, `BindJoints` 끝에 `SetupGrounding`, OnDisable 복원), `BernardTuning`(접지 보정 4칸), `PlayLogger`(`ground_offset` 이벤트), `Editor/BernardModelSetup`(발 기준 = 루트 콜라이더 바운드 최저점). 위험: 렌더러 대신 메시 경계로 잼(꺼진 임시 부품도 재려고).
 - **H4** 완료. 바뀐 파일: `MechVisualRig`(`PoseIdleLegs` — 다리 벌림 6°·무릎 12°·왼발 앞 0.15m 상당(다리 길이로 각도), 걸음 세기 `_gaitWeight`만큼 줄임, 숨쉬기 무릎 `breathKneeAngle`, 스프링 뒤 `LevelAnkle`로 발목이 다리·정강이 기울기를 되돌림), `MechVisualRig.Grounding`(다리 길이 측정), `BernardTuning`(대기 자세 다리 4칸·숨쉬기 무릎, idleKneeBend 기본 10→12), `SETUP` 76. 위험: 발목 평행은 작은 각도 근사(각도 합을 빼기).
+- **G1** 완료. 바뀐 파일: `MechVisualRig`(선택 슬롯 pelvis·hipL/R·skirtFront/Back/SideL/SideR + 이름 자동 탐색(Shin·Ankle은 H3·F3에서), `HasLowerBody`, 관절 순서(골반 먼저·발목은 사슬 뒤), 발목 평행 보정 사슬에 골반·엉덩이 포함, H1 구조 변경도 pelvis 칸 우선). 필수 슬롯 목록(`SlotNames`)은 그대로라 메뉴 경고 없음.
