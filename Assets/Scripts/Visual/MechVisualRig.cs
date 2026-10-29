@@ -529,6 +529,8 @@ namespace MyDongari.Visual
         {
             _clawStart = _clock;
             _pullEnd = None;
+            // 잡아채며 뒷발(오른발)로 버티는 순간 먼지 (N1)
+            if (UseMotions) OnMotionImpact?.Invoke("ClawBrace", _footR != null ? _footR.position : transform.position, 0.6f);
         }
 
         private void OnPileDriver()
@@ -598,6 +600,8 @@ namespace MyDongari.Visual
             PoseIdle(v, dt);
             PoseGuard(v);
             PoseActions(v);
+            // 피격 반응은 어떤 동작 위에도 마지막에 얹는다 (N1)
+            if (UseMotions) PoseHitReaction();
             PoseStun(v);
 
             // 스프링: 프레임이 튀어도 터지지 않게 dt 상한

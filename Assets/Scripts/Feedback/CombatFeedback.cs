@@ -85,6 +85,10 @@ namespace MyDongari.Feedback
             public float HeadHeight = -1f;
             public bool WasOverheated;
             public bool WasExhausted;
+            // 흰색 번쩍임이 끝나는 실제 시각 (N1, 히트스톱 중에도 보이게 실제 시간)
+            public float FlashUntil = -1f;
+            public Color FlashColor = Color.white;
+            public float FlashStrength;
         }
 
         private readonly List<MechFeedback> _mechs = new List<MechFeedback>();
@@ -162,6 +166,101 @@ namespace MyDongari.Feedback
             }
 
             RegisterFootsteps(mech);
+            RegisterMotionImpacts(mech);
+        }
+
+        /// <summary>리그의 모션 타격·착지 순간(런지 앞발 박기·앵커 클로 버팀 → 먼지, 파일 드라이버 외형 타격 → 불꽃).</summary>
+        private void RegisterMotionImpacts(GameObject mech)
+        {
+            MechVisualRig rig = mech.GetComponent<MechVisualRig>();
+            if (rig == null) return;
+            Action<string, Vector3, float> onImpact = (kind, position, strength) => ErrorLog.Run(
+                () => OnMotionImpact(mech, kind, position, strength), "CombatFeedback.onMotionImpact");
+            rig.OnMotionImpact += onImpact;
+            _unsubscribers.Add(() => rig.OnMotionImpact -= onImpact);
+        }
+
+        private void OnMotionImpact(GameObject mech, string kind, Vector3 position, float strength)
+        {
+            BernardTuning.HitFeelValues feel = TuningOf(mech).HitFeel;
+            if (kind == "PileDriver")
+            {
+                // 판정 순간엔 생략했던 타격 이펙트를 외형 타격 순간에 (세기 강)
+                HitSparkFx.SpawnHit(position, Vector3.up, feel.heavy.effectScale, SparkStyle(feel, feel.sparkColor));
+                return;
+            }
+            HitSparkFx.SpawnDust(position, strength, new HitSparkFx.DustStyle
+            {
+                Color = feel.dustColor,
+                Size = feel.dustSize,
+                Count = feel.dustCount,
+                Speed = feel.dustSpeed,
+                Lifetime = feel.dustLifetime
+            });
+        }
+
+        private static BernardTuning TuningOf(GameObject mech)
+        {
+            MechTuning tuning = mech != null ? mech.GetComponent<MechTuning>() : null;
+            return tuning != null ? tuning.Values : BernardTuning.Fallback;
+        }
+
+        private static HitSparkFx.Style SparkStyle(BernardTuning.HitFeelValues feel, Color sparkColor)
+        {
+            return new HitSparkFx.Style
+            {
+                Spark = sparkColor,
+                Flash = feel.flashFxColor,
+                SparkSize = feel.sparkSize,
+                SparkCount = feel.sparkCount,
+                SparkSpeed = feel.sparkSpeed,
+                FlashSize = feel.flashFxSize,
+                FlashTime = feel.flashFxTime
+            };
+        }
+
+        /// <summary>
+        /// 타격감 (N1, 피격자 fb 기준): 흰색 번쩍임(그대로 맞음·가드 브레이크), 타격 지점 불꽃·섬광(등급별 크기, 막으면 파란 불꽃·작게),
+        /// 맞은 쪽 화면은 타격 방향으로 밀렸다 출렁이고 때린 쪽은 짧게 흔들린다. 패리는 아무것도 안 한다.
+        /// </summary>
+        private void ApplyHitFeel(MechFeedback fb, HitInfo info, HitResult result)
+        {
+            if (result == HitResult.Parried || fb.Mech == null) return;
+            BernardTuning.HitFeelValues feel = TuningOf(fb.Mech).HitFeel;
+            BernardTuning.HitGradeValues grade = feel.Grade(result == HitResult.Clash ? AttackStrength.Light : info.Strength);
+            float scale = result == HitResult.Guarded ? feel.guardedScale : 1f;
+
+            if (result == HitResult.Hit || result == HitResult.GuardBroken)
+            {
+                fb.FlashUntil = Time.unscaledTime + feel.flashTime;
+                fb.FlashColor = feel.flashColor;
+                fb.FlashStrength = feel.flashStrength;
+            }
+
+            // 전신 모션 기체의 파일 드라이버는 외형 타격 순간에 리그가 흔들고 이펙트를 낸다 (OnMotionImpact)
+            if (info.Type == AttackType.PileDriver && MechVisualRig.HandlesPileDriverImpactOf(info.Attacker)) return;
+
+            Vector3 attackerPosition = info.Attacker != null ? info.Attacker.transform.position : fb.Mech.transform.position + fb.Mech.transform.forward;
+            Vector3 source = attackerPosition + Vector3.up * feel.hitHeight;
+            Collider body = fb.Mech.GetComponent<Collider>();
+            Vector3 point = body != null ? body.ClosestPoint(source) : fb.Mech.transform.position + Vector3.up * feel.hitHeight;
+            Vector3 sparkDirection = source - point;
+            if (sparkDirection.sqrMagnitude < 0.0001f) sparkDirection = attackerPosition - fb.Mech.transform.position;
+            Color sparkColor = result == HitResult.Guarded ? feel.guardSparkColor : feel.sparkColor;
+            HitSparkFx.SpawnHit(point, sparkDirection, grade.effectScale * scale, SparkStyle(feel, sparkColor));
+
+            Vector3 hitDirection = fb.Mech.transform.position - attackerPosition;
+            hitDirection.y = 0f;
+            MechIdentity victimId = fb.Mech.GetComponent<MechIdentity>();
+            if (victimId != null && victimId.MechCamera != null)
+            {
+                victimId.MechCamera.AddDirectionalShake(hitDirection, grade.victimShake * scale, grade.shakeTime, feel.directionalShakeFrequency);
+            }
+            MechIdentity attackerId = info.Attacker != null ? info.Attacker.GetComponent<MechIdentity>() : null;
+            if (attackerId != null && attackerId.MechCamera != null)
+            {
+                attackerId.MechCamera.AddShake(grade.attackerShake * scale, grade.shakeTime);
+            }
         }
 
         private void RegisterFootsteps(GameObject mech)
@@ -193,6 +292,7 @@ namespace MyDongari.Feedback
         /// <summary>피격자(fb) 쪽에서 판정이 끝났을 때. 패리·가드 깨짐은 피격자 머리 위, 맞딜은 양쪽.</summary>
         private void OnHitResolved(MechFeedback fb, HitInfo info, HitResult result)
         {
+            ApplyHitFeel(fb, info, result);
             switch (result)
             {
                 case HitResult.Parried:
@@ -276,7 +376,12 @@ namespace MyDongari.Feedback
                 return;
             }
 
-            if (stunned)
+            if (Time.unscaledTime < fb.FlashUntil)
+            {
+                // 맞은 순간 흰색 번쩍임이 다른 틴트보다 우선 (N1)
+                fb.Tint.Apply(fb.FlashColor, fb.FlashStrength);
+            }
+            else if (stunned)
             {
                 fb.Tint.Apply(stunTint, tintStrength);
             }

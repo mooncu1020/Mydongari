@@ -240,12 +240,16 @@ namespace MyDongari.Visual
         {
             switch (result)
             {
+                case HitResult.Hit:
+                    // 피격 반응 (N1): 맞은 방향 반대로 젖혀졌다 복귀, 무릎 꺾였다 버팀, 짧은 밀림. 크기는 공격 세기 등급
+                    _reactStart = _clock;
+                    _reactDirection = AwayFrom(info.Attacker);
+                    _reactGrade = _tuning.Get(this).HitFeel.Grade(info.Strength);
+                    break;
                 case HitResult.Guarded:
                     _blockStart = _clock;
                     // 때린 쪽에서 멀어지는 방향(기체 축)으로 미끄러진다
-                    Vector3 away = info.Attacker != null ? transform.position - info.Attacker.transform.position : -transform.forward;
-                    away.y = 0f;
-                    _blockDirection = away.sqrMagnitude > 0.0001f ? transform.InverseTransformDirection(away.normalized) : Vector3.back;
+                    _blockDirection = AwayFrom(info.Attacker);
                     break;
                 case HitResult.Parried:
                     _parryStart = _clock;
@@ -598,6 +602,71 @@ namespace MyDongari.Visual
             Lead(MechPoseLibrary.PelvisIndex, m.punchChainDelay * 2f, false);
             Lead(MechPoseLibrary.BodyIndex, m.punchChainDelay, false);
             PlayMotion(t, 1f, false);
+        }
+
+        // ---------------- N1 피격 반응 ----------------
+
+        private float _reactStart = None;
+        private Vector3 _reactDirection;
+        private BernardTuning.HitGradeValues _reactGrade;
+
+        /// <summary>전신 모션 기체의 파일 드라이버는 히트스톱·이펙트를 외형 타격 순간에 리그가 건다 (판정 순간엔 생략).</summary>
+        public bool HandlesPileDriverImpact => isActiveAndEnabled && UseMotions;
+
+        public static bool HandlesPileDriverImpactOf(GameObject mech)
+        {
+            if (mech == null) return false;
+            MechVisualRig rig = mech.GetComponent<MechVisualRig>();
+            return rig != null && rig.HandlesPileDriverImpact;
+        }
+
+        /// <summary>때린 쪽에서 멀어지는 수평 방향(기체 축). 때린 쪽을 모르면 뒤.</summary>
+        private Vector3 AwayFrom(GameObject attacker)
+        {
+            Vector3 away = attacker != null ? transform.position - attacker.transform.position : -transform.forward;
+            away.y = 0f;
+            return away.sqrMagnitude > 0.0001f ? transform.InverseTransformDirection(away.normalized) : Vector3.back;
+        }
+
+        /// <summary>0 → 1(reactOutTime 안에 빠르게) → 0(남은 시간 동안 묵직하게 버티며 복귀).</summary>
+        private float ReactProfile(float t, float outTime, float total)
+        {
+            if (t <= 0f || t >= total) return 0f;
+            if (t < outTime) return PoseLibrary.Evaluate(MechPoseLibrary.EaseSnap, t / outTime);
+            return 1f - PoseLibrary.Evaluate(MechPoseLibrary.EaseHeavy, (t - outTime) / Mathf.Max(0.0001f, total - outTime));
+        }
+
+        /// <summary>
+        /// 그대로 맞았을 때: 상체가 맞은 방향 반대로 젖혀졌다 돌아오고(머리는 반 박자 늦게 더), 무릎이 꺾였다 버티며,
+        /// 외형이 짧게 밀린다(물리 위치·넉백과 따로). 크기·시간은 공격 세기 등급(BernardTuning.HitFeel).
+        /// </summary>
+        private void PoseHitReaction()
+        {
+            BernardTuning.HitGradeValues grade = _reactGrade;
+            if (_reactStart == None || grade == null) return;
+            float t = _clock - _reactStart;
+            float total = grade.reactTime;
+            if (t < 0f || t >= total)
+            {
+                _reactStart = None;
+                return;
+            }
+            float outTime = Mathf.Min(_tuning.Get(this).HitFeel.reactOutTime, total * 0.5f);
+            float body = ReactProfile(t, outTime, total);
+            float head = ReactProfile(t - outTime * 0.5f, outTime, total);
+            float knee = ReactProfile(t - outTime * 0.3f, outTime, total);
+
+            // 밀리는 쪽으로 기운다: 앞(Z+)이면 숙임(X+), 오른쪽(X+)이면 오른쪽 기울임(Z-)
+            Vector3 d = _reactDirection;
+            Vector3 lean = new Vector3(d.z, 0f, -d.x);
+            AddRotation(_body, lean * (grade.reactLean * body));
+            AddRotation(_head, lean * (grade.reactLean * 0.5f * head));
+            // 무릎이 꺾이면서 허벅지는 조금 앞으로 (발은 접지 보정이 땅에 붙인다)
+            AddRotation(_shinL, new Vector3(grade.reactKnee * knee, 0f, 0f));
+            AddRotation(_shinR, new Vector3(grade.reactKnee * knee, 0f, 0f));
+            AddRotation(_legL, new Vector3(-grade.reactKnee * 0.5f * knee, 0f, 0f));
+            AddRotation(_legR, new Vector3(-grade.reactKnee * 0.5f * knee, 0f, 0f));
+            if (_pelvis != null) _pelvis.DirectPosition += d * (grade.reactPush * body);
         }
 }
 }

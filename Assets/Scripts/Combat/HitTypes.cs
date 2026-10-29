@@ -14,6 +14,17 @@ namespace MyDongari.Combat
         Projectile
     }
 
+    /// <summary>
+    /// 공격 세기 등급 (N1). 히트스톱·화면 흔들림·피격 반응·이펙트 크기가 이걸로 갈린다.
+    /// 약 = 콤보 원·투, 중 = 쓰리·대시 어택, 강 = 런지·태클·파일 드라이버·슬램.
+    /// </summary>
+    public enum AttackStrength
+    {
+        Light,
+        Medium,
+        Heavy
+    }
+
     /// <summary>MeleeSystem.ReceiveHit이 판단한 피격 결과. 로그·히트스톱·후속 처리용.</summary>
     public enum HitResult
     {
@@ -36,6 +47,25 @@ namespace MyDongari.Combat
         public float KnockbackForce;
         /// <summary>그대로 맞았을 때(Hit) 피격자에게 거는 스턴. 0이면 없음</summary>
         public float StunDuration;
+        /// <summary>펀치 콤보 단계 (1 원, 2 투, 3 쓰리). 펀치가 아니거나 콤보 정보가 없으면 0</summary>
+        public int ComboStep;
+
+        /// <summary>이 타격의 세기 등급.</summary>
+        public AttackStrength Strength => StrengthOf(Type, ComboStep);
+
+        public static AttackStrength StrengthOf(AttackType type, int comboStep)
+        {
+            switch (type)
+            {
+                case AttackType.Punch: return comboStep >= 3 ? AttackStrength.Medium : AttackStrength.Light;
+                case AttackType.DashAttack: return AttackStrength.Medium;
+                case AttackType.Lunge:
+                case AttackType.Tackle:
+                case AttackType.PileDriver:
+                case AttackType.Slam: return AttackStrength.Heavy;
+                default: return AttackStrength.Light;
+            }
+        }
 
         /// <summary>런지·차징 태클·파일드라이버(잡기 후속타)는 가드를 뚫는다 (감쇄 없음, 가드 히트 증가 없음)</summary>
         public bool PiercesGuard => PiercesGuardType(Type);

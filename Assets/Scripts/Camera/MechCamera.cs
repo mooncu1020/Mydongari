@@ -51,6 +51,26 @@ namespace MyDongari.Camera
             _shakeTimer = duration;
         }
 
+        // 방향 흔들림 (N1): 맞은 쪽 화면이 타격 방향으로 밀렸다가 줄어들며 출렁인다. 히트스톱 중에도 보이게 실제 시간
+        private Vector3 _kickDirection;
+        private float _kickAmplitude;
+        private float _kickDuration;
+        private float _kickTimer;
+        private float _kickFrequency;
+
+        /// <summary>worldDirection 쪽으로 밀렸다 돌아오는 흔들림. 지금 것보다 크면 덮어쓴다.</summary>
+        public void AddDirectionalShake(Vector3 worldDirection, float amplitude, float duration, float frequency)
+        {
+            if (amplitude <= 0f || duration <= 0f || worldDirection.sqrMagnitude < 0.0001f) return;
+            float current = _kickDuration > 0f ? _kickAmplitude * (_kickTimer / _kickDuration) : 0f;
+            if (amplitude < current) return;
+            _kickDirection = worldDirection.normalized;
+            _kickAmplitude = amplitude;
+            _kickDuration = duration;
+            _kickTimer = duration;
+            _kickFrequency = frequency;
+        }
+
         private void OnFootstep(bool left, float intensity)
         {
             if (_mechController == null) return;
@@ -128,6 +148,7 @@ namespace MyDongari.Camera
             _isQuickTurning = false;
             _hardLockTarget = null;
             _shakeTimer = 0f;
+            _kickTimer = 0f;
             _yaw = yaw;
             _pitch = 0f;
             if (_camera != null) _camera.fieldOfView = baseFov;
@@ -219,6 +240,13 @@ namespace MyDongari.Camera
             {
                 transform.position += UnityEngine.Random.insideUnitSphere * (_shakeAmplitude * (_shakeTimer / _shakeDuration));
                 _shakeTimer -= Time.deltaTime;
+            }
+            if (_kickTimer > 0f)
+            {
+                float elapsed = _kickDuration - _kickTimer;
+                float decay = _kickTimer / _kickDuration;
+                transform.position += _kickDirection * (_kickAmplitude * decay * Mathf.Cos(elapsed * _kickFrequency * 2f * Mathf.PI));
+                _kickTimer -= Time.unscaledDeltaTime;
             }
 
             UpdateFov();

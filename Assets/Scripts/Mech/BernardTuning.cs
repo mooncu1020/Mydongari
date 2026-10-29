@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using MyDongari.Combat;
 
 namespace MyDongari.Mech
 {
@@ -366,6 +367,101 @@ namespace MyDongari.Mech
             public float pileDriver = 0.2f;
         }
 
+        /// <summary>공격 세기 등급 하나의 타격감 수치 (N1).</summary>
+        [Serializable]
+        public class HitGradeValues
+        {
+            [Tooltip("히트스톱(초, 실제 시간)")]
+            public float hitStop;
+            [Tooltip("맞은 쪽 화면이 타격 방향으로 밀렸다 돌아오는 크기(m)")]
+            public float victimShake;
+            [Tooltip("때린 쪽 화면 흔들림 크기(m)")]
+            public float attackerShake;
+            [Tooltip("화면 흔들림 시간(초)")]
+            public float shakeTime;
+            [Tooltip("맞은 기체 상체가 맞은 방향 반대로 젖혀지는 각도(°, 하체 뼈가 있는 모델)")]
+            public float reactLean;
+            [Tooltip("맞은 기체 무릎이 꺾이는 각도(°)")]
+            public float reactKnee;
+            [Tooltip("맞은 기체 외형이 밀리는 거리(m, 물리 위치·넉백과 따로)")]
+            public float reactPush;
+            [Tooltip("피격 반응 전체 시간(초)")]
+            public float reactTime;
+            [Tooltip("타격 이펙트(불꽃·섬광) 크기 배율")]
+            public float effectScale;
+
+            public HitGradeValues() { }
+
+            public HitGradeValues(float hitStop, float victimShake, float attackerShake, float shakeTime,
+                float reactLean, float reactKnee, float reactPush, float reactTime, float effectScale)
+            {
+                this.hitStop = hitStop;
+                this.victimShake = victimShake;
+                this.attackerShake = attackerShake;
+                this.shakeTime = shakeTime;
+                this.reactLean = reactLean;
+                this.reactKnee = reactKnee;
+                this.reactPush = reactPush;
+                this.reactTime = reactTime;
+                this.effectScale = effectScale;
+            }
+        }
+
+        [Serializable]
+        public class HitFeelValues
+        {
+            [Header("등급별 (약: 콤보 원·투 / 중: 쓰리·대시 어택 / 강: 런지·태클·파일 드라이버·슬램)")]
+            public HitGradeValues light = new HitGradeValues(0.05f, 0.04f, 0.015f, 0.12f, 6f, 6f, 0.05f, 0.25f, 0.6f);
+            public HitGradeValues medium = new HitGradeValues(0.07f, 0.07f, 0.025f, 0.18f, 11f, 12f, 0.1f, 0.35f, 1f);
+            public HitGradeValues heavy = new HitGradeValues(0.1f, 0.12f, 0.04f, 0.28f, 18f, 20f, 0.18f, 0.5f, 1.6f);
+            [Tooltip("켜면 히트스톱 길이를 위 등급별 값으로. 끄면 예전 종류별 값(히트스톱 묶음의 Punch·Lunge Tackle·Other)")]
+            public bool gradeHitStop = true;
+            [Tooltip("가드로 막았을 때 화면 흔들림·이펙트 배율 (번쩍임·피격 반응은 없음)")]
+            [Range(0f, 1f)] public float guardedScale = 0.5f;
+
+            [Header("흰색 번쩍임 (그대로 맞음·가드 브레이크)")]
+            public float flashTime = 0.05f;
+            public Color flashColor = Color.white;
+            [Range(0f, 1f)] public float flashStrength = 0.85f;
+
+            [Header("화면 흔들림")]
+            [Tooltip("맞은 쪽 방향 흔들림의 진동수(Hz). 타격 방향으로 밀렸다가 줄어들며 출렁인다")]
+            public float directionalShakeFrequency = 18f;
+
+            [Header("피격 반응 (하체 뼈가 있는 모델)")]
+            [Tooltip("젖혀지고 꺾이는 데 걸리는 시간(초). 나머지 시간 동안 버티며 돌아온다")]
+            public float reactOutTime = 0.04f;
+
+            [Header("타격 이펙트 (코드 생성 파티클)")]
+            [Tooltip("때린 쪽 가슴 높이(m). 이 높이에서 맞은 기체 콜라이더 표면을 타격 지점으로 잡는다")]
+            public float hitHeight = 1.3f;
+            public Color sparkColor = new Color(1f, 0.8f, 0.35f);
+            public Color guardSparkColor = new Color(0.5f, 0.8f, 1f);
+            public Color flashFxColor = new Color(1f, 1f, 0.9f, 0.9f);
+            public float sparkSize = 0.06f;
+            public int sparkCount = 18;
+            public float sparkSpeed = 9f;
+            public float flashFxSize = 0.8f;
+            public float flashFxTime = 0.06f;
+
+            [Header("착지 먼지 (런지 앞발 박기·앵커 클로 버팀)")]
+            public Color dustColor = new Color(0.55f, 0.5f, 0.42f, 0.6f);
+            public float dustSize = 0.6f;
+            public int dustCount = 12;
+            public float dustSpeed = 2.5f;
+            public float dustLifetime = 0.7f;
+
+            public HitGradeValues Grade(AttackStrength strength)
+            {
+                switch (strength)
+                {
+                    case AttackStrength.Medium: return medium;
+                    case AttackStrength.Heavy: return heavy;
+                    default: return light;
+                }
+            }
+        }
+
         [Serializable]
         public class VisualValues
         {
@@ -701,6 +797,8 @@ namespace MyDongari.Mech
         [SerializeField] private LockOnValues lockOn = new LockOnValues();
         [Header("히트스톱")]
         [SerializeField] private HitStopValues hitStop = new HitStopValues();
+        [Header("타격감 (N1: 세기 등급별 히트스톱·흔들림·피격 반응·이펙트)")]
+        [SerializeField] private HitFeelValues hitFeel = new HitFeelValues();
         [Header("외형 애니메이션 (MechVisualRig)")]
         [SerializeField] private VisualValues visual = new VisualValues();
         [Header("전신 공격 모션 (MechVisualRig + MechPoseLibrary, M1~M7)")]
@@ -720,6 +818,7 @@ namespace MyDongari.Mech
         public ImpactSlamValues ImpactSlam => impactSlam;
         public LockOnValues LockOn => lockOn;
         public HitStopValues HitStop => hitStop;
+        public HitFeelValues HitFeel => hitFeel;
         public VisualValues Visual => visual;
         public MotionValues Motion => motion;
 

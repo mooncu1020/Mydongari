@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using MyDongari.Combat;
 using MyDongari.Mech;
+using MyDongari.Visual;
 
 namespace MyDongari.Core
 {
@@ -43,16 +44,22 @@ namespace MyDongari.Core
 
         private void OnHitResolved(MechTuning tuning, HitInfo info, HitResult result)
         {
-            BernardTuning.HitStopValues values = (tuning != null ? tuning.Values : BernardTuning.Fallback).HitStop;
+            BernardTuning bernard = tuning != null ? tuning.Values : BernardTuning.Fallback;
+            BernardTuning.HitStopValues values = bernard.HitStop;
             if (!values.enabled) return;
-            Request(DurationFor(values, info.Type, result));
+            // 전신 모션 기체의 파일 드라이버는 판정(누른 순간)이 아니라 외형 타격 순간에 리그가 건다 (M6)
+            if (info.Type == AttackType.PileDriver && MechVisualRig.HandlesPileDriverImpactOf(info.Attacker)) return;
+            Request(DurationFor(values, bernard.HitFeel, info, result));
         }
 
-        private static float DurationFor(BernardTuning.HitStopValues values, AttackType type, HitResult result)
+        private static float DurationFor(BernardTuning.HitStopValues values, BernardTuning.HitFeelValues feel, HitInfo info, HitResult result)
         {
             // 패리는 "안 맞음"이라 멈추지 않는다
             if (result == HitResult.Parried) return 0f;
             if (result == HitResult.Clash) return values.clash;
+            // N1: 세기 등급별 (원·투 약 / 쓰리·대시 어택 중 / 런지·태클·파일 드라이버·슬램 강)
+            if (feel.gradeHitStop) return feel.Grade(info.Strength).hitStop;
+            AttackType type = info.Type;
 
             switch (type)
             {

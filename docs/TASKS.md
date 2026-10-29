@@ -231,6 +231,12 @@
 ### [x] M6. 앵커 클로 → 파일 드라이버(어퍼컷·피스톤·히트스톱)
 ### [x] M7. 대시 공격·태클·슬램
 
+## Phase N — 타격감·원투쓰리 콤보·이동 모션
+
+### [x] N1. 피격 반응·공격 세기 등급·방향 흔들림·번쩍임·타격 이펙트
+### [ ] N2. 원투쓰리 콤보
+### [ ] N3. 이동 모션 재설계 (초당 걸음 수 기준)
+
 ---
 
 ## 작업 메모 (Claude Code가 태스크마다 추가)
@@ -299,3 +305,4 @@
 - **M5** 완료. 바뀐 파일: `MechVisualRig.Moves`(`PoseDefense` — Guard 포즈 섞기(올림 0.06·내림 0.12초, 걸으면 하체는 걸음), 막음 GuardBlocked + 골반 `DirectPosition`으로 때린 쪽 반대 방향 외형 미끄러짐, 패리 ParryDeflect, 가드 브레이크 GuardBreak를 `Guard.breakStun`(공격 스턴이 길면 그쪽) 동안 + 줄어드는 휘청, `OnDefenseResolved`), `MechVisualRig`(전신 모션이면 예전 가드 오프셋·패리/브레이크 킥 대신 위 모션, 브레이크 중 예전 스턴 흔들림 생략, 대기 판정), `BernardTuning.Motion`(가드 계열 10칸). 판정·시간은 그대로. 위험: 막음 미끄러짐이 넉백(물리)과 겹쳐 실제보다 더 밀려 보일 수 있음 — `Block Slide Distance`로 조정.
 - **M6** 완료. 바뀐 파일: `MechVisualRig.Moves`(`PoseClaw` — 단계 변화 추적, 예비 ClawWindup(windupTime) → 던지기 ClawThrow → 빗나감 복귀, 잡으면 ClawYank(뒷발·상체 먼저) → ClawReel 유지(당기는 동안 + 준비 중이면 `clawReelHold`) → 풀림; `PosePileDriver` — ClawReel(또는 기본 자세) → UppercutRise → UppercutStrike(`uppercutRiseTime`, 다리 → 골반 → 허리 → 주먹 지연) → 유지 → 복귀, 외형 타격 순간 `OnPileDriverImpact`: 히트스톱 `HitStop.pileDriver` 요청·두 화면 흔들림·`OnMotionImpact`; `ApplyPiston` — 실제 시간으로 Fist_R(없으면 아래팔)을 팔뚝 축 방향 `DirectPosition`), `MechVisualRig`(잡기·파일 드라이버 이벤트 처리, 전신 모션이면 예전 클로·내리찍기 생략, 대기 판정), `BernardTuning`(`Motion` 앵커 클로 7칸·파일 드라이버 8칸, `HitStop.pileDriver` 0.2). 판정·피해 시간은 그대로(누른 순간). 위험: 피해는 누른 순간이라 상대 HP가 외형 타격보다 0.08초 먼저 줄어듦. 히트스톱이 리그 요청이라 공격자 기체에 리그가 없으면(봇 등) 걸리지 않음 — 봇은 앵커 클로를 안 씀.
 - **M7** 완료. 바뀐 파일: `MechVisualRig.Moves`(`PoseTackle` — 대시 어택 DashWindup → DashStrike / 차징 태클 TackleWindup → TackleShoulder, 발동 시간에 도착, `Tackle.recoveryStun` 동안 복귀, 발동 중 하체는 걸음; `PoseSlam` — SlamRaise → SlamDown(무릎·골반 먼저) → 유지 → 복귀), `MechVisualRig`(전신 모션이면 예전 어깨·내리찍기 생략, 대기 판정 길이), `BernardTuning.Motion`(태클 1칸·슬램 4칸). 판정·시간 그대로. 남은 위험(M1~M7 공통): 초안 포즈 각도는 bernard 실제 뼈 축으로 확인 안 됨 — 부호가 반대인 관절이 있으면 캡처로 덮어쓰거나 슬롯 `rotationCorrection`으로 맞춘다. 먼지 표시물 없음(`OnMotionImpact` 이벤트만).
+- **N1** 완료. 바뀐 파일: `HitTypes`(`AttackStrength` 약·중·강, `HitInfo.ComboStep`·`Strength`), `BernardTuning`(`HitFeel` 묶음: 등급별 히트스톱·흔들림·반응·이펙트 크기, 번쩍임, 방향 흔들림 진동수, 이펙트·먼지 수치), `HitStop`(등급별 길이 — `gradeHitStop` 끄면 예전 종류별, 전신 모션 기체의 파일 드라이버는 리그가 외형 타격 순간에), `MechCamera`(`AddDirectionalShake` — 실제 시간, 타격 방향으로 밀렸다 출렁임), 신규 `Feedback/HitSparkFx`(코드 생성 ParticleSystem: 불꽃+섬광, 먼지, 실제 시간, Sprites/Default + 코드 생성 둥근 텍스처), `CombatFeedback`(`ApplyHitFeel` — 흰색 번쩍임 0.05초가 다른 틴트보다 우선, 타격 지점 = 때린 쪽 가슴 높이에서 맞은 콜라이더 표면, 막으면 파란 불꽃·0.5배, 맞은 쪽 방향 흔들림·때린 쪽 흔들림, `OnMotionImpact` → 먼지/파일 드라이버 불꽃), `MechVisualRig`(`PoseHitReaction` — 반대로 젖힘·머리 늦게·무릎 꺾임·외형 밀림, `HandlesPileDriverImpactOf`, 앵커 클로 잡을 때 뒷발 `ClawBrace` 먼지). 이펙트·번쩍임·흔들림은 임시 상자 기체에도 나옴(피드백), 몸 반응은 하체 뼈 있는 모델만. 위험: 히트스톱 기본값이 바뀜(펀치 0.05 그대로, 대시 어택 0.08→0.07, 슬램 0→0.1, 런지·태클 0.08→0.1). 효과음 칸 12개 전부 비어 있음(씬 CombatFeedback).
