@@ -24,7 +24,8 @@ namespace MyDongari.Mech
             public float sprintSpeed = 35f;
 
             [Header("최대 속도 (m/s)")]
-            public float maxWalkSpeed = 5f;
+            [Tooltip("O1: 걷기는 체공 없는 진짜 걸음이 되도록 2.5")]
+            public float maxWalkSpeed = 2.5f;
             public float maxRunSpeed = 10f;
             public float maxSprintSpeed = 20f;
 
@@ -388,77 +389,81 @@ namespace MyDongari.Mech
             public float pileDriver = 0.2f;
         }
 
-        /// <summary>다리로 닿을 수 없는 보폭을 어떻게 맞출지 (N3).</summary>
-        public enum StrideMode
-        {
-            [InspectorName("체공: 걸음마다 짧게 날아감 (기본)")] Flight,
-            [InspectorName("걸음 수 올리기: 다리 최대 보폭에 맞춤")] RaiseCadence
-        }
-
         [Serializable]
         public class GaitValues
         {
-            [Header("걸음 기준 (N3, 하체 뼈가 있는 모델 + 전신 모션). 이동 속도는 '이동' 묶음 그대로")]
-            [Tooltip("켜면 초당 걸음 수 기준 걸음. 끄면 예전(G3) 이동 거리 기준 걸음")]
+            [Header("이동 모션 (O1: 걷기 = 걸음, 달리기 = 스러스터 보조 도약, 전력질주 = 호버 활주). 하체 뼈가 있는 모델 + 전신 모션")]
+            [Tooltip("끄면 예전(G3) 이동 거리 기준 걸음")]
             public bool cadenceGait = true;
-            [Tooltip("초당 걸음 수. 보폭 = 속도 ÷ 걸음 수")]
-            public float walkCadence = 1.4f;
-            public float runCadence = 2f;
-            public float sprintCadence = 2.4f;
-            [Tooltip("보폭이 다리로 닿을 수 있는 최대(엉덩이 각도 ±maxStrideAngle)보다 길 때")]
-            public StrideMode strideMode = StrideMode.Flight;
+            [Tooltip("걷기·달리기·호버 연출을 서로 섞어 넘기는 시간(초)")]
+            public float modeBlendTime = 0.15f;
+
+            [Header("걷기 (체공 없는 걸음. 초당 걸음 수 = 속도 ÷ 보폭)")]
+            [Tooltip("한 걸음 보폭(m). 다리로 닿는 최대 보폭보다 길면 최대 보폭으로 줄인다")]
+            public float walkStride = 1f;
             [Tooltip("디딘 발이 엉덩이 아래에서 앞뒤로 가는 최대 각도(°). 최대 보폭 = 2 × 엉덩이~발목 × sin(이 각도)")]
             public float maxStrideAngle = 45f;
-            [Tooltip("체공 가운데에서 골반이 뜨는 높이(m)")]
-            public float walkFlightHeight = 0.04f;
-            public float runFlightHeight = 0.08f;
-            [Tooltip("걷기 ↔ 달리기 연출 크기를 섞는 시간(초)")]
-            public float runBlendTime = 0.25f;
-
-            [Header("자세 (골반을 낮추고 무릎을 더 굽힘)")]
-            [Tooltip("걷는 내내 무릎을 더 굽히는 각도(°). 기본 자세 포즈 무릎에 더해진다")]
+            [Tooltip("걷는 내내 무릎을 더 굽히는 각도(°). 기본 자세 포즈 무릎에 더해진다(골반이 낮아짐)")]
             public float walkKneeBend = 10f;
-            public float runKneeBend = 18f;
             [Tooltip("발을 들 때 무릎 최대 각도(°)")]
             public float walkSwingKnee = 55f;
-            public float runSwingKnee = 85f;
-
-            [Header("골반·어깨 반대 비틀림 (어깨 터는 느낌)")]
             [Tooltip("앞으로 나간 다리 쪽으로 골반이 도는 각도(°)")]
             public float walkPelvisTwist = 6f;
-            public float runPelvisTwist = 12f;
             [Tooltip("어깨가 골반 반대로 도는 각도(°, 기체 기준)")]
             public float walkShoulderTwist = 8f;
-            public float runShoulderTwist = 16f;
             [Tooltip("로우 가드 팔이 어깨를 따라 앞뒤로 흔들리는 각도(°)")]
             public float armShoulderSwing = 10f;
-            [Tooltip("달리기에서 팔 흔들림 배율")]
-            public float runArmSwingScale = 1.4f;
-
-            [Header("디딘 발 쪽 골반 옆 이동·기울임")]
+            [Tooltip("디딘 발 쪽으로 골반이 옮겨지는 거리(m)·기우는 각도(°)")]
             public float walkSideShift = 0.04f;
-            public float runSideShift = 0.06f;
-            [Tooltip("디딘 발 쪽으로 골반이 기우는 각도(°)")]
             public float walkSideTilt = 3f;
-            public float runSideTilt = 5f;
-
-            [Header("착지 출렁임 (내려앉았다 밀고 올라옴)")]
-            [Tooltip("내려앉는 깊이(m). 디딘 다리 무릎으로 만든다")]
+            [Tooltip("착지 때 내려앉는 깊이(m)·출렁임 전체 시간(초)")]
             public float walkLandDrop = 0.04f;
-            public float runLandDrop = 0.08f;
-            [Tooltip("출렁임 전체 시간(초)")]
             public float walkBounceTime = 0.25f;
-            public float runBounceTime = 0.2f;
-            [Tooltip("전체 중 내려앉는 앞부분 비율. 나머지는 밀고 올라옴")]
+            [Tooltip("출렁임 중 내려앉는 앞부분 비율. 나머지는 밀고 올라옴")]
             [Range(0.1f, 0.9f)] public float bounceCompressRatio = 0.45f;
             [Tooltip("밀고 올라오는 높이 = 내려앉은 깊이 × 이 값")]
             public float bouncePushRatio = 0.6f;
-            [Tooltip("걷기 착지 세기(발소리·흔들림·출렁임 배율). 달리기는 1")]
+            [Tooltip("걷기 착지 세기(발소리·흔들림·출렁임 배율)")]
             [Range(0f, 1f)] public float walkStepIntensity = 0.7f;
-
-            [Header("머리")]
             [Tooltip("몸의 비틀림·좌우 기울임을 머리에서 되돌리는 비율 (1 = 완전히 수평)")]
             [Range(0f, 1f)] public float headStabilize = 0.9f;
+
+            [Header("달리기: 스러스터 보조 도약 (외형만, 물리 이동은 그대로)")]
+            [Tooltip("초당 도약 횟수")]
+            public float leapRate = 1.6f;
+            [Tooltip("도약 한 번 중 땅에 닿아 있는 비율(착지 → 박차기). 나머지는 공중")]
+            [Range(0.05f, 0.6f)] public float leapContact = 0.22f;
+            [Tooltip("공중 가운데에서 골반이 뜨는 높이(m). 낮고 긴 도약")]
+            public float leapHeight = 0.25f;
+            [Tooltip("착지 때 화면 흔들림 크기(m)·시간(초)")]
+            public float leapLandShake = 0.05f;
+            public float leapLandShakeTime = 0.18f;
+            [Tooltip("박차는 순간 스러스터 분사 입자 수")]
+            public int leapBurstCount = 40;
+
+            [Header("전력질주: 호버 활주 (걸음 없음, 두 발로 미끄러짐)")]
+            [Tooltip("가끔 좌우로 체중을 옮기는 크기(m)·기울기(°)·빠르기(Hz, 불규칙)")]
+            public float hoverSwayShift = 0.06f;
+            public float hoverSwayTilt = 5f;
+            public float hoverSwayFrequency = 0.4f;
+
+            [Header("스러스터 분사 (코드 생성 파티클, Body 뒤쪽)")]
+            [Tooltip("분사구 위치(m, Body 뼈 기준 기체 축: X 오른쪽·Y 위·Z 앞). 음수 Z = 등 뒤")]
+            public Vector3 thrusterOffset = new Vector3(0f, 0.25f, -0.4f);
+            public Color thrusterColor = new Color(0.45f, 0.75f, 1f, 0.9f);
+            public float thrusterSize = 0.3f;
+            public float thrusterSpeed = 7f;
+            public float thrusterLifetime = 0.25f;
+            [Tooltip("달리기 중 평소 분사량(초당 입자). 박찰 때는 Leap Burst Count만큼 한 번에")]
+            public float runThrusterRate = 15f;
+            [Tooltip("전력질주 최대 분사량(초당 입자)")]
+            public float sprintThrusterRate = 140f;
+
+            [Header("발밑 불꽃 (전력질주 호버)")]
+            public float footSparkRate = 60f;
+            public Color footSparkColor = new Color(1f, 0.7f, 0.3f);
+            public float footSparkSize = 0.05f;
+            public float footSparkSpeed = 4f;
         }
 
         /// <summary>공격 세기 등급 하나의 타격감 수치 (N1).</summary>

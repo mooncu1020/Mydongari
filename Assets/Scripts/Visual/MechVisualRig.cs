@@ -299,6 +299,7 @@ namespace MyDongari.Visual
 
         private void OnDestroy()
         {
+            DestroyMoveFx();
             if (_melee != null)
             {
                 _melee.OnAttackStarted -= OnAttackStarted;
@@ -319,8 +320,15 @@ namespace MyDongari.Visual
             }
         }
 
+        private void OnEnable()
+        {
+            // 모드 전환으로 다시 켜지면 스러스터·발밑 불꽃도 (O1)
+            SetMoveFxActive(true);
+        }
+
         private void OnDisable()
         {
+            SetMoveFxActive(false);
             // 꺼질 때 부품을 쉴 때 자세로 돌려 둔다 (에디터에서 끄고 보면 원래 모양)
             if (_joints == null) return;
             foreach (Joint joint in _joints)

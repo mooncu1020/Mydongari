@@ -342,6 +342,21 @@ namespace MyDongari.Visual
                 P(PoseNames.PunchStepIn, Vector3.zero,
                     J("Leg_L", -26, 0, 0), J("Shin.L", 30, 0, 0), J("Leg_R", 14, 0, 0), J("Shin.R", 8, 0, 0)),
 
+                // O1 달리기 도약 (왼발 앞 고정): 착지 = 무릎 깊게, 박차기 = 뒷발 뻗음, 공중 = 다리 앞뒤로 벌림
+                P(PoseNames.RunLeapLand, new Vector3(0f, -0.06f, 0f),
+                    J("Body", 26, 0, 0), J("Head", -14, 0, 0),
+                    J("Leg_L", -30, 0, 0), J("Shin.L", 62, 0, 0), J("Leg_R", 18, 0, 0), J("Shin.R", 40, 0, 0)),
+                P(PoseNames.RunLeapPush, Vector3.zero,
+                    J("Body", 30, 0, 0), J("Head", -16, 0, 0),
+                    J("Leg_L", -26, 0, 0), J("Shin.L", 30, 0, 0), J("Leg_R", 34, 0, 0), J("Shin.R", 6, 0, 0)),
+                P(PoseNames.RunLeapAir, new Vector3(0f, 0.04f, 0f),
+                    J("Body", 24, 0, 0), J("Head", -12, 0, 0),
+                    J("Leg_L", -42, 0, 0), J("Shin.L", 38, 0, 0), J("Leg_R", 38, 0, 0), J("Shin.R", 52, 0, 0)),
+                // O1 전력질주 호버 활주: 두 발 지면에 붙여 앞뒤로 엇갈림, 상체 깊게 숙임
+                P(PoseNames.HoverGlide, new Vector3(0f, -0.04f, 0f),
+                    J("Body", 36, 0, 0), J("Head", -24, 0, 0),
+                    J("Leg_L", -24, 0, -4), J("Shin.L", 34, 0, 0), J("Leg_R", 26, 0, 4), J("Shin.R", 24, 0, 0)),
+
                 // M4 스러스터 런지
                 P(PoseNames.LungeCrouch, new Vector3(0f, -0.04f, 0f),
                     J("Body", 26, 0, 0), J("Head", -16, 0, 0),
@@ -488,6 +503,10 @@ namespace MyDongari.Visual
         public const string HookWindup = "HookWindup";
         public const string HookStrike = "HookStrike";
         public const string HookFollow = "HookFollow";
+        public const string RunLeapLand = "RunLeapLand";
+        public const string RunLeapPush = "RunLeapPush";
+        public const string RunLeapAir = "RunLeapAir";
+        public const string HoverGlide = "HoverGlide";
         public const string LungeCrouch = "LungeCrouch";
         public const string LungeFlight = "LungeFlight";
         public const string LungePlant = "LungePlant";

@@ -110,6 +110,57 @@ namespace MyDongari.Feedback
             Object.Destroy(root, style.Lifetime + 0.5f);
         }
 
+        /// <summary>계속 뿜는 이펙트(스러스터 분사·발밑 불꽃) 모양.</summary>
+        public struct LoopStyle
+        {
+            public Color Color;
+            public float Size;
+            public float Speed;
+            public float Lifetime;
+            public float ConeAngle;
+            public float Gravity;
+            public bool Stretch;
+        }
+
+        /// <summary>
+        /// 계속 뿜는 이펙트를 하나 만든다 (O1). 처음엔 0개/초 — 쓰는 쪽이 매 프레임 emission.rateOverTime과 위치·방향을 정하고,
+        /// 한꺼번에 뿜을 땐 Emit. 입자는 월드 공간이라 기체가 움직이면 뒤로 꼬리가 남는다. 다 쓰면 쓰는 쪽이 지운다.
+        /// </summary>
+        public static ParticleSystem CreateLoop(string name, LoopStyle style)
+        {
+            var root = new GameObject(name);
+            ParticleSystem ps = Create(root, "Particles");
+            var main = ps.main;
+            main.loop = true;
+            main.duration = 1f;
+            // 히트스톱 동안은 같이 멈춘다 (게임 시간)
+            main.useUnscaledTime = false;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(style.Lifetime * 0.6f, style.Lifetime);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(style.Speed * 0.6f, style.Speed);
+            main.startSize = new ParticleSystem.MinMaxCurve(style.Size * 0.6f, style.Size);
+            main.startColor = style.Color;
+            main.gravityModifier = style.Gravity;
+            main.maxParticles = 512;
+            var shape = ps.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = style.ConeAngle;
+            shape.radius = 0.05f;
+            FadeOut(ps);
+            var size = ps.sizeOverLifetime;
+            size.enabled = true;
+            size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.3f));
+            if (style.Stretch)
+            {
+                var renderer = ps.GetComponent<ParticleSystemRenderer>();
+                renderer.renderMode = ParticleSystemRenderMode.Stretch;
+                renderer.velocityScale = 0.03f;
+                renderer.lengthScale = 1f;
+            }
+            ps.Play();
+            return ps;
+        }
+
         private static ParticleSystem Create(GameObject parent, string name)
         {
             var go = new GameObject(name);
