@@ -1,0 +1,28 @@
+# 공격 모션 시간표 (M0)
+
+모션 단계는 아래 게임플레이 시간에 맞춘다. **이 값들은 모션 작업(M1~M7)에서 바꾸지 않는다.**
+(예외: M4 런지 새 판정 방식이 추가하는 "박기·뻗기" 시간 — 아래 런지 줄 참고. 예전 방식 스위치로 되돌릴 수 있다.)
+값 위치는 전부 `Assets/Scripts/Mech/BernardTuning.cs`(에셋 `Assets/Resources/BernardTuning.asset`)이고, 쓰는 코드를 같이 적었다.
+시간은 전부 게임 시간(scaled — 히트스톱 동안 멈춤).
+
+| 기술 | 발동(누름 → 판정) | 판정 | 회복 / 뒤처리 | 값 위치 · 코드 |
+| --- | --- | --- | --- | --- |
+| 펀치 | **0.1초** `Startup.punch` | 0.1초 시점 한 번. `Punch.range` 3m(콜라이더 표면), 상체 정면 ±`Punch.halfAngle` 45° | 쿨다운 `Punch.cooldown` **0.5초**(누른 순간부터) → 판정 뒤 0.4초. 맞딜 창 `Startup.clashWindow` 0.1초. 발생 중 스턴이면 취소 | `MeleeSystem.TryMeleeAttack` / `ResolvePunch` |
+| 스러스터 런지 | 없음(누르면 바로 돌진) | 돌진 중 매 물리 스텝 구 판정(정면 `hitForwardOffset` 1m, 반경 `hitRadius` 1.2m). 돌진 = `distance` 8m ÷ `speed` 30m/s ≈ **0.27초**, 최대 ×`timeoutMultiplier` 1.5 = 0.4초 | 명중: 상대 스턴 `hitStun` **0.5초**, 공격자 경직 없음. 빗나감: 하드 락온 금지 `missLockDelay` **0.6초**. 패리: 공격자가 피해 100%·넉백(`Parry.reflectRatio`) | `ThrusterLunge.TickDash` |
+| 대시 어택 (질주 1.5초 미만) | **0.12초** `Startup.dashAttack` | 한 번. `Tackle.range` 5m, ±`Tackle.halfAngle` 45° | 공격자 경직 `Tackle.recoveryStun` **0.5초**(패리당하면 없음), 재사용 `Tackle.cooldown` 1초 | `SprintState.FinishTackle`, `MeleeSystem.ResolveTackle` |
+| 차징 태클 (1.5초 이상) | **0.1초** `Startup.chargedTackle` | 대시 어택과 같은 범위 | 피격자 스턴 `Tackle.victimStun` 1.7초, 공격자 경직 0.5초, 재사용 1초. 차징 `chargeStartTime` 1.5 ~ `fullChargeTime` 3초 | 같음 |
+| 가드 | 즉시(버튼 누름) | — | 내린 뒤 재사용 대기 `Guard.reraiseDelay` **0.4초**(패리 성공 직후 면제) | `MeleeSystem.HandleGuard` |
+| 패리 | 가드를 새로 누른 순간부터 | 창 `Parry.window` **0.15초** | — | `MeleeSystem.HandleParry` |
+| 가드 브레이크 | 과열 중 가드로 맞은 순간 | — | 스턴 `Guard.breakStun` **0.9초**(공격 스턴이 더 길면 그쪽) | `MeleeSystem.ReceiveHit` |
+| 앵커 클로 | 예비 동작 `AnchorClaw.windupTime` **0.2초** | 비행 `range` 12m ÷ `projectileSpeed` 40m/s = 최대 0.3초, 지나간 길 SphereCast | 명중: 상대 경직 `hookImpactStun` 0.25초, 당기기 최대 `pullDuration` 1.5초(`pullStopDistance` 3m 안이면 끝, 처음 `hookEaseTime` 0.2초 훅). 빗나감: `retractSpeed` 40m/s로 감김. 쿨다운 `cooldown` 5초(발사 순간부터) | `AnchorClaw` |
+| 파일 드라이버 | **0초**(누른 프레임 즉시 판정) | 잡은 뒤 `pileDriverRange` 4m 안, 피해 `pileDriverDamage` 50, 가드·패리 무시 | 준비 상태는 쓸 때까지(시간 제한 없음). 히트스톱 `HitStop.other` 0초(→ M6에서 전용 칸 추가) | `AnchorClaw.TryPileDriver` |
+| 임팩트 슬램 | **0초**(누른 프레임 즉시 판정) | `ImpactSlam.range` 8m, 부채꼴 90° | 쿨다운 `ImpactSlam.cooldown` 8초 | `ImpactSlam.TryActivate` |
+
+히트스톱(실제 시간): 펀치 `HitStop.punch` 0.05초, 런지·태클·대시 어택 `lungeTackle` 0.08초, 맞딜 `clash` 0.12초, 그 외(슬램·파일 드라이버) `other` 0초. 패리는 멈추지 않음. `Core/HitStop.cs`.
+
+## 모션이 이 시간에 맞추는 방법
+
+- 예비 동작 길이 = 발동 시간(펀치 0.1초, 대시 어택 0.12초, 태클 0.1초, 클로 0.2초). 뻗는 포즈가 판정 순간에 도착한다.
+- 회복 길이 = 쿨다운·경직 남은 시간(펀치 0.4초, 태클·대시 어택 0.5초, 가드 브레이크 0.9초).
+- 발동 0초 기술(파일 드라이버·슬램)은 판정이 누른 순간에 끝나므로, 모션은 아주 짧은 올리기 뒤 타격 포즈 — 외형 타격 순간에 맞춰 히트스톱만 늦춘다(M6, 판정·피해 시간은 그대로).
+- 런지 새 판정(M4): 돌진 중 상대가 정면 타격 거리 안에 들어오면 멈추고 "박기 → 뻗기", 판정은 뻗는 구간에만. 박기·뻗기 시간(`Lunge.plantTime`·`strikeExtendTime`)이 새 게임플레이 시간이다. `Lunge.judgeMode`를 예전 방식으로 두면 위 표 그대로.
