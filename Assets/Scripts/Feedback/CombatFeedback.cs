@@ -5,6 +5,7 @@ using MyDongari.Combat;
 using MyDongari.Combat.Skills;
 using MyDongari.Core;
 using MyDongari.Mech;
+using MyDongari.Movement;
 using MyDongari.Visual;
 
 namespace MyDongari.Feedback
@@ -71,6 +72,21 @@ namespace MyDongari.Feedback
         [SerializeField] private AudioClip footstepClip;
         [Tooltip("발소리 크기 (sfxVolume에 곱함. 걸음 세기도 곱해진다)")]
         [Range(0f, 1f)] [SerializeField] private float footstepVolume = 0.6f;
+        [Tooltip("임팩트 슬램이 그대로 맞았을 때")]
+        [SerializeField] private AudioClip slamHitClip;
+        [Tooltip("파일 드라이버가 맞았을 때 (bernard는 어퍼컷이 닿는 외형 타격 순간)")]
+        [SerializeField] private AudioClip pileDriverHitClip;
+        [Tooltip("먼지·착지: 런지 앞발 박기, 앵커 클로 버팀, 달리기 도약 착지")]
+        [SerializeField] private AudioClip dustClip;
+        [Range(0f, 1f)] [SerializeField] private float dustVolume = 0.7f;
+        [Tooltip("스러스터 분사: 달리기 도약에서 박차는 순간")]
+        [SerializeField] private AudioClip thrusterBurstClip;
+        [Range(0f, 1f)] [SerializeField] private float thrusterBurstVolume = 0.8f;
+        [Tooltip("호버 활주 루프: 전력질주 동안만 기체마다 반복 재생")]
+        [SerializeField] private AudioClip hoverLoopClip;
+        [Range(0f, 1f)] [SerializeField] private float hoverLoopVolume = 0.6f;
+        [Tooltip("호버 루프가 켜지고 꺼질 때 소리 크기를 바꾸는 시간(초, 실제 시간)")]
+        [SerializeField] private float hoverLoopFadeTime = 0.15f;
         [Range(0f, 1f)] [SerializeField] private float sfxVolume = 1f;
 
         /// <summary>기체 하나의 피드백 상태 (이전 프레임 플래그로 "막 그렇게 됐다"를 감지).</summary>
@@ -89,6 +105,9 @@ namespace MyDongari.Feedback
             public float FlashUntil = -1f;
             public Color FlashColor = Color.white;
             public float FlashStrength;
+            // 호버 활주 루프 (O3). 기체마다 하나, 처음 필요할 때 만든다
+            public MechStateMachine StateMachine;
+            public AudioSource HoverLoop;
         }
 
         private readonly List<MechFeedback> _mechs = new List<MechFeedback>();
@@ -121,7 +140,8 @@ namespace MyDongari.Feedback
                 Melee = mech.GetComponent<MeleeSystem>(),
                 Heat = mech.GetComponent<HeatGauge>(),
                 Boost = mech.GetComponent<BoostGauge>(),
-                Tint = new MechTint(mech)
+                Tint = new MechTint(mech),
+                StateMachine = mech.GetComponent<MechStateMachine>()
             };
             _mechs.Add(fb);
 
@@ -177,7 +197,14 @@ namespace MyDongari.Feedback
             Action<string, Vector3, float> onImpact = (kind, position, strength) => ErrorLog.Run(
                 () => OnMotionImpact(mech, kind, position, strength), "CombatFeedback.onMotionImpact");
             rig.OnMotionImpact += onImpact;
-            _unsubscribers.Add(() => rig.OnMotionImpact -= onImpact);
+            // 달리기 도약에서 박차는 순간 스러스터 분사 소리 (O3)
+            Action<Vector3> onBurst = position => ErrorLog.Run(() => Play(thrusterBurstClip, thrusterBurstVolume), "CombatFeedback.onThrusterBurst");
+            rig.OnThrusterBurst += onBurst;
+            _unsubscribers.Add(() =>
+            {
+                rig.OnMotionImpact -= onImpact;
+                rig.OnThrusterBurst -= onBurst;
+            });
         }
 
         private void OnMotionImpact(GameObject mech, string kind, Vector3 position, float strength)
@@ -185,10 +212,12 @@ namespace MyDongari.Feedback
             BernardTuning.HitFeelValues feel = TuningOf(mech).HitFeel;
             if (kind == "PileDriver")
             {
-                // 판정 순간엔 생략했던 타격 이펙트를 외형 타격 순간에 (세기 강)
+                // 판정 순간엔 생략했던 타격 이펙트·소리를 외형 타격 순간에 (세기 강)
                 HitSparkFx.SpawnHit(position, Vector3.up, feel.heavy.effectScale, SparkStyle(feel, feel.sparkColor));
+                Play(pileDriverHitClip);
                 return;
             }
+            Play(dustClip, dustVolume * Mathf.Clamp01(strength));
             HitSparkFx.SpawnDust(position, strength, new HitSparkFx.DustStyle
             {
                 Color = feel.dustColor,
@@ -321,6 +350,9 @@ namespace MyDongari.Feedback
                     if (info.Type == AttackType.Punch) Play(punchHitClip);
                     else if (info.Type == AttackType.Tackle || info.Type == AttackType.DashAttack) Play(tackleHitClip);
                     else if (info.Type == AttackType.Lunge) Play(lungeHitClip);
+                    else if (info.Type == AttackType.Slam) Play(slamHitClip);
+                    // 전신 모션 기체의 파일 드라이버는 외형 타격 순간(OnMotionImpact)에 낸다
+                    else if (info.Type == AttackType.PileDriver && !MechVisualRig.HandlesPileDriverImpactOf(info.Attacker)) Play(pileDriverHitClip);
                     // 그대로 맞아서 스턴이 걸린 경우만 STUN (런지·차징 태클 등). 자기 경직은 이 경로로 오지 않는다
                     if (info.StunDuration > 0f) Popup(fb, stunLabel, stunColor);
                     break;
@@ -365,7 +397,34 @@ namespace MyDongari.Feedback
                 fb.WasExhausted = exhausted;
 
                 UpdateTint(fb, stunned, overheated, guarding);
+                UpdateHoverLoop(fb, active && fb.StateMachine != null && fb.StateMachine.IsSprinting);
             }
+        }
+
+        /// <summary>호버 활주 루프: 전력질주 동안만 기체마다 반복 재생, 켜고 끌 때 짧게 페이드 (O3).</summary>
+        private void UpdateHoverLoop(MechFeedback fb, bool sprinting)
+        {
+            if (hoverLoopClip == null)
+            {
+                if (fb.HoverLoop != null && fb.HoverLoop.isPlaying) fb.HoverLoop.Stop();
+                return;
+            }
+            if (fb.HoverLoop == null)
+            {
+                if (!sprinting) return;
+                fb.HoverLoop = gameObject.AddComponent<AudioSource>();
+                fb.HoverLoop.playOnAwake = false;
+                fb.HoverLoop.loop = true;
+                fb.HoverLoop.spatialBlend = 0f;
+                fb.HoverLoop.volume = 0f;
+            }
+            AudioSource source = fb.HoverLoop;
+            if (source.clip != hoverLoopClip) source.clip = hoverLoopClip;
+            float target = sprinting ? hoverLoopVolume * sfxVolume : 0f;
+            float step = hoverLoopFadeTime > 0f ? Time.unscaledDeltaTime / hoverLoopFadeTime : 1f;
+            source.volume = Mathf.MoveTowards(source.volume, target, step * Mathf.Max(0.01f, hoverLoopVolume * sfxVolume));
+            if (sprinting && !source.isPlaying) source.Play();
+            else if (!sprinting && source.isPlaying && source.volume <= 0.0001f) source.Stop();
         }
 
         private void UpdateTint(MechFeedback fb, bool stunned, bool overheated, bool guarding)

@@ -241,7 +241,7 @@
 
 ### [x] O1. 이동 방식 상태별 분리 (걷기 2.5m/s 걸음, 달리기 스러스터 도약, 전력질주 호버 활주)
 ### [x] O2. 콤보 쓰리 후 회복 0.8초
-### [ ] O3. 효과음 칸 추가
+### [x] O3. 효과음 칸 추가
 ### [ ] O4. 포즈 라이브러리·.meta 커밋 정리
 
 ---
@@ -317,3 +317,4 @@
 - **N3** 완료. 신규 `Visual/MechVisualRig.Gait`(`PoseGaitCadence` — 초당 걸음 수로 위상 진행, 보폭 = 속도 ÷ 걸음 수, 최대 보폭 = 2 × 엉덩이~발목(무릎 반영) × sin(maxStrideAngle), 넘으면 디딤 비율을 줄여 체공(기본, 체공 중 골반 뜸·접지 보정 멈춤) 또는 걸음 수 올리기, 디딘 발목 x를 몸 속도로 뒤로 보내고 엉덩이 = asin(x / 유효 길이)로 역산, 무릎 추가 굽힘·허벅지 앞으로, 골반·어깨 반대 비틀림·팔 따라 흔들기, 디딘 발 쪽 골반 옆 이동·기울임, 착지 내려앉음 → 밀고 올라옴(`LandBounceAt`), 머리 비틀림·기울임 되돌리기, `logGaitNumbers` 출력), `MechVisualRig.Locomotion`(전신 모션이면 새 걸음으로 분기, `KneeBendForDrop` 음수(다리 펴기) 허용 — 예전 호출은 양수라 결과 같음), `MechVisualRig`(시작 시 수치 출력), `BernardTuning`(`StrideMode`, `Gait` 묶음 29칸), `MOTION_TIMING`(속도·보폭 표), `QUESTIONS` N3. 이동 속도는 그대로. 위험: 기본값이면 걷기부터 체공 70% — QUESTIONS N3.
 - **O1** 완료. 바뀐 파일: `MechVisualRig.Gait`(다시 씀 — 걷기·도약·호버 세 방식을 `modeBlendTime`에 섞음; 걷기 = 보폭 1.0m(다리 최대 보폭까지) 체공 없는 걸음·N3 연출 유지; 달리기 = `leapRate` 1.6회/초 RunLeapLand → RunLeapPush → RunLeapAir 루프, 공중 골반 뜸·접지 보정 멈춤, 착지 발소리·흔들림·`RunLand` 먼지, 박차기 스러스터 버스트·`OnThrusterBurst`; 전력질주 = HoverGlide + 펄린 노이즈 좌우 체중 이동; 등 스러스터·발밑 불꽃 반복 이펙트), `HitSparkFx.CreateLoop`, `MechPoseLibrary`(RunLeapLand·RunLeapPush·RunLeapAir·HoverGlide 초안), `MechVisualRig`(OnEnable/OnDisable/OnDestroy에 이펙트 정리), `BernardTuning`(`Gait` 묶음 재구성 — N3의 걸음 수·체공 칸 삭제, 도약·호버·스러스터·불꽃 칸 추가; `maxWalkSpeed` 코드 기본값 2.5), `Editor/TuningSetup`(`Apply Feedback Values` 메뉴로 에셋 걷기 10 → 2.5), `MOTION_TIMING`(N3 표 정정: 실제 에셋 속도 10/20/30), `QUESTIONS` O1(달리기·질주 속도 해석, 다른 규칙 영향 목록). 위험: 메뉴를 실행하기 전엔 에셋 걷기 10m/s 그대로라 10걸음/초로 걷는다.
 - **O2** 완료. 바뀐 파일: `BernardTuning.Combo.thirdRecovery` 0.6 → 0.8(에셋엔 콤보 칸이 아직 저장 안 돼 코드 기본값이 그대로 쓰임), `Editor/TuningSetup`(에셋에 콤보 칸이 있으면 같은 메뉴가 0.8로), `GAME_SPEC` 콤보 시간, `QUESTIONS` O2(반복 초당 피해 58.3 — 단발 50보다 +17%).
+- **O3** 완료. 바뀐 파일: `CombatFeedback`(효과음 칸 5개 + 크기 4칸·페이드 1칸: 슬램 명중, 파일 드라이버 명중 — 전신 모션 기체는 외형 타격 순간, 먼지·착지(`OnMotionImpact`), 스러스터 분사(`rig.OnThrusterBurst`), 호버 루프 — 기체마다 루프 AudioSource를 처음 필요할 때 GameManager에 붙여 전력질주 동안만 재생·페이드), `SETUP` 80. 위험: 루프 AudioSource는 2D라 화면 분할 두 사람이 같은 크기로 들음(기존 효과음과 같음).
