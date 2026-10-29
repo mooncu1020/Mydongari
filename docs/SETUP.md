@@ -108,3 +108,4 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 75. (F3) `MechVisualRig` → 새 칸 `Shin L`·`Shin R`(선택). 비워 두면 플레이 때 기체 아래에서 `Shin.L`·`Shin.R` 이름의 뼈를 찾고, 없으면 무릎 동작만 빠진다. 대기 자세·숨쉬기 수치는 `BernardTuning → 외형 애니메이션 → 대기 자세 / 숨쉬기`.
 76. (H4) `BernardTuning` 에셋에 `Idle Knee Bend`가 이미 10으로 저장돼 있으면 12로 바꾼다(코드 기본값은 12로 바뀜). 새 칸 `Idle Leg Spread`(6)·`Idle Foot Stagger`(0.15)·`Ankle Level Weight`(1)·`Breath Knee Angle`(1.5)·접지 보정 4칸은 에셋에 없던 칸이라 기본값으로 채워진다.
 77. (G3) GameManager의 `CombatFeedback` → 새 칸 `Footstep Clip`(발소리, 비우면 무음)·`Footstep Volume`(0.6). 걸음·상하체 수치는 `BernardTuning → 외형 애니메이션 → 상하체 분리 / 무게감 걸음 / 착지 / 팔 스윙·가감속 / 스커트`.
+78. (M1) 선택: 메뉴 **`Tools/Create Mech Pose Library (초안 값)`** → `Assets/Resources/MechPoseLibrary.asset`이 생긴다. 안 만들어도 코드 초안 값으로 동작하지만, **캡처한 포즈를 저장하려면 에셋이 있어야 한다.** `MechVisualRig → Pose Library` 칸은 비워 두면 이 Resources 에셋을 쓴다(다른 에셋을 쓰려면 Mech·Mech_P2 둘 다 연결). 캡처·미리보기 창은 **`Tools/Mech Pose Editor`**. 전신 모션 수치는 `BernardTuning → 전신 공격 모션`(에셋에 없던 칸이라 기본값으로 채워짐).

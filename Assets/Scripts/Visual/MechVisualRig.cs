@@ -147,6 +147,10 @@ namespace MyDongari.Visual
             public Vector3 TargetRotation;
             // 수평 회전(°, 기체 위 축). 상하체 분리·머리 돌리기(G2)가 스프링 없이 직접 넣는다
             public float Yaw;
+            // 이번 프레임 전신 모션(M1)이 이 관절을 맡은 비율. 스프링 우회에 쓴다 (매 프레임 0으로)
+            public float MotionWeight;
+            // 스프링 없이 이번 프레임에만 더하는 위치 오프셋(m, 기체 축). 피스톤·막음 반동처럼 정확한 시간이 필요한 것 (매 프레임 0으로)
+            public Vector3 DirectPosition;
         }
 
         private Joint _body, _head, _armLUpper, _armLLower, _fistL, _armRUpper, _armRLower, _fistR, _legL, _legR, _shinL, _shinR, _ankleL, _ankleR,
@@ -349,6 +353,7 @@ namespace MyDongari.Visual
                 _hipL, _hipR, _legL, _legR, _shinL, _shinR, _ankleL, _ankleR,
                 _skirtFront, _skirtBack, _skirtSideL, _skirtSideR
             };
+            BindPoseJoints();
             SetupGrounding();
             SetupGait();
         }
@@ -528,6 +533,9 @@ namespace MyDongari.Visual
         {
             if (!animate || _joints == null) return;
 
+            // 포즈 캡처 중(에디터 도구): 사용자가 뼈를 직접 돌리는 동안 덮어쓰지 않는다
+            if (PoseEditFreeze) return;
+
             float dt = Time.deltaTime;
             _clock += dt;
             BernardTuning.VisualValues v = V;
@@ -537,11 +545,20 @@ namespace MyDongari.Visual
             {
                 joint.TargetPosition = Vector3.zero;
                 joint.TargetRotation = Vector3.zero;
+                joint.MotionWeight = 0f;
+                joint.DirectPosition = Vector3.zero;
                 if (joint.Target != null) CaptureBase(joint, animated);
             }
 
             // 상하체 방향(G2)을 먼저 정하고 나머지 포즈를 얹는다
             UpdateFacing(v, dt);
+
+            // 포즈 미리보기(에디터 도구): 그 포즈 하나만 그대로
+            if (!string.IsNullOrEmpty(_previewPose))
+            {
+                PreviewLateUpdate(v, dt);
+                return;
+            }
             // 하체 뼈가 있는 모델은 무게감 걸음(G3), 없으면(임시 상자) 예전 걷기
             if (HasLowerBody) PoseGait(v, dt);
             else PoseMovement(v, dt);
@@ -559,6 +576,8 @@ namespace MyDongari.Visual
                 // 스커트는 따로 느슨한 스프링으로 허벅지를 늦게 따라간다 (G3)
                 if (IsSkirt(joint)) Spring(ref joint.Rotation, ref joint.RotationVelocity, joint.TargetRotation, v.skirtSpringFrequency, v.skirtSpringDamping, step);
                 else Spring(ref joint.Rotation, ref joint.RotationVelocity, joint.TargetRotation, v, step);
+                // 전신 모션이 맡은 관절은 스프링 지연 없이 목표로 (M1)
+                ApplySpringBypass(joint);
                 // 발목은 위쪽 사슬이 이번 프레임 각도로 정해진 뒤(배열에서 다리·정강이 다음) 평행 보정
                 if (joint == _ankleL) LevelAnkle(joint, v, _pelvis, _hipL, _legL, _shinL);
                 else if (joint == _ankleR) LevelAnkle(joint, v, _pelvis, _hipR, _legR, _shinR);
@@ -629,7 +648,7 @@ namespace MyDongari.Visual
             // 원래 위치 + 오프셋 위치. 오프셋은 기체 축의 미터 값이라 부모의 회전·배율로 부모 로컬 단위로 바꿔 더한다.
             // (예전엔 회전만 바꾸고 미터 값을 그대로 더해서, 부모 뼈 배율이 큰 FBX(bernard)는 숨쉬기 1.5cm가 수 m로 커져
             // 몸통이 공중으로 뜨고 메시가 늘어났다. 임시 상자는 부모 배율 1이라 결과가 같다)
-            Vector3 worldOffset = transform.TransformDirection(joint.Position);
+            Vector3 worldOffset = transform.TransformDirection(joint.Position + joint.DirectPosition);
             Transform parent = joint.Target.parent;
             Vector3 localPositionOffset = parent != null ? parent.InverseTransformVector(worldOffset) : worldOffset;
             joint.Target.localPosition = joint.BasePosition + localPositionOffset;

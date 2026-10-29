@@ -223,7 +223,7 @@
 ## Phase M — 전신 공격 모션 (MechVisualRig 절차적 포즈, 원래 자세 기준 오프셋·G2·H3 유지, 임시 상자는 예전 동작)
 
 ### [x] M0. 공격별 발동/판정/회복 시간 조사 (`docs/MOTION_TIMING.md`)
-### [ ] M1. 포즈 라이브러리(MechPoseLibrary)와 캡처 도구
+### [x] M1. 포즈 라이브러리(MechPoseLibrary)와 캡처 도구
 ### [ ] M2. 기본 자세(로우 가드)·전력질주 돌격 자세
 ### [ ] M3. 기본 펀치(관절 지연 사슬·팔로스루·회복·좌우·앞발 디딤)
 ### [ ] M4. 스러스터 런지 모션 + 새 판정 방식(정면 타격 거리에서 박기+펀치)
@@ -292,3 +292,4 @@
 - **J3** 완료. 점검: 씬의 Mech·Mech_P2 Rigidbody Interpolate 둘 다 None(`m_Interpolate: 0`) — 같았음. 락온 기준점은 상대 루트(소프트는 콜라이더 중심)라 뼈 아님. 몸체 자동 회전(FixedUpdate, 루트 MoveRotation)과 카메라(LateUpdate, 카메라 yaw)는 서로 다른 것을 돌림. 바뀐 파일: `MechController`(`forceInterpolation` — 시작 시 Interpolate, `ApplyHardLockFacing`이 보간 트랜스폼 대신 두 rb.position 사용), `MechCamera`(하드 락온 방향을 이번 프레임 위치에서 계산, 1° 딱 붙이기/따라가기 번갈아 하던 것을 지수 감쇠 하나로), `MechVisualRig.Locomotion`(가속도를 FixedUpdate에서 물리 스텝마다 계산), `MechVisualRig.Grounding`(보간 위치 기준 바닥). 위험: 보간을 켜면 Update에서 읽는 transform.position이 물리 위치보다 최대 한 스텝 뒤 — 펀치 OverlapSphere 중심이 질주 중 최대 0.4m 늦을 수 있음(판정 수치는 그대로).
 - **L1** 완료. 원인: `InputSystem_Actions`가 프로젝트 전역 액션(`EditorBuildSettings`)이고 두 PlayerInput의 Default Map이 비어 있음. 먼저 초기화된 P1은 전역 원본(시작 시 자동으로 켜짐)을 쓰고, P2 PlayerInput은 같은 에셋이라 복사본을 받는데 Default Map이 없어 그 복사본을 켜는 곳이 없었음 → P2 액션이 전부 꺼진 채 ReadValue가 0, 에러 없음. 페어링은 정상이라 Input Debugger에선 멀쩡해 보임. 어느 쪽이 복사본을 받는지는 초기화 순서라, 어제 마지막 커밋에서 씬을 다시 만들며(Mech_P2 재생성) 순서가 바뀐 것으로 보임(어제 작업본은 커밋에 없어 확인 불가). 바뀐 파일: `InputReader`(`gameplayActionMap` "Player", Start·패드 배정 때 `EnsureGameplayActionMap`으로 현재 맵 지정·켜기, `DescribeBinding`), `VersusInputPairing.Pair`(배정 후 맵 맞춤 — P2가 꺼졌다 켜져도), `MeleeSystem`(입력 소스를 InputReader 우선으로 — BotInput이 같이 붙어도 사람 입력, `InputSourceName`), `GameManager`(VERSUS 진입 시 `[VersusInput]` 기체별 한 줄, 임시 추적 `traceP2Input`), 신규 `Input/InputTrace`(임시 `[P2Trace]` 단계별 로그, 0.25초 간격, 카운트다운+3초), `MechStateMachine`·`MechController`·`MechCamera`(추적 로그 한 줄씩). 위험: P1도 이제 현재 맵이 Player로 지정됨(전역 UI 맵은 그대로 켜짐) — 메뉴는 Player 맵 액션만 쓰므로 영향 없어야 함. 확인 끝나면 `GameManager → Trace P2 Input` 끄기.
 - **M0** 조사만(코드 변경 없음). 결과 `docs/MOTION_TIMING.md`. 판정이 누른 순간인 파일 드라이버·슬램은 모션이 판정보다 늦게 보일 수밖에 없어 M6에서 히트스톱만 외형 타격 순간으로 늦춘다(판정·피해 시간 그대로).
+- **M1** 완료. 신규 `Visual/MechPoseLibrary`(이름 있는 포즈 = 관절 15개 회전 오프셋 + 골반 위치, 오른손잡이 기준·좌우 반전, 이징 커브 5개, 초안 포즈 26개, Resources → 코드 초안 순 기본값), 신규 `Visual/MechVisualRig.Motion`(키 = 포즈·도착 시각·이징, 관절별 앞당김(lead)·하체 마스크, 밑에 깔린 자세와 섞기, 모션 관절 스프링 우회, 미리보기·리그 멈춤·캡처, 플레이 전 계산용 변환 함수), `MechVisualRig`(Joint `MotionWeight`·`DirectPosition`, 멈춤·미리보기 분기, 스프링 뒤 우회), `BernardTuning`(`Motion` 묶음: enabled·springBypass), 신규 `Editor/MechPoseEditor`(`Tools/Mech Pose Editor`, `Tools/Create Mech Pose Library (초안 값)`). 아직 어떤 동작도 라이브러리를 쓰지 않음(M2부터). 위험: 플레이 전 캡처는 원본 계층(Body 아래 Pelvis)이라 보이는 모습이 게임과 다름 — 몸통·하체가 같이 걸린 포즈는 플레이 중 캡처 권장.

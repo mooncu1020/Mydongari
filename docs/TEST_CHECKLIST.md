@@ -318,3 +318,11 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (L1) VERSUS → 타이틀 → PRACTICE → 타이틀 → VERSUS 다시 → P2 조작 여전히 됨 (P2가 꺼졌다 켜진 뒤에도)
 - [ ] (L1) PRACTICE: P1 패드·키보드로 조작, 메뉴(위아래·결정)·연습 단축키(Select 짧게/길게, Tab, Backspace) 예전과 같음
 - [ ] (L1) 빌드에서도 같은 확인. 끝나면 `GameManager → 입력 진단 → Trace P2 Input` 끄기 (VERSUS 한 줄 로그는 `Log Input On Versus Start`로 따로 끔)
+
+## Phase M (전신 공격 모션)
+
+- [ ] (M1) 컴파일 에러 없음. `Tools/Create Mech Pose Library (초안 값)` → `Assets/Resources/MechPoseLibrary.asset` 생성, 인스펙터에 포즈 26개(LowGuard … SlamDown)·이징 5개(Linear·Smooth·Snap·Heavy·EaseIn)
+- [ ] (M1) 플레이 → `Tools/Mech Pose Editor` → Mech 선택 → 포즈 `Guard` → `이 포즈 미리보기` → bernard가 가드 자세로 굳음(스프링 없음, 발은 땅에 붙음). `좌우 반전으로 미리보기` 켜고 `PunchStrike` → 왼 주먹이 뻗음. `미리보기 끄기` → 평소 동작
+- [ ] (M1) 플레이 중 `리그 멈춤` 켬 → 씬에서 bernard 팔 뼈(Arm_R_Upper 등)를 돌림 → 새 포즈 이름 `Test` → `현재 자세를 이 포즈로 저장` → 알림 "Test: 관절 N개 저장", 에셋에 Test가 생김 → `리그 멈춤` 끄고 `Test` 미리보기 → 돌린 자세 그대로 보임. 플레이를 멈춰도 Test가 에셋에 남음
+- [ ] (M1) 플레이 전: Mech 선택 → `기준 자세 기억` → 뼈 돌림 → 저장 → `원래 자세로 되돌리기` → 씬 자세가 처음대로. `이 포즈 미리보기`(플레이 전) → 씬 뼈가 그 포즈로, 되돌리기로 복구. Ctrl+Z로도 되돌아감
+- [ ] (M1) `BernardTuning → 전신 공격 모션 → Enabled` 끄면 예전 동작과 같음 (M2~M7 이후 비교용). 임시 상자 기체는 켜도 끄도 예전과 같음

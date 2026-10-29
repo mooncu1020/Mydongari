@@ -543,6 +543,16 @@ namespace MyDongari.Mech
             public float groundLogInterval = 1f;
         }
 
+        [Serializable]
+        public class MotionValues
+        {
+            [Header("전신 모션 공통 (M1, 하체 뼈가 있는 모델만. 포즈 각도는 MechPoseLibrary)")]
+            [Tooltip("끄면 예전 포즈 코드(팔만 움직이는 펀치 등)로 돌아간다")]
+            public bool enabled = true;
+            [Tooltip("모션이 맡은 관절이 스프링을 건너뛰는 비율. 1 = 단계 시간에 정확히 도착, 0 = 예전처럼 스프링으로 늦게 따라감")]
+            [Range(0f, 1f)] public float springBypass = 1f;
+        }
+
         [Header("이동")]
         [SerializeField] private MovementValues movement = new MovementValues();
         [Header("부스트")]
@@ -573,6 +583,8 @@ namespace MyDongari.Mech
         [SerializeField] private HitStopValues hitStop = new HitStopValues();
         [Header("외형 애니메이션 (MechVisualRig)")]
         [SerializeField] private VisualValues visual = new VisualValues();
+        [Header("전신 공격 모션 (MechVisualRig + MechPoseLibrary, M1~M7)")]
+        [SerializeField] private MotionValues motion = new MotionValues();
 
         public MovementValues Movement => movement;
         public BoostValues Boost => boost;
@@ -589,6 +601,7 @@ namespace MyDongari.Mech
         public LockOnValues LockOn => lockOn;
         public HitStopValues HitStop => hitStop;
         public VisualValues Visual => visual;
+        public MotionValues Motion => motion;
 
         private static BernardTuning _fallback;
 
