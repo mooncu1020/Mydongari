@@ -97,7 +97,7 @@ namespace MyDongari.Camera
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
-                _pitch = Mathf.Lerp(startPitch, 0f, elapsed / duration);
+                _pitch = Mathf.Lerp(startPitch, 0f, duration > 0f ? elapsed / duration : 1f);
                 yield return null;
             }
             _pitch = 0f;
@@ -119,7 +119,7 @@ namespace MyDongari.Camera
             while (elapsed < quickTurnDuration)
             {
                 elapsed += Time.deltaTime;
-                _yaw = Mathf.Lerp(startYaw, targetYaw, elapsed / quickTurnDuration);
+                _yaw = Mathf.Lerp(startYaw, targetYaw, quickTurnDuration > 0f ? elapsed / quickTurnDuration : 1f);
                 yield return null;
             }
 
@@ -258,7 +258,7 @@ namespace MyDongari.Camera
 
             float speed = _mechController.Rb.linearVelocity.magnitude;
             float maxSpeed = _mechController.MaxSprintSpeed;
-            float t = Mathf.Clamp01(speed / maxSpeed);
+            float t = maxSpeed > 0.0001f ? Mathf.Clamp01(speed / maxSpeed) : 0f;
             float targetFov = Mathf.Lerp(baseFov, sprintFov, t);
             _camera.fieldOfView = Mathf.Lerp(_camera.fieldOfView, targetFov, fovLerpSpeed * Time.deltaTime);
         }

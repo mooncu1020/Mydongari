@@ -59,7 +59,8 @@ namespace MyDongari.Visual
             if (_rb == null) return Vector3.zero;
             Vector3 velocity = _rb.linearVelocity;
             velocity.y = 0f;
-            return velocity;
+            // 물리가 잘못된 값을 내도 외형 계산으로 퍼지지 않게 (Q2)
+            return velocity.x == velocity.x && velocity.z == velocity.z && !float.IsInfinity(velocity.x) && !float.IsInfinity(velocity.z) ? velocity : Vector3.zero;
         }
 
         private void ResetFacing()
@@ -279,8 +280,8 @@ namespace MyDongari.Visual
             {
                 float s = u * 2f;
                 hip = Mathf.Lerp(amp, -amp, Mathf.SmoothStep(0f, 1f, s));
-                // 들기는 천천히(ease-in), 정점(swingLiftPeak)을 지나면 남은 짧은 구간에 빠르게 내려놓는다
-                float peak = v.swingLiftPeak;
+                // 들기는 천천히(ease-in), 정점(swingLiftPeak)을 지나면 남은 짧은 구간에 빠르게 내려놓는다. 0·1이면 0으로 나누므로 자른다 (Q2)
+                float peak = Mathf.Clamp(v.swingLiftPeak, 0.05f, 0.95f);
                 float lift = s < peak ? (s / peak) * (s / peak) : 1f - (s - peak) / (1f - peak);
                 knee = v.swingKneeAngle * lift;
             }
@@ -359,7 +360,7 @@ namespace MyDongari.Visual
             // 스텝이 없는 프레임은 0, 있는 프레임은 크게 튀어(프레임이 물리 주기에 가까운 화면 분할에서 특히) 상체가 떨린다 (J3)
             if (!HasLowerBody) return;
             Vector3 velocity = HorizontalVelocity();
-            if (Time.fixedDeltaTime > 0f) _physicsAccel = (velocity - _lastFixedVelocity) / Time.fixedDeltaTime;
+            if (Time.fixedDeltaTime > 0.0001f) _physicsAccel = (velocity - _lastFixedVelocity) / Time.fixedDeltaTime;
             _lastFixedVelocity = velocity;
         }
 

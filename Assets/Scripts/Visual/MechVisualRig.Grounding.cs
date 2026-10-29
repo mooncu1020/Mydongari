@@ -126,9 +126,11 @@ namespace MyDongari.Visual
             // 보정을 멈춘 동안엔 지금 보정량 그대로 (발이 땅에서 떨어져 보이는 게 의도)
             if (_groundingHold) return;
 
-            bool hasL = TrySoleHeight(_footL, _soleL, out float soleL);
-            bool hasR = TrySoleHeight(_footR, _soleR, out float soleR);
-            if ((!hasL && !hasR) || !TryGroundHeight(out float ground)) return;
+            bool hasL = TrySoleHeight(_footL, _soleL, out float soleL) && IsFinite(soleL);
+            bool hasR = TrySoleHeight(_footR, _soleR, out float soleR) && IsFinite(soleR);
+            if ((!hasL && !hasR) || !TryGroundHeight(out float ground) || !IsFinite(ground)) return;
+            // 지난 보정량이 잘못됐으면 0부터 (Q2)
+            if (!IsFinite(_groundOffset)) _groundOffset = 0f;
             float lowest = Mathf.Min(hasL ? soleL : float.MaxValue, hasR ? soleR : float.MaxValue);
 
             // 지금 발바닥은 이미 현재 보정이 들어간 위치라, 목표 = 현재 보정 + 남은 차이.

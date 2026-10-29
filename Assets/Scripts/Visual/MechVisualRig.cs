@@ -588,7 +588,9 @@ namespace MyDongari.Visual
             // 포즈 캡처 중(에디터 도구): 사용자가 뼈를 직접 돌리는 동안 덮어쓰지 않는다
             if (PoseEditFreeze) return;
 
+            // 첫 프레임 0, 히트스톱 0은 정상. NaN·음수만 0으로 (Q2)
             float dt = Time.deltaTime;
+            if (!IsFinite(dt) || dt < 0f) dt = 0f;
             _clock += dt;
             BernardTuning.VisualValues v = V;
 
@@ -626,11 +628,12 @@ namespace MyDongari.Visual
                 PoseHitReaction();
             }
             PoseStun(v);
-            DiagnoseTargets(dt);
+            // 목표가 이미 잘못됐으면(포즈·걸음 계산) 이번 프레임은 원래 자세로 (Q2)
+            if (!CheckTargets(dt)) return;
 
-            // 스프링: 프레임이 튀어도 터지지 않게 dt 상한
+            // 스프링: 프레임이 튀어도 터지지 않게 dt 상한 (안정성은 Spring 안의 하위 스텝이 맡는다)
             float step = Mathf.Min(dt, 1f / 30f);
-            DiagnoseSpringStability(v, dt, step);
+            // 먼저 전부 계산·검사하고, 모두 정상일 때만 뼈에 쓴다 (중간에 잘못되면 반쯤 쓴 자세가 남지 않게)
             foreach (Joint joint in _joints)
             {
                 if (joint.Target == null) continue;
@@ -640,31 +643,33 @@ namespace MyDongari.Visual
                 // 스커트는 따로 느슨한 스프링으로 허벅지를 늦게 따라간다 (G3)
                 if (IsSkirt(joint)) Spring(ref joint.Rotation, ref joint.RotationVelocity, joint.TargetRotation, v.skirtSpringFrequency, v.skirtSpringDamping, step);
                 else Spring(ref joint.Rotation, ref joint.RotationVelocity, joint.TargetRotation, v, step);
-                DiagnoseJoint(joint, "스프링", dt, step, beforeRotation, beforeVelocity);
                 // 전신 모션이 맡은 관절은 스프링 지연 없이 목표로 (M1)
                 ApplySpringBypass(joint);
                 // 발목은 위쪽 사슬이 이번 프레임 각도로 정해진 뒤(배열에서 다리·정강이 다음) 평행 보정
                 if (joint == _ankleL) LevelAnkle(joint, v, _pelvis, _hipL, _legL, _shinL);
                 else if (joint == _ankleR) LevelAnkle(joint, v, _pelvis, _hipR, _legR, _shinR);
-                DiagnoseJoint(joint, "적용 직전(우회·발목 보정 뒤)", dt, step, beforeRotation, beforeVelocity);
-                Apply(joint);
+                if (!CheckJoint(joint, "스프링·적용 직전", dt, step, beforeRotation, beforeVelocity)) return;
+            }
+            foreach (Joint joint in _joints)
+            {
+                if (joint.Target != null) Apply(joint);
             }
 
             // 포즈를 다 적용한 다음 발바닥 높이로 비주얼 루트 Y를 맞춘다 (H3)
             UpdateGrounding(v, dt);
             if (!IsFinite(_groundOffset) || Mathf.Abs(_groundOffset) > DivergedPosition)
             {
-                ReportInvalid("접지 보정", null, $"groundOffset={_groundOffset}, dt={dt}");
+                RecoverFromInvalid("접지 보정", null, $"groundOffset={_groundOffset}, dt={dt}");
             }
         }
 
-        // ---------------- 진단 (Q1): 처음 NaN·발산이 생긴 순간 한 번만 ----------------
+        // ---------------- 진단 (Q1) · 방어 (Q2): 잘못된 값이면 원래 자세로 되돌리고 상태 리셋, 로그는 처음 한 번만 ----------------
 
         // 이보다 크면 정상 동작으로 나올 수 없는 값 = 발산으로 본다 (포즈 오프셋은 많아야 수백°, 위치는 1m 안팎)
         private const float DivergedAngle = 3600f;
         private const float DivergedPosition = 50f;
         private bool _invalidReported;
-        private bool _stabilityReported;
+        private int _recoverCount;
 
         private static bool IsFinite(float f) => !float.IsNaN(f) && !float.IsInfinity(f);
         private static bool IsFinite(Vector3 v) => IsFinite(v.x) && IsFinite(v.y) && IsFinite(v.z);
@@ -673,37 +678,85 @@ namespace MyDongari.Visual
 
         private static string JointName(Joint joint) => joint != null && joint.Target != null ? joint.Target.name : "(없음)";
 
-        /// <summary>포즈를 다 얹은 목표값 검사 (스프링 전). 여기서 걸리면 포즈·걸음·모션 계산이 원인.</summary>
-        private void DiagnoseTargets(float dt)
+        /// <summary>포즈를 다 얹은 목표값 검사 (스프링 전). 잘못됐으면 되돌리고 false — 원인은 포즈·걸음·모션 계산.</summary>
+        private bool CheckTargets(float dt)
         {
-            if (_invalidReported) return;
             foreach (Joint joint in _joints)
             {
                 if (joint.Target == null) continue;
-                if (IsValidAngle(joint.TargetRotation) && IsValidPosition(joint.TargetPosition) && IsValidPosition(joint.DirectPosition)) continue;
-                ReportInvalid("포즈 목표(스프링 전)", joint,
+                if (IsValidAngle(joint.TargetRotation) && IsValidPosition(joint.TargetPosition) && IsValidPosition(joint.DirectPosition) && IsFinite(joint.Yaw)) continue;
+                RecoverFromInvalid("포즈 목표(스프링 전)", joint,
                     $"TargetRotation={joint.TargetRotation}, TargetPosition={joint.TargetPosition}, DirectPosition={joint.DirectPosition}, Yaw={joint.Yaw}, " +
                     $"MotionWeight={joint.MotionWeight}, dt={dt}, gaitWeight={_gaitWeight}, 속도={HorizontalVelocity().magnitude:0.00}");
-                return;
+                return false;
             }
+            return true;
         }
 
-        /// <summary>스프링·적용 직전 관절 상태 검사. 여기서 처음 걸리면(목표는 정상) 스프링 적분이 원인.</summary>
-        private void DiagnoseJoint(Joint joint, string stage, float dt, float step, Vector3 beforeRotation, Vector3 beforeVelocity)
+        /// <summary>스프링·우회·발목 보정 뒤 관절 상태 검사. 잘못됐으면 되돌리고 false — 목표는 정상이었으니 스프링 쪽이 원인.</summary>
+        private bool CheckJoint(Joint joint, string stage, float dt, float step, Vector3 beforeRotation, Vector3 beforeVelocity)
         {
-            if (_invalidReported) return;
-            if (IsValidAngle(joint.Rotation) && IsFinite(joint.RotationVelocity) && IsValidPosition(joint.Position) && IsFinite(joint.PositionVelocity)) return;
+            if (IsValidAngle(joint.Rotation) && IsFinite(joint.RotationVelocity) && IsValidPosition(joint.Position) && IsFinite(joint.PositionVelocity)) return true;
             BernardTuning.VisualValues v = V;
             float frequency = IsSkirt(joint) ? v.skirtSpringFrequency : v.springFrequency;
             float damping = IsSkirt(joint) ? v.skirtSpringDamping : v.springDamping;
-            ReportInvalid(stage, joint,
+            RecoverFromInvalid(stage, joint,
                 $"Rotation {beforeRotation} → {joint.Rotation}, RotationVelocity {beforeVelocity} → {joint.RotationVelocity}, Position={joint.Position}, " +
                 $"Target={joint.TargetRotation}, MotionWeight={joint.MotionWeight}, dt={dt}, 스프링 step={step}, " +
-                $"주파수={frequency}Hz 감쇠={damping} → ω·step={2f * Mathf.PI * frequency * step:0.000} (안정 한계 {SpringStableLimit(damping):0.000})");
+                $"주파수={frequency}Hz 감쇠={damping} → ω·step={2f * Mathf.PI * frequency * step:0.000} (하위 스텝 한계 {SpringStableLimit(damping) * SpringSubstepMargin:0.000})");
+            return false;
         }
 
         /// <summary>
-        /// 반암시 오일러 스프링은 ω·step이 한계를 넘으면 매 프레임 진폭이 커져 결국 무한대가 된다.
+        /// 잘못된 값이 나온 프레임: 처음 한 번만 에러를 남기고, 모든 뼈를 원래 자세로 되돌리고 계산 상태(스프링·위상·접지·상하체 방향)를 리셋한다.
+        /// 다음 프레임부터 원래 자세에서 다시 시작한다.
+        /// </summary>
+        private void RecoverFromInvalid(string stage, Joint joint, string detail)
+        {
+            _recoverCount++;
+            ReportInvalid(stage, joint, detail);
+            ResetPoseState();
+        }
+
+        private void ResetPoseState()
+        {
+            foreach (Joint j in _joints)
+            {
+                if (j == null) continue;
+                j.Rotation = Vector3.zero;
+                j.RotationVelocity = Vector3.zero;
+                j.Position = Vector3.zero;
+                j.PositionVelocity = Vector3.zero;
+                j.TargetRotation = Vector3.zero;
+                j.TargetPosition = Vector3.zero;
+                j.DirectPosition = Vector3.zero;
+                j.MotionWeight = 0f;
+                j.Yaw = 0f;
+                j.HasWritten = false;
+                if (j.Target == null) continue;
+                j.Target.localPosition = j.RestPosition;
+                j.Target.localRotation = j.RestRotation;
+            }
+            _gaitPhase = 0f;
+            _stridePhase = 0f;
+            _leapPhase = 0f;
+            _leapActive = false;
+            _hoverTime = 0f;
+            _gaitWeight = 0f;
+            _scrapeL = 0f;
+            _scrapeR = 0f;
+            _turnStepsLeft = 0;
+            _landTime = None;
+            _physicsAccel = Vector3.zero;
+            _smoothedAccel = Vector3.zero;
+            _lastFixedVelocity = Vector3.zero;
+            _carryStart = None;
+            _facingReady = false;
+            ResetGrounding();
+        }
+
+        /// <summary>
+        /// 반암시 오일러 스프링은 ω·step이 한계를 넘으면 매 프레임 진폭이 커져 결국 무한대가 된다 (Q1 원인).
         /// 한계 = min(1/ζ, -2ζ + √(4ζ² + 4)) (ζ = 0.6이면 1.13 → 8Hz에서 step 0.0225초, 약 44fps 아래가 불안정).
         /// </summary>
         private static float SpringStableLimit(float damping)
@@ -712,23 +765,16 @@ namespace MyDongari.Visual
             return Mathf.Min(1f / z, -2f * z + Mathf.Sqrt(4f * z * z + 4f));
         }
 
-        private void DiagnoseSpringStability(BernardTuning.VisualValues v, float dt, float step)
-        {
-            if (_stabilityReported || step <= 0f) return;
-            float a = 2f * Mathf.PI * Mathf.Max(0.1f, v.springFrequency) * step;
-            float limit = SpringStableLimit(v.springDamping);
-            if (a <= limit) return;
-            _stabilityReported = true;
-            Debug.LogWarning($"[MechVisualRig] {name}: 스프링 불안정 프레임 — dt={dt:0.0000}초(약 {1f / Mathf.Max(0.0001f, dt):0}fps), step={step:0.0000}, " +
-                             $"ω·step={a:0.000} > 한계 {limit:0.000} (주파수 {v.springFrequency}Hz, 감쇠 {v.springDamping}). 이런 프레임이 이어지면 관절 각도가 발산한다", this);
-        }
+        // 하위 스텝 하나의 ω·h를 안정 한계의 이 비율 아래로 (8Hz·감쇠 0.6이면 60fps까지 하위 스텝 1개 = 예전과 같은 결과)
+        private const float SpringSubstepMargin = 0.8f;
+        private const int MaxSpringSubsteps = 32;
 
         private void ReportInvalid(string stage, Joint joint, string detail)
         {
             if (_invalidReported) return;
             _invalidReported = true;
             Debug.LogError($"[MechVisualRig] {name}: 처음 잘못된 값(NaN·무한대·발산) — 관절 {JointName(joint)}, 단계 '{stage}', 프레임 {Time.frameCount}, " +
-                           $"timeScale={Time.timeScale}, unscaledDeltaTime={Time.unscaledDeltaTime:0.0000}\n{detail}", this);
+                           $"timeScale={Time.timeScale}, unscaledDeltaTime={Time.unscaledDeltaTime:0.0000}. 원래 자세로 되돌리고 계속합니다(같은 로그는 다시 안 남김)\n{detail}", this);
         }
 
         private static void Spring(ref Vector3 x, ref Vector3 velocity, Vector3 target, BernardTuning.VisualValues v, float dt)
@@ -738,12 +784,21 @@ namespace MyDongari.Visual
 
         private static void Spring(ref Vector3 x, ref Vector3 velocity, Vector3 target, float frequency, float damping, float dt)
         {
-            if (dt <= 0f) return;
-            float omega = 2f * Mathf.PI * Mathf.Max(0.1f, frequency);
-            // 반암시 오일러: 감쇠 스프링 a = ω²(목표 - x) - 2ζω·v
-            Vector3 acceleration = omega * omega * (target - x) - 2f * damping * omega * velocity;
-            velocity += acceleration * dt;
-            x += velocity * dt;
+            if (dt <= 0f || !IsFinite(dt)) return;
+            float omega = 2f * Mathf.PI * Mathf.Clamp(IsFinite(frequency) ? frequency : 8f, 0.1f, 1000f);
+            damping = Mathf.Clamp(IsFinite(damping) ? damping : 0.6f, 0.01f, 10f);
+            // 반암시 오일러는 ω·h가 한계를 넘으면 발산한다(Q1) — 한계 안쪽으로 하위 스텝을 쪼갠다.
+            // 프레임레이트가 높으면(기본값 60fps 이상) 하위 스텝 1개라 예전과 같은 결과
+            float maxStep = SpringStableLimit(damping) * SpringSubstepMargin / omega;
+            int steps = Mathf.Clamp(Mathf.CeilToInt(dt / maxStep), 1, MaxSpringSubsteps);
+            float h = dt / steps;
+            for (int i = 0; i < steps; i++)
+            {
+                // 감쇠 스프링 a = ω²(목표 - x) - 2ζω·v
+                Vector3 acceleration = omega * omega * (target - x) - 2f * damping * omega * velocity;
+                velocity += acceleration * h;
+                x += velocity * h;
+            }
         }
 
         /// <summary>

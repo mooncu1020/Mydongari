@@ -401,3 +401,7 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 ## Phase Q (NaN 발산)
 
 - [ ] (Q1) 진단만 들어간 상태로 플레이(Q2 전 커밋에서 확인하려면): 터질 때 콘솔에 `[MechVisualRig] … 스프링 불안정 프레임 — dt=… ω·step=… > 한계 …` 경고 1번, 이어서 `처음 잘못된 값 … 단계 '스프링'` 에러 1번(관절 이름·각도 변화·dt·ω·step 포함). '포즈 목표' 단계로 나오면 스프링이 아닌 포즈 계산이 원인
+- [ ] (Q2) 에디터에서 VERSUS(화면 분할) 플레이 → 카운트다운·이동·공격 내내 "Invalid worldAABB/localAABB" 없음, 기체가 부서지지 않음. 콘솔에 `[MechVisualRig] … 처음 잘못된 값` 에러가 없음(나오면 그 줄의 관절·단계·값을 알려 주세요 — 원래 자세로 되돌리고 계속 동작해야 함)
+- [ ] (Q2) 일부러 느리게: Game 뷰 위 `Stats`로 fps 확인하며 Scene 뷰를 같이 열거나 `Application.targetFrameRate`를 낮춘 상태(에디터 Project Settings → Quality VSync 끄고 다른 무거운 창)에서도 위와 같음. 30fps 이하에선 외형이 살짝 느려질 수 있음(예전과 같음)
+- [ ] (Q2) 빌드: 수백 fps(VSync 끔)·첫 프레임·히트스톱(펀치·파일 드라이버) 중 오류 없음. `Logs/PlayLogs/errors.txt`에 MechVisualRig 에러 없음
+- [ ] (Q2) 60fps 이상에서 걸음·펀치·가드 등 외형이 예전과 같은 느낌(스프링 결과 동일)

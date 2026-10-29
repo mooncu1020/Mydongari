@@ -244,8 +244,8 @@ namespace MyDongari.Visual
             {
                 float p = u * 2f;
                 x = Mathf.Lerp(-half, half, Mathf.SmoothStep(0f, 1f, p));
-                // 들기는 천천히, 정점을 지나면 빠르게 내려놓는다 (G3와 같은 모양)
-                float peak = v.swingLiftPeak;
+                // 들기는 천천히, 정점을 지나면 빠르게 내려놓는다 (G3와 같은 모양). 0·1이면 0으로 나누므로 자른다 (Q2)
+                float peak = Mathf.Clamp(v.swingLiftPeak, 0.05f, 0.95f);
                 float lift = p < peak ? (p / peak) * (p / peak) : 1f - (p - peak) / (1f - peak);
                 knee = s.SwingKnee * lift;
                 bump = 0f;
@@ -423,6 +423,8 @@ namespace MyDongari.Visual
 
             // 분사구: Body 뼈를 따라가는 기체 축 기준 오프셋, 뒤·약간 아래로 뿜는다
             Quaternion bodyFrame = _body.Target.rotation * _body.BoneFromMech;
+            // 뼈가 잘못된 프레임이면 이펙트 위치를 건드리지 않는다 (Q2)
+            if (!IsFinite(_body.Target.position) || !IsFinite(new Vector3(bodyFrame.x, bodyFrame.y, bodyFrame.z)) || !IsFinite(bodyFrame.w)) return;
             _thrusterFx.transform.SetPositionAndRotation(
                 _body.Target.position + bodyFrame * g.thrusterOffset,
                 Quaternion.LookRotation(bodyFrame * new Vector3(0f, -0.3f, -1f)));
