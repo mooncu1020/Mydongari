@@ -181,6 +181,13 @@ namespace MyDongari.Movement
             Rb.linearDamping = _requestedDamping ?? _defaultDamping;
             _requestedDamping = null;
             _requestedDampingPriority = int.MinValue;
+
+            if (InputTrace.ShouldLog(this, "5 MechController"))
+            {
+                InputTrace.Log("5 MechController", $"{gameObject.name} reader={(InputReader != null ? InputReader.gameObject.name : "없음")} " +
+                    $"move={(InputReader != null ? InputReader.MoveInput.ToString() : "-")} vel={Rb.linearVelocity} " +
+                    $"external={IsExternallyControlled} kinematic={Rb.isKinematic}");
+            }
         }
     }
 }

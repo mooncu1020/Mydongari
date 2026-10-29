@@ -17,6 +17,10 @@ namespace MyDongari.Input
         [Tooltip("튕기기(↓ 초신지선회, ←→ 사이드스텝) 판정 수치. 전력질주·슬라이딩은 두 스틱 조작이라 BernardTuning(이동)에 있다")]
         [SerializeField] private StickGestureSettings gesture = new StickGestureSettings();
 
+        [Header("액션 맵")]
+        [Tooltip("게임 조작용 액션 맵 이름. 시작할 때와 패드 배정 때마다 PlayerInput의 현재 맵을 이걸로 맞추고 켠다")]
+        [SerializeField] private string gameplayActionMap = "Player";
+
         [Header("메뉴")]
         [Tooltip("메뉴 위아래 이동으로 인정하는 스틱·D패드 기울기")]
         [SerializeField] private float menuNavigateThreshold = 0.5f;
@@ -154,10 +158,62 @@ namespace MyDongari.Input
             _skill2Action.performed += _ => _skill2Pending = true;
         }
 
+        private void Start()
+        {
+            // 모든 PlayerInput의 OnEnable이 끝난 뒤라 SwitchCurrentActionMap이 에러 없이 된다
+            EnsureGameplayActionMap();
+        }
+
+        /// <summary>
+        /// PlayerInput의 현재 액션 맵을 조작용 맵으로 맞추고 켠다.
+        /// 액션 에셋이 프로젝트 전역 액션이라, 원본을 받은 PlayerInput(먼저 초기화된 쪽)은 전역 자동 활성화로 동작하지만
+        /// 두 번째 PlayerInput은 복사본을 받고 Default Map이 비어 있으면 아무도 켜 주지 않아 입력이 전부 0이 된다 (L1).
+        /// 씬 설정(Default Map)에 기대지 않고 코드에서 매번 맞춘다.
+        /// </summary>
+        public void EnsureGameplayActionMap()
+        {
+            if (_playerInput == null || !_playerInput.isActiveAndEnabled || _playerInput.actions == null) return;
+
+            InputActionMap current = _playerInput.currentActionMap;
+            if (current == null || current.name != gameplayActionMap)
+            {
+                if (_playerInput.actions.FindActionMap(gameplayActionMap) == null)
+                {
+                    Debug.LogError($"[InputReader] 액션 맵 '{gameplayActionMap}'이 '{_playerInput.actions.name}'에 없습니다", this);
+                    return;
+                }
+                _playerInput.SwitchCurrentActionMap(gameplayActionMap);
+            }
+            else if (!current.enabled)
+            {
+                current.Enable();
+            }
+        }
+
+        /// <summary>VERSUS 진입 로그용 한 줄: PlayerInput 번호·사용자·액션 맵(켜짐)·장치.</summary>
+        public string DescribeBinding()
+        {
+            if (_playerInput == null) return "PlayerInput 없음";
+            InputActionMap map = _playerInput.currentActionMap;
+            string mapText = map != null ? $"{map.name}({(map.enabled ? "켜짐" : "꺼짐")})" : "없음";
+            string userText = _playerInput.user.valid ? $"#{_playerInput.user.index}" : "없음";
+            var devices = new System.Collections.Generic.List<string>();
+            foreach (InputDevice device in _playerInput.devices) devices.Add(device.displayName);
+            return $"PlayerInput #{_playerInput.playerIndex} (User {userText}, 오브젝트 {_playerInput.gameObject.name}), " +
+                   $"액션 맵 {mapText}, Move 켜짐 {_moveAction.enabled}, 장치 [{string.Join(", ", devices)}]";
+        }
+
         private void Update()
         {
             MoveInput = _moveAction.ReadValue<Vector2>();
             LookInput = _lookAction.ReadValue<Vector2>();
+            if (InputTrace.ShouldLog(this, "1 PlayerInput"))
+            {
+                InputActionMap map = _playerInput.currentActionMap;
+                InputTrace.Log("1 PlayerInput", $"{gameObject.name} map={(map != null ? map.name : "없음")} " +
+                    $"mapEnabled={(map != null && map.enabled)} moveEnabled={_moveAction.enabled} raw={MoveInput} " +
+                    $"projectWideAsset={ReferenceEquals(_playerInput.actions, InputSystem.actions)}");
+            }
             AnyInputThisFrame = DetectAnyInput();
 
             // 히트스톱(timeScale 0) 중에도 입력 타이밍은 실제 시간으로 잰다
@@ -193,6 +249,12 @@ namespace MyDongari.Input
             UpdateMenuInput();
             UpdatePracticeInput();
             if (_inputLocked) ClearGameplayInput();
+
+            if (InputTrace.ShouldLog(this, "2 InputReader"))
+            {
+                InputTrace.Log("2 InputReader", $"{gameObject.name} MoveInput={MoveInput} active={IsMoveInputActive} " +
+                    $"locked={_inputLocked}");
+            }
         }
 
         private bool DetectAnyInput()

@@ -312,3 +312,9 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (J3) 플레이 중 Mech·Mech_P2의 Rigidbody → Interpolate가 `Interpolate`로 표시됨 (`MechController → Force Interpolation` 끄면 None 그대로)
 - [ ] (J3) 2인 대전에서 두 기체가 걷기·달리기·멈추기 할 때 상체·파츠가 튀지 않음. 발이 바닥에 붙어 있음
 - [ ] (J3) 회귀: 라운드 시작 때 기체가 스폰 위치에서 미끄러져 들어오지 않고 바로 서 있음. 펀치 사거리·락온 거리 체감이 예전과 같음
+- [ ] (L1) 패드 2개로 타이틀 → VERSUS → 콘솔에 `[VersusInput] P1 …`, `[VersusInput] P2 Mech_P2 …` 두 줄. P2 줄이 `입력 소스 InputReader`, `PlayerInput #`번호가 P1과 다름, `액션 맵 Player(켜짐)`, `Move 켜짐 True`, 장치에 두 번째 패드 이름, `전투 입력 InputReader(Mech_P2)`
+- [ ] (L1) 카운트다운이 끝나면 P2 패드 왼쪽 스틱으로 P2 기체가 걷고, 오른쪽 스틱으로 P2 화면이 돎. 가드·펀치도 P2 패드로 됨. P1 패드는 P2를 움직이지 않음 (반대도)
+- [ ] (L1) VERSUS 시작 후 약 6초간 `[P2Trace]` 로그: `1 PlayerInput`의 `mapEnabled=True moveEnabled=True`, 스틱을 밀면 `raw`가 0이 아님 → `2 InputReader` MoveInput(카운트다운 중엔 locked=True로 0) → `4 MechStateMachine` state가 Walk/Run → `5 MechController` vel 증가 → `6 MechCamera` reader=Mech_P2. 0이 되는 첫 단계가 남은 문제 위치
+- [ ] (L1) VERSUS → 타이틀 → PRACTICE → 타이틀 → VERSUS 다시 → P2 조작 여전히 됨 (P2가 꺼졌다 켜진 뒤에도)
+- [ ] (L1) PRACTICE: P1 패드·키보드로 조작, 메뉴(위아래·결정)·연습 단축키(Select 짧게/길게, Tab, Backspace) 예전과 같음
+- [ ] (L1) 빌드에서도 같은 확인. 끝나면 `GameManager → 입력 진단 → Trace P2 Input` 끄기 (VERSUS 한 줄 로그는 `Log Input On Versus Start`로 따로 끔)

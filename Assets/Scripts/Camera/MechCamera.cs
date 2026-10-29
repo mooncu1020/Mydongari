@@ -158,6 +158,12 @@ namespace MyDongari.Camera
         {
             if (target == null || _inputReader == null) return;
 
+            if (InputTrace.ShouldLog(target, "6 MechCamera"))
+            {
+                InputTrace.Log("6 MechCamera", $"{name} target={target.name} reader={_inputReader.gameObject.name} " +
+                    $"move={_inputReader.MoveInput} look={_inputReader.LookInput}");
+            }
+
             // 전력질주 진입 판정 중·질주 중엔 진행 방향 뒤로 따라가고, 질주가 풀린 뒤 오른쪽 스틱이 중립으로 돌아올 때까지
             // 시점 입력을 막는다 (F2: 질주 조작용 오른쪽 스틱이 카메라를 돌려 화면이 튀던 문제)
             MechStateMachine stateMachine = _mechController != null ? _mechController.StateMachine : null;

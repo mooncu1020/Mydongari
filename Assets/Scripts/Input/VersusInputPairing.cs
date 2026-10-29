@@ -113,6 +113,11 @@ namespace MyDongari.Input
             // 스킴 필터를 풀고, 대신 액션이 볼 수 있는 장치를 이 플레이어 것으로만 제한한다.
             playerInput.actions.bindingMask = null;
             playerInput.actions.devices = devices.ToArray();
+
+            // 장치만 묶어서는 입력이 안 들어온다: 두 번째 PlayerInput은 액션 복사본을 받는데 그 맵을 켜는 곳이 없다 (L1).
+            // 모드 전환으로 P2가 꺼졌다 켜진 뒤에도 여기서 다시 맞춘다
+            InputReader reader = playerInput.GetComponent<InputReader>();
+            if (reader != null) reader.EnsureGameplayActionMap();
         }
     }
 }

@@ -80,6 +80,16 @@ namespace MyDongari.Core
         [Tooltip("무입력 대기 시간(초, 실제 시간)")]
         [SerializeField] private float idleTimeout = 120f;
 
+        [Header("입력 진단")]
+        [Tooltip("VERSUS 진입 시 기체별로 입력 소스 종류·PlayerInput 번호·액션 맵·장치 이름을 콘솔에 한 줄씩 남긴다")]
+        [SerializeField] private bool logInputOnVersusStart = true;
+        [Tooltip("임시(L1): VERSUS 시작 후 P2 이동 입력을 단계별(PlayerInput→InputReader→입력 소스→상태머신→MechController→카메라)로 찍는다. 확인 끝나면 끈다")]
+        [SerializeField] private bool traceP2Input = true;
+        [Tooltip("추적 시간(초). 카운트다운 동안은 입력이 잠기므로 카운트다운 시간에 이만큼 더해서 찍는다")]
+        [SerializeField] private float traceP2InputSeconds = 3f;
+        [Tooltip("단계마다 이 간격(초)으로 한 줄씩 (매 프레임 찍으면 콘솔이 넘친다)")]
+        [SerializeField] private float traceP2InputInterval = 0.25f;
+
         [Header("라운드 설정")]
         [SerializeField] private int roundsToWin = 2;
 
@@ -264,7 +274,11 @@ namespace MyDongari.Core
         {
             ApplyPairing();
             if (showTitleOnStart) EnterTitle();
-            else StartMatch();
+            else
+            {
+                if (Mode == GameMode.Versus) OnVersusEntered();
+                StartMatch();
+            }
         }
 
         // ---------------- 모드 전환 ----------------
@@ -300,7 +314,36 @@ namespace MyDongari.Core
             ApplyLayout(mode);
             ApplyPairing();
             CloseMenu();
+            if (Mode == GameMode.Versus) OnVersusEntered();
             StartMatch();
+        }
+
+        /// <summary>VERSUS 진입 직후(배치·패드 배정 뒤) 입력 진단 로그.</summary>
+        private void OnVersusEntered()
+        {
+            if (logInputOnVersusStart)
+            {
+                LogInputBinding(1, player1);
+                LogInputBinding(2, player2);
+            }
+            if (traceP2Input) InputTrace.Begin(countdownDuration + traceP2InputSeconds, traceP2InputInterval);
+        }
+
+        private static void LogInputBinding(int index, GameObject mech)
+        {
+            if (mech == null)
+            {
+                Debug.Log($"[VersusInput] P{index}: 기체 없음");
+                return;
+            }
+            InputReader reader = mech.GetComponent<InputReader>();
+            BotInput bot = mech.GetComponent<BotInput>();
+            MeleeSystem melee = mech.GetComponent<MeleeSystem>();
+            string source = reader != null ? "InputReader" : bot != null ? "BotInput" : "입력 소스 없음";
+            if (reader != null && bot != null) source += " (+BotInput도 붙어 있음)";
+            string binding = reader != null ? reader.DescribeBinding() : "PlayerInput 없음";
+            string combat = melee != null ? melee.InputSourceName : "MeleeSystem 없음";
+            Debug.Log($"[VersusInput] P{index} {mech.name} (active {mech.activeInHierarchy}): 입력 소스 {source}, {binding}, 전투 입력 {combat}");
         }
 
         /// <summary>승수·매치 상태를 비우고 1라운드부터. 재매치는 씬 리로드 없이 이걸로 한다.</summary>

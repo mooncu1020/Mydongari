@@ -63,7 +63,7 @@ namespace MyDongari.Combat
             _health = GetComponent<Health>();
             _rb = GetComponent<Rigidbody>();
             // 입력 소스가 없는 기체(더미 AI)는 가드 입력이 항상 false
-            _input = GetComponent<ICombatInputSource>();
+            _input = FindInputSource();
             _identity = MechIdentity.GetOrAdd(gameObject);
             // 0에서 시작하면 시작 직후 "방금 펀치를 낸 상태"로 취급돼 맞딜이 잘못 판정된다
             _meleeTimer = Punch.cooldown;
@@ -97,6 +97,13 @@ namespace MyDongari.Combat
 
             HandleGuard();
             HandleParry();
+
+            if (InputTrace.ShouldLog(this, "3 ICombatInputSource"))
+            {
+                string move = _input is InputReader reader ? reader.MoveInput.ToString() : "-";
+                InputTrace.Log("3 ICombatInputSource", $"{gameObject.name} source={InputSourceName} move={move} " +
+                    $"guardHeld={(_input != null && _input.GuardHeld)}");
+            }
         }
 
         /// <summary>전투 입력 소스를 바꾼다. 연습 봇처럼 런타임에 입력 컴포넌트를 붙이는 기체용.</summary>
@@ -113,9 +120,25 @@ namespace MyDongari.Combat
         {
             _heatGauge = GetComponent<HeatGauge>();
             _health = GetComponent<Health>();
-            ICombatInputSource input = GetComponent<ICombatInputSource>();
+            ICombatInputSource input = FindInputSource();
             if (input != null) _input = input;
         }
+
+        /// <summary>
+        /// 사람 입력(InputReader)이 있으면 그걸, 없으면 다른 입력 소스(BotInput)를 쓴다.
+        /// GetComponent&lt;ICombatInputSource&gt;는 컴포넌트 순서대로 첫 번째를 집어서,
+        /// 같은 기체에 BotInput이 붙어 있으면 사람 패드 대신 봇 버튼을 읽을 수 있다.
+        /// </summary>
+        private ICombatInputSource FindInputSource()
+        {
+            InputReader reader = GetComponent<InputReader>();
+            if (reader != null) return reader;
+            return GetComponent<ICombatInputSource>();
+        }
+
+        /// <summary>지금 읽는 전투 입력 소스 (진단 로그용). 없으면 "없음".</summary>
+        public string InputSourceName =>
+            _input is Component c && c != null ? $"{_input.GetType().Name}({c.gameObject.name})" : "없음";
 
         /// <summary>
         /// 가드 입력을 다음 Update까지 기다리지 않고 지금 한 번 처리한다. 규칙은 Update와 같다

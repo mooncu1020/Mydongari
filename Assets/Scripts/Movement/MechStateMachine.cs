@@ -122,6 +122,13 @@ namespace MyDongari.Movement
             }
             _currentState?.Update();
             UpdateLookBlock();
+
+            if (InputTrace.ShouldLog(this, "4 MechStateMachine"))
+            {
+                InputTrace.Log("4 MechStateMachine", $"{gameObject.name} state={_currentState?.GetType().Name ?? "없음"} " +
+                    $"reader={(InputReader != null ? InputReader.gameObject.name : "없음")} " +
+                    $"move={(InputReader != null ? InputReader.MoveInput.ToString() : "-")} enabled={enabled}");
+            }
         }
 
         /// <summary>상태 Update 뒤(이번 프레임 상태가 정해진 뒤)에 카메라 입력 차단을 정한다. 카메라는 LateUpdate에서 읽는다.</summary>
