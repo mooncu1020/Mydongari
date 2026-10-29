@@ -452,3 +452,13 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (T2) 해가 낮게(20°) 비춰 기체·바위 그림자가 길게. 그늘 쪽은 푸르스름하게 어둡게(앰비언트). Lighting 창 Environment에 Skybox = M_AsteroidSky, Ambient = Color
 - [ ] (T3) 런지 앞발 박기·넉다운 착지/미끄러짐·디딤걸음 착지 → 먼지가 연기처럼 퍼지지 않고 알갱이가 위·바깥으로 튀어 포물선을 그리며 떨어지고, 바닥(바위 위면 바위)에 닿아 조금 튀다 사라짐. 떠다니거나 부풀지 않음. `BernardTuning → 타격감 → Dust Gravity`(0이면 일직선으로 날아감)·`Dust Cone Angle`·`Dust Collision` 반영
 - [ ] (T4) 바위·가장자리 벽에 몸을 붙이고 카메라를 그쪽으로 돌리거나 맞아서 화면이 흔들림 → 카메라가 바위·벽 안으로 들어가 속이 보이지 않음(앞으로 당겨짐). 두 화면 모두. 상대 기체가 카메라 앞을 지나가도 화면이 앞으로 튀지 않음. `MechCamera → Collide With World` 끄면 예전 동작
+- [ ] (T5) **맵 전후 fps** (빌드 권장, 에디터면 Scene 뷰 닫기). VERSUS 화면 분할, 두 기체가 서로 보는 시작 자리에서 10초씩 오른쪽 위 실제 fps. F9로 제한, F10 외곽선은 켠 채로 같게.
+  - 맵 전: `AsteroidArena`를 끄고 `Map_Spaceport.`를 켠 뒤(하늘·조명은 메뉴가 바꿔 둔 그대로라 "지형만 전"), 또는 메뉴를 누르기 전 커밋에서 측정
+  - 맵 후: `AsteroidArena` 켜고 `Map_Spaceport.` 끔
+
+  | 제한 (F9) | 맵 전 | 맵 후 | 차이 |
+  | --- | --- | --- | --- |
+  | 없음 |  |  |  |
+  | 30 |  |  |  |
+
+  30 제한에서 맵 후가 30 밑이면: 해 그림자(Directional Light → Shadow Type = No Shadows로 비교), 테두리 바위 그림자(`Rim_Rocks` 렌더러 Cast Shadows 끔), 먼지 충돌(`Dust Collision` 끔) 순서로 하나씩 꺼 보며 원인 확인
