@@ -757,7 +757,14 @@ namespace MyDongari.Visual
                 ? Mathf.MoveTowards(_breathWeight, breathTarget, dt / breathFade)
                 : breathTarget;
 
-            if (!acting)
+            if (UseMotions)
+            {
+                // 전신 모션 모델(M2): 팔·상체·무릎은 기본 자세 포즈(로우 가드/돌격)가 맡고, 발 벌림·엇갈림만 대기 다리에서.
+                // 공격·가드 모션이 이 위에서 섞이므로 동작 중에도 깔아 둔다
+                PoseStance(v, dt);
+                PoseIdleLegs(v, 1f - _gaitWeight, includeKnee: false);
+            }
+            else if (!acting)
             {
                 // 어깨 바깥(L = Z-, R = Z+), 위팔 앞으로(X-), 팔꿈치 더 굽힘(X-), 상체 앞으로(X+), 무릎 굽힘(정강이 뒤로 X+)
                 AddRotation(_armLUpper, new Vector3(-v.idleArmForward, 0f, -v.idleShoulderSpread));
@@ -788,12 +795,14 @@ namespace MyDongari.Visual
         /// 대기 자세 다리 (H4): 11자 대신 바깥으로 벌림(L = Z-, R = Z+), 무릎 굽힘(정강이 X+),
         /// 왼발을 앞으로(앞뒤 엇갈림 idleFootStagger m 상당 각도, 다리 앞으로 = X-). 발목 평행 보정은 스프링 뒤 LevelAnkle.
         /// </summary>
-        private void PoseIdleLegs(BernardTuning.VisualValues v, float weight)
+        private void PoseIdleLegs(BernardTuning.VisualValues v, float weight, bool includeKnee = true)
         {
             if (weight <= 0f) return;
             float stagger = _legLengthL > 0.01f ? Mathf.Atan2(v.idleFootStagger, _legLengthL) * Mathf.Rad2Deg : 0f;
             AddRotation(_legL, new Vector3(-stagger, 0f, -v.idleLegSpread) * weight);
             AddRotation(_legR, new Vector3(0f, 0f, v.idleLegSpread) * weight);
+            // 기본 자세 포즈가 무릎을 굽히는 모델(M2)은 무릎을 여기서 또 굽히지 않는다
+            if (!includeKnee) return;
             AddRotation(_shinL, new Vector3(v.idleKneeBend, 0f, 0f) * weight);
             AddRotation(_shinR, new Vector3(v.idleKneeBend, 0f, 0f) * weight);
         }

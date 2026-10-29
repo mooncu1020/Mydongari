@@ -551,6 +551,12 @@ namespace MyDongari.Mech
             public bool enabled = true;
             [Tooltip("모션이 맡은 관절이 스프링을 건너뛰는 비율. 1 = 단계 시간에 정확히 도착, 0 = 예전처럼 스프링으로 늦게 따라감")]
             [Range(0f, 1f)] public float springBypass = 1f;
+
+            [Header("기본 자세 (M2: 대기·걷기·달리기 = LowGuard, 전력질주 = SprintGuard)")]
+            [Tooltip("전력질주에 들어가고 나올 때 두 자세를 섞는 시간(초)")]
+            public float sprintStanceBlendTime = 0.2f;
+            [Tooltip("전력질주 돌격 자세에서 걸음 팔 스윙 비율 (1 = 평소 그대로, 0 = 안 흔듦)")]
+            [Range(0f, 1f)] public float sprintArmSwingScale = 0.3f;
         }
 
         [Header("이동")]

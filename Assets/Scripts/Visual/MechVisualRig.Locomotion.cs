@@ -230,10 +230,10 @@ namespace MyDongari.Visual
             float hipL = PoseLeg(v, true, uL, dir, step);
             float hipR = PoseLeg(v, false, uR, dir, step);
 
-            // 팔: 반대쪽 다리를 작게 따라 흔들고, 팔꿈치는 반 걸음 늦게
-            float g = _gaitWeight;
-            AddRotation(_armLUpper, new Vector3(hipR * v.armSwingRatio, 0f, 0f));
-            AddRotation(_armRUpper, new Vector3(hipL * v.armSwingRatio, 0f, 0f));
+            // 팔: 반대쪽 다리를 작게 따라 흔들고, 팔꿈치는 반 걸음 늦게. 돌격 자세(M2 전력질주)면 주먹을 붙인 채라 더 작게
+            float g = _gaitWeight * ArmSwingScale;
+            AddRotation(_armLUpper, new Vector3(hipR * v.armSwingRatio * ArmSwingScale, 0f, 0f));
+            AddRotation(_armRUpper, new Vector3(hipL * v.armSwingRatio * ArmSwingScale, 0f, 0f));
             AddRotation(_armLLower, new Vector3(-ElbowSwing(v, uR) * g, 0f, 0f));
             AddRotation(_armRLower, new Vector3(-ElbowSwing(v, uL) * g, 0f, 0f));
 
