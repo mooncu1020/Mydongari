@@ -112,3 +112,4 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 79. (O1) **메뉴 `Mydongari/Tuning/Apply Feedback Values (O1 걷기 2.5m/s)`** → `BernardTuning.asset`의 `Max Walk Speed`가 10 → 2.5로 바뀐다(대화 상자에 바뀐 값 표시). 코드 기본값만 바꿔서는 이미 저장된 에셋 값이 그대로라 이 메뉴가 필요하다. 이동 모션 수치는 `BernardTuning → 이동 모션`(에셋에 없던 칸이라 기본값). 확인용 수치 출력은 `MechVisualRig → Log Gait Numbers`.
 80. (O3) GameManager의 `CombatFeedback` → 새 효과음 칸 `Slam Hit Clip`(슬램 명중)·`Pile Driver Hit Clip`(파일 드라이버 명중)·`Dust Clip`(먼지·착지: 런지 박기, 앵커 클로 버팀, 달리기 도약 착지)·`Thruster Burst Clip`(달리기 도약 박차기)·`Hover Loop Clip`(전력질주 동안 반복). 비우면 무음. 크기는 각 `… Volume`, 호버 루프 켜고 끄는 페이드는 `Hover Loop Fade Time`.
 81. (P1) 78~79의 걷기 2.5m/s는 취소. `Apply Feedback Values` 메뉴는 이제 콤보 쓰리 회복(0.8초)만 넣는다. 혹시 79를 실행했다면 `BernardTuning → 이동 → Max Walk Speed`를 10으로 되돌린다.
+82. (P2) GameManager의 `CombatFeedback` → 새 효과음 칸 `Stride Step Clip`(스러스터 디딤걸음 착지 발소리)·`Stride Scrape Loop Clip`(디딤걸음에서 발이 미끄러지는 동안 반복, 긁는 속도만큼 크게). 속도 구간 경계·디딤걸음 수치는 `BernardTuning → 이동 모션`.

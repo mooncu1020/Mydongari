@@ -87,6 +87,12 @@ namespace MyDongari.Feedback
         [Range(0f, 1f)] [SerializeField] private float hoverLoopVolume = 0.6f;
         [Tooltip("호버 루프가 켜지고 꺼질 때 소리 크기를 바꾸는 시간(초, 실제 시간)")]
         [SerializeField] private float hoverLoopFadeTime = 0.15f;
+        [Tooltip("스러스터 디딤걸음(3~12m/s) 착지 발소리")]
+        [SerializeField] private AudioClip strideStepClip;
+        [Range(0f, 1f)] [SerializeField] private float strideStepVolume = 0.8f;
+        [Tooltip("디딤걸음에서 발이 지면을 긁으며 미끄러지는 동안 반복 재생 (긁는 속도만큼 크게)")]
+        [SerializeField] private AudioClip strideScrapeLoopClip;
+        [Range(0f, 1f)] [SerializeField] private float strideScrapeVolume = 0.6f;
         [Range(0f, 1f)] [SerializeField] private float sfxVolume = 1f;
 
         /// <summary>기체 하나의 피드백 상태 (이전 프레임 플래그로 "막 그렇게 됐다"를 감지).</summary>
@@ -108,6 +114,9 @@ namespace MyDongari.Feedback
             // 호버 활주 루프 (O3). 기체마다 하나, 처음 필요할 때 만든다
             public MechStateMachine StateMachine;
             public AudioSource HoverLoop;
+            // 디딤걸음 긁는 소리 루프 (P2)
+            public MechVisualRig Rig;
+            public AudioSource ScrapeLoop;
         }
 
         private readonly List<MechFeedback> _mechs = new List<MechFeedback>();
@@ -141,7 +150,8 @@ namespace MyDongari.Feedback
                 Heat = mech.GetComponent<HeatGauge>(),
                 Boost = mech.GetComponent<BoostGauge>(),
                 Tint = new MechTint(mech),
-                StateMachine = mech.GetComponent<MechStateMachine>()
+                StateMachine = mech.GetComponent<MechStateMachine>(),
+                Rig = mech.GetComponent<MechVisualRig>()
             };
             _mechs.Add(fb);
 
@@ -217,7 +227,9 @@ namespace MyDongari.Feedback
                 Play(pileDriverHitClip);
                 return;
             }
-            Play(dustClip, dustVolume * Mathf.Clamp01(strength));
+            // 디딤걸음 착지는 전용 발소리 (먼지 소리 대신)
+            if (kind == "StrideLand") Play(strideStepClip, strideStepVolume);
+            else Play(dustClip, dustVolume * Mathf.Clamp01(strength));
             HitSparkFx.SpawnDust(position, strength, new HitSparkFx.DustStyle
             {
                 Color = feel.dustColor,
@@ -398,7 +410,37 @@ namespace MyDongari.Feedback
 
                 UpdateTint(fb, stunned, overheated, guarding);
                 UpdateHoverLoop(fb, active && fb.StateMachine != null && fb.StateMachine.IsSprinting);
+                float scrape = active && fb.Rig != null ? fb.Rig.ScrapeAmount : 0f;
+                UpdateLoop(ref fb.ScrapeLoop, strideScrapeLoopClip, strideScrapeVolume * Mathf.Clamp01(scrape));
             }
+        }
+
+        /// <summary>
+        /// 반복 소리 하나를 목표 크기로 (P2 긁는 소리). 목표가 0이면 페이드 후 멈춘다. 소스는 처음 필요할 때 GameManager에 붙인다.
+        /// 페이드 빠르기는 호버 루프와 같은 hoverLoopFadeTime.
+        /// </summary>
+        private void UpdateLoop(ref AudioSource source, AudioClip clip, float volume)
+        {
+            if (clip == null)
+            {
+                if (source != null && source.isPlaying) source.Stop();
+                return;
+            }
+            float target = volume * sfxVolume;
+            if (source == null)
+            {
+                if (target <= 0f) return;
+                source = gameObject.AddComponent<AudioSource>();
+                source.playOnAwake = false;
+                source.loop = true;
+                source.spatialBlend = 0f;
+                source.volume = 0f;
+            }
+            if (source.clip != clip) source.clip = clip;
+            float step = hoverLoopFadeTime > 0f ? Time.unscaledDeltaTime / hoverLoopFadeTime : 1f;
+            source.volume = Mathf.MoveTowards(source.volume, target, step * Mathf.Max(0.01f, sfxVolume));
+            if (target > 0f && !source.isPlaying) source.Play();
+            else if (target <= 0f && source.isPlaying && source.volume <= 0.0001f) source.Stop();
         }
 
         /// <summary>호버 활주 루프: 전력질주 동안만 기체마다 반복 재생, 켜고 끌 때 짧게 페이드 (O3).</summary>

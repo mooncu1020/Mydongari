@@ -391,13 +391,19 @@ namespace MyDongari.Mech
         [Serializable]
         public class GaitValues
         {
-            [Header("이동 모션 (O1: 걷기 = 걸음, 달리기 = 스러스터 보조 도약, 전력질주 = 호버 활주). 하체 뼈가 있는 모델 + 전신 모션")]
+            [Header("이동 다리 모션 (P2: 실제 수평 속도로 고름, 전력질주 상태만 호버). 하체 뼈가 있는 모델 + 전신 모션, 외형만")]
             [Tooltip("끄면 예전(G3) 이동 거리 기준 걸음")]
             public bool cadenceGait = true;
-            [Tooltip("걷기·달리기·호버 연출을 서로 섞어 넘기는 시간(초)")]
+            [Tooltip("이 속도(m/s)부터 걸음 → 스러스터 디딤걸음")]
+            public float strideStartSpeed = 3f;
+            [Tooltip("이 속도(m/s)부터 디딤걸음 → 스러스터 보조 도약")]
+            public float leapStartSpeed = 12f;
+            [Tooltip("경계 ± 이 속도(m/s)에서 두 모션을 섞어 넘긴다")]
+            public float speedBlendHalfWidth = 1.5f;
+            [Tooltip("전력질주 상태에 들어가고 나올 때 호버 활주를 섞는 시간(초)")]
             public float modeBlendTime = 0.15f;
 
-            [Header("걷기 (체공 없는 걸음. 초당 걸음 수 = 속도 ÷ 보폭)")]
+            [Header("걸음 (0 ~ 3m/s: 체공 없음. 초당 걸음 수 = 속도 ÷ 보폭)")]
             [Tooltip("한 걸음 보폭(m). 다리로 닿는 최대 보폭보다 길면 최대 보폭으로 줄인다")]
             public float walkStride = 1f;
             [Tooltip("디딘 발이 엉덩이 아래에서 앞뒤로 가는 최대 각도(°). 최대 보폭 = 2 × 엉덩이~발목 × sin(이 각도)")]
@@ -427,7 +433,27 @@ namespace MyDongari.Mech
             [Tooltip("몸의 비틀림·좌우 기울임을 머리에서 되돌리는 비율 (1 = 완전히 수평)")]
             [Range(0f, 1f)] public float headStabilize = 0.9f;
 
-            [Header("달리기: 스러스터 보조 도약 (외형만, 물리 이동은 그대로)")]
+            [Header("스러스터 디딤걸음 (3 ~ 12m/s: 다리로 못 닿는 거리는 착지한 발이 지면을 긁으며 미끄러짐)")]
+            [Tooltip("초당 걸음 수 상한")]
+            public float strideMaxCadence = 2.5f;
+            [Tooltip("디딤 구간 끝에서 발이 완전히 멈춰 고정되는 비율. 그 앞은 미끄러지다 멈춤")]
+            [Range(0.05f, 0.9f)] public float stridePlantFraction = 0.3f;
+            [Tooltip("무릎 추가 굽힘(°)·발 들 때 무릎(°)")]
+            public float strideKneeBend = 16f;
+            public float strideSwingKnee = 70f;
+            [Tooltip("걸음의 비틀림·팔 흔들림·골반 옆 이동에 곱하는 배율")]
+            public float strideBodyScale = 1.3f;
+            [Tooltip("착지 내려앉는 깊이(m)·화면 흔들림(m)")]
+            public float strideLandDrop = 0.06f;
+            public float strideLandShake = 0.015f;
+            [Tooltip("착지마다 등 스러스터 짧은 분사 입자 수")]
+            public int strideBurstCount = 12;
+            [Tooltip("발이 지면을 긁는 동안 발밑 불꽃(초당 입자, 긁는 속도에 비례)")]
+            public float strideSparkRate = 90f;
+            [Tooltip("착지 먼지 세기(0~1)")]
+            [Range(0f, 1f)] public float strideDustStrength = 0.5f;
+
+            [Header("스러스터 보조 도약 (12m/s 이상)")]
             [Tooltip("초당 도약 횟수")]
             public float leapRate = 1.6f;
             [Tooltip("도약 한 번 중 땅에 닿아 있는 비율(착지 → 박차기). 나머지는 공중")]
