@@ -416,10 +416,21 @@ namespace MyDongari.Combat
             if (Random.value >= parryChance) return;
 
             BernardTuning opponentTuning = TuningOf(_watchedOpponent);
-            float speed = Mathf.Max(0.1f, opponentTuning.Lunge.speed);
-            // 상대 판정 구가 기체 앞쪽으로 나와 있어 그만큼 먼저 닿는다
-            float reach = opponentTuning.Lunge.hitForwardOffset + opponentTuning.Lunge.hitRadius;
-            float eta = Mathf.Max(0f, Vector3.Distance(transform.position, _player.position) - reach) / speed;
+            BernardTuning.LungeValues lunge = opponentTuning.Lunge;
+            float speed = Mathf.Max(0.1f, lunge.speed);
+            float distance = Vector3.Distance(transform.position, _player.position);
+            float eta;
+            if (lunge.judgeMode == BernardTuning.LungeJudgeMode.StrikeAtRange)
+            {
+                // 새 방식(M4): 타격 거리까지 돌진 → 앞발 박기 → 뻗는 첫 순간에 맞는다
+                eta = Mathf.Max(0f, distance - lunge.strikeDistance) / speed + lunge.plantTime;
+            }
+            else
+            {
+                // 상대 판정 구가 기체 앞쪽으로 나와 있어 그만큼 먼저 닿는다
+                float reach = lunge.hitForwardOffset + lunge.hitRadius;
+                eta = Mathf.Max(0f, distance - reach) / speed;
+            }
             float window = _tuning.Get(this).Parry.window;
             _pendingGuardTime = Time.time + Mathf.Max(reactionTime, eta - window * 0.5f);
         }

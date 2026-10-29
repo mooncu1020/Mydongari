@@ -13,15 +13,24 @@ namespace MyDongari.Combat
     /// </summary>
     public class ThrusterLunge : MonoBehaviour
     {
+        /// <summary>런지 진행 단계. 예전 판정 방식은 Dash만 쓴다.</summary>
+        public enum LungePhase { None, Dash, Plant, Strike }
+
         private TuningRef _tuning;
         private BernardTuning.LungeValues T => _tuning.Get(this).Lunge;
 
         /// <summary>돌진 시작.</summary>
         public event Action OnLungeStarted;
+        /// <summary>
+        /// 새 판정 방식에서 돌진을 멈추고 앞발을 박는 순간 (M4). 인자: 상대가 타격 거리 안이었는지(false = 돌진이 끝나 헛펀치).
+        /// 외형(무릎·먼지·화면 흔들림)용.
+        /// </summary>
+        public event Action<bool> OnLungePlant;
         /// <summary>돌진 종료. 인자는 명중 결과, 빗나감(중단 포함)이면 null.</summary>
         public event Action<HitResult?> OnLungeEnded;
 
         public bool IsLunging { get; private set; }
+        public LungePhase Phase { get; private set; } = LungePhase.None;
 
         private MechStateMachine _stateMachine;
         private MechController _controller;
@@ -37,6 +46,8 @@ namespace MyDongari.Combat
         private Vector3 _direction;
         private Vector3 _startPosition;
         private float _elapsed;
+        // 박기·뻗기 단계 경과(초, 물리 스텝)
+        private float _phaseTime;
 
         private void Awake()
         {
@@ -110,7 +121,9 @@ namespace MyDongari.Combat
 
             _startPosition = _rb.position;
             _elapsed = 0f;
+            _phaseTime = 0f;
             IsLunging = true;
+            Phase = LungePhase.Dash;
 
             // 돌진 중엔 하드 락온 금지: 6m 안에 들어가도 방향이 바뀌거나 펀치로 바뀌지 않게
             if (_lockOn != null) _lockOn.SetHardLockSuppressed(true);
@@ -134,9 +147,21 @@ namespace MyDongari.Combat
 
             BernardTuning.LungeValues t = T;
             _elapsed += Time.fixedDeltaTime;
+
+            // 새 판정 방식의 박기·뻗기 단계 (M4)
+            if (Phase == LungePhase.Plant || Phase == LungePhase.Strike) return TickStrike(t);
+
             SetDashVelocity(t.speed);
             // 돌진 중엔 감속 없이 일정 속도 (Slide/SideStep과 같은 우선순위)
             if (_controller != null) _controller.RequestDamping(0f, priority: 5);
+
+            if (t.judgeMode == BernardTuning.LungeJudgeMode.StrikeAtRange)
+            {
+                // 정면 타격 거리에 들어오면 그 자리에서 박기, 못 들어오고 돌진이 끝나면 헛펀치
+                if (IsOpponentInStrikeRange(t)) BeginPlant(t, inRange: true);
+                else if (IsDashOver(t)) BeginPlant(t, inRange: false);
+                return false;
+            }
 
             MechIdentity opponent = _identity.Opponent;
             if (opponent != null && opponent.gameObject.activeInHierarchy)
@@ -148,26 +173,94 @@ namespace MyDongari.Combat
 
                     // 속도를 먼저 줄여 둔다: 패리 반사 넉백이 이 뒤에 들어와야 덮어쓰이지 않는다
                     SetDashVelocity(t.speed * t.endSpeedRatio);
-                    HitInfo info = new HitInfo
-                    {
-                        Type = AttackType.Lunge,
-                        Damage = t.damage,
-                        Attacker = gameObject,
-                        KnockbackDirection = _direction,
-                        KnockbackForce = t.hitKnockback,
-                        StunDuration = t.hitStun
-                    };
-                    Finish(MeleeSystem.DeliverHit(opponent.gameObject, info));
+                    Finish(DeliverLungeHit(opponent, t));
                     return true;
                 }
             }
 
+            if (IsDashOver(t))
+            {
+                SetDashVelocity(t.speed * t.endSpeedRatio);
+                Finish(null);
+                return true;
+            }
+            return false;
+        }
+
+        private HitResult DeliverLungeHit(MechIdentity opponent, BernardTuning.LungeValues t)
+        {
+            HitInfo info = new HitInfo
+            {
+                Type = AttackType.Lunge,
+                Damage = t.damage,
+                Attacker = gameObject,
+                KnockbackDirection = _direction,
+                KnockbackForce = t.hitKnockback,
+                StunDuration = t.hitStun
+            };
+            return MeleeSystem.DeliverHit(opponent.gameObject, info);
+        }
+
+        /// <summary>돌진 거리를 다 갔거나(벽 등으로 막혀) 최대 시간이 지났는지.</summary>
+        private bool IsDashOver(BernardTuning.LungeValues t)
+        {
             Vector3 travelled = _rb.position - _startPosition;
             travelled.y = 0f;
             float timeout = t.speed > 0f ? t.distance / t.speed * t.timeoutMultiplier : 0f;
-            if (travelled.magnitude >= t.distance || _elapsed >= timeout)
+            return travelled.magnitude >= t.distance || _elapsed >= timeout;
+        }
+
+        /// <summary>상대 중심이 돌진 방향 정면(±strikeHalfAngle) strikeDistance 안인지 (수평만).</summary>
+        private bool IsOpponentInStrikeRange(BernardTuning.LungeValues t)
+        {
+            MechIdentity opponent = _identity.Opponent;
+            if (opponent == null || !opponent.gameObject.activeInHierarchy) return false;
+            Vector3 toTarget = opponent.transform.position - _rb.position;
+            toTarget.y = 0f;
+            if (toTarget.magnitude > t.strikeDistance) return false;
+            return toTarget.sqrMagnitude < 0.0001f || Vector3.Angle(_direction, toTarget) <= t.strikeHalfAngle;
+        }
+
+        /// <summary>새 방식: 돌진을 멈추고 앞발 박기 시작 (그 자리에서). 박기 동안은 판정 없음.</summary>
+        private void BeginPlant(BernardTuning.LungeValues t, bool inRange)
+        {
+            SetDashVelocity(t.speed * t.endSpeedRatio);
+            Phase = LungePhase.Plant;
+            _phaseTime = 0f;
+            OnLungePlant?.Invoke(inRange);
+        }
+
+        /// <summary>박기 → 뻗기. 판정은 뻗는 구간에만 (명중 판정 구는 예전과 같은 수치). 뻗기가 끝날 때까지 못 맞히면 빗나감.</summary>
+        private bool TickStrike(BernardTuning.LungeValues t)
+        {
+            _phaseTime += Time.fixedDeltaTime;
+            // 돌진 끝 속도에서 그 자리에 멈춰 선다 (박기·뻗기 중엔 Slide/SideStep과 같은 우선순위로 감속)
+            if (_controller != null) _controller.RequestDamping(t.strikeStopDamping, priority: 5);
+
+            if (Phase == LungePhase.Plant)
             {
-                SetDashVelocity(t.speed * t.endSpeedRatio);
+                if (_phaseTime < t.plantTime) return false;
+                _phaseTime -= t.plantTime;
+                Phase = LungePhase.Strike;
+            }
+
+            MechIdentity opponent = _identity.Opponent;
+            if (opponent != null && opponent.gameObject.activeInHierarchy)
+            {
+                Vector3 center = _rb.position + _direction * t.hitForwardOffset;
+                foreach (Collider hit in Physics.OverlapSphere(center, t.hitRadius))
+                {
+                    if (!_identity.IsOpponentCollider(hit)) continue;
+                    // 패리 반사 넉백이 감속에 지워지지 않게 속도를 먼저 줄여 둔다
+                    SetDashVelocity(0f);
+                    Finish(DeliverLungeHit(opponent, t));
+                    return true;
+                }
+            }
+
+            if (_phaseTime >= t.strikeExtendTime)
+            {
+                // 헛펀치: 그 뒤는 예전과 같은 빗나감 처리(하드 락온 금지 딜레이)
                 Finish(null);
                 return true;
             }
@@ -184,6 +277,7 @@ namespace MyDongari.Combat
         public void ResetForRound()
         {
             IsLunging = false;
+            Phase = LungePhase.None;
             _selfDriven = false;
             if (_lockOn != null) _lockOn.SetHardLockSuppressed(false);
         }
@@ -191,6 +285,7 @@ namespace MyDongari.Combat
         private void Finish(HitResult? result)
         {
             IsLunging = false;
+            Phase = LungePhase.None;
             if (_lockOn != null)
             {
                 _lockOn.SetHardLockSuppressed(false);

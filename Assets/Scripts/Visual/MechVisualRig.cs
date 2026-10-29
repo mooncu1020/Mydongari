@@ -288,6 +288,12 @@ namespace MyDongari.Visual
                 _claw.OnPileDriverStarted += OnPileDriver;
             }
             if (_slam != null) _slam.OnSlamStarted += OnSlam;
+            if (_lunge != null)
+            {
+                _lunge.OnLungeStarted += OnLungeStartedVisual;
+                _lunge.OnLungePlant += OnLungePlantVisual;
+                _lunge.OnLungeEnded += OnLungeEndedVisual;
+            }
         }
 
         private void OnDestroy()
@@ -304,6 +310,12 @@ namespace MyDongari.Visual
                 _claw.OnPileDriverStarted -= OnPileDriver;
             }
             if (_slam != null) _slam.OnSlamStarted -= OnSlam;
+            if (_lunge != null)
+            {
+                _lunge.OnLungeStarted -= OnLungeStartedVisual;
+                _lunge.OnLungePlant -= OnLungePlantVisual;
+                _lunge.OnLungeEnded -= OnLungeEndedVisual;
+            }
         }
 
         private void OnDisable()
@@ -551,6 +563,7 @@ namespace MyDongari.Visual
                 joint.DirectPosition = Vector3.zero;
                 if (joint.Target != null) CaptureBase(joint, animated);
             }
+            _groundingHold = false;
 
             // 상하체 방향(G2)을 먼저 정하고 나머지 포즈를 얹는다
             UpdateFacing(v, dt);
@@ -830,6 +843,7 @@ namespace MyDongari.Visual
         {
             if (_melee != null && (_melee.IsGuarding || _melee.IsStunned)) return true;
             if (_lunge != null && _lunge.IsLunging) return true;
+            if (UseMotions && _lungeStart != None) return true;
             if (_claw != null && _claw.Phase != AnchorClaw.ClawPhase.Ready) return true;
             if (InWindow(_punchStart, PunchVisualLength(v))) return true;
             if (InWindow(_tackleStart, TackleWindup + v.tackleTime)) return true;
@@ -881,8 +895,9 @@ namespace MyDongari.Visual
                 }
             }
 
-            // 런지: 상체 숙이고 양팔 뒤로
-            if (_lunge != null && _lunge.IsLunging)
+            // 런지: 상체 숙이고 양팔 뒤로 (전신 모션은 PoseLunge)
+            if (motions) PoseLunge();
+            else if (_lunge != null && _lunge.IsLunging)
             {
                 AddRotation(_body, new Vector3(v.lungeLean, 0f, 0f));
                 SetRotation(_armLUpper, new Vector3(v.lungeArmBack, 0f, 0f));

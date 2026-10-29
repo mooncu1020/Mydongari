@@ -215,9 +215,31 @@ namespace MyDongari.Mech
             public float stun = 0f;
         }
 
+        /// <summary>스러스터 런지 판정 방식 (M4).</summary>
+        public enum LungeJudgeMode
+        {
+            [InspectorName("새 방식: 정면 타격 거리에서 박기+펀치")] StrikeAtRange,
+            [InspectorName("예전 방식: 돌진 중 몸이 닿으면 명중")] ContactDuringDash
+        }
+
         [Serializable]
         public class LungeValues
         {
+            [Header("판정 방식 (M4)")]
+            [Tooltip("새 방식: 돌진 중 상대가 정면 타격 거리 안에 들어오면 그 자리에서 앞발 박기 → 스트레이트, 판정은 주먹이 뻗는 구간에만. " +
+                     "못 닿고 돌진이 끝나면 그 자리에서 헛펀치 후 빗나감 처리. 예전 방식: 돌진 중 판정 구에 닿는 순간 명중")]
+            public LungeJudgeMode judgeMode = LungeJudgeMode.StrikeAtRange;
+            [Tooltip("새 방식: 상대 중심까지 수평 거리(m)가 이 안이면 박기 시작")]
+            public float strikeDistance = 2.5f;
+            [Tooltip("새 방식: 돌진 방향 기준 이 각도(°, 반각) 안에 있어야 정면으로 본다")]
+            public float strikeHalfAngle = 45f;
+            [Tooltip("새 방식: 앞발 박기 시간(초). 이 동안은 판정 없음")]
+            public float plantTime = 0.08f;
+            [Tooltip("새 방식: 주먹이 뻗는 시간(초). 판정은 이 구간에만 (명중 판정 구는 아래 '명중' 수치 그대로)")]
+            public float strikeExtendTime = 0.1f;
+            [Tooltip("새 방식: 박기·뻗기 동안 리지드바디 감속 (돌진 끝 속도에서 멈춰 서는 빠르기)")]
+            public float strikeStopDamping = 10f;
+
             [Header("돌진")]
             [Tooltip("돌진 거리(m)")]
             public float distance = 8f;
@@ -567,6 +589,19 @@ namespace MyDongari.Mech
             public float punchFollowTime = 0.06f;
             [Tooltip("팔로스루 자세를 유지하는 시간(초). 그 뒤 쿨다운 끝까지 로우 가드로 묵직하게 복귀")]
             public float punchFollowHold = 0.04f;
+
+            [Header("런지 (M4: 박기·뻗기 시간 = Lunge.plantTime·strikeExtendTime)")]
+            [Tooltip("출발 순간 웅크리는 시간(초). 돌진은 이미 시작된 상태라 아주 짧게")]
+            public float lungeCrouchTime = 0.05f;
+            [Tooltip("웅크림에서 비행 자세(골반 뜸)까지(초). 비행 중엔 접지 보정이 멈춘다")]
+            public float lungeLaunchTime = 0.07f;
+            [Tooltip("스트레이트를 뻗은 채 유지하는 시간(초)")]
+            public float lungeStrikeHold = 0.06f;
+            [Tooltip("로우 가드로 돌아오는 시간(초)")]
+            public float lungeRecoverTime = 0.35f;
+            [Tooltip("앞발 박기 때 내 화면 흔들림 크기(m)")]
+            public float lungePlantShake = 0.05f;
+            public float lungePlantShakeTime = 0.15f;
         }
 
         [Header("이동")]

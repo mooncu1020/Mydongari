@@ -226,7 +226,7 @@
 ### [x] M1. 포즈 라이브러리(MechPoseLibrary)와 캡처 도구
 ### [x] M2. 기본 자세(로우 가드)·전력질주 돌격 자세
 ### [x] M3. 기본 펀치(관절 지연 사슬·팔로스루·회복·좌우·앞발 디딤)
-### [ ] M4. 스러스터 런지 모션 + 새 판정 방식(정면 타격 거리에서 박기+펀치)
+### [x] M4. 스러스터 런지 모션 + 새 판정 방식(정면 타격 거리에서 박기+펀치)
 ### [ ] M5. 가드·막음·패리·가드 브레이크
 ### [ ] M6. 앵커 클로 → 파일 드라이버(어퍼컷·피스톤·히트스톱)
 ### [ ] M7. 대시 공격·태클·슬램
@@ -295,3 +295,4 @@
 - **M1** 완료. 신규 `Visual/MechPoseLibrary`(이름 있는 포즈 = 관절 15개 회전 오프셋 + 골반 위치, 오른손잡이 기준·좌우 반전, 이징 커브 5개, 초안 포즈 26개, Resources → 코드 초안 순 기본값), 신규 `Visual/MechVisualRig.Motion`(키 = 포즈·도착 시각·이징, 관절별 앞당김(lead)·하체 마스크, 밑에 깔린 자세와 섞기, 모션 관절 스프링 우회, 미리보기·리그 멈춤·캡처, 플레이 전 계산용 변환 함수), `MechVisualRig`(Joint `MotionWeight`·`DirectPosition`, 멈춤·미리보기 분기, 스프링 뒤 우회), `BernardTuning`(`Motion` 묶음: enabled·springBypass), 신규 `Editor/MechPoseEditor`(`Tools/Mech Pose Editor`, `Tools/Create Mech Pose Library (초안 값)`). 아직 어떤 동작도 라이브러리를 쓰지 않음(M2부터). 위험: 플레이 전 캡처는 원본 계층(Body 아래 Pelvis)이라 보이는 모습이 게임과 다름 — 몸통·하체가 같이 걸린 포즈는 플레이 중 캡처 권장.
 - **M2** 완료. 신규 `Visual/MechVisualRig.Moves`(`PoseStance` — LowGuard·SprintGuard 포즈를 더하기 층으로, 전력질주 진입·해제 `sprintStanceBlendTime` 0.2초 섞기, `ArmSwingScale`), `MechVisualRig.PoseIdle`(전신 모션 모델은 예전 대기 팔·상체·무릎 대신 기본 자세 포즈, 발 벌림·엇갈림만 대기 다리에서 — 무릎 중복 없게 `includeKnee`), `Locomotion.PoseGait`(팔 스윙 × 돌격 배율), `BernardTuning.Motion`(`sprintStanceBlendTime`, `sprintArmSwingScale` 0.3). 위험: 가드는 M5 전까지 예전 가드 오프셋이 로우 가드 위에 더해져 팔이 더 높게 보일 수 있음.
 - **M3** 완료. 바뀐 파일: `MechVisualRig.Motion`(앞당김 기준 시각 `LeadAnchor` — 0초에 같이 출발해 기준 시각보다 앞당김만큼 먼저 도착하도록 앞 구간을 압축, 시작 순간 관절이 튀지 않음, `MaskAll`), `MechVisualRig.Moves`(`PosePunch` — 0 → PunchWindup(발동 × 0.4) → PunchStrike(판정 순간) → PunchFollow → 쿨다운 끝까지 Heavy 복귀, 뒷발 3·앞발·골반 2·허리·머리·반대 팔 1·때리는 팔 0 × `punchChainDelay`, 왼 주먹은 좌우 반전, 걸음 중이면 하체 마스크 + PunchStepIn), `MechVisualRig`(시작 시 걸음 세기 기억, 전신 모션이면 예전 펀치 오프셋 생략, 대기 판정 길이), `BernardTuning.Motion`(펀치 4칸). 펀치 발동·판정·쿨다운은 그대로. 위험: 하체를 쓰는 포즈라 펀치 중 서 있으면 걸음이 아니라 포즈 다리가 나옴(의도) — 포즈 값이 bernard 축과 안 맞으면 다리가 이상하게 꺾일 수 있어 캡처로 덮어써야 함.
+- **M4** 완료. 바뀐 파일: `ThrusterLunge`(`LungePhase` Dash/Plant/Strike, 새 판정: 돌진 중 상대 중심이 정면 ±`strikeHalfAngle` `strikeDistance` 안이면 `BeginPlant` → `plantTime` 판정 없음 → `strikeExtendTime` 동안만 예전 판정 구로 판정, 못 닿고 돌진 끝이면 같은 박기·헛펀치 후 `Finish(null)`, 박기·뻗기 중 `strikeStopDamping`, `OnLungePlant` 이벤트), `BernardTuning`(`LungeJudgeMode` 스위치·새 판정 5칸, `Motion` 런지 6칸), `MeleeDummy`(Parrier 런지 예상 시각), `MechVisualRig`(런지 이벤트 구독, 전신 모션이면 `PoseLunge`), `MechVisualRig.Moves`(`PoseLunge` — 웅크림·비행(접지 보정 멈춤)·박기·스트레이트·Heavy 복귀, `OnMotionImpact`, `ShakeCameras`), `MechVisualRig.Grounding`(`_groundingHold`), `GAME_SPEC` 5장, `QUESTIONS` M4. 위험: 런지 명중이 박기+뻗기만큼 늦어져 체감이 달라짐 — `Judge Mode`로 되돌릴 수 있음. 먼지 효과는 이벤트(`OnMotionImpact`)만 있고 표시물은 아직 없음.

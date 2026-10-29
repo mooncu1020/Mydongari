@@ -20,6 +20,8 @@ namespace MyDongari.Visual
         private Collider[] _groundColliders;
         private float _groundOffset;
         private float _groundLogTimer;
+        // 이번 프레임 접지 보정을 멈추고 지금 보정량을 유지 (런지 비행처럼 골반이 일부러 뜨는 동안, M4). 매 프레임 false로
+        private bool _groundingHold;
 
         /// <summary>지금 접지 보정량(m, +면 비주얼을 올림).</summary>
         public float GroundOffset => _groundOffset;
@@ -121,6 +123,8 @@ namespace MyDongari.Visual
                 if (_groundOffset != 0f) ResetGrounding();
                 return;
             }
+            // 보정을 멈춘 동안엔 지금 보정량 그대로 (발이 땅에서 떨어져 보이는 게 의도)
+            if (_groundingHold) return;
 
             bool hasL = TrySoleHeight(_footL, _soleL, out float soleL);
             bool hasR = TrySoleHeight(_footR, _soleR, out float soleR);

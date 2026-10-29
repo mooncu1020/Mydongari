@@ -1,4 +1,7 @@
+using System;
 using UnityEngine;
+using MyDongari.Combat;
+using MyDongari.Core;
 using MyDongari.Mech;
 
 namespace MyDongari.Visual
@@ -31,6 +34,25 @@ namespace MyDongari.Visual
             float s = Mathf.SmoothStep(0f, 1f, _sprintStance);
             AddPose(PoseNames.LowGuard, 1f - s);
             AddPose(PoseNames.SprintGuard, s);
+        }
+
+        // ---------------- 공통: 타격 연출 ----------------
+
+        /// <summary>
+        /// 모션의 타격·착지 순간 (종류, 월드 위치, 세기 0~1). 먼지·효과음 연결용 — 지금은 화면 흔들림만 리그가 직접 건다.
+        /// 종류: "LungePlant", "PileDriver".
+        /// </summary>
+        public event Action<string, Vector3, float> OnMotionImpact;
+
+        /// <summary>내 카메라(와 bothPlayers면 상대 카메라)를 흔든다.</summary>
+        private void ShakeCameras(float amplitude, float duration, bool bothPlayers)
+        {
+            if (_identity == null) return;
+            MyDongari.Camera.MechCamera own = _identity.MechCamera;
+            if (own != null) own.AddShake(amplitude, duration);
+            if (!bothPlayers || _identity.Opponent == null) return;
+            MyDongari.Camera.MechCamera other = _identity.Opponent.MechCamera;
+            if (other != null && other != own) other.AddShake(amplitude, duration);
         }
 
         // ---------------- M3 기본 펀치 ----------------
@@ -102,5 +124,105 @@ namespace MyDongari.Visual
                 PlayMotion(t, _punchGait, mirror);
             }
         }
-    }
+    
+        // ---------------- M4 스러스터 런지 ----------------
+
+        private float _lungeStart = None;
+        private float _lungePlant = None;
+        private float _lungeEnd = None;
+
+        private void OnLungeStartedVisual()
+        {
+            _lungeStart = _clock;
+            _lungePlant = None;
+            _lungeEnd = None;
+        }
+
+        private void OnLungePlantVisual(bool inRange)
+        {
+            ErrorLog.Run(() =>
+            {
+                _lungePlant = _clock;
+                if (!UseMotions) return;
+                BernardTuning.MotionValues m = M;
+                ShakeCameras(m.lungePlantShake, m.lungePlantShakeTime, bothPlayers: false);
+                // 앞발(왼발) 위치에서 먼지
+                Vector3 foot = _footL != null ? _footL.position : transform.position;
+                OnMotionImpact?.Invoke("LungePlant", foot, inRange ? 1f : 0.7f);
+            }, "MechVisualRig.OnLungePlant");
+        }
+
+        private void OnLungeEndedVisual(HitResult? result) => _lungeEnd = _clock;
+
+        /// <summary>
+        /// 런지: 웅크림 → 낮게 도약 → 비행(골반이 뜨고 접지 보정 멈춤) → [새 판정] 앞발 박기(무릎 깊게, 흔들림) → 묵직한 스트레이트 → 복귀.
+        /// 돌진은 발생 시간이 없어(누르면 바로 출발) 웅크림·도약은 출발과 동시에 아주 짧게 지나간다.
+        /// 박기·뻗기 시간은 ThrusterLunge 판정 시간(Lunge.plantTime·strikeExtendTime)을 그대로 쓴다.
+        /// 예전 판정 방식이면 박기 없이 비행 자세에서 바로 복귀.
+        /// </summary>
+        private void PoseLunge()
+        {
+            if (_lungeStart == None) return;
+            BernardTuning.MotionValues m = M;
+
+            if (_lungePlant != None && _lungePlant >= _lungeStart)
+            {
+                BernardTuning.LungeValues lunge = _tuning.Get(this).Lunge;
+                float tp = _clock - _lungePlant;
+                float plant = lunge.plantTime;
+                float strike = plant + lunge.strikeExtendTime;
+                float hold = strike + m.lungeStrikeHold;
+                float end = hold + m.lungeRecoverTime;
+                if (tp >= end)
+                {
+                    _lungeStart = None;
+                    return;
+                }
+
+                BeginMotion();
+                LeadAnchor(strike);
+                Key(0f, PoseNames.LungeFlight);
+                Key(plant, PoseNames.LungePlant, MechPoseLibrary.EaseSnap);
+                Key(strike, PoseNames.LungeStrike, MechPoseLibrary.EaseSnap);
+                Key(hold, PoseNames.LungeStrike, MechPoseLibrary.EaseLinear);
+                Key(end, null, MechPoseLibrary.EaseHeavy);
+                // 스트레이트도 펀치처럼 뒷발 → 골반 → 허리 → 어깨 순서
+                float d = m.punchChainDelay;
+                Lead(MechPoseLibrary.LegRIndex, d * 3f, false);
+                Lead(MechPoseLibrary.ShinRIndex, d * 3f, false);
+                Lead(MechPoseLibrary.HipRIndex, d * 3f, false);
+                Lead(MechPoseLibrary.PelvisIndex, d * 2f, false);
+                Lead(MechPoseLibrary.BodyIndex, d, false);
+                Lead(MechPoseLibrary.HeadIndex, d, false);
+                PlayMotion(tp, 1f, false);
+                return;
+            }
+
+            float t = _clock - _lungeStart;
+            float crouch = m.lungeCrouchTime;
+            float flight = crouch + m.lungeLaunchTime;
+            BeginMotion();
+            Key(0f, null);
+            Key(crouch, PoseNames.LungeCrouch, MechPoseLibrary.EaseIn);
+            Key(flight, PoseNames.LungeFlight, MechPoseLibrary.EaseSnap);
+            if (_lungeEnd != None && _lungeEnd >= _lungeStart)
+            {
+                // 박기 없이 끝남(예전 판정 방식·스턴·앵커 클로에 잡힘): 비행 자세에서 바로 복귀
+                float endT = _lungeEnd - _lungeStart;
+                if (t >= endT + m.lungeRecoverTime)
+                {
+                    _lungeStart = None;
+                    return;
+                }
+                Key(endT, PoseNames.LungeFlight, MechPoseLibrary.EaseLinear);
+                Key(endT + m.lungeRecoverTime, null, MechPoseLibrary.EaseHeavy);
+            }
+            else if (t >= crouch)
+            {
+                // 비행: 골반이 뜨는 동안 접지 보정이 발을 땅에 끌어내리지 않게
+                _groundingHold = true;
+            }
+            PlayMotion(t, 1f, false);
+        }
+}
 }
