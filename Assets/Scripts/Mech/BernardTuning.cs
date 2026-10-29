@@ -361,6 +361,9 @@ namespace MyDongari.Mech
             public float clash = 0.12f;
             [Tooltip("슬램·파일드라이버·투사체. 0이면 없음")]
             public float other = 0f;
+            [Tooltip("파일 드라이버 (전신 모션 모델만): 판정은 누른 순간이지만 히트스톱은 외형 어퍼컷이 닿는 순간(Motion.uppercutRiseTime 뒤)에 이 길이로 건다. " +
+                     "임시 상자·모션 끔이면 위 Other 그대로")]
+            public float pileDriver = 0.2f;
         }
 
         [Serializable]
@@ -623,6 +626,37 @@ namespace MyDongari.Mech
             [Tooltip("가드 브레이크 휘청 각도(°)와 빠르기(Hz). 스턴이 끝날수록 줄어든다")]
             public float guardBreakWobbleAngle = 6f;
             public float guardBreakWobbleFrequency = 2.5f;
+
+            [Header("앵커 클로 (M6: 예비 = AnchorClaw.windupTime)")]
+            [Tooltip("던질 때 왼팔이 다 뻗는 시간(초)")]
+            public float clawThrowTime = 0.05f;
+            [Tooltip("빗나가 감겨 돌아온 뒤 로우 가드로 돌아오는 시간(초)")]
+            public float clawReturnTime = 0.25f;
+            [Tooltip("잡은 순간 클로 팔을 잡아채고 상체를 뒤로 젖히는 시간(초)")]
+            public float clawYankTime = 0.1f;
+            [Tooltip("잡아채기 자세 유지(초)")]
+            public float clawYankHold = 0.12f;
+            [Tooltip("잡아채기 → 끌어당김 자세(골반 낮춤·허리 비틂·오른 주먹 허리춤)로 넘어가는 시간(초)")]
+            public float clawReelBlendTime = 0.2f;
+            [Tooltip("당기기가 끝난 뒤에도 파일 드라이버 준비 중이면 끌어당김 자세로 기다리는 시간(초)")]
+            public float clawReelHold = 1f;
+            [Tooltip("끌어당김 자세에서 로우 가드로 풀리는 시간(초)")]
+            public float clawReleaseTime = 0.3f;
+
+            [Header("파일 드라이버 (M6: 판정·피해는 누른 순간 그대로, 아래는 외형)")]
+            [Tooltip("다리 펴기 → 골반 → 허리 → 주먹이 위로 올라가 외형 타격까지(초). 이 순간 피스톤·히트스톱·흔들림")]
+            public float uppercutRiseTime = 0.08f;
+            [Tooltip("어퍼컷을 올린 채 유지(초)")]
+            public float uppercutHold = 0.15f;
+            [Tooltip("로우 가드로 돌아오는 시간(초)")]
+            public float uppercutRecoverTime = 0.45f;
+            [Tooltip("피스톤: 오른 주먹이 팔뚝 축으로 튀어나가는 거리(m)·나가는 시간·돌아오는 시간(초, 실제 시간 — 히트스톱 중에도 움직임)")]
+            public float pistonDistance = 0.18f;
+            public float pistonOutTime = 0.03f;
+            public float pistonBackTime = 0.15f;
+            [Tooltip("타격 순간 두 화면 흔들림 크기(m)·시간(초)")]
+            public float pileDriverShake = 0.14f;
+            public float pileDriverShakeTime = 0.4f;
         }
 
         [Header("이동")]

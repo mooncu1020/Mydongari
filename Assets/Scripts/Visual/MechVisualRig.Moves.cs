@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using MyDongari.Combat;
+using MyDongari.Combat.Skills;
 using MyDongari.Core;
 using MyDongari.Mech;
 
@@ -332,6 +333,198 @@ namespace MyDongari.Visual
                 AddRotation(_body, new Vector3(Mathf.Sin(phase) * a, 0f, Mathf.Sin(phase * 0.7f + 1f) * a));
                 AddRotation(_head, new Vector3(Mathf.Sin(phase * 1.3f + 2f) * a, 0f, 0f));
             }
+        }
+
+        // ---------------- M6 앵커 클로 → 파일 드라이버 ----------------
+
+        private AnchorClaw.ClawPhase _lastClawPhase = AnchorClaw.ClawPhase.Ready;
+        private float _clawPhaseStart = None;
+        private float _clawMissEnd = None;
+        private float _pullEnd = None;
+        private bool _pileFromReel;
+        private bool _pileImpactFired;
+        private float _pileImpactRealTime = None;
+
+        private bool IsClawMotionActive()
+        {
+            BernardTuning.MotionValues m = M;
+            return _clawStart != None
+                || InWindow(_clawMissEnd, m.clawReturnTime)
+                || InWindow(_pileStart, PileDriverLength(m));
+        }
+
+        private float PileDriverLength(BernardTuning.MotionValues m) => m.uppercutRiseTime + m.uppercutHold + m.uppercutRecoverTime;
+
+        /// <summary>
+        /// 앵커 클로: 예비(왼팔 뒤로, 발동 windupTime) → 던지기(왼팔 뻗음, 날아가는·감겨 오는 동안) → 빗나가면 복귀.
+        /// 잡으면: 클로 팔 잡아채기·상체 뒤로·뒷발 버팀 → 끌려오는 동안 골반 깊게 낮추고 허리 비틀고 오른 주먹 허리춤(어퍼컷 준비).
+        /// 당기기가 끝나도 파일 드라이버 준비 중이면 clawReelHold 동안 그 자세로 기다렸다가 풀린다.
+        /// </summary>
+        private void PoseClaw()
+        {
+            if (_claw == null) return;
+            BernardTuning.MotionValues m = M;
+            AnchorClaw.ClawPhase phase = _claw.Phase;
+            if (phase != _lastClawPhase)
+            {
+                if (_lastClawPhase == AnchorClaw.ClawPhase.Pulling) _pullEnd = _clock;
+                if (_lastClawPhase == AnchorClaw.ClawPhase.Retracting && phase == AnchorClaw.ClawPhase.Ready) _clawMissEnd = _clock;
+                _clawPhaseStart = _clock;
+                _lastClawPhase = phase;
+            }
+            float tp = _clock - _clawPhaseStart;
+
+            // 던지기 단계
+            if (phase == AnchorClaw.ClawPhase.Windup)
+            {
+                BeginMotion();
+                Key(0f, null);
+                Key(_tuning.Get(this).AnchorClaw.windupTime, PoseNames.ClawWindup, MechPoseLibrary.EaseSmooth);
+                PlayMotion(tp, 1f, false);
+            }
+            else if (phase == AnchorClaw.ClawPhase.Flying)
+            {
+                BeginMotion();
+                Key(0f, PoseNames.ClawWindup);
+                Key(m.clawThrowTime, PoseNames.ClawThrow, MechPoseLibrary.EaseSnap);
+                PlayMotion(tp, 1f, false);
+            }
+            else if (phase == AnchorClaw.ClawPhase.Retracting)
+            {
+                BeginMotion();
+                Key(0f, PoseNames.ClawThrow);
+                PlayMotion(0f, 1f, false);
+            }
+            else if (phase == AnchorClaw.ClawPhase.Ready && InWindow(_clawMissEnd, m.clawReturnTime))
+            {
+                BeginMotion();
+                Key(0f, PoseNames.ClawThrow);
+                Key(m.clawReturnTime, null, MechPoseLibrary.EaseHeavy);
+                PlayMotion(_clock - _clawMissEnd, 1f, false);
+            }
+
+            // 잡은 뒤: 잡아채기 → 끌어당김 자세 유지 → (파일 드라이버를 안 쓰면) 풀림
+            if (_clawStart == None) return;
+            float tg = _clock - _clawStart;
+            float yank = m.clawYankTime;
+            float yankHold = yank + m.clawYankHold;
+            float reel = yankHold + m.clawReelBlendTime;
+            BeginMotion();
+            LeadAnchor(yank);
+            Key(0f, PoseNames.ClawThrow);
+            Key(yank, PoseNames.ClawYank, MechPoseLibrary.EaseSnap);
+            Key(yankHold, PoseNames.ClawYank, MechPoseLibrary.EaseLinear);
+            Key(reel, PoseNames.ClawReel, MechPoseLibrary.EaseSmooth);
+            // 뒷발 버팀이 먼저, 그다음 상체, 마지막에 클로 팔
+            Lead(MechPoseLibrary.LegRIndex, m.punchChainDelay * 2f, false);
+            Lead(MechPoseLibrary.ShinRIndex, m.punchChainDelay * 2f, false);
+            Lead(MechPoseLibrary.BodyIndex, m.punchChainDelay, false);
+
+            bool holding = phase == AnchorClaw.ClawPhase.Pulling
+                || (_claw.IsPileDriverReady && (_pullEnd == None || _clock - _pullEnd < m.clawReelHold));
+            if (!holding)
+            {
+                float release = _pullEnd != None ? Mathf.Min(_clock, _pullEnd + m.clawReelHold) : _clock;
+                float releaseT = Mathf.Max(reel, release - _clawStart);
+                if (tg >= releaseT + m.clawReleaseTime)
+                {
+                    _clawStart = None;
+                    return;
+                }
+                Key(releaseT, PoseNames.ClawReel, MechPoseLibrary.EaseLinear);
+                Key(releaseT + m.clawReleaseTime, null, MechPoseLibrary.EaseHeavy);
+            }
+            PlayMotion(tg, 1f, false);
+        }
+
+        /// <summary>
+        /// 파일 드라이버(오른 어퍼컷): 다리 펴기 → 골반 상승 → 허리 회전 → 주먹이 아래에서 위로 (uppercutRiseTime 안, 관절 사슬 지연).
+        /// 판정·피해는 누른 순간에 이미 끝났다(시간 그대로) — 외형 타격 순간(올리기 끝)에 Fist_R 피스톤(실제 시간),
+        /// 긴 히트스톱, 두 화면 큰 흔들림을 건다. 접지 보정은 그대로 켜 둔다.
+        /// </summary>
+        private void PosePileDriver()
+        {
+            BernardTuning.MotionValues m = M;
+            float t = _clock - _pileStart;
+            float length = PileDriverLength(m);
+            if (_pileStart == None || t < 0f || t >= length)
+            {
+                ApplyPiston(m);
+                return;
+            }
+
+            float rise = m.uppercutRiseTime;
+            float hold = rise + m.uppercutHold;
+            float d = m.punchChainDelay;
+            BeginMotion();
+            LeadAnchor(rise);
+            Key(0f, _pileFromReel ? PoseNames.ClawReel : null);
+            Key(rise * 0.45f, PoseNames.UppercutRise, MechPoseLibrary.EaseIn);
+            Key(rise, PoseNames.UppercutStrike, MechPoseLibrary.EaseSnap);
+            Key(hold, PoseNames.UppercutStrike, MechPoseLibrary.EaseLinear);
+            Key(length, null, MechPoseLibrary.EaseHeavy);
+            // 다리 → 골반 → 허리 → 주먹
+            Lead(MechPoseLibrary.LegLIndex, d * 3f, false);
+            Lead(MechPoseLibrary.LegRIndex, d * 3f, false);
+            Lead(MechPoseLibrary.ShinLIndex, d * 3f, false);
+            Lead(MechPoseLibrary.ShinRIndex, d * 3f, false);
+            Lead(MechPoseLibrary.HipLIndex, d * 3f, false);
+            Lead(MechPoseLibrary.HipRIndex, d * 3f, false);
+            Lead(MechPoseLibrary.PelvisIndex, d * 2f, false);
+            Lead(MechPoseLibrary.BodyIndex, d, false);
+            Lead(MechPoseLibrary.HeadIndex, d, false);
+            Lead(MechPoseLibrary.ArmLUpperIndex, d, false);
+            Lead(MechPoseLibrary.ArmLLowerIndex, d, false);
+            PlayMotion(t, 1f, false);
+
+            if (!_pileImpactFired && t >= rise)
+            {
+                _pileImpactFired = true;
+                OnPileDriverImpact(m);
+            }
+            ApplyPiston(m);
+        }
+
+        private void OnPileDriverImpact(BernardTuning.MotionValues m)
+        {
+            _pileImpactRealTime = Time.unscaledTime;
+            ShakeCameras(m.pileDriverShake, m.pileDriverShakeTime, bothPlayers: true);
+            BernardTuning.HitStopValues hitStop = _tuning.Get(this).HitStop;
+            if (hitStop.enabled && GameManager.Instance != null)
+            {
+                HitStop stop = GameManager.Instance.GetComponent<HitStop>();
+                if (stop != null) stop.Request(hitStop.pileDriver);
+            }
+            Vector3 fist = GetPunchPoint(true);
+            OnMotionImpact?.Invoke("PileDriver", fist, 1f);
+        }
+
+        /// <summary>
+        /// 타격 순간 오른 주먹(없으면 아래팔)이 팔뚝 축 방향으로 튀어나갔다 돌아온다. 히트스톱 중에도 보이게 실제 시간으로 잰다.
+        /// 스프링 없이 이번 프레임 위치에만 더한다.
+        /// </summary>
+        private void ApplyPiston(BernardTuning.MotionValues m)
+        {
+            if (_pileImpactRealTime == None) return;
+            float t = Time.unscaledTime - _pileImpactRealTime;
+            float total = m.pistonOutTime + m.pistonBackTime;
+            if (t < 0f || t >= total)
+            {
+                _pileImpactRealTime = None;
+                return;
+            }
+            Joint fist = _fistR != null && _fistR.Target != null ? _fistR : _armRLower;
+            if (fist == null || fist.Target == null || _armRLower == null || _armRLower.Target == null) return;
+
+            // 팔뚝 축 = 팔꿈치 → 주먹 (주먹이 없으면 아래팔 끝 추정)
+            Vector3 elbow = _armRLower.Target.position;
+            Vector3 hand = fist == _fistR ? _fistR.Target.position : GetPunchPoint(true);
+            Vector3 axis = hand - elbow;
+            if (axis.sqrMagnitude < 0.0001f) return;
+            float out01 = t < m.pistonOutTime
+                ? t / Mathf.Max(0.0001f, m.pistonOutTime)
+                : 1f - PoseLibrary.Evaluate(MechPoseLibrary.EaseSmooth, (t - m.pistonOutTime) / Mathf.Max(0.0001f, m.pistonBackTime));
+            fist.DirectPosition += transform.InverseTransformDirection(axis.normalized) * (m.pistonDistance * out01);
         }
 }
 }

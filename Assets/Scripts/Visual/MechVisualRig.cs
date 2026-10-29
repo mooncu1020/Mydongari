@@ -525,8 +525,20 @@ namespace MyDongari.Visual
             }
         }
 
-        private void OnClawGrabbed(GameObject target) => _clawStart = _clock;
-        private void OnPileDriver() => _pileStart = _clock;
+        private void OnClawGrabbed(GameObject target)
+        {
+            _clawStart = _clock;
+            _pullEnd = None;
+        }
+
+        private void OnPileDriver()
+        {
+            // 전신 모션: 끌어당김 자세에서 바로 어퍼컷으로 이어지는지 기억 (M6)
+            _pileFromReel = UseMotions && _clawStart != None;
+            if (UseMotions) _clawStart = None;
+            _pileStart = _clock;
+            _pileImpactFired = false;
+        }
         private void OnSlam() => _slamStart = _clock;
 
         private static void Kick(Joint joint, Vector3 angularVelocity)
@@ -851,6 +863,7 @@ namespace MyDongari.Visual
             if (_lunge != null && _lunge.IsLunging) return true;
             if (UseMotions && _lungeStart != None) return true;
             if (UseMotions && IsDefenseMotionActive()) return true;
+            if (UseMotions && IsClawMotionActive()) return true;
             if (_claw != null && _claw.Phase != AnchorClaw.ClawPhase.Ready) return true;
             if (InWindow(_punchStart, PunchVisualLength(v))) return true;
             if (InWindow(_tackleStart, TackleWindup + v.tackleTime)) return true;
@@ -932,8 +945,15 @@ namespace MyDongari.Visual
                 }
             }
 
+            // 전신 모션: 앵커 클로·파일 드라이버 (M6)
+            if (motions)
+            {
+                PoseClaw();
+                PosePileDriver();
+            }
+
             // 앵커 클로 발사: 예비 동작 = 왼팔을 뒤로 당김, 날아가는·감겨 오는 동안 = 왼팔 뻗기
-            if (_claw != null)
+            if (!motions && _claw != null)
             {
                 AnchorClaw.ClawPhase phase = _claw.Phase;
                 if (phase == AnchorClaw.ClawPhase.Windup)
@@ -949,7 +969,7 @@ namespace MyDongari.Visual
 
             // 앵커 클로 명중: 왼팔 뻗기
             t = _clock - _clawStart;
-            if (t >= 0f && t < v.clawHoldTime)
+            if (!motions && t >= 0f && t < v.clawHoldTime)
             {
                 SetRotation(_armLUpper, new Vector3(v.clawArmAngle, 0f, 0f));
                 SetRotation(_armLLower, new Vector3(v.punchElbowAngle, 0f, 0f));
@@ -957,7 +977,7 @@ namespace MyDongari.Visual
 
             // 파일드라이버: 오른팔 들었다 내리찍기 / 슬램: 양팔
             t = _clock - _pileStart;
-            if (t >= 0f && t < v.smashRaiseTime + v.smashDownTime) Smash(v, t, _armRUpper, null);
+            if (!motions && t >= 0f && t < v.smashRaiseTime + v.smashDownTime) Smash(v, t, _armRUpper, null);
             t = _clock - _slamStart;
             if (t >= 0f && t < v.smashRaiseTime + v.smashDownTime) Smash(v, t, _armRUpper, _armLUpper);
         }
