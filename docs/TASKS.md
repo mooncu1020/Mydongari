@@ -259,7 +259,7 @@
 
 ### [x] R1. 넉다운 동작 (히트스톱 뒤 비행 → 착지 미끄러짐 → 기상 무적, 벽 충돌, 입력 무시)
 ### [x] R2. 넉다운 외형 (비행 젖힘·늘어짐, 등/엉덩이 착지·미끄러짐·먼지·흔들림, 기상 포즈)
-### [ ] R3. 연습 봇 넉다운 처리 확인·30fps 확인 방법
+### [x] R3. 연습 봇 넉다운 처리 확인·30fps 확인 방법
 ### [x] Q2. 방어 (스프링 안정화, 범위·0 검사, 잘못된 값이면 원래 자세로 되돌리고 상태 리셋)
 
 ---
@@ -345,3 +345,4 @@
 - **Q2.1** 완료. 신규 `Core/FrameRateTester`(F9 전용 InputAction — 운영자 키라 ESC 종료와 같은 방식으로 페어링과 무관; 누를 때마다 `QualitySettings.vSyncCount = 0` + `Application.targetFrameRate` 없음(-1) → 60 → 30 → 20; 오른쪽 위 OnGUI로 현재 제한·실제 fps(실제 시간 0.5초 평균, 히트스톱 중에도), 화면 높이 1080 기준 글자 크기), `.meta`(새 GUID, 겹침 없음 확인), `GameManager`(자동 부착). 빌드에서도 동작. 위험: F9로 VSync를 끈 뒤엔 그 실행 동안 VSync가 꺼진 채(다시 켜려면 재시작).
 - **R1** 완료. 신규 `Combat/KnockdownController`(기체마다 — 대기(히트스톱 동안 물리 스텝 없음 → 그 뒤) → 비행(중력 끄고 스텝 가운데 시각의 포물선 속도: 수평 거리/시간, v0 = 4h/T, g = 8h/T², 시뮬레이션 25스텝 8.000m·최고 1.498m) → 미끄러짐(선형 감속 2m) → 기상(무적), ExternalControlLock·감속 0 요청(봇은 직접), 수평 SphereCast로 벽·다른 콜라이더(자기 몸·트리거·바닥 제외) 닿으면 수평 정지·큰 흔들림, 착지 흔들림, 이벤트 6개, `debugLog` 거리 출력, `ResetForRound`), 신규 `Movement/KnockdownState`(입력 무시·힘 없음, 끝나면 Idle), `MechStateMachine`(넉다운이면 어느 상태든 KnockdownState로, 하드 락온 몸 회전 제외), `HitTypes`(`HitResult.Invulnerable`), `MeleeSystem`(넉다운 GetOrAdd, `IsKnockedDown`, 기상 무적이면 판정 무시, 넉다운 중 가드·펀치 불가), `WeaponSystem`(넉다운 중 공격·스킬 무시), `ThrusterLunge`(넉다운 중 런지 불가), `AnchorClaw.TryPileDriver`(맞으면 넉다운 시작 — 방향 = 공격자 상체 정면, 대기 = 어퍼컷 올리기 + 여유), `GameManager.ResetMech`(넉다운 리셋), `HitStop`·`CombatFeedback`(무적이면 없음), `PlayLogger`(`invulnerable_hit`, `lunge_invulnerable`, `knockdown`·`knockdown_wall`·`knockdown_end` 거리·높이), 두 스크립트 .meta(새 GUID, 겹침 없음), `GAME_SPEC`·`QUESTIONS` R1. 위험: 공중·미끄러짐 중엔 무적이 아니라 추가타가 들어감(QUESTIONS R1).
 - **R2** 완료. 바뀐 파일: `MechPoseLibrary`(KnockdownFlight·KnockdownLand·GetUpKneel·GetUpRise 초안 — 누운 자세는 골반 -85°로 다리가 바닥과 거의 수평이라 접지 보정(발바닥 기준)이 엉덩이를 땅 높이에 맞춘다), `MechVisualRig.Moves`(`PoseKnockdown` — 단계 변화를 리그 시계로 기억, 비행 = 젖힘 포즈 + 팔다리 `LoosenLimbs`(모션 비율을 낮춰 스프링이 출렁)·날아오를 때 `KickLimbs`·접지 보정 멈춤, 미끄러짐 = 누운 자세, 기상 = 누움 → 무릎 짚기 → 반쯤 일어섬 → 기본 자세, 단계마다 이어 붙이기), `MechVisualRig`(넉다운이면 숨쉬기 끔·전신 모션 위에), `Locomotion.UpdateFacing`(넉다운 중 상하체를 기체 정면에), `Gait`(넉다운 중 걸음·도약·호버·스러스터·불꽃 끔), `CombatFeedback`(넉다운 착지 큰 먼지+소리, 벽 충돌 먼지+소리, 미끄러지는 동안 `slideDustInterval`마다 먼지 — 임시 상자 기체도), `BernardTuning.Knockdown`(외형 7칸). 위험: 누운 자세 높이는 접지 보정이 발바닥으로 맞추므로 캡처한 포즈에서 발이 엉덩이보다 많이 뜨면 몸이 땅에 박힐 수 있음.
+- **R3** 완료. 점검: 연습 봇 이동(`MeleeDummy.FixedUpdate`)은 원래 `ExternalControlLock`이면 멈추고, 펀치·런지·가드는 R1에서 `MeleeSystem`·`ThrusterLunge`가 넉다운을 막는다. 봇 두뇌는 넉다운 중에도 버튼을 누르려 해서 `MeleeDummy.CanAct`에 넉다운을 넣었다(버튼 전부 떼고 행동 안 함, 끝나면 원래 모드). 봇은 MechController가 없어 감속 0은 `KnockdownController`가 리지드바디에 직접 넣고 끝나면 되돌린다(R1). 30fps 확인 방법은 `TEST_CHECKLIST` R3(F9 + `Debug Log`/`knockdown_end`, 물리 고정 스텝 0.02초라 같은 결과 — 파이썬 재현 8.000m + 1.999m, 최고 1.498m).

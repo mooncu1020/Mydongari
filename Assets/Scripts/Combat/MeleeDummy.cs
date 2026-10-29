@@ -307,7 +307,21 @@ namespace MyDongari.Combat
             if (_player == null) return false;
             if (GameManager.Instance != null && !GameManager.Instance.IsRoundActive) return false;
             if (_health != null && _health.IsDead) return false;
+            // 파일 드라이버 넉다운 중엔 아무것도 안 한다 — 버튼을 다 떼고, 이동·회전은 KnockdownController에 맡긴다 (R3)
+            if (IsKnockedDown) return false;
             return true;
+        }
+
+        private KnockdownController _knockdown;
+
+        private bool IsKnockedDown
+        {
+            get
+            {
+                // MeleeSystem이 없는 봇이면 앵커 클로가 맞힐 때 붙이므로 그때 찾는다
+                if (_knockdown == null) _knockdown = GetComponent<KnockdownController>();
+                return _knockdown != null && _knockdown.IsKnockedDown;
+            }
         }
 
         // ---------------- 행동 ----------------
