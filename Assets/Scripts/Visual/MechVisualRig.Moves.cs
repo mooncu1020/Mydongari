@@ -32,5 +32,75 @@ namespace MyDongari.Visual
             AddPose(PoseNames.LowGuard, 1f - s);
             AddPose(PoseNames.SprintGuard, s);
         }
+
+        // ---------------- M3 기본 펀치 ----------------
+
+        private float _punchGait;
+
+        /// <summary>펀치 외형 길이: 전신 모션이면 쿨다운 끝(회복 포함), 아니면 예전 뻗기·유지.</summary>
+        private float PunchVisualLength(BernardTuning.VisualValues v)
+        {
+            if (!UseMotions) return PunchWindup + v.punchExtendTime + v.punchHoldTime;
+            BernardTuning.MotionValues m = M;
+            return Mathf.Max(PunchWindup + m.punchFollowTime + m.punchFollowHold + 0.01f, _tuning.Get(this).Punch.cooldown);
+        }
+
+        /// <summary>
+        /// 펀치: 0 → 예비(살짝 젖힘) → 판정 순간(발동 0.1초) 뻗음 → 팔로스루(상체가 더 밀고 들어감) → 쿨다운 끝까지 로우 가드로 묵직하게.
+        /// 뻗는 구간은 뒷발 → 앞발·골반 → 허리·머리·반대 팔 → 때리는 팔 순서로 punchChainDelay씩 먼저 도착한다(주먹이 판정 순간에 도착).
+        /// 오른 주먹 기준 포즈, 왼 주먹(원투 두 번째)은 좌우 반전. 달리는 중이면 하체는 걸음에 맡기고 앞발 디딤만 더한다.
+        /// </summary>
+        private void PosePunch()
+        {
+            BernardTuning.VisualValues v = V;
+            float t = _clock - _punchStart;
+            float length = PunchVisualLength(v);
+            if (t < 0f || t >= length) return;
+
+            BernardTuning.MotionValues m = M;
+            float hit = PunchWindup;
+            float follow = hit + m.punchFollowTime;
+            float hold = follow + m.punchFollowHold;
+            bool mirror = !_punchRight;
+            float d = m.punchChainDelay;
+
+            BeginMotion();
+            LeadAnchor(hit);
+            Key(0f, null);
+            Key(hit * m.punchWindupRatio, PoseNames.PunchWindup, MechPoseLibrary.EaseSmooth);
+            Key(hit, PoseNames.PunchStrike, MechPoseLibrary.EaseSnap);
+            Key(follow, PoseNames.PunchFollow, MechPoseLibrary.EaseSmooth);
+            Key(hold, PoseNames.PunchFollow, MechPoseLibrary.EaseLinear);
+            Key(length, null, MechPoseLibrary.EaseHeavy);
+            // 뒷발(오른발) 밀기가 제일 먼저, 그다음 앞발·골반, 허리·머리·반대 팔, 마지막이 때리는 팔
+            Lead(MechPoseLibrary.HipRIndex, d * 3f, mirror);
+            Lead(MechPoseLibrary.LegRIndex, d * 3f, mirror);
+            Lead(MechPoseLibrary.ShinRIndex, d * 3f, mirror);
+            Lead(MechPoseLibrary.HipLIndex, d * 2f, mirror);
+            Lead(MechPoseLibrary.LegLIndex, d * 2f, mirror);
+            Lead(MechPoseLibrary.ShinLIndex, d * 2f, mirror);
+            Lead(MechPoseLibrary.PelvisIndex, d * 2f, mirror);
+            Lead(MechPoseLibrary.BodyIndex, d, mirror);
+            Lead(MechPoseLibrary.HeadIndex, d, mirror);
+            Lead(MechPoseLibrary.ArmLUpperIndex, d, mirror);
+            Lead(MechPoseLibrary.ArmLLowerIndex, d, mirror);
+            Lead(MechPoseLibrary.FistLIndex, d, mirror);
+            // 걷거나 달리는 중엔 하체를 걸음에 양보한다
+            MaskLowerBody(1f - _gaitWeight);
+            PlayMotion(t, 1f, mirror);
+
+            if (_punchGait > 0.01f)
+            {
+                // 달리는 중 펀치: 앞발 디딤 (하체만, 시작 순간 걸음 세기만큼)
+                BeginMotion();
+                MaskAll(0f);
+                MaskLowerBody(1f);
+                Key(0f, null);
+                Key(hit, PoseNames.PunchStepIn, MechPoseLibrary.EaseSnap);
+                Key(hold, PoseNames.PunchStepIn, MechPoseLibrary.EaseLinear);
+                Key(length, null, MechPoseLibrary.EaseHeavy);
+                PlayMotion(t, _punchGait, mirror);
+            }
+        }
     }
 }

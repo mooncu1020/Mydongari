@@ -43,6 +43,8 @@ namespace MyDongari.Visual
 
         private readonly MotionKey[] _keys = new MotionKey[12];
         private int _keyCount;
+        // 앞당김 기준 시각(보통 타격 순간). 0이면 앞당김을 그냥 시간 이동으로
+        private float _leadAnchor;
 
         private void BindPoseJoints()
         {
@@ -61,6 +63,7 @@ namespace MyDongari.Visual
         private void BeginMotion()
         {
             _keyCount = 0;
+            _leadAnchor = 0f;
             for (int i = 0; i < _lead.Length; i++)
             {
                 _lead[i] = 0f;
@@ -81,6 +84,17 @@ namespace MyDongari.Visual
         private void Lead(int jointIndex, float seconds, bool mirror)
         {
             _lead[mirror ? MechPoseLibrary.MirrorOf(jointIndex) : jointIndex] = seconds;
+        }
+
+        /// <summary>
+        /// 앞당김 기준 시각(타격 순간 등). 앞당김이 있는 관절은 0초에 같이 출발하되 기준 시각보다 앞당김만큼 먼저 도착하고
+        /// (그 앞 구간을 압축), 그 뒤로는 앞당김만큼 앞서 간다. 시작 순간 관절이 튀지 않게 하려는 것.
+        /// </summary>
+        private void LeadAnchor(float time) => _leadAnchor = Mathf.Max(0f, time);
+
+        private void MaskAll(float weight)
+        {
+            for (int i = 0; i < _mask.Length; i++) _mask[i] = weight;
         }
 
         /// <summary>하체(골반·엉덩이·다리·정강이)를 이 비율만큼만 모션이 맡는다. 나머지는 밑에 깔린 걸음.</summary>
@@ -119,7 +133,8 @@ namespace MyDongari.Visual
                 if (w <= 0f) continue;
 
                 Vector3 baseRotation = joint.TargetRotation;
-                Vector3 value = SampleRotation(library, t + _lead[j], j, baseRotation);
+                float tj = LeadTime(t, _lead[j]);
+                Vector3 value = SampleRotation(library, tj, j, baseRotation);
                 joint.TargetRotation = Vector3.Lerp(baseRotation, value, w);
                 joint.MotionWeight = Mathf.Max(joint.MotionWeight, w);
 
@@ -127,9 +142,20 @@ namespace MyDongari.Visual
                 if (j == MechPoseLibrary.PelvisIndex)
                 {
                     Vector3 basePosition = joint.TargetPosition;
-                    joint.TargetPosition = Vector3.Lerp(basePosition, SamplePelvis(library, t + _lead[j], basePosition), w);
+                    joint.TargetPosition = Vector3.Lerp(basePosition, SamplePelvis(library, tj, basePosition), w);
                 }
             }
+        }
+
+        /// <summary>관절 하나의 모션 시각: 기준 시각 전엔 압축(0에서 같이 출발, 앞당김만큼 먼저 도착), 그 뒤로는 앞당김만큼 앞섬.</summary>
+        private float LeadTime(float t, float lead)
+        {
+            if (lead <= 0f) return t;
+            float anchor = _leadAnchor;
+            if (anchor <= 0f) return t + lead;
+            lead = Mathf.Min(lead, anchor * 0.8f);
+            float arrive = anchor - lead;
+            return t < arrive ? t * anchor / arrive : t + lead;
         }
 
         private Vector3 SampleRotation(MechPoseLibrary library, float t, int j, Vector3 baseRotation)

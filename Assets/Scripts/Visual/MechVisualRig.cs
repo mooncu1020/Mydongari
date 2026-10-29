@@ -457,6 +457,8 @@ namespace MyDongari.Visual
                     _punchRight = _clock - _lastPunchTime > V.comboWindow || !_punchRight;
                     _punchStart = _clock;
                     _lastPunchTime = _clock;
+                    // 달리며 친 펀치는 앞발 디딤을 더한다 (M3, 시작 순간 걸음 세기만큼)
+                    _punchGait = _gaitWeight;
                     break;
                 case AttackType.DashAttack:
                 case AttackType.Tackle:
@@ -829,7 +831,7 @@ namespace MyDongari.Visual
             if (_melee != null && (_melee.IsGuarding || _melee.IsStunned)) return true;
             if (_lunge != null && _lunge.IsLunging) return true;
             if (_claw != null && _claw.Phase != AnchorClaw.ClawPhase.Ready) return true;
-            if (InWindow(_punchStart, PunchWindup + v.punchExtendTime + v.punchHoldTime)) return true;
+            if (InWindow(_punchStart, PunchVisualLength(v))) return true;
             if (InWindow(_tackleStart, TackleWindup + v.tackleTime)) return true;
             if (InWindow(_clawStart, v.clawHoldTime)) return true;
             float smash = v.smashRaiseTime + v.smashDownTime;
@@ -854,10 +856,14 @@ namespace MyDongari.Visual
 
         private void PoseActions(BernardTuning.VisualValues v)
         {
+            // 전신 모션 모델은 바뀐 기술을 Moves 쪽에서 (M3~M7). 아래는 임시 상자·모션 끔일 때의 예전 동작
+            bool motions = UseMotions;
+            if (motions) PosePunch();
+
             // 펀치: 예비 동작(뒤로) → 뻗기 → 복귀. 판정은 이벤트 프레임에 이미 끝났다
             float t = _clock - _punchStart;
             float punchWindup = PunchWindup;
-            if (t >= 0f && t < punchWindup + v.punchExtendTime + v.punchHoldTime)
+            if (!motions && t >= 0f && t < punchWindup + v.punchExtendTime + v.punchHoldTime)
             {
                 Joint upper = _punchRight ? _armRUpper : _armLUpper;
                 Joint lower = _punchRight ? _armRLower : _armLLower;

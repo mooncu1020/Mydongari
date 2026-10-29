@@ -557,6 +557,16 @@ namespace MyDongari.Mech
             public float sprintStanceBlendTime = 0.2f;
             [Tooltip("전력질주 돌격 자세에서 걸음 팔 스윙 비율 (1 = 평소 그대로, 0 = 안 흔듦)")]
             [Range(0f, 1f)] public float sprintArmSwingScale = 0.3f;
+
+            [Header("펀치 (M3: 발동 = Startup.punch, 회복 끝 = Punch.cooldown)")]
+            [Tooltip("발동 시간 중 예비 자세(살짝 젖힘)에 도착하는 시점 비율. 0.4면 0.1초 발동에서 0.04초")]
+            [Range(0.05f, 0.9f)] public float punchWindupRatio = 0.4f;
+            [Tooltip("관절 사슬 지연(초): 뒷발 → 골반 → 허리 → 어깨 순서로 앞 관절보다 이만큼 늦게 도착 (주먹이 판정 순간에 도착)")]
+            public float punchChainDelay = 0.018f;
+            [Tooltip("타격 뒤 상체가 더 밀고 들어가는 팔로스루 시간(초)")]
+            public float punchFollowTime = 0.06f;
+            [Tooltip("팔로스루 자세를 유지하는 시간(초). 그 뒤 쿨다운 끝까지 로우 가드로 묵직하게 복귀")]
+            public float punchFollowHold = 0.04f;
         }
 
         [Header("이동")]
