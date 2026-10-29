@@ -180,9 +180,93 @@ namespace MyDongari.EditorTools
             report.AppendLine($"스폰 {spawn.name.Trim()} → ({horizontal.x:0}, {horizontal.z:0}), 방향 {yaw:0}°");
         }
 
-        // 하늘·행성·조명은 T2에서
+        // ---------------- 하늘·행성·조명 (T2) ----------------
+
+        private const string SkyShaderName = "MyDongari/AsteroidSky";
+        private const string PlanetShaderName = "MyDongari/ToonPlanet";
+
         private static void BuildSkyAndLight(Transform root, AsteroidArenaConfig config, System.Text.StringBuilder report)
         {
+            // 하늘: 코드 셰이더 스카이박스 (검은 배경·별·은하수). 진공이라 안개 끔, 앰비언트는 푸르스름한 평면 색
+            Material sky = EnsureShaderMaterial("M_AsteroidSky", SkyShaderName, report);
+            if (sky != null) RenderSettings.skybox = sky;
+            RenderSettings.fog = false;
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientLight = config.ambientColor;
+
+            // 행성: 지평선 위 멀리 큰 구체 (카메라 먼 평면 안쪽)
+            Material planetMaterial = EnsureShaderMaterial("M_Planet", PlanetShaderName, report);
+            if (planetMaterial != null)
+            {
+                planetMaterial.SetColor("_BaseColor", config.planetColor);
+                planetMaterial.SetColor("_ShadowColor", config.planetShadowColor);
+                planetMaterial.SetColor("_AtmosphereColor", config.planetAtmosphereColor);
+                planetMaterial.SetFloat("_RimIntensity", config.planetRimIntensity);
+                planetMaterial.SetFloat("_RimPower", config.planetRimPower);
+                EditorUtility.SetDirty(planetMaterial);
+
+                GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                Mesh sphereMesh = sphere.GetComponent<MeshFilter>().sharedMesh;
+                Object.DestroyImmediate(sphere);
+                GameObject planet = Child(root, "Planet");
+                Vector3 direction = Quaternion.Euler(-config.planetElevation, config.planetAzimuth, 0f) * Vector3.forward;
+                planet.transform.position = root.position + direction * config.planetDistance;
+                planet.transform.localScale = Vector3.one * config.planetRadius * 2f;
+                var renderer = planet.AddComponent<MeshRenderer>();
+                planet.AddComponent<MeshFilter>().sharedMesh = sphereMesh;
+                renderer.sharedMaterial = planetMaterial;
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+                report.AppendLine($"행성: 반지름 {config.planetRadius:0}m, 거리 {config.planetDistance:0}m, 방위 {config.planetAzimuth:0}°·높이 {config.planetElevation:0}°");
+            }
+
+            // 해: 디렉셔널 라이트 하나 (기존 것을 쓰고 나머지 디렉셔널은 끔). 낮은 각도·강한 흰빛·그림자
+            Light sun = null;
+            int disabled = 0;
+            foreach (Light light in Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude, FindObjectsSortMode.InstanceID))
+            {
+                if (light.type != LightType.Directional) continue;
+                if (sun == null)
+                {
+                    sun = light;
+                    continue;
+                }
+                Undo.RecordObject(light, "Disable Extra Sun");
+                light.enabled = false;
+                disabled++;
+            }
+            if (sun == null)
+            {
+                var sunObject = new GameObject("Sun");
+                Undo.RegisterCreatedObjectUndo(sunObject, "Create Sun");
+                sun = sunObject.AddComponent<Light>();
+                sun.type = LightType.Directional;
+            }
+            Undo.RecordObject(sun, "Set Sun");
+            Undo.RecordObject(sun.transform, "Set Sun");
+            sun.transform.rotation = Quaternion.Euler(config.sunElevation, config.sunAzimuth, 0f);
+            sun.color = config.sunColor;
+            sun.intensity = config.sunIntensity;
+            sun.shadows = LightShadows.Soft;
+            RenderSettings.sun = sun;
+            DynamicGI.UpdateEnvironment();
+            report.AppendLine($"해: '{sun.name}' 높이 {config.sunElevation:0}°·세기 {config.sunIntensity}·그림자 켬{(disabled > 0 ? $", 다른 디렉셔널 라이트 {disabled}개 끔" : "")}");
+        }
+
+        private static Material EnsureShaderMaterial(string name, string shaderName, System.Text.StringBuilder report)
+        {
+            string path = $"{MaterialFolder}/{name}.mat";
+            Material existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null) return existing;
+            Shader shader = Shader.Find(shaderName);
+            if (shader == null)
+            {
+                report.AppendLine($"셰이더 {shaderName}를 못 찾음 — Assets/Materials의 셰이더 컴파일 오류 확인");
+                return null;
+            }
+            var material = new Material(shader) { name = name };
+            AssetDatabase.CreateAsset(material, path);
+            return material;
         }
 
         // ---------------- 메시 ----------------

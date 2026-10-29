@@ -447,3 +447,6 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (T1) `Tools/Build Asteroid Arena` → 대화 상자에 바위 4개 거리·높이, 스폰 이동. Hierarchy `AsteroidArena` 아래 Floor_Collider·Floor_Visual·Crater_Slope_Visual·Rim_Rocks·Boundary_Wall·Rocks. 한 번 더 누르면 하나만 남음(쌓이지 않음), Ctrl+Z로 되돌림
 - [ ] (T1) 플레이: 두 기체가 중앙 기준 30m 떨어져 마주 보고 시작, 평평하게 걷고(요철에 걸리지 않음) 발이 바닥에 붙음. 바위 4개(2~3m)에 막히고 올라타지 않음, 중앙 20m 안엔 바위 없음. 가장자리(반지름 45m)에서 보이지 않는 벽에 막힘, 경사·테두리 바위는 벽 너머로 보임
 - [ ] (T1) 바위 뒤에 상대를 두고 앵커 클로 → 바위를 통과해 잡음(QUESTIONS T1 — 막히지 않는 것이 현재 동작)
+- [ ] (T2) `Assets/Materials/AsteroidSky.shader`·`ToonPlanet.shader` 선택 → 컴파일 오류 없음. 메뉴 다시 실행 → 하늘이 검고 크기·밝기·색이 다른 별, 옅은 은하수 띠. 하늘에 외곽선 없음
+- [ ] (T2) 지평선 위로 큰 행성: 해 쪽은 밝은 파랑, 반대쪽은 어두운 계단 툰, 가장자리에 푸른 대기 빛. 행성에 외곽선 없음. `AsteroidArenaConfig`의 Planet 값(반지름·거리·방위·높이·색) 바꾸고 메뉴 → 반영
+- [ ] (T2) 해가 낮게(20°) 비춰 기체·바위 그림자가 길게. 그늘 쪽은 푸르스름하게 어둡게(앰비언트). Lighting 창 Environment에 Skybox = M_AsteroidSky, Ambient = Color
