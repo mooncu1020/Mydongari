@@ -273,7 +273,7 @@
 ### [x] T1. 지형 (평평한 판정 바닥 + 요철 외형, 경사·테두리 바위 + 보이지 않는 원형 벽, 바위 4개, 스폰)
 ### [x] T2. 하늘(코드 스카이박스)·행성·조명
 ### [x] T3. 진공 먼지
-### [ ] T4. 카메라 충돌
+### [x] T4. 카메라 충돌
 ### [ ] T5. 맵 전후 fps
 ### [x] Q2. 방어 (스프링 안정화, 범위·0 검사, 잘못된 값이면 원래 자세로 되돌리고 상태 리셋)
 
@@ -368,3 +368,4 @@
 - **T1** 완료. 신규 `Core/AsteroidArenaConfig`(맵 설정 ScriptableObject — 바닥·경사·테두리 바위·벽·바위·스폰·색·행성·조명), 신규 `Editor/AsteroidArenaBuilder`(`Tools/Build Asteroid Arena` — 이전 `AsteroidArena` 삭제 후 새로, 예전 `Map_Spaceport.`는 끄기만; 루트 아래 `Floor_Collider`(평평한 박스, 윗면 = groundHeight -1.01 — 예전 바닥과 같은 높이) · `Floor_Visual`(지름 90m 요철 원판, 판정 없음) · `Crater_Slope_Visual`(폭 16m·높이 7m 경사 고리) · `Rim_Rocks/RimRock_N`(26개, 판정 없음) · `Boundary_Wall/Wall_NN`(반지름 45m 원형 박스 벽 48조각, 렌더러 없음) · `Rocks/Rock_1~4`(정이십면체 80면 일그러뜨림·각진 면·바닥 평평, 높이 2~3m, 볼록 MeshCollider, 45°부터 4방향·중앙 20m 밖); 메시는 `Assets/Arena/Generated/*.asset`, 머티리얼은 M_ToonMech 복제 회갈색 `Assets/Arena/Materials`; GameManager가 가리키는 스폰 포인트를 (0, 0, ∓15)·서로 마주 보게(높이 그대로)). 점검: **앵커 클로는 바위에 막히지 않는다** — `AnchorClaw.IsTargetCollider`가 목표·상대 콜라이더만 보고 나머지(벽·바닥·바위)는 지나간다(F1 결정). 위험: 메뉴를 실행·씬 저장해야 적용.
 - **T2** 완료. 신규 `Assets/Materials/AsteroidSky.shader`(`MyDongari/AsteroidSky` — 검은 배경, 방향을 3D 격자로 나눠 칸 해시로 별 두 겹(크기·밝기·색 편차), 축에 수직인 큰 원을 따라 FBM 구름 은하수 띠; 깊이를 안 써서 화면 외곽선이 하늘로 보고 선 안 그림), 신규 `ToonPlanet.shader`(`MyDongari/ToonPlanet` — 메인 라이트 방향 계단 툰 + 가장자리 대기 림, 그림자 없음), `AsteroidArenaBuilder.BuildSkyAndLight`(스카이박스 머티리얼 M_AsteroidSky를 RenderSettings에, 안개 끔, 앰비언트 평면 푸르스름 (0.07, 0.09, 0.14); `Planet` 구체 반지름 220m·거리 760m(카메라 먼 평면 1000m 안)·방위 35°·높이 10°, 색·림은 설정 값을 M_Planet에; 기존 디렉셔널 라이트 하나를 해로 — 높이 20°·세기 2.2·흰빛·소프트 그림자, 다른 디렉셔널은 끔). 행성은 760m라 외곽선 거리 감쇠(40~80m)로 선이 안 생긴다. 위험: 셰이더 두 개는 이 환경에서 컴파일 확인 불가. 렌더 설정(스카이박스·앰비언트·안개)은 Ctrl+Z로 안 돌아간다.
 - **T3** 완료. 바뀐 파일: `HitSparkFx.SpawnDust`(진공: 위를 향한 원뿔에서 위·바깥으로 튀고 공기 저항 없이(속도 감쇠 모듈 안 씀) 중력만으로 포물선 낙하, 크기가 부풀지 않는 알갱이, 월드 충돌(낮은 품질)로 바닥·바위에 닿으면 조금 튀고 멈춤), `DustStyle`(중력·원뿔 각·충돌), `CombatFeedback`(먼지 모양 공용 `DustStyleOf` — 런지 박기·앵커 클로 버팀·달리기 착지·디딤걸음 착지·넉다운 착지·벽 충돌·미끄러짐 전부), `BernardTuning.HitFeel`(먼지 기본값 알갱이 0.18m·24개·4.5m/s·1.4초, 중력 1·원뿔 55°·충돌 켬). 위험: 월드 충돌 파티클은 먼지가 많이 동시에 날 때 비용 — 느리면 `Dust Collision` 끔.
+- **T4** 완료. 바뀐 파일: `MechCamera`(`ResolveCollision` — 흔들림까지 더한 최종 카메라 위치를 기체 중심에서 SphereCast(반지름 0.25m)해 리지드바디 없는 정적 지형(바닥 판정·원형 벽·바위·테두리)에 먼저 닿으면 그 앞(여유 0.05m)으로 당김, 기체·트리거 무시, 레이어 마스크·켜기 끄기 설정). 두 화면 카메라 모두(MechCamera가 각 카메라에). 점검: 지금 카메라는 기체 중심 위 1.5m(`offset (0, 1.5, 0)`, 뒤로 떨어진 거리 없음)라 평소엔 걸릴 일이 거의 없고, 화면 흔들림이 지형 쪽으로 밀 때·나중에 오프셋을 뒤로 뺄 때 동작한다. 테두리 바위(외형)엔 콜라이더가 없어 원형 벽(반지름 45m)에서 막힌다.

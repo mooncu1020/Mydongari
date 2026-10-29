@@ -21,6 +21,16 @@ namespace MyDongari.Camera
         [Header("퀵턴 설정")]
         [SerializeField] private float quickTurnDuration = 0.2f;
 
+        [Header("카메라 충돌 (T4)")]
+        [Tooltip("카메라가 바위·테두리·벽 등 정적 지형을 뚫으면 기체 쪽으로 당긴다 (기체·리지드바디가 있는 콜라이더는 무시)")]
+        [SerializeField] private bool collideWithWorld = true;
+        [Tooltip("카메라를 감싸는 구 반지름(m). 근접 클리핑(0.3)보다 조금 작게")]
+        [SerializeField] private float collisionRadius = 0.25f;
+        [Tooltip("막힌 면에서 이만큼(m) 더 앞으로")]
+        [SerializeField] private float collisionMargin = 0.05f;
+        [Tooltip("충돌을 검사할 레이어")]
+        [SerializeField] private LayerMask collisionLayers = ~0;
+
         [Header("FOV 설정")]
         [SerializeField] private float baseFov = 70f;
         [SerializeField] private float sprintFov = 90f;
@@ -69,6 +79,32 @@ namespace MyDongari.Camera
             _kickDuration = duration;
             _kickTimer = duration;
             _kickFrequency = frequency;
+        }
+
+        private static readonly RaycastHit[] CollisionHits = new RaycastHit[16];
+
+        /// <summary>
+        /// 기체 중심(콜라이더 안쪽이라 항상 안전)에서 원하는 카메라 위치까지 구를 쏴서, 정적 지형에 먼저 닿으면 그 앞으로 당긴다.
+        /// 기체(리지드바디가 있는 콜라이더)와 트리거는 무시 — 상대가 카메라 앞을 지나가도 화면이 튀지 않게.
+        /// </summary>
+        private Vector3 ResolveCollision(Vector3 desired)
+        {
+            Vector3 origin = target.position;
+            Vector3 toCamera = desired - origin;
+            float distance = toCamera.magnitude;
+            if (distance < 0.001f) return desired;
+            Vector3 direction = toCamera / distance;
+            int count = Physics.SphereCastNonAlloc(origin, collisionRadius, direction, CollisionHits, distance, collisionLayers, QueryTriggerInteraction.Ignore);
+            float nearest = distance;
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit hit = CollisionHits[i];
+                if (hit.collider == null || hit.collider.attachedRigidbody != null) continue;
+                // 시작부터 겹친 것(distance 0)은 기체가 이미 그 안에 있는 경우라 밀어낼 방향이 없다 — 무시
+                if (hit.distance <= 0f) continue;
+                if (hit.distance < nearest) nearest = hit.distance;
+            }
+            return nearest < distance ? origin + direction * Mathf.Max(0f, nearest - collisionMargin) : desired;
         }
 
         private void OnFootstep(bool left, float intensity)
@@ -248,6 +284,8 @@ namespace MyDongari.Camera
                 transform.position += _kickDirection * (_kickAmplitude * decay * Mathf.Cos(elapsed * _kickFrequency * 2f * Mathf.PI));
                 _kickTimer -= Time.unscaledDeltaTime;
             }
+            // 흔들림까지 더한 최종 위치가 지형을 뚫으면 앞으로 당긴다 (T4)
+            if (collideWithWorld) transform.position = ResolveCollision(transform.position);
 
             UpdateFov();
         }
