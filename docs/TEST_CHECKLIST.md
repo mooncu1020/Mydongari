@@ -423,3 +423,8 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (R3) PRACTICE에서 연습 봇(아무 모드 — Mixed·AlwaysGuard·Parrier 등)을 앵커 클로로 잡고 파일 드라이버 → 봇도 같은 거리로 날아가 미끄러지고 기상. 그동안 봇이 가드·펀치·런지·이동·회전을 하지 않고, 기상이 끝나면 원래 모드대로 다시 움직임. 기상 중 때리면 무적(`invulnerable_hit`)
 - [ ] (R3) **30fps에서 같은지**: 플레이 중 맞을 기체의 `KnockdownController → Debug Log`를 켠다(또는 로그 `knockdown_end` detail을 본다). ① F9로 `제한 없음`에서 파일 드라이버 → 콘솔 `[KnockdownController] … 수평 10.00m, 최고 높이 1.50m` (벽 없는 곳). ② F9로 `30` → 같은 자리에서 다시 → 같은 숫자(±0.01m). ③ `20`도 같음. 날아가는 시간도 같아야 함(비행·미끄러짐은 물리 고정 스텝 0.02초로 계산 — 렌더 fps와 무관). 착지 순간 먼지·흔들림이 30fps에서도 같은 자리에서 나옴
 - [ ] (R3) 30fps에서 착지 자세·기상 자세 전환이 끊기지 않음(외형은 리그 시계로 섞음)
+
+## Phase S (셀 셰이딩)
+
+- [ ] (S1) `Tools/Toon Mech/1. Apply Toon Materials To Bernard (S1)` → 대화 상자에 머티리얼 2개 생성·씬 렌더러 교체 개수·리맵·"Render Face가 Both인 머티리얼 없음". 씬 저장 후 Mech·Mech_P2 둘 다 장갑은 밝은 회색, 관절은 어두운 회색 셀 셰이딩. 분홍(머티리얼 없음) 부위 없음
+- [ ] (S1) `bernard.fbx` 선택 → Inspector Materials 탭 → On Demand Remap에 Mecha_Armor → M_ToonMech_Armor, Mecha_Joint → M_ToonMech_Joint. 머티리얼 Base Color를 바꾸면 두 기체에 바로 반영

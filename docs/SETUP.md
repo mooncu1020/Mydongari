@@ -115,3 +115,4 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 82. (P2) GameManager의 `CombatFeedback` → 새 효과음 칸 `Stride Step Clip`(스러스터 디딤걸음 착지 발소리)·`Stride Scrape Loop Clip`(디딤걸음에서 발이 미끄러지는 동안 반복, 긁는 속도만큼 크게). 속도 구간 경계·디딤걸음 수치는 `BernardTuning → 이동 모션`.
 83. (Q2.1) 할 일 없음 — `FrameRateTester`는 GameManager가 자동으로 붙인다. 표시를 끄려면 플레이 중 GameManager의 `FrameRateTester → Show Overlay`(씬에 저장하려면 컴포넌트를 직접 추가해 두고 끈다). 전환 목록은 `Limits`(0 = 제한 없음).
 84. (R1) 할 일 없음 — `KnockdownController`는 MeleeSystem이 기체마다 자동으로 붙인다. 수치는 `BernardTuning → 넉다운`(에셋에 없던 칸이라 기본값). 거리 확인용 콘솔 출력은 플레이 중 기체의 `KnockdownController → Debug Log`.
+85. (S1) **메뉴 `Tools/Toon Mech/1. Apply Toon Materials To Bernard (S1)`** → `Assets/Materials/M_ToonMech_Armor.mat`·`M_ToonMech_Joint.mat`이 생기고(M_ToonMech 복제, 기본색 #8A8D94 / #3A3C41), 씬 렌더러가 새 머티리얼로 바뀌고, `bernard.fbx` 임포터 Materials 탭에 리맵이 들어간다. **씬을 저장**한다. 색은 두 머티리얼의 `Base Color`로 조정. 다시 눌러도 색은 그대로 두고 리맵만 다시 한다.
