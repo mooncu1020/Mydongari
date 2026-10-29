@@ -337,6 +337,10 @@ namespace MyDongari.Mech
             public float pileDriverDamage = 50f;
             [Tooltip("이 거리(m) 안이어야 파일드라이버가 나간다")]
             public float pileDriverRange = 4f;
+
+            [Header("지형 충돌")]
+            [Tooltip("날아가다 닿은 면의 법선 Y가 이 값 이상이면 바닥으로 보고 지나간다. 그보다 옆을 향한 면(바위·벽)에 막히면 빗나감")]
+            [Range(0f, 1f)] public float terrainFloorNormalY = 0.7f;
         }
 
         [Serializable]

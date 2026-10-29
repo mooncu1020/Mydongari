@@ -150,11 +150,26 @@ namespace MyDongari.Combat.Skills
                 RaycastHit[] hits = Physics.SphereCastAll(_headPosition, t.hitRadius, _flightDirection, step,
                     Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
                 float nearest = float.MaxValue;
+                float nearestTerrain = float.MaxValue;
                 foreach (RaycastHit hit in hits)
                 {
-                    if (!IsTargetCollider(hit.collider)) continue;
-                    // 시작부터 겹쳐 있으면 distance = 0
-                    if (hit.distance < nearest) nearest = hit.distance;
+                    if (IsTargetCollider(hit.collider))
+                    {
+                        // 시작부터 겹쳐 있으면 distance = 0
+                        if (hit.distance < nearest) nearest = hit.distance;
+                    }
+                    else if (IsBlockingTerrain(hit, t) && hit.distance < nearestTerrain)
+                    {
+                        nearestTerrain = hit.distance;
+                    }
+                }
+                // 지형(바위·벽)이 목표보다 먼저면 거기서 막혀 빗나감 — 와이어가 감겨 돌아온다 (쿨다운은 발사 때 이미 씀)
+                if (nearestTerrain < nearest)
+                {
+                    _headPosition += _flightDirection * nearestTerrain;
+                    _phase = ClawPhase.Retracting;
+                    OnMissed?.Invoke();
+                    return;
                 }
                 if (nearest < float.MaxValue)
                 {
@@ -174,8 +189,20 @@ namespace MyDongari.Combat.Skills
         }
 
         /// <summary>
-        /// 클로가 잡을 수 있는 콜라이더: 쏠 때 정한 목표(락온 대상)와 내 상대. 벽·바닥·자기 몸은 그냥 지나간다
-        /// (경기장이 평지라 지형 충돌은 넣지 않았다 — QUESTIONS F1).
+        /// 클로를 막는 지형: 리지드바디가 없는 정적 콜라이더(바위·경기장 벽). 기체(리지드바디)·트리거·자기 몸은 아니다.
+        /// 바닥은 무시 — 위를 향한 면(법선 Y가 terrainFloorNormalY 이상)이면 바닥으로 본다. 시작부터 겹친 것(distance 0)도 무시
+        /// (손이 이미 벽에 붙어 있어도 발사는 되게).
+        /// </summary>
+        private bool IsBlockingTerrain(RaycastHit hit, BernardTuning.AnchorClawValues t)
+        {
+            Collider col = hit.collider;
+            if (col == null || col.attachedRigidbody != null || _identity.IsOwnCollider(col)) return false;
+            if (hit.distance <= 0f) return false;
+            return hit.normal.y < t.terrainFloorNormalY;
+        }
+
+        /// <summary>
+        /// 클로가 잡을 수 있는 콜라이더: 쏠 때 정한 목표(락온 대상)와 내 상대. 지형(바위·벽)은 IsBlockingTerrain이 따로 막고, 바닥·자기 몸은 지나간다.
         /// </summary>
         private bool IsTargetCollider(Collider col)
         {
