@@ -432,3 +432,12 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (S3) 셰이더 `Assets/Materials/ScreenOutline.shader` 선택 → Inspector에 컴파일 오류 없음. `Tools/Toon Mech/2. Add Screen Outline Renderer Feature (S3)` → PC_Renderer에 ScreenOutline 기능(Injection Point = After Rendering Post Processing, Requirements = Depth, Normal, Fetch Color Buffer 켬, Pass Material = M_ScreenOutline)
 - [ ] (S3) VERSUS 화면 분할 → 두 화면 모두 기체·지형 모서리에 어두운 선. 하늘에는 선이 없고, 기체가 하늘 앞에 있으면 기체 쪽에 실루엣 선. `M_ScreenOutline`의 굵기·색·깊이/노멀 민감도·Fade Start/Range를 바꾸면 바로 반영. 먼 배경은 선이 옅어짐
 - [ ] (S3) 플레이 중 F10 → 오른쪽 위 표시가 `외곽선 끔`/`외곽선 켬`으로 바뀌며 선이 사라졌다 나타남. 플레이를 멈춘 뒤 PC_Renderer의 ScreenOutline 체크가 원래대로
+- [ ] (S4) **외곽선 fps 비교** (빌드 권장, 에디터면 Scene 뷰 닫기). VERSUS 화면 분할, 같은 자리에서 10초씩 오른쪽 위 실제 fps를 보고 아래 표를 채운다. F9로 제한, F10으로 외곽선.
+
+  | 제한 (F9) | 외곽선 끔 | 외곽선 켬 | 차이 |
+  | --- | --- | --- | --- |
+  | 없음 |  |  |  |
+  | 60 |  |  |  |
+  | 30 |  |  |  |
+
+  30 제한에서 켬이 30 밑으로 떨어지면 외곽선이 병목. 제한 없음 줄의 차이(ms = 1000/끔 − 1000/켬)가 외곽선 실제 비용

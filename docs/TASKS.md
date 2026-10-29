@@ -266,7 +266,7 @@
 ### [x] S1. bernard 장갑·관절 머티리얼 (임포터 리맵)
 ### [x] S2. 피격 틴트·흰색 번쩍임 호환
 ### [x] S3. 화면 외곽선 렌더러 기능
-### [ ] S4. 외곽선 fps 비교
+### [x] S4. 외곽선 fps 비교
 ### [x] Q2. 방어 (스프링 안정화, 범위·0 검사, 잘못된 값이면 원래 자세로 되돌리고 상태 리셋)
 
 ---
@@ -356,3 +356,4 @@
 - **S1** 완료. 신규 `Editor/ToonMechSetup`(`Tools/Toon Mech/1. Apply Toon Materials To Bernard (S1)` — M_ToonMech 복제로 `M_ToonMech_Armor`(#8A8D94)·`M_ToonMech_Joint`(#3A3C41) 생성(이미 있으면 색 그대로), 씬 렌더러가 들고 있는 FBX 안 머티리얼을 먼저 새 머티리얼로 교체(Mech_P2는 bernard를 씬에 풀어 둬 리맵만으론 끊김), `ModelImporter.AddRemap`으로 Mecha_Armor·Mecha_Joint 리맵 후 재임포트, Render Face가 Both인 머티리얼 보고; S3 메뉴도 같은 파일). 셰이더 그래프·M_ToonMech는 안 건드림. 점검: 그래프 Render Face = Front(2)·머티리얼 덮어쓰기 꺼짐, M_ToonMech `_Cull` 2(앞면) — Both인 머티리얼 없음. 그래프 활성 서브타깃은 `UniversalLitSubTarget`(Unlit 아님), M_ToonMech의 `_ToonRamp`는 비어 있음(기본 흰색). 위험: 메뉴를 실행해야 적용됨(이 환경에선 에디터 실행 불가).
 - **S2** 완료. 점검: `MechTint`(스턴·과열·가드 틴트, 흰색 번쩍임)는 MaterialPropertyBlock으로 `_BaseColor`(URP Lit/셰이더 그래프)·`_Color`(빌트인)를 덮어쓴다. ToonMech 그래프에 `_BaseColor`·`_EmissionColor`가 노출(Exposed) 프로퍼티로 있어 **추가할 프로퍼티 없음**. 바뀐 파일: `MechTint`(이미시브가 있는 머티리얼은 `Apply(…, emission)`일 때 원래 이미시브 + 색 × 세기 — 셀 셰이딩 그늘 쪽까지 하얗게), `CombatFeedback`(번쩍임만 이미시브 사용, 다른 틴트는 기본색만), `BernardTuning.HitFeel.flashEmission`(1). 그래프의 EmissionMask 기본값이 흰색이라 마스크 없이도 이미시브가 나온다. 위험: 틴트가 걸린 동안 그 렌더러는 SRP Batcher에서 빠진다(예전과 같음).
 - **S3** 완료. 신규 `Assets/Materials/ScreenOutline.shader`(`Hidden/MyDongari/ScreenOutline` — URP Blit.hlsl 풀스크린, 상하좌우 4이웃의 선형 깊이 상대 차이·노멀 각도 차이로 모서리, 하늘(깊이 = 먼 평면) 픽셀은 선 없음·이웃이 하늘이면 실루엣, 굵기는 카메라 화면 높이 1080 기준 px, 먼 곳 옅어짐; 머티리얼 값: 선 색·굵기·깊이/노멀 민감도·옅어짐 거리), `Editor/ToonMechSetup`의 `Tools/Toon Mech/2. Add Screen Outline Renderer Feature (S3)`(M_ScreenOutline 생성, 쓰이는 URP 렌더러(PC_Renderer)마다 URP 기본 `FullScreenPassRendererFeature`를 `ScreenOutline` 이름으로 추가 — 후처리 뒤, 색 복사, 깊이+노멀 요구; 인스펙터의 Add Renderer Feature와 같이 목록·로컬 ID 맵에 넣음), `FrameRateTester`(F10으로 외곽선 켜기/끄기 — S4 비교용, 끝나면 원래 상태로, 화면 표시에 외곽선 상태). 화면 분할 두 카메라는 같은 렌더러라 둘 다 적용. 위험: 셰이더는 이 환경에서 컴파일 확인 불가(URP CoreBlit.shader와 같은 include 구성) — 에디터 콘솔에서 셰이더 오류 확인 필요. 월드 공간 팝업 글자(STATUS)에도 선이 생길 수 있음.
+- **S4** 측정은 못 함 — 이 환경에선 에디터·빌드를 실행할 수 없다. 측정 방법을 `TEST_CHECKLIST` S4에 표로 남겼다(F9 제한 + F10 외곽선 켜고/끄기, 화면 표시 실제 fps). 예상 비용: 카메라마다 깊이+노멀 사전 패스(SSAO가 이미 노멀을 쓰면 공유) + 풀스크린 패스 1번(픽셀당 텍스처 9회) + 색 복사 1번, 화면 분할이라 ×2.
