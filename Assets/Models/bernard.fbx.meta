@@ -3,7 +3,17 @@ guid: fc973a8d258fe3a4a88cb9bf5bc7757d
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Mecha_Armor
+    second: {fileID: 2100000, guid: 069f8fdf943267a4aa9fcc11e798c383, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Mecha_Joint
+    second: {fileID: 2100000, guid: 13ca62c9eca84bc44b916765c05e8587, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
