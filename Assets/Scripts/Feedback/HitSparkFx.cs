@@ -31,6 +31,12 @@ namespace MyDongari.Feedback
             public int Count;
             public float Speed;
             public float Lifetime;
+            /// <summary>중력 배율 (1 = Physics.gravity 그대로).</summary>
+            public float Gravity;
+            /// <summary>위로 튀는 원뿔의 반각(°). 0 = 똑바로 위, 90 = 바닥과 평행.</summary>
+            public float ConeAngle;
+            /// <summary>바닥·바위에 닿으면 튕기고 멈춘다.</summary>
+            public bool Collide;
         }
 
         /// <summary>타격 지점에 불꽃(direction 쪽으로 튐) + 섬광. scale = 등급 배율.</summary>
@@ -80,7 +86,10 @@ namespace MyDongari.Feedback
             Object.Destroy(root, 1.5f);
         }
 
-        /// <summary>바닥 먼지: 발 주변으로 낮게 퍼지며 커지고 옅어진다. strength = 0~1.</summary>
+        /// <summary>
+        /// 진공 먼지 (T3): 공기가 없어 퍼지며 부풀거나 떠다니지 않는다 — 알갱이가 발 주변에서 위·바깥으로 튀어
+        /// 공기 저항 없이(속도 감쇠 모듈 끔) 중력만 받아 포물선으로 떨어지고, 바닥에 닿으면 조금 튀고 멈춘다. strength = 0~1.
+        /// </summary>
         public static void SpawnDust(Vector3 position, float strength, DustStyle style)
         {
             if (strength <= 0f) return;
@@ -89,22 +98,33 @@ namespace MyDongari.Feedback
             ParticleSystem dust = Create(root, "Dust");
             var main = dust.main;
             main.duration = 0.2f;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(style.Lifetime * 0.6f, style.Lifetime);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(style.Speed * 0.4f * strength, style.Speed * strength);
-            main.startSize = new ParticleSystem.MinMaxCurve(style.Size * 0.5f * strength, style.Size * strength);
+            main.startLifetime = new ParticleSystem.MinMaxCurve(style.Lifetime * 0.7f, style.Lifetime);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(style.Speed * 0.5f * strength, style.Speed * strength);
+            main.startSize = new ParticleSystem.MinMaxCurve(style.Size * 0.5f, style.Size);
             main.startColor = style.Color;
-            main.gravityModifier = -0.05f;
+            main.gravityModifier = style.Gravity;
             var emission = dust.emission;
             emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)Mathf.Max(1, Mathf.RoundToInt(style.Count * strength))) });
             var shape = dust.shape;
             shape.enabled = true;
-            // 바닥과 평행한 원 테두리에서 바깥으로
-            shape.shapeType = ParticleSystemShapeType.Circle;
+            // 위를 향한 원뿔(기본 원뿔은 +Z라 X축으로 -90° 돌림)에서 위·바깥으로
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = Mathf.Clamp(style.ConeAngle, 0f, 89f);
             shape.radius = 0.3f;
-            shape.rotation = new Vector3(90f, 0f, 0f);
-            var size = dust.sizeOverLifetime;
-            size.enabled = true;
-            size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0.6f, 1f, 1.6f));
+            shape.rotation = new Vector3(-90f, 0f, 0f);
+            // 공기 저항 0: 속도 제한·감쇠(LimitVelocityOverLifetime)는 쓰지 않는다(기본 꺼짐). 크기도 그대로(부풀지 않음)
+            if (style.Collide)
+            {
+                var collision = dust.collision;
+                collision.enabled = true;
+                collision.type = ParticleSystemCollisionType.World;
+                collision.mode = ParticleSystemCollisionMode.Collision3D;
+                collision.quality = ParticleSystemCollisionQuality.Low;
+                collision.dampen = 0.5f;
+                collision.bounce = 0.15f;
+                collision.lifetimeLoss = 0.35f;
+                collision.radiusScale = 0.5f;
+            }
             FadeOut(dust);
             dust.Play();
             Object.Destroy(root, style.Lifetime + 0.5f);

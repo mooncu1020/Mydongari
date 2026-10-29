@@ -450,3 +450,4 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (T2) `Assets/Materials/AsteroidSky.shader`·`ToonPlanet.shader` 선택 → 컴파일 오류 없음. 메뉴 다시 실행 → 하늘이 검고 크기·밝기·색이 다른 별, 옅은 은하수 띠. 하늘에 외곽선 없음
 - [ ] (T2) 지평선 위로 큰 행성: 해 쪽은 밝은 파랑, 반대쪽은 어두운 계단 툰, 가장자리에 푸른 대기 빛. 행성에 외곽선 없음. `AsteroidArenaConfig`의 Planet 값(반지름·거리·방위·높이·색) 바꾸고 메뉴 → 반영
 - [ ] (T2) 해가 낮게(20°) 비춰 기체·바위 그림자가 길게. 그늘 쪽은 푸르스름하게 어둡게(앰비언트). Lighting 창 Environment에 Skybox = M_AsteroidSky, Ambient = Color
+- [ ] (T3) 런지 앞발 박기·넉다운 착지/미끄러짐·디딤걸음 착지 → 먼지가 연기처럼 퍼지지 않고 알갱이가 위·바깥으로 튀어 포물선을 그리며 떨어지고, 바닥(바위 위면 바위)에 닿아 조금 튀다 사라짐. 떠다니거나 부풀지 않음. `BernardTuning → 타격감 → Dust Gravity`(0이면 일직선으로 날아감)·`Dust Cone Angle`·`Dust Collision` 반영

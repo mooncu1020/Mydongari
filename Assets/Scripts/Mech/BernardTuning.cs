@@ -622,11 +622,20 @@ namespace MyDongari.Mech
             public float flashFxTime = 0.06f;
 
             [Header("착지 먼지 (런지 앞발 박기·앵커 클로 버팀)")]
-            public Color dustColor = new Color(0.55f, 0.5f, 0.42f, 0.6f);
-            public float dustSize = 0.6f;
-            public int dustCount = 12;
-            public float dustSpeed = 2.5f;
-            public float dustLifetime = 0.7f;
+            public Color dustColor = new Color(0.55f, 0.5f, 0.42f, 0.8f);
+            [Tooltip("먼지 알갱이 크기(m). 진공이라 퍼지며 커지지 않는다 (T3)")]
+            public float dustSize = 0.18f;
+            public int dustCount = 24;
+            [Tooltip("튀어 오르는 속도(m/s)")]
+            public float dustSpeed = 4.5f;
+            [Tooltip("알갱이 수명(초). 포물선으로 떨어져 바닥에 닿을 만큼")]
+            public float dustLifetime = 1.4f;
+            [Tooltip("중력 배율 (1 = 물리 중력). 공기 저항은 없다")]
+            public float dustGravity = 1f;
+            [Tooltip("위로 튀는 원뿔 반각(°). 0 = 똑바로 위, 90 = 바닥과 평행")]
+            public float dustConeAngle = 55f;
+            [Tooltip("바닥·바위에 닿으면 튕기고 멈춤 (끄면 바닥을 뚫고 떨어지다 사라짐)")]
+            public bool dustCollision = true;
 
             public HitGradeValues Grade(AttackStrength strength)
             {

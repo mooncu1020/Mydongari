@@ -225,14 +225,7 @@ namespace MyDongari.Feedback
         private void KnockdownDust(GameObject mech, Vector3 position, float strength, bool playSound)
         {
             BernardTuning.HitFeelValues feel = TuningOf(mech).HitFeel;
-            HitSparkFx.SpawnDust(position, strength, new HitSparkFx.DustStyle
-            {
-                Color = feel.dustColor,
-                Size = feel.dustSize,
-                Count = feel.dustCount,
-                Speed = feel.dustSpeed,
-                Lifetime = feel.dustLifetime
-            });
+            HitSparkFx.SpawnDust(position, strength, DustStyleOf(feel));
             if (playSound) Play(dustClip, dustVolume * Mathf.Clamp01(strength));
         }
 
@@ -276,14 +269,23 @@ namespace MyDongari.Feedback
             // 디딤걸음 착지는 전용 발소리 (먼지 소리 대신)
             if (kind == "StrideLand") Play(strideStepClip, strideStepVolume);
             else Play(dustClip, dustVolume * Mathf.Clamp01(strength));
-            HitSparkFx.SpawnDust(position, strength, new HitSparkFx.DustStyle
+            HitSparkFx.SpawnDust(position, strength, DustStyleOf(feel));
+        }
+
+        /// <summary>먼지 모양 (착지·미끄러짐·런지·앵커 공통, 진공 포물선 — T3).</summary>
+        private static HitSparkFx.DustStyle DustStyleOf(BernardTuning.HitFeelValues feel)
+        {
+            return new HitSparkFx.DustStyle
             {
                 Color = feel.dustColor,
                 Size = feel.dustSize,
                 Count = feel.dustCount,
                 Speed = feel.dustSpeed,
-                Lifetime = feel.dustLifetime
-            });
+                Lifetime = feel.dustLifetime,
+                Gravity = feel.dustGravity,
+                ConeAngle = feel.dustConeAngle,
+                Collide = feel.dustCollision
+            };
         }
 
         private static BernardTuning TuningOf(GameObject mech)
