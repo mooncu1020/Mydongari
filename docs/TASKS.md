@@ -267,6 +267,14 @@
 ### [x] S2. 피격 틴트·흰색 번쩍임 호환
 ### [x] S3. 화면 외곽선 렌더러 기능
 ### [x] S4. 외곽선 fps 비교
+
+## Phase T — 소행성 표면 맵 (메뉴 Tools/Build Asteroid Arena로 생성, 씬 손 편집 없음)
+
+### [x] T1. 지형 (평평한 판정 바닥 + 요철 외형, 경사·테두리 바위 + 보이지 않는 원형 벽, 바위 4개, 스폰)
+### [ ] T2. 하늘(코드 스카이박스)·행성·조명
+### [ ] T3. 진공 먼지
+### [ ] T4. 카메라 충돌
+### [ ] T5. 맵 전후 fps
 ### [x] Q2. 방어 (스프링 안정화, 범위·0 검사, 잘못된 값이면 원래 자세로 되돌리고 상태 리셋)
 
 ---
@@ -357,3 +365,4 @@
 - **S2** 완료. 점검: `MechTint`(스턴·과열·가드 틴트, 흰색 번쩍임)는 MaterialPropertyBlock으로 `_BaseColor`(URP Lit/셰이더 그래프)·`_Color`(빌트인)를 덮어쓴다. ToonMech 그래프에 `_BaseColor`·`_EmissionColor`가 노출(Exposed) 프로퍼티로 있어 **추가할 프로퍼티 없음**. 바뀐 파일: `MechTint`(이미시브가 있는 머티리얼은 `Apply(…, emission)`일 때 원래 이미시브 + 색 × 세기 — 셀 셰이딩 그늘 쪽까지 하얗게), `CombatFeedback`(번쩍임만 이미시브 사용, 다른 틴트는 기본색만), `BernardTuning.HitFeel.flashEmission`(1). 그래프의 EmissionMask 기본값이 흰색이라 마스크 없이도 이미시브가 나온다. 위험: 틴트가 걸린 동안 그 렌더러는 SRP Batcher에서 빠진다(예전과 같음).
 - **S3** 완료. 신규 `Assets/Materials/ScreenOutline.shader`(`Hidden/MyDongari/ScreenOutline` — URP Blit.hlsl 풀스크린, 상하좌우 4이웃의 선형 깊이 상대 차이·노멀 각도 차이로 모서리, 하늘(깊이 = 먼 평면) 픽셀은 선 없음·이웃이 하늘이면 실루엣, 굵기는 카메라 화면 높이 1080 기준 px, 먼 곳 옅어짐; 머티리얼 값: 선 색·굵기·깊이/노멀 민감도·옅어짐 거리), `Editor/ToonMechSetup`의 `Tools/Toon Mech/2. Add Screen Outline Renderer Feature (S3)`(M_ScreenOutline 생성, 쓰이는 URP 렌더러(PC_Renderer)마다 URP 기본 `FullScreenPassRendererFeature`를 `ScreenOutline` 이름으로 추가 — 후처리 뒤, 색 복사, 깊이+노멀 요구; 인스펙터의 Add Renderer Feature와 같이 목록·로컬 ID 맵에 넣음), `FrameRateTester`(F10으로 외곽선 켜기/끄기 — S4 비교용, 끝나면 원래 상태로, 화면 표시에 외곽선 상태). 화면 분할 두 카메라는 같은 렌더러라 둘 다 적용. 위험: 셰이더는 이 환경에서 컴파일 확인 불가(URP CoreBlit.shader와 같은 include 구성) — 에디터 콘솔에서 셰이더 오류 확인 필요. 월드 공간 팝업 글자(STATUS)에도 선이 생길 수 있음.
 - **S4** 측정은 못 함 — 이 환경에선 에디터·빌드를 실행할 수 없다. 측정 방법을 `TEST_CHECKLIST` S4에 표로 남겼다(F9 제한 + F10 외곽선 켜고/끄기, 화면 표시 실제 fps). 예상 비용: 카메라마다 깊이+노멀 사전 패스(SSAO가 이미 노멀을 쓰면 공유) + 풀스크린 패스 1번(픽셀당 텍스처 9회) + 색 복사 1번, 화면 분할이라 ×2.
+- **T1** 완료. 신규 `Core/AsteroidArenaConfig`(맵 설정 ScriptableObject — 바닥·경사·테두리 바위·벽·바위·스폰·색·행성·조명), 신규 `Editor/AsteroidArenaBuilder`(`Tools/Build Asteroid Arena` — 이전 `AsteroidArena` 삭제 후 새로, 예전 `Map_Spaceport.`는 끄기만; 루트 아래 `Floor_Collider`(평평한 박스, 윗면 = groundHeight -1.01 — 예전 바닥과 같은 높이) · `Floor_Visual`(지름 90m 요철 원판, 판정 없음) · `Crater_Slope_Visual`(폭 16m·높이 7m 경사 고리) · `Rim_Rocks/RimRock_N`(26개, 판정 없음) · `Boundary_Wall/Wall_NN`(반지름 45m 원형 박스 벽 48조각, 렌더러 없음) · `Rocks/Rock_1~4`(정이십면체 80면 일그러뜨림·각진 면·바닥 평평, 높이 2~3m, 볼록 MeshCollider, 45°부터 4방향·중앙 20m 밖); 메시는 `Assets/Arena/Generated/*.asset`, 머티리얼은 M_ToonMech 복제 회갈색 `Assets/Arena/Materials`; GameManager가 가리키는 스폰 포인트를 (0, 0, ∓15)·서로 마주 보게(높이 그대로)). 점검: **앵커 클로는 바위에 막히지 않는다** — `AnchorClaw.IsTargetCollider`가 목표·상대 콜라이더만 보고 나머지(벽·바닥·바위)는 지나간다(F1 결정). 위험: 메뉴를 실행·씬 저장해야 적용.
