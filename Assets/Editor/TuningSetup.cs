@@ -34,15 +34,16 @@ namespace MyDongari.EditorTools
 
         /// <summary>
         /// 이미 저장된 에셋 값은 코드 기본값을 바꿔도 그대로라, 피드백으로 바뀐 값을 에셋에 넣는다 (.asset을 손으로 고치지 않으려고).
-        /// O1: 걷기 최대 속도 2.5m/s.
+        /// O1: 걷기 최대 속도 2.5m/s. O2: 쓰리 후 회복 0.8초(에셋에 콤보 칸이 저장돼 있을 때만 — 없으면 코드 기본값 0.8).
         /// </summary>
-        [MenuItem("Mydongari/Tuning/Apply Feedback Values (O1 걷기 2.5m/s)")]
+        [MenuItem("Mydongari/Tuning/Apply Feedback Values (O1 걷기 2.5m/s, O2 쓰리 회복 0.8초)")]
         private static void ApplyFeedbackValuesMenu()
         {
             BernardTuning tuning = EnsureAsset(out _);
             var so = new SerializedObject(tuning);
             var changes = new System.Text.StringBuilder();
             SetFloat(so, "movement.maxWalkSpeed", 2.5f, changes);
+            SetFloat(so, "combo.thirdRecovery", 0.8f, changes);
             so.ApplyModifiedProperties();
             EditorUtility.SetDirty(tuning);
             AssetDatabase.SaveAssets();

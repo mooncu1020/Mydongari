@@ -148,8 +148,8 @@ namespace MyDongari.Mech
             public float thirdDamageMultiplier = 1.5f;
             [Tooltip("쓰리 넉백 힘(Impulse). 원·투는 넉백 없음")]
             public float thirdKnockback = 8f;
-            [Tooltip("쓰리 판정 뒤 다음 펀치까지 회복(초)")]
-            public float thirdRecovery = 0.6f;
+            [Tooltip("쓰리 판정 뒤 다음 펀치까지 회복(초). O2: 0.6 → 0.8 (반복 초당 피해를 단발 펀치에 가깝게)")]
+            public float thirdRecovery = 0.8f;
             [Tooltip("콤보 중(누른 순간 ~ 다음 타 입력 창 끝) 이동 속도 비율")]
             [Range(0f, 1f)] public float moveSpeedScale = 0.6f;
             [Tooltip("쓰리 회복 동안 이동 속도 비율")]
