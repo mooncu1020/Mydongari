@@ -62,3 +62,27 @@
 | 12 m/s | 〃 → 도약 | 2.5걸음/초, 걸음당 4.8m 중 미끄러짐 3.75m |
 | 12 m/s ~ (달리기 20m/s) | 스러스터 보조 도약 | 1.6회/초, 20m/s에서 한 번에 12.5m |
 | 전력질주 상태 | 호버 활주 | 걸음 없음 |
+
+## NaN이 생길 수 있는 지점 점검 (Q1)
+
+| 위치 | 위험 | 상태 (Q1 시점) |
+| --- | --- | --- |
+| `MechVisualRig.Spring` (모든 관절 회전·위치, 스커트) | ω·step > 한계면 발산 → 무한대 → NaN. 8Hz·감쇠 0.6은 44fps 아래 | **원인** — 막혀 있지 않음 |
+| `Gait.StepLeg` 엉덩이 역산 `Asin(x / 다리)` | 다리 길이 0, x가 범위 밖 | `Clamp(-0.99, 0.99)`, 다리 ≥ 0.05 |
+| `Locomotion.KneeBendForDrop` `Acos` | 무릎 역산 cos 범위 밖, 허벅지·정강이 0 | `Clamp(-1, 1)`, 길이 ≥ 0.01 확인 |
+| `Gait.HipToAnkle` `Sqrt` | 음수 | 항상 0 이상(a² + b² + 2ab·cos ≥ (a-b)²) |
+| `Gait.SlideTravel` `Pow`, `/ slideTime`, `/ slideDistance`, `plant / speed` | 0으로 나누기, 음수 밑 | 0.0001 아래면 그 분기 안 탐, 속도 ≥ 0.01 |
+| `Gait.PoseStepping` 속도 ÷ 보폭, 1 ÷ 걸음 수 | 보폭·걸음 수 0 | 보폭 ≥ 0.1, 걸음 수 ≥ 0.01 / 0.5 |
+| `Gait.StepLeg`·`Locomotion.PoseLeg` 발 들기 `p / peak`, `/(1 - peak)` | `swingLiftPeak`가 0 또는 1 | 인스펙터 Range 0.3~0.95라 보통은 안전 — 막혀 있지 않음 |
+| `Gait.SpeedBand` `/ (2 × halfWidth)` | 0 | 0이면 계단 함수로 |
+| `Gait.PoseLeap` `/(1 - contact)` | contact 1 | `Clamp(0.05, 0.6)` |
+| `Motion.LeadTime` `anchor / arrive` | arrive 0 | 앞당김 ≤ 기준 × 0.8 |
+| `Motion.FindSegment`·`ApplyCarry` `/ span`, `/ time` | 0 | 0이면 1로 |
+| `Moves.ReactProfile` `t / outTime` | outTime 0 | t < 0이면 안 들어감 |
+| `Moves` 가드 브레이크 `t / _breakLength`, 막음·피스톤 `/ 시간` | 0 | 구간 밖이면 안 들어감, 0.0001 최소 |
+| `Grounding` 접지 보정량 | 발바닥 높이가 NaN이면(뼈가 이미 NaN) 그대로 퍼짐 | 막혀 있지 않음 |
+| `Locomotion.FixedUpdate` 가속도 `/ fixedDeltaTime` | 0 | > 0 확인 |
+| `Gait.UpdateMoveFx` `LookRotation` | 몸 뼈가 NaN이면 방향 NaN | 0 벡터는 아님 — 막혀 있지 않음 |
+| `Moves.ApplyPiston`·`AwayFrom`·`HitSparkFx`·`MechCamera.AddDirectionalShake` 정규화 | 0 벡터 | 길이 검사 있음 |
+| `MechCamera` 퀵턴 `elapsed / duration`, FOV `speed / maxSpeed` | 튜닝 0 | 막혀 있지 않음(뼈와 무관) |
+| 첫 프레임 dt 0, 히트스톱 timeScale 0 | 0으로 나누기 | 스프링은 dt ≤ 0이면 건너뜀, 나머지 `dt / 시간`은 시간 > 0 확인 |

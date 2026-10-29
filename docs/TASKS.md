@@ -250,6 +250,11 @@
 ### [x] P2. 다리 모션을 실제 수평 속도로 결정 (걸음 / 스러스터 디딤걸음 / 도약 / 호버)
 ### [x] P3. 손으로 만든 .meta GUID 점검
 
+## Phase Q — 플레이 시작 직후 NaN (Invalid worldAABB/localAABB)
+
+### [x] Q1. NaN 원인 찾기 + 처음 생긴 순간 진단 로그
+### [ ] Q2. 방어 (스프링 안정화, 범위·0 검사, 잘못된 값이면 원래 자세로 되돌리고 상태 리셋)
+
 ---
 
 ## 작업 메모 (Claude Code가 태스크마다 추가)
@@ -328,3 +333,4 @@
 - **P1** 완료. 바뀐 파일: `BernardTuning`(`maxWalkSpeed` 코드 기본값 2.5 → 5, O1 이전 값), `Editor/TuningSetup`(`Apply Feedback Values`가 이동 속도를 안 건드림 — 콤보 쓰리 회복만), `QUESTIONS`·`SETUP`·`TEST_CHECKLIST`. 에셋은 처음부터 걷기 10이라 게임 속도는 O1 이전과 같다. 급감속 상한은 원래 코드 동작(걷기 최대 속도로 자름)이고 상한이 10이라 O1 이전과 같음.
 - **P2** 완료. 바뀐 파일: `MechVisualRig.Gait`(다시 씀 — 실제 수평 속도로 걸음/디딤걸음/도약 비중을 `SpeedBand`(경계 ± `speedBlendHalfWidth`)로, 전력질주 상태만 호버; 걸음·디딤걸음은 같은 `StepLeg`(위상 따로), 디딤걸음은 `SlideTravel` — 디딤 구간 끝 `stridePlantFraction`은 고정, 그 앞은 발이 지면에 대해 몸 속도로 미끄러지다 멈추는 거듭제곱 곡선(이동 거리 = 다리 최대 보폭이 되도록 지수 계산), 걸음 수 상한 `strideMaxCadence`, 착지마다 스러스터 짧은 분사·`StrideLand` 먼지·출렁임, 긁는 동안 발밑 불꽃·`ScrapeAmount`; 섞이는 구간에선 큰 쪽만 착지 연출), `BernardTuning.Gait`(속도 구간 3칸·디딤걸음 10칸), `CombatFeedback`(`Stride Step Clip`·`Stride Scrape Loop Clip`, 반복 소리 공용 `UpdateLoop`), `MOTION_TIMING`·`SETUP` 82. 판정·전투 수치·이동 속도는 그대로. 위험: 걷기 상태 최대 10m/s에선 걸음당 미끄러짐이 3m라 거의 스케이팅처럼 보일 수 있음 — `Stride Max Cadence`를 올리면 줄어듦.
 - **P3** 점검만(코드 변경 없음). 두 손 .meta의 GUID는 프로젝트·패키지 .meta 13,174개 중 자기 파일에만 있고, 씬·프리팹·에셋 참조도 없음. 에디터 임포트 확인은 아직(QUESTIONS P3).
+- **Q1** 완료. 바뀐 파일: `MechVisualRig`(진단 — 포즈 목표·스프링·적용 직전·접지 보정량에서 NaN/무한대/발산(각 3600°·위치 50m 초과)을 처음 만나면 관절·단계·입력값(전후 각도·속도·dt·ω·step·안정 한계)을 에러 1회, 스프링 불안정 프레임(ω·step > 한계)을 경고 1회), `QUESTIONS` Q1(원인: 반암시 오일러 스프링이 44fps 아래에서 발산 — 파이썬 재현 20·30fps 75프레임, 40fps 236프레임에 무한대), `MOTION_TIMING`(NaN 가능 지점 표). 아직 막지는 않음(Q2).
