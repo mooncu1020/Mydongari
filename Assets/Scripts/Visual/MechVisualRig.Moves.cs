@@ -224,5 +224,114 @@ namespace MyDongari.Visual
             }
             PlayMotion(t, 1f, false);
         }
+
+        // ---------------- M5 가드 계열 ----------------
+
+        // 가드 자세 섞기(0~1). 가드 자체는 버튼 즉시라, 외형만 아주 짧게 올리고 조금 천천히 내린다
+        private float _guardWeight;
+        private float _blockStart = None;
+        private Vector3 _blockDirection;
+        private float _parryStart = None;
+        private float _breakStart = None;
+        private float _breakLength;
+
+        private void OnDefenseResolved(HitInfo info, HitResult result)
+        {
+            switch (result)
+            {
+                case HitResult.Guarded:
+                    _blockStart = _clock;
+                    // 때린 쪽에서 멀어지는 방향(기체 축)으로 미끄러진다
+                    Vector3 away = info.Attacker != null ? transform.position - info.Attacker.transform.position : -transform.forward;
+                    away.y = 0f;
+                    _blockDirection = away.sqrMagnitude > 0.0001f ? transform.InverseTransformDirection(away.normalized) : Vector3.back;
+                    break;
+                case HitResult.Parried:
+                    _parryStart = _clock;
+                    break;
+                case HitResult.GuardBroken:
+                    _breakStart = _clock;
+                    // MeleeSystem과 같은 길이: 가드 브레이크 스턴과 공격 스턴 중 긴 쪽
+                    _breakLength = Mathf.Max(_tuning.Get(this).Guard.breakStun, info.StunDuration);
+                    _guardWeight = 0f;
+                    break;
+            }
+        }
+
+        private bool IsDefenseMotionActive()
+        {
+            BernardTuning.MotionValues m = M;
+            return _guardWeight > 0f
+                || InWindow(_blockStart, m.blockPushTime + m.blockRecoverTime)
+                || InWindow(_parryStart, m.parryTime)
+                || InWindow(_breakStart, _breakLength);
+        }
+
+        /// <summary>
+        /// 가드: 무릎 굽혀 낮추고 허리 숙임, 두 팔뚝을 세워 얼굴·가슴 앞 벽, 팔꿈치로 배를 덮고 머리 숙임 (걸으면 하체는 걸음).
+        /// 막음: 팔이 몸 쪽으로 밀리고 기체가 맞은 반대쪽으로 미끄러지는 외형 반동(물리 위치는 그대로).
+        /// 패리 성공: 오른 팔뚝으로 바깥으로 쳐내는 짧은 동작. 가드 브레이크: 팔이 벌어지고 상체가 젖혀져 스턴 동안 휘청.
+        /// </summary>
+        private void PoseDefense(float dt)
+        {
+            BernardTuning.MotionValues m = M;
+            bool guarding = _melee != null && _melee.IsGuarding;
+            float fade = guarding ? m.guardRaiseTime : m.guardLowerTime;
+            float target = guarding ? 1f : 0f;
+            _guardWeight = fade > 0f ? Mathf.MoveTowards(_guardWeight, target, dt / fade) : target;
+
+            if (_guardWeight > 0f)
+            {
+                BeginMotion();
+                MaskLowerBody(1f - _gaitWeight);
+                Key(0f, PoseNames.Guard);
+                PlayMotion(0f, Mathf.SmoothStep(0f, 1f, _guardWeight), false);
+            }
+
+            float t = _clock - _blockStart;
+            if (t >= 0f && t < m.blockPushTime + m.blockRecoverTime)
+            {
+                BeginMotion();
+                MaskLowerBody(1f - _gaitWeight);
+                Key(0f, null);
+                Key(m.blockPushTime, PoseNames.GuardBlocked, MechPoseLibrary.EaseSnap);
+                Key(m.blockPushTime + m.blockRecoverTime, null, MechPoseLibrary.EaseHeavy);
+                PlayMotion(t, 1f, false);
+                // 미끄러짐: 밀릴 때 빠르게, 돌아올 때 천천히 (스프링 없이 정확한 시간)
+                float slide = t < m.blockPushTime
+                    ? PoseLibrary.Evaluate(MechPoseLibrary.EaseSnap, t / Mathf.Max(0.0001f, m.blockPushTime))
+                    : 1f - PoseLibrary.Evaluate(MechPoseLibrary.EaseHeavy, (t - m.blockPushTime) / Mathf.Max(0.0001f, m.blockRecoverTime));
+                if (_pelvis != null) _pelvis.DirectPosition += _blockDirection * (m.blockSlideDistance * slide);
+            }
+
+            t = _clock - _parryStart;
+            if (t >= 0f && t < m.parryTime)
+            {
+                BeginMotion();
+                MaskLowerBody(1f - _gaitWeight);
+                Key(0f, null);
+                Key(m.parryTime * 0.35f, PoseNames.ParryDeflect, MechPoseLibrary.EaseSnap);
+                Key(m.parryTime, null, MechPoseLibrary.EaseHeavy);
+                PlayMotion(t, 1f, false);
+            }
+
+            t = _clock - _breakStart;
+            if (t >= 0f && t < _breakLength)
+            {
+                float recover = Mathf.Min(m.guardBreakRecoverTime, _breakLength * 0.5f);
+                BeginMotion();
+                Key(0f, null);
+                Key(m.guardBreakFlingTime, PoseNames.GuardBreak, MechPoseLibrary.EaseSnap);
+                Key(_breakLength - recover, PoseNames.GuardBreak, MechPoseLibrary.EaseLinear);
+                Key(_breakLength, null, MechPoseLibrary.EaseHeavy);
+                PlayMotion(t, 1f, false);
+                // 휘청: 앞뒤·좌우로 줄어드는 흔들림
+                float decay = 1f - t / _breakLength;
+                float phase = t * m.guardBreakWobbleFrequency * 2f * Mathf.PI;
+                float a = m.guardBreakWobbleAngle * decay;
+                AddRotation(_body, new Vector3(Mathf.Sin(phase) * a, 0f, Mathf.Sin(phase * 0.7f + 1f) * a));
+                AddRotation(_head, new Vector3(Mathf.Sin(phase * 1.3f + 2f) * a, 0f, 0f));
+            }
+        }
 }
 }

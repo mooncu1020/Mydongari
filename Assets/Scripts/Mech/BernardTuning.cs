@@ -602,6 +602,27 @@ namespace MyDongari.Mech
             [Tooltip("앞발 박기 때 내 화면 흔들림 크기(m)")]
             public float lungePlantShake = 0.05f;
             public float lungePlantShakeTime = 0.15f;
+
+            [Header("가드 계열 (M5: 가드는 버튼 즉시, 가드 브레이크 길이 = Guard.breakStun)")]
+            [Tooltip("가드 자세가 다 올라오는 시간(초, 외형만)")]
+            public float guardRaiseTime = 0.06f;
+            [Tooltip("가드를 내릴 때 로우 가드로 돌아가는 시간(초)")]
+            public float guardLowerTime = 0.12f;
+            [Tooltip("막음: 팔이 밀리고 기체가 미끄러지는 시간(초)")]
+            public float blockPushTime = 0.05f;
+            [Tooltip("막음: 가드 자세로 돌아오는 시간(초)")]
+            public float blockRecoverTime = 0.22f;
+            [Tooltip("막음: 외형이 뒤로 미끄러지는 거리(m). 물리 위치(넉백)와 따로")]
+            public float blockSlideDistance = 0.12f;
+            [Tooltip("패리 성공: 팔뚝으로 쳐내고 돌아오는 전체 시간(초)")]
+            public float parryTime = 0.25f;
+            [Tooltip("가드 브레이크: 팔이 벌어지고 상체가 젖혀지는 시간(초)")]
+            public float guardBreakFlingTime = 0.08f;
+            [Tooltip("가드 브레이크: 스턴 끝에서 로우 가드로 돌아오는 시간(초, 스턴 길이의 절반까지)")]
+            public float guardBreakRecoverTime = 0.3f;
+            [Tooltip("가드 브레이크 휘청 각도(°)와 빠르기(Hz). 스턴이 끝날수록 줄어든다")]
+            public float guardBreakWobbleAngle = 6f;
+            public float guardBreakWobbleFrequency = 2.5f;
         }
 
         [Header("이동")]

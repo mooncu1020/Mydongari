@@ -502,6 +502,12 @@ namespace MyDongari.Visual
 
         private void OnHitResolvedLogic(HitInfo info, HitResult result)
         {
+            // 전신 모션 모델은 막음·패리·가드 브레이크를 포즈 모션으로 (M5)
+            if (UseMotions)
+            {
+                OnDefenseResolved(info, result);
+                return;
+            }
             BernardTuning.VisualValues v = V;
             if (result == HitResult.Parried)
             {
@@ -844,6 +850,7 @@ namespace MyDongari.Visual
             if (_melee != null && (_melee.IsGuarding || _melee.IsStunned)) return true;
             if (_lunge != null && _lunge.IsLunging) return true;
             if (UseMotions && _lungeStart != None) return true;
+            if (UseMotions && IsDefenseMotionActive()) return true;
             if (_claw != null && _claw.Phase != AnchorClaw.ClawPhase.Ready) return true;
             if (InWindow(_punchStart, PunchVisualLength(v))) return true;
             if (InWindow(_tackleStart, TackleWindup + v.tackleTime)) return true;
@@ -860,6 +867,11 @@ namespace MyDongari.Visual
 
         private void PoseGuard(BernardTuning.VisualValues v)
         {
+            if (UseMotions)
+            {
+                PoseDefense(Time.deltaTime);
+                return;
+            }
             if (_melee == null || !_melee.IsGuarding) return;
             // 양팔을 올려 얼굴 앞에 모은다 (펀치 중인 팔은 PoseActions가 덮어씀)
             AddRotation(_armLUpper, new Vector3(v.guardArmAngle, 0f, v.guardInward));
@@ -962,6 +974,8 @@ namespace MyDongari.Visual
         private void PoseStun(BernardTuning.VisualValues v)
         {
             if (_melee == null || !_melee.IsStunned) return;
+            // 가드 브레이크 휘청(M5)이 따로 흔들므로 겹치지 않게
+            if (UseMotions && InWindow(_breakStart, _breakLength)) return;
             float phase = _clock * v.stunShakeFrequency * 2f * Mathf.PI;
             AddRotation(_body, new Vector3(Mathf.Sin(phase) * v.stunShakeAngle, 0f, Mathf.Sin(phase * 1.3f + 1f) * v.stunShakeAngle));
             AddRotation(_head, new Vector3(Mathf.Sin(phase * 0.7f + 2f) * v.stunShakeAngle * 2f, Mathf.Sin(phase * 0.9f) * v.stunShakeAngle * 2f, 0f));
