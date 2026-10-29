@@ -369,3 +369,9 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (N2) `Logs/PlayLogs` 요약에 `combo1_start`·`combo2_start`·`combo3_start`, 이벤트 detail에 `25 combo2` 같은 단계 표시
 - [ ] (N2) 이미 만든 `MechPoseLibrary.asset`에도 잽·훅이 코드 초안으로 보임. `Tools/Mech Pose Editor` → `코드 초안에만 있는 포즈 추가` → 에셋에 JabWindup·JabStrike·JabFollow·HookWindup·HookStrike·HookFollow 생김(있는 포즈는 그대로)
 - [ ] (N2) `원투쓰리 콤보 → Enabled` 끄면 예전 단발 펀치(쿨다운 0.5초, 좌우 번갈아 스트레이트)
+- [ ] (N3) 플레이 중 `Mech → MechVisualRig → Log Gait Numbers` 켜고 다시 플레이 → 콘솔에 다리 길이·상태별 보폭·체공 비율 표. `docs/MOTION_TIMING.md` 표와 대략 같은지
+- [ ] (N3) 걷기: 1초에 1.4걸음 정도로 느긋하게 디디고, 디딘 발이 땅에서 미끄러지지 않음(Scene 뷰에서 발밑 확인). 보폭이 다리보다 길어 걸음 사이에 두 발이 다 뜨는 체공이 있음(골반이 살짝 뜸)
+- [ ] (N3) 걷기·달리기 내내 무릎이 더 굽어 골반이 낮음. 앞으로 나간 다리 쪽으로 골반이 돌고 어깨는 반대로(달리기에서 더 크게), 로우 가드 팔이 어깨를 따라 흔들림
+- [ ] (N3) 디딘 발 쪽으로 골반이 옆으로 옮겨지고 기울어짐. 착지마다 내려앉았다 밀고 올라오는 출렁임(달리기가 더 큼). 머리는 비틀림·기울임을 덜 따라 거의 수평
+- [ ] (N3) `BernardTuning → 이동 모션 → Stride Mode`를 `걸음 수 올리기`로 → 체공 없이 다리가 빨라짐. `Cadence Gait` 끄면 예전(G3) 걸음. 이동 속도는 어느 쪽이든 그대로
+- [ ] (N3) 임시 상자 기체·연습 봇(DummyTarget)은 예전 걷기 그대로

@@ -388,6 +388,79 @@ namespace MyDongari.Mech
             public float pileDriver = 0.2f;
         }
 
+        /// <summary>다리로 닿을 수 없는 보폭을 어떻게 맞출지 (N3).</summary>
+        public enum StrideMode
+        {
+            [InspectorName("체공: 걸음마다 짧게 날아감 (기본)")] Flight,
+            [InspectorName("걸음 수 올리기: 다리 최대 보폭에 맞춤")] RaiseCadence
+        }
+
+        [Serializable]
+        public class GaitValues
+        {
+            [Header("걸음 기준 (N3, 하체 뼈가 있는 모델 + 전신 모션). 이동 속도는 '이동' 묶음 그대로")]
+            [Tooltip("켜면 초당 걸음 수 기준 걸음. 끄면 예전(G3) 이동 거리 기준 걸음")]
+            public bool cadenceGait = true;
+            [Tooltip("초당 걸음 수. 보폭 = 속도 ÷ 걸음 수")]
+            public float walkCadence = 1.4f;
+            public float runCadence = 2f;
+            public float sprintCadence = 2.4f;
+            [Tooltip("보폭이 다리로 닿을 수 있는 최대(엉덩이 각도 ±maxStrideAngle)보다 길 때")]
+            public StrideMode strideMode = StrideMode.Flight;
+            [Tooltip("디딘 발이 엉덩이 아래에서 앞뒤로 가는 최대 각도(°). 최대 보폭 = 2 × 엉덩이~발목 × sin(이 각도)")]
+            public float maxStrideAngle = 45f;
+            [Tooltip("체공 가운데에서 골반이 뜨는 높이(m)")]
+            public float walkFlightHeight = 0.04f;
+            public float runFlightHeight = 0.08f;
+            [Tooltip("걷기 ↔ 달리기 연출 크기를 섞는 시간(초)")]
+            public float runBlendTime = 0.25f;
+
+            [Header("자세 (골반을 낮추고 무릎을 더 굽힘)")]
+            [Tooltip("걷는 내내 무릎을 더 굽히는 각도(°). 기본 자세 포즈 무릎에 더해진다")]
+            public float walkKneeBend = 10f;
+            public float runKneeBend = 18f;
+            [Tooltip("발을 들 때 무릎 최대 각도(°)")]
+            public float walkSwingKnee = 55f;
+            public float runSwingKnee = 85f;
+
+            [Header("골반·어깨 반대 비틀림 (어깨 터는 느낌)")]
+            [Tooltip("앞으로 나간 다리 쪽으로 골반이 도는 각도(°)")]
+            public float walkPelvisTwist = 6f;
+            public float runPelvisTwist = 12f;
+            [Tooltip("어깨가 골반 반대로 도는 각도(°, 기체 기준)")]
+            public float walkShoulderTwist = 8f;
+            public float runShoulderTwist = 16f;
+            [Tooltip("로우 가드 팔이 어깨를 따라 앞뒤로 흔들리는 각도(°)")]
+            public float armShoulderSwing = 10f;
+            [Tooltip("달리기에서 팔 흔들림 배율")]
+            public float runArmSwingScale = 1.4f;
+
+            [Header("디딘 발 쪽 골반 옆 이동·기울임")]
+            public float walkSideShift = 0.04f;
+            public float runSideShift = 0.06f;
+            [Tooltip("디딘 발 쪽으로 골반이 기우는 각도(°)")]
+            public float walkSideTilt = 3f;
+            public float runSideTilt = 5f;
+
+            [Header("착지 출렁임 (내려앉았다 밀고 올라옴)")]
+            [Tooltip("내려앉는 깊이(m). 디딘 다리 무릎으로 만든다")]
+            public float walkLandDrop = 0.04f;
+            public float runLandDrop = 0.08f;
+            [Tooltip("출렁임 전체 시간(초)")]
+            public float walkBounceTime = 0.25f;
+            public float runBounceTime = 0.2f;
+            [Tooltip("전체 중 내려앉는 앞부분 비율. 나머지는 밀고 올라옴")]
+            [Range(0.1f, 0.9f)] public float bounceCompressRatio = 0.45f;
+            [Tooltip("밀고 올라오는 높이 = 내려앉은 깊이 × 이 값")]
+            public float bouncePushRatio = 0.6f;
+            [Tooltip("걷기 착지 세기(발소리·흔들림·출렁임 배율). 달리기는 1")]
+            [Range(0f, 1f)] public float walkStepIntensity = 0.7f;
+
+            [Header("머리")]
+            [Tooltip("몸의 비틀림·좌우 기울임을 머리에서 되돌리는 비율 (1 = 완전히 수평)")]
+            [Range(0f, 1f)] public float headStabilize = 0.9f;
+        }
+
         /// <summary>공격 세기 등급 하나의 타격감 수치 (N1).</summary>
         [Serializable]
         public class HitGradeValues
@@ -830,6 +903,8 @@ namespace MyDongari.Mech
         [SerializeField] private HitFeelValues hitFeel = new HitFeelValues();
         [Header("외형 애니메이션 (MechVisualRig)")]
         [SerializeField] private VisualValues visual = new VisualValues();
+        [Header("이동 모션 (N3: 초당 걸음 수 기준 걸음)")]
+        [SerializeField] private GaitValues gait = new GaitValues();
         [Header("전신 공격 모션 (MechVisualRig + MechPoseLibrary, M1~M7)")]
         [SerializeField] private MotionValues motion = new MotionValues();
 
@@ -851,6 +926,7 @@ namespace MyDongari.Mech
         public HitFeelValues HitFeel => hitFeel;
         public VisualValues Visual => visual;
         public MotionValues Motion => motion;
+        public GaitValues Gait => gait;
 
         private static BernardTuning _fallback;
 

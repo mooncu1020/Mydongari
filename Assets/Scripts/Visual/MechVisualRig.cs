@@ -288,6 +288,7 @@ namespace MyDongari.Visual
                 _claw.OnPileDriverStarted += OnPileDriver;
             }
             if (_slam != null) _slam.OnSlamStarted += OnSlam;
+            LogGaitNumbers();
             if (_lunge != null)
             {
                 _lunge.OnLungeStarted += OnLungeStartedVisual;

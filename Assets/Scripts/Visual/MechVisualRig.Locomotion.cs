@@ -208,6 +208,12 @@ namespace MyDongari.Visual
 
         private void PoseGait(BernardTuning.VisualValues v, float dt)
         {
+            // 전신 모션 모델은 초당 걸음 수 기준 걸음 (N3). 끄면 아래 예전 거리 기준
+            if (UseCadenceGait)
+            {
+                PoseGaitCadence(v, dt);
+                return;
+            }
             Vector3 velocity = HorizontalVelocity();
             float speed = velocity.magnitude;
             bool moving = speed >= v.gaitMinSpeed;
@@ -335,9 +341,10 @@ namespace MyDongari.Visual
             if (a < 0.01f || b < 0.01f) return 0f;
             float theta0 = currentKneeDeg * Mathf.Deg2Rad;
             float length0 = Mathf.Sqrt(a * a + b * b + 2f * a * b * Mathf.Cos(theta0));
-            float length1 = Mathf.Max(Mathf.Abs(a - b) + 0.01f, length0 - drop);
+            // drop이 음수면(착지 뒤 밀고 올라옴, N3) 다리를 편다 — 지금 굽힌 만큼까지만
+            float length1 = Mathf.Clamp(length0 - drop, Mathf.Abs(a - b) + 0.01f, a + b - 0.001f);
             float cos1 = Mathf.Clamp((length1 * length1 - a * a - b * b) / (2f * a * b), -1f, 1f);
-            return Mathf.Max(0f, Mathf.Acos(cos1) * Mathf.Rad2Deg - currentKneeDeg);
+            return Mathf.Max(-currentKneeDeg, Mathf.Acos(cos1) * Mathf.Rad2Deg - currentKneeDeg);
         }
 
         private static float ElbowSwing(BernardTuning.VisualValues v, float legPhase)
