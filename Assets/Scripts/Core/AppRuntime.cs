@@ -61,7 +61,9 @@ namespace MyDongari.Core
         {
             if (Application.isEditor) return;
 
-            if (forceFullscreenOnStart)
+            // 빌드 스모크 테스트(Tools/Build And Smoke Test)가 창 모드로 띄울 때는 전체 화면을 강제하지 않는다
+            bool smokeTest = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-smokeTest") >= 0;
+            if (forceFullscreenOnStart && !smokeTest)
             {
                 // 모니터 실제 해상도(데스크톱 해상도) 기준. 창 모드 전체 화면은 Alt+Tab이 빠르고 안전하다
                 Screen.SetResolution(Display.main.systemWidth, Display.main.systemHeight, FullScreenMode.FullScreenWindow);

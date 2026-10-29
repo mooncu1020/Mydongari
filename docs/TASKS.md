@@ -276,6 +276,10 @@
 ### [x] T4. 카메라 충돌
 ### [x] T5. 맵 전후 fps
 ### [x] T1.1. 앵커 클로가 바위·벽에 막힘
+
+## 도구
+
+### [x] U1. Tools/Build And Smoke Test
 ### [x] Q2. 방어 (스프링 안정화, 범위·0 검사, 잘못된 값이면 원래 자세로 되돌리고 상태 리셋)
 
 ---
@@ -372,3 +376,4 @@
 - **T4** 완료. 바뀐 파일: `MechCamera`(`ResolveCollision` — 흔들림까지 더한 최종 카메라 위치를 기체 중심에서 SphereCast(반지름 0.25m)해 리지드바디 없는 정적 지형(바닥 판정·원형 벽·바위·테두리)에 먼저 닿으면 그 앞(여유 0.05m)으로 당김, 기체·트리거 무시, 레이어 마스크·켜기 끄기 설정). 두 화면 카메라 모두(MechCamera가 각 카메라에). 점검: 지금 카메라는 기체 중심 위 1.5m(`offset (0, 1.5, 0)`, 뒤로 떨어진 거리 없음)라 평소엔 걸릴 일이 거의 없고, 화면 흔들림이 지형 쪽으로 밀 때·나중에 오프셋을 뒤로 뺄 때 동작한다. 테두리 바위(외형)엔 콜라이더가 없어 원형 벽(반지름 45m)에서 막힌다.
 - **T5** 측정은 못 함 — 이 환경에선 에디터·빌드를 실행할 수 없다. 맵 전후 비교 방법·표를 `TEST_CHECKLIST` T5에 남겼다. 예상 부담: 그림자 켠 해 1개(기체·바위·테두리 바위 26개·경사가 그림자를 드리움 — 가장 큰 비용 후보), 지형 메시(바닥 약 3.5천·경사 약 1천 정점, 바위 80면씩), 스카이박스 픽셀 셰이더(별 두 겹 + 노이즈 8회), 먼지 월드 충돌 파티클. 화면 분할이라 그림자·하늘은 카메라마다.
 - **T1.1** 완료. 바뀐 파일: `AnchorClaw.UpdateFlight`(같은 SphereCastAll 결과에서 목표보다 가까운 지형이 있으면 그 지점에서 빗나감 → Retracting·`OnMissed`; `IsBlockingTerrain` — 리지드바디 없는 정적 콜라이더, 위를 향한 면(바닥)·시작부터 겹친 것 무시), `BernardTuning.AnchorClaw.terrainFloorNormalY`(0.7), `QUESTIONS` T1.1. 발사·쿨다운 규칙은 그대로.
+- **U1** 완료. 신규 `Editor/BuildAndSmokeTest`(`Tools/Build And Smoke Test` — 열린 씬 저장 → `Builds/yyyyMMdd_HHmmss/제품명.exe`로 Windows 64비트 빌드(빌드 설정의 켜진 씬) → `-logFile Builds/…/Player.log -screen-fullscreen 0 -screen-width 1280 -screen-height 720 -smokeTest`로 실행 → 10초 뒤 창 닫기 요청, 3초 안에 안 끝나면 강제 종료 → Player.log에서 Exception·Error(대소문자 무시)·NaN 줄을 세고 같은 줄은 묶어 처음 줄 번호·횟수로 최대 30종류 콘솔 요약(있으면 경고, 없으면 일반 로그) + `SmokeTestSummary.txt`; 10초 전에 스스로 끝나면 크래시 가능으로 종료 코드 표시; 기다리는 동안 EditorApplication.update라 에디터가 멈추지 않음), `AppRuntime`(`-smokeTest` 인자면 전체 화면 강제 안 함). `Builds/`는 원래 .gitignore에 있음. 위험: 빌드 대상은 StandaloneWindows64 고정.
