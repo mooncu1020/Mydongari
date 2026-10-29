@@ -266,7 +266,7 @@ namespace MyDongari.Feedback
         /// </summary>
         private void ApplyHitFeel(MechFeedback fb, HitInfo info, HitResult result)
         {
-            if (result == HitResult.Parried || fb.Mech == null) return;
+            if (result == HitResult.Parried || result == HitResult.Invulnerable || fb.Mech == null) return;
             BernardTuning.HitFeelValues feel = TuningOf(fb.Mech).HitFeel;
             BernardTuning.HitGradeValues grade = feel.Grade(result == HitResult.Clash ? AttackStrength.Light : info.Strength);
             float scale = result == HitResult.Guarded ? feel.guardedScale : 1f;

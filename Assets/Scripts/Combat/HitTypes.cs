@@ -32,7 +32,9 @@ namespace MyDongari.Combat
         Guarded,
         GuardBroken,
         Parried,
-        Clash
+        Clash,
+        /// <summary>넉다운 기상 무적 중이라 판정 무시 (R1). 피해·넉백·히트스톱·이펙트 없음, 로그만</summary>
+        Invulnerable
     }
 
     /// <summary>공격자가 피격자에게 넘기는 한 번의 타격 정보.</summary>

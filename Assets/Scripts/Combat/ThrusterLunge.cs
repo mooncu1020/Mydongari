@@ -81,6 +81,7 @@ namespace MyDongari.Combat
         {
             if (IsLunging || _rb == null) return false;
             if (IsStunned) return false;
+            if (_melee != null && _melee.IsKnockedDown) return false;
             if (IsExternallyControlled) return false;
             if (_stateMachine != null && !_stateMachine.CanStartLunge) return false;
             // TryConsume은 탈진이면 false

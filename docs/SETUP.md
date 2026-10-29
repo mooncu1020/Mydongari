@@ -114,3 +114,4 @@ Claude Code는 씬·프리팹 파일을 직접 편집하지 않는다. 인스펙
 81. (P1) 78~79의 걷기 2.5m/s는 취소. `Apply Feedback Values` 메뉴는 이제 콤보 쓰리 회복(0.8초)만 넣는다. 혹시 79를 실행했다면 `BernardTuning → 이동 → Max Walk Speed`를 10으로 되돌린다.
 82. (P2) GameManager의 `CombatFeedback` → 새 효과음 칸 `Stride Step Clip`(스러스터 디딤걸음 착지 발소리)·`Stride Scrape Loop Clip`(디딤걸음에서 발이 미끄러지는 동안 반복, 긁는 속도만큼 크게). 속도 구간 경계·디딤걸음 수치는 `BernardTuning → 이동 모션`.
 83. (Q2.1) 할 일 없음 — `FrameRateTester`는 GameManager가 자동으로 붙인다. 표시를 끄려면 플레이 중 GameManager의 `FrameRateTester → Show Overlay`(씬에 저장하려면 컴포넌트를 직접 추가해 두고 끈다). 전환 목록은 `Limits`(0 = 제한 없음).
+84. (R1) 할 일 없음 — `KnockdownController`는 MeleeSystem이 기체마다 자동으로 붙인다. 수치는 `BernardTuning → 넉다운`(에셋에 없던 칸이라 기본값). 거리 확인용 콘솔 출력은 플레이 중 기체의 `KnockdownController → Debug Log`.

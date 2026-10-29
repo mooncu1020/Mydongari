@@ -340,6 +340,42 @@ namespace MyDongari.Mech
         }
 
         [Serializable]
+        public class KnockdownValues
+        {
+            [Header("파일 드라이버 넉다운 (R1, 맞은 기체 기준). 수평 이동 = 비행 + 미끄러짐")]
+            [Tooltip("공중으로 날아가는 수평 거리(m)")]
+            public float flightDistance = 8f;
+            [Tooltip("착지 뒤 미끄러지는 거리(m)")]
+            public float slideDistance = 2f;
+            [Tooltip("비행 최고 높이(m)")]
+            public float flightHeight = 1.5f;
+            [Tooltip("비행 시간(초)")]
+            public float flightTime = 0.5f;
+            [Tooltip("미끄러짐 시간(초). 속도가 선형으로 0까지 준다")]
+            public float slideTime = 0.45f;
+            [Tooltip("기상 시간(초)")]
+            public float getUpTime = 0.8f;
+            [Tooltip("기상 시작부터 무적(판정 무시) 시간(초)")]
+            public float invulnerableTime = 0.8f;
+            [Tooltip("히트스톱이 끝난 뒤 날아오르기까지 여유(초, 게임 시간)")]
+            public float launchMargin = 0.03f;
+
+            [Header("벽·충돌")]
+            [Tooltip("벽 검사 구 반지름 = 몸 반지름 × 이 값")]
+            public float wallCheckRadiusScale = 0.9f;
+            [Tooltip("벽 검사 여유 거리(m)")]
+            public float wallCheckSkin = 0.05f;
+            [Tooltip("벽에 부딪힐 때 맞은 쪽 화면 흔들림 크기(m)·시간(초)")]
+            public float wallShake = 0.15f;
+            public float wallShakeTime = 0.4f;
+
+            [Header("착지")]
+            [Tooltip("착지 때 맞은 쪽 화면 흔들림 크기(m)·시간(초)")]
+            public float landShake = 0.08f;
+            public float landShakeTime = 0.25f;
+        }
+
+        [Serializable]
         public class ImpactSlamValues
         {
             public float range = 8f;
@@ -923,6 +959,8 @@ namespace MyDongari.Mech
         [SerializeField] private LungeValues lunge = new LungeValues();
         [Header("스킬: 앵커 클로")]
         [SerializeField] private AnchorClawValues anchorClaw = new AnchorClawValues();
+        [Header("넉다운 (R1: 파일 드라이버에 맞은 기체)")]
+        [SerializeField] private KnockdownValues knockdown = new KnockdownValues();
         [Header("스킬: 임팩트 슬램")]
         [SerializeField] private ImpactSlamValues impactSlam = new ImpactSlamValues();
         [Header("락온")]
@@ -951,6 +989,7 @@ namespace MyDongari.Mech
         public LungeValues Lunge => lunge;
         public AnchorClawValues AnchorClaw => anchorClaw;
         public ImpactSlamValues ImpactSlam => impactSlam;
+        public KnockdownValues Knockdown => knockdown;
         public LockOnValues LockOn => lockOn;
         public HitStopValues HitStop => hitStop;
         public HitFeelValues HitFeel => hitFeel;

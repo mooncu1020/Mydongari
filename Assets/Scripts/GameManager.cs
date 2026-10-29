@@ -674,6 +674,10 @@ namespace MyDongari.Core
                 rb.angularVelocity = Vector3.zero;
             }
 
+            // 넉다운 중이었으면 중력·감속·잠금을 되돌리고 조용히 끝낸다 (잠금은 바로 아래에서 어차피 0으로)
+            KnockdownController knockdown = mech.GetComponent<KnockdownController>();
+            if (knockdown != null) knockdown.ResetForRound();
+
             ExternalControlLock controlLock = mech.GetComponent<ExternalControlLock>();
             if (controlLock != null) controlLock.ResetLock();
 

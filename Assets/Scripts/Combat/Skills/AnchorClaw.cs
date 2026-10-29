@@ -308,7 +308,17 @@ namespace MyDongari.Combat.Skills
                 Damage = T.pileDriverDamage,
                 Attacker = gameObject
             };
-            MeleeSystem.DeliverHit(_target.gameObject, info);
+            HitResult result = MeleeSystem.DeliverHit(_target.gameObject, info);
+
+            // 넉다운 (R1): 히트스톱이 끝난 뒤 공격자 상체 방향으로 날린다. 전신 모션 기체는 히트스톱이
+            // 외형 어퍼컷이 닿는 순간(uppercutRiseTime 뒤)에 걸리므로 그만큼 기다린 뒤 + 여유
+            if (result == HitResult.Hit)
+            {
+                KnockdownController knockdown = KnockdownController.GetOrAdd(_target.gameObject);
+                BernardTuning tuning = _tuning.Get(this);
+                float delay = (MechVisualRig.HandlesPileDriverImpactOf(gameObject) ? tuning.Motion.uppercutRiseTime : 0f) + tuning.Knockdown.launchMargin;
+                knockdown.Begin(MechFacing.AttackForward(transform), delay);
+            }
 
             _target = null;
             return true;

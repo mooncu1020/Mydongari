@@ -54,8 +54,8 @@ namespace MyDongari.Core
 
         private static float DurationFor(BernardTuning.HitStopValues values, BernardTuning.HitFeelValues feel, HitInfo info, HitResult result)
         {
-            // 패리는 "안 맞음"이라 멈추지 않는다
-            if (result == HitResult.Parried) return 0f;
+            // 패리·무적은 "안 맞음"이라 멈추지 않는다
+            if (result == HitResult.Parried || result == HitResult.Invulnerable) return 0f;
             if (result == HitResult.Clash) return values.clash;
             // N1: 세기 등급별 (원·투 약 / 쓰리·대시 어택 중 / 런지·태클·파일 드라이버·슬램 강)
             if (feel.gradeHitStop) return feel.Grade(info.Strength).hitStop;

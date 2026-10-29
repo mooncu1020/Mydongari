@@ -20,6 +20,8 @@ namespace MyDongari.Combat
         private BernardTuning.ComboValues Combo => _tuning.Get(this).Combo;
 
         public bool IsGuarding { get; private set; }
+        /// <summary>파일 드라이버 넉다운 중(비행·미끄러짐·기상). 공격·가드·이동 입력 무시.</summary>
+        public bool IsKnockedDown => _knockdown != null && _knockdown.IsKnockedDown;
         public bool IsParrying { get; private set; }
         public bool IsStunned { get; private set; }
         public float MeleeTimer => _meleeTimer;
@@ -80,6 +82,7 @@ namespace MyDongari.Combat
         private Rigidbody _rb;
         private ICombatInputSource _input;
         private MechIdentity _identity;
+        private KnockdownController _knockdown;
 
         private void Awake()
         {
@@ -90,6 +93,8 @@ namespace MyDongari.Combat
             // 입력 소스가 없는 기체(더미 AI)는 가드 입력이 항상 false
             _input = FindInputSource();
             _identity = MechIdentity.GetOrAdd(gameObject);
+            // 파일 드라이버 넉다운 (R1). 씬에 안 붙어 있어도 동작하게
+            _knockdown = KnockdownController.GetOrAdd(gameObject);
             // 0에서 시작하면 시작 직후 "방금 펀치를 낸 상태"로 취급돼 맞딜이 잘못 판정된다
             _meleeTimer = Punch.cooldown;
         }
@@ -117,6 +122,13 @@ namespace MyDongari.Combat
                 {
                     IsStunned = false;
                 }
+                return;
+            }
+
+            // 넉다운 중엔 가드 불가 (올리고 있던 가드도 내림)
+            if (IsKnockedDown)
+            {
+                if (IsGuarding) DropGuard(applyReraiseDelay: false);
                 return;
             }
 
@@ -172,7 +184,7 @@ namespace MyDongari.Combat
         /// </summary>
         public void ApplyGuardInputNow()
         {
-            if (IsStunned) return;
+            if (IsStunned || IsKnockedDown) return;
             HandleGuard();
         }
 
@@ -296,6 +308,9 @@ namespace MyDongari.Combat
         public HitResult ReceiveHit(HitInfo info)
         {
             HitResult result;
+
+            // 0) 넉다운 기상 무적: 판정 자체를 무시 (피해·넉백·스턴·히트 없음). 로그엔 남는다
+            if (_knockdown != null && _knockdown.IsInvulnerable) return Resolve(info, HitResult.Invulnerable);
 
             // 1) 맞딜: 양쪽 펀치의 판정 시점이 clashWindow 이내면 둘 다 0 피해 + 밀려남.
             //    내 펀치가 방금 판정됐거나, 아직 발생 중인데 창 안에 판정될 예정이면 맞딜 (그 펀치는 맞딜로 소진)
@@ -482,8 +497,8 @@ namespace MyDongari.Combat
         public bool TryMeleeAttack()
         {
             if (_punchElapsed >= 0f) return false;
-            // 스턴 중엔 펀치를 시작할 수 없다 (런지·가드와 같은 규칙. 발생 중 스턴이면 취소되는 것과 짝)
-            if (IsStunned) return false;
+            // 스턴 중엔 펀치를 시작할 수 없다 (런지·가드와 같은 규칙. 발생 중 스턴이면 취소되는 것과 짝). 넉다운도
+            if (IsStunned || IsKnockedDown) return false;
             BernardTuning.PunchValues punch = Punch;
             BernardTuning.ComboValues combo = Combo;
             int step = NextComboStep(combo);

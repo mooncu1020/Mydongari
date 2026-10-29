@@ -24,6 +24,7 @@ namespace MyDongari.Movement
         public SideStepState SideStepState { get; private set; }
         public QuickTurnState QuickTurnState { get; private set; }
         public LungeState LungeState { get; private set; }
+        public KnockdownState KnockdownState { get; private set; }
 
         /// <summary>패드 두 스틱 전력질주·슬라이딩 판정기 (E6). 매 프레임 상태 Update 전에 갱신된다.</summary>
         public TwinStickSprintInput TwinStick { get; } = new TwinStickSprintInput();
@@ -36,6 +37,17 @@ namespace MyDongari.Movement
 
         public bool IsRunning => _currentState is RunState;
         public bool IsLunging => _currentState is LungeState;
+
+        private Combat.KnockdownController _knockdown;
+        /// <summary>파일 드라이버 넉다운 중 (R1). 컴포넌트는 MeleeSystem이 런타임에 붙이기도 해서 처음 쓸 때 찾는다.</summary>
+        public bool IsKnockedDown
+        {
+            get
+            {
+                if (_knockdown == null) _knockdown = GetComponent<Combat.KnockdownController>();
+                return _knockdown != null && _knockdown.IsKnockedDown;
+            }
+        }
 
         /// <summary>스러스터 런지를 시작할 수 있는 상태(정지·걷기·달리기·제동). 다른 기동 중엔 불가.</summary>
         public bool CanStartLunge =>
@@ -50,7 +62,8 @@ namespace MyDongari.Movement
             !(_currentState is SprintState) &&
             !(_currentState is SlideState) &&
             !(_currentState is QuickTurnState) &&
-            !(_currentState is LungeState);
+            !(_currentState is LungeState) &&
+            !(_currentState is KnockdownState);
 
         public string CurrentStateName => _currentState != null ? _currentState.GetType().Name : "None";
 
@@ -81,6 +94,7 @@ namespace MyDongari.Movement
             SideStepState = new SideStepState(this);
             QuickTurnState = new QuickTurnState(this);
             LungeState = new LungeState(this);
+            KnockdownState = new KnockdownState(this);
         }
 
         private void Start()
@@ -120,6 +134,8 @@ namespace MyDongari.Movement
                 TwinStick.Tick(InputReader.MoveStickRaw, InputReader.LookStickRaw,
                     Time.unscaledTime, MechController.Tuning.Movement);
             }
+            // 넉다운이 시작되면 어느 상태에서든 넉다운 상태로 (입력 무시, 속도는 KnockdownController가)
+            if (IsKnockedDown && !(_currentState is KnockdownState)) ChangeState(KnockdownState);
             _currentState?.Update();
             UpdateLookBlock();
 

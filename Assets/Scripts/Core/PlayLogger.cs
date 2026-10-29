@@ -181,6 +181,25 @@ namespace MyDongari.Core
                 _unsubscribers.Add(() => bot.OnBufferedAttack -= onBuffered);
             }
 
+            // 넉다운 (R1): 시작·벽 충돌·끝(수평 이동 거리·최고 높이 — 30fps 비교용)
+            KnockdownController knockdown = mech.GetComponent<KnockdownController>();
+            if (knockdown != null)
+            {
+                Action onKnockStart = () => ErrorLog.Run(() => Count(index, "knockdown"), "PlayLogger.onKnockdown");
+                Action<Vector3> onKnockWall = point => ErrorLog.Run(() => Count(index, "knockdown_wall"), "PlayLogger.onKnockdownWall");
+                Action<float, float, bool> onKnockEnd = (distance, height, wall) => ErrorLog.Run(
+                    () => Count(index, "knockdown_end", $"{distance:0.00}m h{height:0.00}m{(wall ? " wall" : "")}"), "PlayLogger.onKnockdownEnd");
+                knockdown.OnKnockdownStarted += onKnockStart;
+                knockdown.OnWallHit += onKnockWall;
+                knockdown.OnRecovered += onKnockEnd;
+                _unsubscribers.Add(() =>
+                {
+                    knockdown.OnKnockdownStarted -= onKnockStart;
+                    knockdown.OnWallHit -= onKnockWall;
+                    knockdown.OnRecovered -= onKnockEnd;
+                });
+            }
+
             ThrusterLunge lunge = mech.GetComponent<ThrusterLunge>();
             if (lunge != null)
             {
@@ -332,6 +351,8 @@ namespace MyDongari.Core
             {
                 case HitResult.Guarded: Count(defender, "guard_block", AttackKey(info.Type)); break;
                 case HitResult.Parried: Count(defender, "parry", AttackKey(info.Type)); break;
+                // 넉다운 기상 무적 중 맞은 공격 (R1)
+                case HitResult.Invulnerable: Count(defender, "invulnerable_hit", AttackKey(info.Type)); break;
                 case HitResult.GuardBroken: Count(defender, "guard_break", AttackKey(info.Type)); break;
                 case HitResult.Clash:
                     // 맞딜은 양쪽 모두의 사건
@@ -345,6 +366,7 @@ namespace MyDongari.Core
         {
             if (result == null) Count(attacker, "lunge_miss");
             else if (result == HitResult.Parried) Count(attacker, "lunge_parried");
+            else if (result == HitResult.Invulnerable) Count(attacker, "lunge_invulnerable");
             else Count(attacker, "lunge_hit", ResultKey(result.Value));
         }
 
@@ -412,6 +434,7 @@ namespace MyDongari.Core
                 case HitResult.Guarded: return "guarded";
                 case HitResult.GuardBroken: return "guard_broken";
                 case HitResult.Parried: return "parried";
+                case HitResult.Invulnerable: return "invulnerable";
                 default: return "clash";
             }
         }

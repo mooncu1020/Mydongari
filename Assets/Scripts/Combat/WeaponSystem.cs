@@ -72,6 +72,13 @@ namespace MyDongari.Combat
 
             _fireTimer += Time.deltaTime;
 
+            // 넉다운 중엔 공격·스킬 입력을 무시한다 (버퍼에도 안 남김)
+            if (_meleeSystem != null && _meleeSystem.IsKnockedDown)
+            {
+                _attackBuffer.Clear();
+                return;
+            }
+
             if (_inputReader.Skill1Input)
             {
                 if (_anchorClaw != null)
