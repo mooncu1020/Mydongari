@@ -396,3 +396,4 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (P2) 전력질주 → 속도와 상관없이 호버 활주. 풀면 속도에 맞는 모션으로 돌아옴
 - [ ] (P2) `Stride Step Clip`·`Stride Scrape Loop Clip`에 소리를 넣으면 디딤걸음 착지마다 발소리, 미끄러지는 동안 긁는 소리(멈추면 작아지며 꺼짐)
 - [ ] (P2) `Stride Start Speed`·`Leap Start Speed`·`Speed Blend Half Width`·`Stride Max Cadence` 바꾸면 반영. 판정·이동 속도는 그대로. 임시 상자 기체는 예전 걷기
+- [ ] (P3) Unity 에디터에 포커스 → 콘솔에 GUID 충돌 경고 없음, `git status`에 `HitSparkFx.cs.meta`·`MechVisualRig.Gait.cs.meta` 변경 없음
