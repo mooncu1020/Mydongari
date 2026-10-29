@@ -11,6 +11,8 @@ namespace MyDongari.Feedback
     {
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
         private static readonly int ColorId = Shader.PropertyToID("_Color");
+        // 셀 셰이딩(ToonMech)은 그늘 쪽이 어두워서 기본색만 하얗게 섞으면 번쩍임이 약하다 — 이미시브를 같이 켠다 (S2)
+        private static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
 
         private struct Slot
         {
@@ -19,6 +21,8 @@ namespace MyDongari.Feedback
             public Color Original;
             public bool HasBaseColor;
             public bool HasColor;
+            public bool HasEmission;
+            public Color OriginalEmission;
         }
 
         private readonly List<Slot> _slots = new List<Slot>();
@@ -48,14 +52,19 @@ namespace MyDongari.Feedback
                         MaterialIndex = i,
                         Original = hasBase ? material.GetColor(BaseColorId) : material.GetColor(ColorId),
                         HasBaseColor = hasBase,
-                        HasColor = hasColor
+                        HasColor = hasColor,
+                        HasEmission = material.HasProperty(EmissionColorId),
+                        OriginalEmission = material.HasProperty(EmissionColorId) ? material.GetColor(EmissionColorId) : Color.black
                     });
                 }
             }
         }
 
-        /// <summary>원래 색에서 tint 쪽으로 strength(0~1)만큼 섞은 색으로 칠한다.</summary>
-        public void Apply(Color tint, float strength)
+        /// <summary>
+        /// 원래 색에서 tint 쪽으로 strength(0~1)만큼 섞은 색으로 칠한다. emission > 0이면 이미시브가 있는 머티리얼은
+        /// 원래 이미시브에 tint × emission을 더해 그늘 쪽까지 밝힌다 (흰색 번쩍임용).
+        /// </summary>
+        public void Apply(Color tint, float strength, float emission = 0f)
         {
             foreach (Slot slot in _slots)
             {
@@ -66,6 +75,7 @@ namespace MyDongari.Feedback
                 _block.Clear();
                 if (slot.HasBaseColor) _block.SetColor(BaseColorId, color);
                 if (slot.HasColor) _block.SetColor(ColorId, color);
+                if (slot.HasEmission && emission > 0f) _block.SetColor(EmissionColorId, slot.OriginalEmission + tint * emission);
                 slot.Renderer.SetPropertyBlock(_block, slot.MaterialIndex);
             }
             _applied = true;

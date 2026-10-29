@@ -111,6 +111,7 @@ namespace MyDongari.Feedback
             public float FlashUntil = -1f;
             public Color FlashColor = Color.white;
             public float FlashStrength;
+            public float FlashEmission;
             // 호버 활주 루프 (O3). 기체마다 하나, 처음 필요할 때 만든다
             public MechStateMachine StateMachine;
             public AudioSource HoverLoop;
@@ -321,6 +322,7 @@ namespace MyDongari.Feedback
                 fb.FlashUntil = Time.unscaledTime + feel.flashTime;
                 fb.FlashColor = feel.flashColor;
                 fb.FlashStrength = feel.flashStrength;
+                fb.FlashEmission = feel.flashEmission;
             }
 
             // 전신 모션 기체의 파일 드라이버는 외형 타격 순간에 리그가 흔들고 이펙트를 낸다 (OnMotionImpact)
@@ -535,7 +537,7 @@ namespace MyDongari.Feedback
             if (Time.unscaledTime < fb.FlashUntil)
             {
                 // 맞은 순간 흰색 번쩍임이 다른 틴트보다 우선 (N1)
-                fb.Tint.Apply(fb.FlashColor, fb.FlashStrength);
+                fb.Tint.Apply(fb.FlashColor, fb.FlashStrength, fb.FlashEmission);
             }
             else if (stunned)
             {

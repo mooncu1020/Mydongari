@@ -598,6 +598,8 @@ namespace MyDongari.Mech
             public float flashTime = 0.05f;
             public Color flashColor = Color.white;
             [Range(0f, 1f)] public float flashStrength = 0.85f;
+            [Tooltip("번쩍임 때 이미시브(_EmissionColor)에 더하는 세기. 셀 셰이딩 그늘 쪽까지 하얗게. 0이면 기본색만 (S2)")]
+            public float flashEmission = 1f;
 
             [Header("화면 흔들림")]
             [Tooltip("맞은 쪽 방향 흔들림의 진동수(Hz). 타격 방향으로 밀렸다가 줄어들며 출렁인다")]
