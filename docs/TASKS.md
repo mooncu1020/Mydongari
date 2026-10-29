@@ -253,6 +253,7 @@
 ## Phase Q — 플레이 시작 직후 NaN (Invalid worldAABB/localAABB)
 
 ### [x] Q1. NaN 원인 찾기 + 처음 생긴 순간 진단 로그
+### [x] Q2.1. F9 프레임 제한 전환·fps 표시 (테스트용)
 ### [x] Q2. 방어 (스프링 안정화, 범위·0 검사, 잘못된 값이면 원래 자세로 되돌리고 상태 리셋)
 
 ---
@@ -335,3 +336,4 @@
 - **P3** 점검만(코드 변경 없음). 두 손 .meta의 GUID는 프로젝트·패키지 .meta 13,174개 중 자기 파일에만 있고, 씬·프리팹·에셋 참조도 없음. 에디터 임포트 확인은 아직(QUESTIONS P3).
 - **Q1** 완료. 바뀐 파일: `MechVisualRig`(진단 — 포즈 목표·스프링·적용 직전·접지 보정량에서 NaN/무한대/발산(각 3600°·위치 50m 초과)을 처음 만나면 관절·단계·입력값(전후 각도·속도·dt·ω·step·안정 한계)을 에러 1회, 스프링 불안정 프레임(ω·step > 한계)을 경고 1회), `QUESTIONS` Q1(원인: 반암시 오일러 스프링이 44fps 아래에서 발산 — 파이썬 재현 20·30fps 75프레임, 40fps 236프레임에 무한대), `MOTION_TIMING`(NaN 가능 지점 표). 아직 막지는 않음(Q2).
 - **Q2** 완료. 바뀐 파일: `MechVisualRig`(스프링 하위 스텝 — ω·h ≤ 안정 한계 × 0.8, 최대 32개, 주파수·감쇠·dt 범위 검사; dt NaN·음수는 0; 포즈 목표 검사 `CheckTargets` → 스프링·우회·발목 보정 뒤 관절 검사 `CheckJoint`를 **모든 관절 다 계산한 뒤에야 뼈에 쓰도록** 순서 변경; 잘못되면 `RecoverFromInvalid` — 처음 한 번만 에러, 모든 뼈 원래 자세·스프링·위상(걸음·디딤걸음·도약·호버)·걸음 세기·가속도·이어 붙이기·상하체 방향·접지 리셋; 접지 보정량 검사), `MechVisualRig.Locomotion`(리지드바디 속도 NaN이면 0, 발 들기 정점 0.05~0.95, fixedDeltaTime 최소), `MechVisualRig.Gait`(발 들기 정점, 이펙트 방향 계산 전 몸 뼈 검사), `MechVisualRig.Grounding`(발바닥·바닥 높이·보정량 검사), `MechCamera`(퀵턴 시간 0·최대 속도 0 나눗셈). 60fps 이상 외형 결과는 그대로.
+- **Q2.1** 완료. 신규 `Core/FrameRateTester`(F9 전용 InputAction — 운영자 키라 ESC 종료와 같은 방식으로 페어링과 무관; 누를 때마다 `QualitySettings.vSyncCount = 0` + `Application.targetFrameRate` 없음(-1) → 60 → 30 → 20; 오른쪽 위 OnGUI로 현재 제한·실제 fps(실제 시간 0.5초 평균, 히트스톱 중에도), 화면 높이 1080 기준 글자 크기), `.meta`(새 GUID, 겹침 없음 확인), `GameManager`(자동 부착). 빌드에서도 동작. 위험: F9로 VSync를 끈 뒤엔 그 실행 동안 VSync가 꺼진 채(다시 켜려면 재시작).

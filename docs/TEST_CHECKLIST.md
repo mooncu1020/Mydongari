@@ -405,3 +405,5 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (Q2) 일부러 느리게: Game 뷰 위 `Stats`로 fps 확인하며 Scene 뷰를 같이 열거나 `Application.targetFrameRate`를 낮춘 상태(에디터 Project Settings → Quality VSync 끄고 다른 무거운 창)에서도 위와 같음. 30fps 이하에선 외형이 살짝 느려질 수 있음(예전과 같음)
 - [ ] (Q2) 빌드: 수백 fps(VSync 끔)·첫 프레임·히트스톱(펀치·파일 드라이버) 중 오류 없음. `Logs/PlayLogs/errors.txt`에 MechVisualRig 에러 없음
 - [ ] (Q2) 60fps 이상에서 걸음·펀치·가드 등 외형이 예전과 같은 느낌(스프링 결과 동일)
+- [ ] (Q2.1) 플레이(에디터·빌드) → 화면 오른쪽 위에 `제한 … · 실제 … fps (F9)`. F9 누를 때마다 제한이 없음 → 60 → 30 → 20 → 없음으로 바뀌고 실제 fps가 0.5초 안에 따라감(제한 없음이면 수백 fps 가능). 처음 F9 전에는 프로젝트 설정 그대로(VSync면 `VSync 1`)
+- [ ] (Q2.1) 20·30fps로 VERSUS 플레이 → AABB 오류·기체 부서짐 없음(Q2 확인). 히트스톱 중에도 fps 표시가 계속 갱신됨

@@ -211,6 +211,8 @@ namespace MyDongari.Core
             if (GetComponent<MenuUI>() == null) gameObject.AddComponent<MenuUI>();
             // 연습 모드 단축키 (봇 모드 순환·리셋·히트 프리셋)
             if (GetComponent<PracticeHotkeys>() == null) gameObject.AddComponent<PracticeHotkeys>();
+            // 테스트용 프레임 제한 전환(F9)·fps 표시
+            if (GetComponent<FrameRateTester>() == null) gameObject.AddComponent<FrameRateTester>();
         }
 
         private GameMode StartLayout()
