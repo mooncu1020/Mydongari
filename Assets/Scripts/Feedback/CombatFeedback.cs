@@ -117,6 +117,9 @@ namespace MyDongari.Feedback
             // 디딤걸음 긁는 소리 루프 (P2)
             public MechVisualRig Rig;
             public AudioSource ScrapeLoop;
+            // 넉다운 미끄러짐 먼지 (R2)
+            public KnockdownController Knockdown;
+            public float NextSlideDust;
         }
 
         private readonly List<MechFeedback> _mechs = new List<MechFeedback>();
@@ -197,6 +200,48 @@ namespace MyDongari.Feedback
 
             RegisterFootsteps(mech);
             RegisterMotionImpacts(mech);
+            RegisterKnockdown(fb);
+        }
+
+        /// <summary>넉다운 착지(큰 먼지 + 먼지 소리)·벽 충돌(먼지 + 소리). 미끄러지는 동안 먼지는 UpdateLogic에서.</summary>
+        private void RegisterKnockdown(MechFeedback fb)
+        {
+            fb.Knockdown = fb.Mech.GetComponent<KnockdownController>();
+            if (fb.Knockdown == null) return;
+            GameObject mech = fb.Mech;
+            Action<Vector3> onLand = position => ErrorLog.Run(() => KnockdownDust(mech, FootPoint(mech), 1f, playSound: true), "CombatFeedback.onKnockdownLand");
+            Action<Vector3> onWall = point => ErrorLog.Run(() => KnockdownDust(mech, point, 0.8f, playSound: true), "CombatFeedback.onKnockdownWall");
+            KnockdownController knockdown = fb.Knockdown;
+            knockdown.OnLanded += onLand;
+            knockdown.OnWallHit += onWall;
+            _unsubscribers.Add(() =>
+            {
+                knockdown.OnLanded -= onLand;
+                knockdown.OnWallHit -= onWall;
+            });
+        }
+
+        private void KnockdownDust(GameObject mech, Vector3 position, float strength, bool playSound)
+        {
+            BernardTuning.HitFeelValues feel = TuningOf(mech).HitFeel;
+            HitSparkFx.SpawnDust(position, strength, new HitSparkFx.DustStyle
+            {
+                Color = feel.dustColor,
+                Size = feel.dustSize,
+                Count = feel.dustCount,
+                Speed = feel.dustSpeed,
+                Lifetime = feel.dustLifetime
+            });
+            if (playSound) Play(dustClip, dustVolume * Mathf.Clamp01(strength));
+        }
+
+        /// <summary>기체 콜라이더 바닥 (등·엉덩이가 땅에 닿는 높이).</summary>
+        private static Vector3 FootPoint(GameObject mech)
+        {
+            Collider body = mech.GetComponent<Collider>();
+            Vector3 p = mech.transform.position;
+            if (body != null) p.y = body.bounds.min.y;
+            return p;
         }
 
         /// <summary>리그의 모션 타격·착지 순간(런지 앞발 박기·앵커 클로 버팀 → 먼지, 파일 드라이버 외형 타격 → 불꽃).</summary>
@@ -410,6 +455,7 @@ namespace MyDongari.Feedback
 
                 UpdateTint(fb, stunned, overheated, guarding);
                 UpdateHoverLoop(fb, active && fb.StateMachine != null && fb.StateMachine.IsSprinting);
+                UpdateKnockdownSlideDust(fb, active);
                 float scrape = active && fb.Rig != null ? fb.Rig.ScrapeAmount : 0f;
                 UpdateLoop(ref fb.ScrapeLoop, strideScrapeLoopClip, strideScrapeVolume * Mathf.Clamp01(scrape));
             }
@@ -441,6 +487,15 @@ namespace MyDongari.Feedback
             source.volume = Mathf.MoveTowards(source.volume, target, step * Mathf.Max(0.01f, sfxVolume));
             if (target > 0f && !source.isPlaying) source.Play();
             else if (target <= 0f && source.isPlaying && source.volume <= 0.0001f) source.Stop();
+        }
+
+        /// <summary>넉다운 미끄러짐 동안 땅을 긁는 먼지 (R2). 히트스톱 중엔 멈춘다(게임 시간).</summary>
+        private void UpdateKnockdownSlideDust(MechFeedback fb, bool active)
+        {
+            if (!active || fb.Knockdown == null || fb.Knockdown.Phase != KnockdownController.KnockPhase.Slide) return;
+            if (Time.time < fb.NextSlideDust) return;
+            fb.NextSlideDust = Time.time + Mathf.Max(0.02f, TuningOf(fb.Mech).Knockdown.slideDustInterval);
+            KnockdownDust(fb.Mech, FootPoint(fb.Mech), 0.5f, playSound: false);
         }
 
         /// <summary>호버 활주 루프: 전력질주 동안만 기체마다 반복 재생, 켜고 끌 때 짧게 페이드 (O3).</summary>

@@ -357,6 +357,28 @@ namespace MyDongari.Visual
                     J("Body", 36, 0, 0), J("Head", -24, 0, 0),
                     J("Leg_L", -24, 0, -4), J("Shin.L", 34, 0, 0), J("Leg_R", 26, 0, 4), J("Shin.R", 24, 0, 0)),
 
+                // R2 넉다운: 비행(뒤로 젖힘, 팔다리 늘어짐) → 착지(등·엉덩이로 누움, 다리는 바닥과 거의 수평) → 기상(한쪽 무릎 짚기 → 반쯤 일어섬)
+                P(PoseNames.KnockdownFlight, Vector3.zero,
+                    J("Pelvis", -25, 0, 0), J("Body", -30, 0, 0), J("Head", -25, 0, 0),
+                    J("Arm_L_Upper", -30, 0, -50), J("Arm_L_Lower", -15, 0, 0),
+                    J("Arm_R_Upper", -30, 0, 50), J("Arm_R_Lower", -15, 0, 0),
+                    J("Leg_L", -35, 0, -8), J("Shin.L", 30, 0, 0), J("Leg_R", -20, 0, 8), J("Shin.R", 45, 0, 0)),
+                P(PoseNames.KnockdownLand, Vector3.zero,
+                    J("Pelvis", -85, 0, 0), J("Body", -5, 0, 0), J("Head", 20, 0, 0),
+                    J("Arm_L_Upper", 20, 0, -60), J("Arm_L_Lower", -10, 0, 0),
+                    J("Arm_R_Upper", 20, 0, 60), J("Arm_R_Lower", -10, 0, 0),
+                    J("Leg_L", -5, 0, -10), J("Shin.L", 15, 0, 0), J("Leg_R", 5, 0, 10), J("Shin.R", 25, 0, 0)),
+                P(PoseNames.GetUpKneel, new Vector3(0f, -0.1f, 0f),
+                    J("Pelvis", -5, 0, 0), J("Body", 30, 10, 0), J("Head", -10, 0, 0),
+                    J("Arm_L_Upper", -45, 0, 10), J("Arm_L_Lower", -50, 0, 0),
+                    J("Arm_R_Upper", -20, 0, -15), J("Arm_R_Lower", -70, 0, 0),
+                    J("Leg_L", -75, 0, 0), J("Shin.L", 95, 0, 0), J("Leg_R", 25, 0, 0), J("Shin.R", 115, 0, 0)),
+                P(PoseNames.GetUpRise, Vector3.zero,
+                    J("Body", 25, 5, 0), J("Head", -6, 0, 0),
+                    J("Arm_L_Upper", -35, 0, 12), J("Arm_L_Lower", -65, 0, 0),
+                    J("Arm_R_Upper", -30, 0, -14), J("Arm_R_Lower", -66, 0, 0),
+                    J("Leg_L", -40, 0, 0), J("Shin.L", 60, 0, 0), J("Leg_R", 10, 0, 0), J("Shin.R", 45, 0, 0)),
+
                 // M4 스러스터 런지
                 P(PoseNames.LungeCrouch, new Vector3(0f, -0.04f, 0f),
                     J("Body", 26, 0, 0), J("Head", -16, 0, 0),
@@ -507,6 +529,10 @@ namespace MyDongari.Visual
         public const string RunLeapPush = "RunLeapPush";
         public const string RunLeapAir = "RunLeapAir";
         public const string HoverGlide = "HoverGlide";
+        public const string KnockdownFlight = "KnockdownFlight";
+        public const string KnockdownLand = "KnockdownLand";
+        public const string GetUpKneel = "GetUpKneel";
+        public const string GetUpRise = "GetUpRise";
         public const string LungeCrouch = "LungeCrouch";
         public const string LungeFlight = "LungeFlight";
         public const string LungePlant = "LungePlant";

@@ -88,6 +88,18 @@ namespace MyDongari.Visual
             }
             _lastRootPosition = transform.position;
 
+            // 넉다운 중엔 상하체를 기체 정면에 붙인다 (날아가는 속도를 이동 방향으로 보고 하체가 돌지 않게)
+            if (IsKnockedDownVisual)
+            {
+                _pelvisYaw = RootYaw;
+                _bodyYaw = RootYaw;
+                _headYaw = RootYaw;
+                _pelvis.Yaw = 0f;
+                if (_body != null) _body.Yaw = 0f;
+                if (_head != null) _head.Yaw = 0f;
+                return;
+            }
+
             float lookYaw = LookYaw();
             _bodyYaw = Mathf.MoveTowardsAngle(_bodyYaw, lookYaw, v.upperBodyTurnSpeed * dt);
 

@@ -706,5 +706,99 @@ namespace MyDongari.Visual
             AddRotation(_legR, new Vector3(-grade.reactKnee * 0.5f * knee, 0f, 0f));
             if (_pelvis != null) _pelvis.DirectPosition += d * (grade.reactPush * body);
         }
+
+        // ---------------- R2 넉다운 ----------------
+
+        private KnockdownController _knockdown;
+        private KnockdownController.KnockPhase _knockPhase = KnockdownController.KnockPhase.None;
+        private float _knockPhaseStart = None;
+
+        private KnockdownController Knockdown
+        {
+            get
+            {
+                if (_knockdown == null) _knockdown = GetComponent<KnockdownController>();
+                return _knockdown;
+            }
+        }
+
+        /// <summary>넉다운 중(대기 제외 — 히트스톱 동안은 맞은 반응이 보이게).</summary>
+        private bool IsKnockedDownVisual
+        {
+            get
+            {
+                KnockdownController k = Knockdown;
+                return k != null && k.IsKnockedDown && k.Phase != KnockdownController.KnockPhase.Pending;
+            }
+        }
+
+        /// <summary>
+        /// 넉다운 외형: 비행 = 뒤로 젖히고 팔다리가 늘어져 스프링으로 출렁(접지 보정 멈춤), 착지·미끄러짐 = 등·엉덩이로 누움(접지 보정 다시),
+        /// 기상 = 누운 자세 → 한쪽 무릎 짚기 → 반쯤 일어섬 → 기본 자세. 시간은 KnockdownController 단계 시간.
+        /// 단계가 바뀐 순간을 리그 시계로 기억해 매 프레임 부드럽게 (물리 스텝 시간은 렌더 프레임과 어긋나서).
+        /// </summary>
+        private void PoseKnockdown()
+        {
+            KnockdownController knockdown = Knockdown;
+            KnockdownController.KnockPhase phase = knockdown != null ? knockdown.Phase : KnockdownController.KnockPhase.None;
+            if (phase != _knockPhase)
+            {
+                if (phase == KnockdownController.KnockPhase.Flight) KickLimbs();
+                if (phase != KnockdownController.KnockPhase.None || _knockPhase == KnockdownController.KnockPhase.GetUp) BeginCarry();
+                _knockPhase = phase;
+                _knockPhaseStart = _clock;
+            }
+            if (phase == KnockdownController.KnockPhase.None || phase == KnockdownController.KnockPhase.Pending) return;
+
+            BernardTuning.KnockdownValues k = _tuning.Get(this).Knockdown;
+            float t = _clock - _knockPhaseStart;
+            BeginMotion();
+            switch (phase)
+            {
+                case KnockdownController.KnockPhase.Flight:
+                    Key(0f, null);
+                    Key(k.flightPoseTime, PoseNames.KnockdownFlight, MechPoseLibrary.EaseSnap);
+                    PlayMotion(t, 1f, false);
+                    // 팔다리는 스프링으로 늘어지게: 모션이 맡는 비율을 낮춰 스프링이 뒤따라 출렁이게 한다
+                    LoosenLimbs(k.flightLimbFollow);
+                    _groundingHold = true;
+                    break;
+
+                case KnockdownController.KnockPhase.Slide:
+                    Key(0f, PoseNames.KnockdownFlight);
+                    Key(k.landPoseTime, PoseNames.KnockdownLand, MechPoseLibrary.EaseSnap);
+                    PlayMotion(t, 1f, false);
+                    break;
+
+                case KnockdownController.KnockPhase.GetUp:
+                {
+                    float total = Mathf.Max(0.05f, Mathf.Max(k.getUpTime, k.invulnerableTime));
+                    Key(0f, PoseNames.KnockdownLand);
+                    Key(total * k.getUpKneelAt, PoseNames.GetUpKneel, MechPoseLibrary.EaseSmooth);
+                    Key(total * Mathf.Max(k.getUpKneelAt, k.getUpRiseAt), PoseNames.GetUpRise, MechPoseLibrary.EaseSmooth);
+                    Key(total, null, MechPoseLibrary.EaseHeavy);
+                    PlayMotion(t, 1f, false);
+                    break;
+                }
+            }
+        }
+
+        private void LoosenLimbs(float follow)
+        {
+            foreach (Joint joint in new[] { _armLUpper, _armLLower, _armRUpper, _armRLower, _fistL, _fistR, _legL, _legR, _shinL, _shinR })
+            {
+                if (joint != null) joint.MotionWeight *= Mathf.Clamp01(follow);
+            }
+        }
+
+        /// <summary>날아오르는 순간 팔다리를 반대 방향으로 튕겨 스프링 출렁임을 시작한다.</summary>
+        private void KickLimbs()
+        {
+            float kick = _tuning.Get(this).Knockdown.flightLimbKick;
+            Kick(_armLUpper, new Vector3(-kick, 0f, -kick * 0.5f));
+            Kick(_armRUpper, new Vector3(-kick, 0f, kick * 0.5f));
+            Kick(_legL, new Vector3(-kick * 0.6f, 0f, 0f));
+            Kick(_legR, new Vector3(-kick * 0.4f, 0f, 0f));
+        }
 }
 }

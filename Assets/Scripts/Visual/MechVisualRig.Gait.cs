@@ -81,6 +81,17 @@ namespace MyDongari.Visual
         private void PoseGaitCadence(BernardTuning.VisualValues v, float dt)
         {
             BernardTuning.GaitValues g = G;
+            // 넉다운 중엔 걸음·도약·호버·스러스터 없음 (날아가는 속도로 다리가 뛰지 않게)
+            if (IsKnockedDownVisual)
+            {
+                _gaitWeight = 0f;
+                _hoverMode = 0f;
+                _leapActive = false;
+                _scrapeL = 0f;
+                _scrapeR = 0f;
+                UpdateMoveFx(g, 0f, 0f, false);
+                return;
+            }
             Vector3 velocity = HorizontalVelocity();
             float speed = velocity.magnitude;
             bool moving = speed >= v.gaitMinSpeed;

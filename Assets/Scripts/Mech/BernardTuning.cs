@@ -373,6 +373,21 @@ namespace MyDongari.Mech
             [Tooltip("착지 때 맞은 쪽 화면 흔들림 크기(m)·시간(초)")]
             public float landShake = 0.08f;
             public float landShakeTime = 0.25f;
+
+            [Header("외형 (R2, 하체 뼈가 있는 모델. 포즈 각도는 MechPoseLibrary)")]
+            [Tooltip("날아오를 때 뒤로 젖힌 자세까지(초)")]
+            public float flightPoseTime = 0.12f;
+            [Tooltip("공중에서 팔다리가 목표를 따라가는 정도(0 = 스프링으로 늘어지게 출렁, 1 = 포즈에 딱)")]
+            [Range(0f, 1f)] public float flightLimbFollow = 0.25f;
+            [Tooltip("날아오를 때 팔다리를 흔드는 순간 각속도(°/초)")]
+            public float flightLimbKick = 400f;
+            [Tooltip("착지 때 누운 자세까지(초) — 등·엉덩이부터")]
+            public float landPoseTime = 0.1f;
+            [Tooltip("기상 중 무릎 짚기 · 반쯤 일어섬 자세에 도착하는 시점(기상 시간 비율)")]
+            [Range(0.05f, 0.9f)] public float getUpKneelAt = 0.35f;
+            [Range(0.1f, 0.95f)] public float getUpRiseAt = 0.7f;
+            [Tooltip("미끄러지는 동안 먼지를 뿜는 간격(초)")]
+            public float slideDustInterval = 0.08f;
         }
 
         [Serializable]

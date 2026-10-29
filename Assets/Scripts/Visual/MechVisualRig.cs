@@ -1029,6 +1029,7 @@ namespace MyDongari.Visual
             if (UseMotions && _lungeStart != None) return true;
             if (UseMotions && IsDefenseMotionActive()) return true;
             if (UseMotions && IsClawMotionActive()) return true;
+            if (IsKnockedDownVisual) return true;
             if (_claw != null && _claw.Phase != AnchorClaw.ClawPhase.Ready) return true;
             if (InWindow(_punchStart, PunchVisualLength(v))) return true;
             if (InWindow(_tackleStart, TackleVisualLength(v))) return true;
@@ -1101,6 +1102,8 @@ namespace MyDongari.Visual
                 PoseTackle();
                 PoseSlam();
             }
+            // 넉다운 (R2): 다른 모든 동작 위에 (맞은 쪽은 공격을 못 하므로 겹칠 일은 없다)
+            if (motions) PoseKnockdown();
 
             // 대시 어택·태클: 예비 동작 뒤 오른 어깨 앞으로
             t = _clock - _tackleStart;
