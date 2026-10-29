@@ -59,13 +59,23 @@ namespace MyDongari.Visual
         // ---------------- M3 기본 펀치 ----------------
 
         private float _punchGait;
+        // 지금 펀치의 콤보 단계 (1 원 잽, 2 투 스트레이트, 3 쓰리 훅, 0 = 콤보 끔·예전 좌우 번갈아)
+        private int _punchStep;
 
-        /// <summary>펀치 외형 길이: 전신 모션이면 쿨다운 끝(회복 포함), 아니면 예전 뻗기·유지.</summary>
+        /// <summary>
+        /// 펀치 외형 길이: 전신 모션이면 판정 + 회복 (원·투 = 다음 타 입력 창, 쓰리 = 쓰리 회복, 콤보 끔 = 쿨다운),
+        /// 아니면 예전 뻗기·유지. 다음 타가 들어오면 그 순간 자세에서 이어진다(BeginCarry).
+        /// </summary>
         private float PunchVisualLength(BernardTuning.VisualValues v)
         {
             if (!UseMotions) return PunchWindup + v.punchExtendTime + v.punchHoldTime;
             BernardTuning.MotionValues m = M;
-            return Mathf.Max(PunchWindup + m.punchFollowTime + m.punchFollowHold + 0.01f, _tuning.Get(this).Punch.cooldown);
+            BernardTuning tuning = _tuning.Get(this);
+            float recovery;
+            if (_punchStep == 3) recovery = PunchWindup + tuning.Combo.thirdRecovery;
+            else if (_punchStep > 0) recovery = PunchWindup + tuning.Combo.window;
+            else recovery = tuning.Punch.cooldown;
+            return Mathf.Max(PunchWindup + m.punchFollowTime + m.punchFollowHold + 0.01f, recovery);
         }
 
         /// <summary>
@@ -84,30 +94,57 @@ namespace MyDongari.Visual
             float hit = PunchWindup;
             float follow = hit + m.punchFollowTime;
             float hold = follow + m.punchFollowHold;
-            bool mirror = !_punchRight;
             float d = m.punchChainDelay;
+
+            // 단계별 포즈: 원 = 앞손 잽(허리 작게), 투 = 뒷손 스트레이트(허리 크게), 쓰리 = 앞손 훅(허리 가장 크게).
+            // 콤보 끔(0)이면 예전처럼 스트레이트를 좌우 번갈아(왼쪽은 반전)
+            string windup = PoseNames.PunchWindup, strike = PoseNames.PunchStrike, followPose = PoseNames.PunchFollow;
+            bool mirror = false;
+            // 때리는 손이 왼손이면 사슬도 왼쪽 기준(앞발 디딤·왼팔 마지막)
+            bool leftHand = false;
+            float chain = 1f;
+            switch (_punchStep)
+            {
+                case 1:
+                    windup = PoseNames.JabWindup; strike = PoseNames.JabStrike; followPose = PoseNames.JabFollow;
+                    leftHand = true;
+                    chain = m.jabChainScale;
+                    break;
+                case 3:
+                    windup = PoseNames.HookWindup; strike = PoseNames.HookStrike; followPose = PoseNames.HookFollow;
+                    leftHand = true;
+                    chain = m.hookChainScale;
+                    break;
+                case 0:
+                    mirror = !_punchRight;
+                    leftHand = mirror;
+                    break;
+            }
+            d *= chain;
 
             BeginMotion();
             LeadAnchor(hit);
             Key(0f, null);
-            Key(hit * m.punchWindupRatio, PoseNames.PunchWindup, MechPoseLibrary.EaseSmooth);
-            Key(hit, PoseNames.PunchStrike, MechPoseLibrary.EaseSnap);
-            Key(follow, PoseNames.PunchFollow, MechPoseLibrary.EaseSmooth);
-            Key(hold, PoseNames.PunchFollow, MechPoseLibrary.EaseLinear);
+            Key(hit * m.punchWindupRatio, windup, MechPoseLibrary.EaseSmooth);
+            Key(hit, strike, MechPoseLibrary.EaseSnap);
+            Key(follow, followPose, MechPoseLibrary.EaseSmooth);
+            Key(hold, followPose, MechPoseLibrary.EaseLinear);
             Key(length, null, MechPoseLibrary.EaseHeavy);
-            // 뒷발(오른발) 밀기가 제일 먼저, 그다음 앞발·골반, 허리·머리·반대 팔, 마지막이 때리는 팔
-            Lead(MechPoseLibrary.HipRIndex, d * 3f, mirror);
-            Lead(MechPoseLibrary.LegRIndex, d * 3f, mirror);
-            Lead(MechPoseLibrary.ShinRIndex, d * 3f, mirror);
-            Lead(MechPoseLibrary.HipLIndex, d * 2f, mirror);
-            Lead(MechPoseLibrary.LegLIndex, d * 2f, mirror);
-            Lead(MechPoseLibrary.ShinLIndex, d * 2f, mirror);
+            // 미는 발이 제일 먼저(오른손이면 뒷발 = 오른발, 왼손이면 앞발 = 왼발 축), 그다음 반대 발·골반, 허리·머리·반대 팔, 마지막이 때리는 팔.
+            // 반전(mirror)일 땐 Lead가 좌우를 바꿔 넣으므로 오른손 기준으로 적는다
+            bool pushLeft = leftHand && !mirror;
+            Lead(pushLeft ? MechPoseLibrary.HipLIndex : MechPoseLibrary.HipRIndex, d * 3f, mirror);
+            Lead(pushLeft ? MechPoseLibrary.LegLIndex : MechPoseLibrary.LegRIndex, d * 3f, mirror);
+            Lead(pushLeft ? MechPoseLibrary.ShinLIndex : MechPoseLibrary.ShinRIndex, d * 3f, mirror);
+            Lead(pushLeft ? MechPoseLibrary.HipRIndex : MechPoseLibrary.HipLIndex, d * 2f, mirror);
+            Lead(pushLeft ? MechPoseLibrary.LegRIndex : MechPoseLibrary.LegLIndex, d * 2f, mirror);
+            Lead(pushLeft ? MechPoseLibrary.ShinRIndex : MechPoseLibrary.ShinLIndex, d * 2f, mirror);
             Lead(MechPoseLibrary.PelvisIndex, d * 2f, mirror);
             Lead(MechPoseLibrary.BodyIndex, d, mirror);
             Lead(MechPoseLibrary.HeadIndex, d, mirror);
-            Lead(MechPoseLibrary.ArmLUpperIndex, d, mirror);
-            Lead(MechPoseLibrary.ArmLLowerIndex, d, mirror);
-            Lead(MechPoseLibrary.FistLIndex, d, mirror);
+            Lead(pushLeft ? MechPoseLibrary.ArmRUpperIndex : MechPoseLibrary.ArmLUpperIndex, d, mirror);
+            Lead(pushLeft ? MechPoseLibrary.ArmRLowerIndex : MechPoseLibrary.ArmLLowerIndex, d, mirror);
+            Lead(pushLeft ? MechPoseLibrary.FistRIndex : MechPoseLibrary.FistLIndex, d, mirror);
             // 걷거나 달리는 중엔 하체를 걸음에 양보한다
             MaskLowerBody(1f - _gaitWeight);
             PlayMotion(t, 1f, mirror);
@@ -134,6 +171,7 @@ namespace MyDongari.Visual
 
         private void OnLungeStartedVisual()
         {
+            BeginCarry();
             _lungeStart = _clock;
             _lungePlant = None;
             _lungeEnd = None;

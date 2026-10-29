@@ -221,6 +221,45 @@ namespace MyDongari.Visual
             AddPosition(_pelvis, baked.PelvisOffset * weight);
         }
 
+        // 새 동작이 앞 동작을 끊고 시작할 때 이어 붙이기 (N2): 그 순간 관절 각도에서 motionCarryTime에 걸쳐 새 목표로
+        private readonly Vector3[] _carryRotation = new Vector3[MechPoseLibrary.JointNames.Length];
+        private Vector3 _carryPelvis;
+        private float _carryStart = None;
+
+        /// <summary>지금(지난 프레임에 적용된) 관절 각도를 기억한다. 새 동작이 시작되는 이벤트에서 부른다.</summary>
+        private void BeginCarry()
+        {
+            if (!UseMotions || _poseJoints == null) return;
+            for (int j = 0; j < _poseJoints.Length; j++)
+            {
+                Joint joint = _poseJoints[j];
+                _carryRotation[j] = joint != null ? joint.Rotation : Vector3.zero;
+            }
+            _carryPelvis = _pelvis != null ? _pelvis.Position : Vector3.zero;
+            _carryStart = _clock;
+        }
+
+        /// <summary>모든 포즈를 얹은 뒤: 기억한 각도 → 이번 목표로 섞는다 (모션 관절이 스프링을 건너뛰어도 튀지 않게).</summary>
+        private void ApplyCarry()
+        {
+            if (_carryStart == None || _poseJoints == null) return;
+            float time = M.motionCarryTime;
+            float s = time > 0f ? (_clock - _carryStart) / time : 1f;
+            if (s >= 1f || s < 0f)
+            {
+                _carryStart = None;
+                return;
+            }
+            float e = Mathf.SmoothStep(0f, 1f, s);
+            for (int j = 0; j < _poseJoints.Length; j++)
+            {
+                Joint joint = _poseJoints[j];
+                if (joint == null || joint.Target == null) continue;
+                joint.TargetRotation = Vector3.Lerp(_carryRotation[j], joint.TargetRotation, e);
+            }
+            if (_pelvis != null && _pelvis.Target != null) _pelvis.TargetPosition = Vector3.Lerp(_carryPelvis, _pelvis.TargetPosition, e);
+        }
+
         /// <summary>모션 시작 시각 기준 경과가 [0, length) 안인지.</summary>
         private bool MotionActive(float start, float length) => InWindow(start, length);
 

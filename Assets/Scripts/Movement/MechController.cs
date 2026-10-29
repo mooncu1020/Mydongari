@@ -48,6 +48,7 @@ namespace MyDongari.Movement
         public bool IsExternallyControlled => ControlLock != null && ControlLock.IsLocked;
 
         private float _defaultDamping;
+        private MeleeSystem _melee;
 
         private void Awake()
         {
@@ -60,6 +61,7 @@ namespace MyDongari.Movement
             if (ControlLock == null) ControlLock = gameObject.AddComponent<ExternalControlLock>();
             Identity = MechIdentity.GetOrAdd(gameObject);
             LockOn = GetComponent<LockOnSystem>();
+            _melee = GetComponent<MeleeSystem>();
 
             _defaultDamping = Rb.linearDamping;
         }
@@ -83,6 +85,11 @@ namespace MyDongari.Movement
         public void ApplyMoveForce(Vector3 moveDir, float accel, float maxSpeed)
         {
             if (IsExternallyControlled) return; // 앵커클로 등에 붙잡혀 있으면 자기 힘 넣지 않고 양보
+
+            // 원투쓰리 콤보 중·쓰리 회복 중엔 느리게 (N2). 힘과 최대 속도를 같이 줄인다
+            float speedScale = _melee != null ? _melee.MoveSpeedScale : 1f;
+            accel *= speedScale;
+            maxSpeed *= speedScale;
 
             if (moveDir == Vector3.zero)
             {

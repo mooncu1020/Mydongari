@@ -465,6 +465,9 @@ namespace MyDongari.Visual
             switch (type)
             {
                 case AttackType.Punch:
+                    BeginCarry();
+                    // 원투쓰리 단계 (N2). 콤보가 꺼져 있으면 0 → 예전처럼 좌우 번갈아
+                    _punchStep = _melee != null ? _melee.ComboStep : 0;
                     // 원투: 직전 펀치가 comboWindow 안이면 반대 팔, 아니면 오른팔부터
                     _punchRight = _clock - _lastPunchTime > V.comboWindow || !_punchRight;
                     _punchStart = _clock;
@@ -474,6 +477,7 @@ namespace MyDongari.Visual
                     break;
                 case AttackType.DashAttack:
                 case AttackType.Tackle:
+                    BeginCarry();
                     _tackleStart = _clock;
                     _tackleType = type;
                     break;
@@ -538,10 +542,15 @@ namespace MyDongari.Visual
             // 전신 모션: 끌어당김 자세에서 바로 어퍼컷으로 이어지는지 기억 (M6)
             _pileFromReel = UseMotions && _clawStart != None;
             if (UseMotions) _clawStart = None;
+            BeginCarry();
             _pileStart = _clock;
             _pileImpactFired = false;
         }
-        private void OnSlam() => _slamStart = _clock;
+        private void OnSlam()
+        {
+            BeginCarry();
+            _slamStart = _clock;
+        }
 
         private static void Kick(Joint joint, Vector3 angularVelocity)
         {
@@ -600,8 +609,13 @@ namespace MyDongari.Visual
             PoseIdle(v, dt);
             PoseGuard(v);
             PoseActions(v);
-            // 피격 반응은 어떤 동작 위에도 마지막에 얹는다 (N1)
-            if (UseMotions) PoseHitReaction();
+            if (UseMotions)
+            {
+                // 앞 동작을 끊고 시작한 동작은 끊긴 자세에서 이어지게 (N2)
+                ApplyCarry();
+                // 피격 반응은 어떤 동작 위에도 마지막에 얹는다 (N1)
+                PoseHitReaction();
+            }
             PoseStun(v);
 
             // 스프링: 프레임이 튀어도 터지지 않게 dt 상한

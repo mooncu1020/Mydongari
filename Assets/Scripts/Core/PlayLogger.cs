@@ -48,6 +48,8 @@ namespace MyDongari.Core
         private static readonly string[] SummaryKeys =
         {
             "punch_start", "punch_landed",
+            // 원투쓰리 콤보 단계별 시작 수 (N2)
+            "combo1_start", "combo2_start", "combo3_start",
             "lunge_start", "lunge_hit", "lunge_miss", "lunge_parried",
             "tackle_start", "tackle_landed", "dash_attack_start", "dash_attack_landed",
             "guard_block", "parry", "guard_break", "clash",
@@ -146,6 +148,11 @@ namespace MyDongari.Core
             if (melee != null)
             {
                 Action<AttackType> onStart = type => ErrorLog.Run(() => OnAttackStarted(index, type), "PlayLogger.onStart");
+                // 원투쓰리 콤보 단계 (N2): combo1_start / combo2_start / combo3_start
+                Action<int> onCombo = step => ErrorLog.Run(() => Count(index, "combo" + step + "_start"), "PlayLogger.onCombo");
+                melee.OnComboStep += onCombo;
+                MeleeSystem comboMelee = melee;
+                _unsubscribers.Add(() => comboMelee.OnComboStep -= onCombo);
                 Action<HitInfo, HitResult> onHit = (info, result) => ErrorLog.Run(() => OnHitResolved(index, info, result), "PlayLogger.onHit");
                 // 발생 시간 중 스턴 등으로 취소된 공격 (punch_canceled 등)
                 Action<AttackType> onCancel = type => ErrorLog.Run(() => Count(index, AttackKey(type) + "_canceled"), "PlayLogger.onCancel");
@@ -311,7 +318,10 @@ namespace MyDongari.Core
             if (info.Type != AttackType.Lunge)
             {
                 string attackKey = AttackKey(info.Type);
-                Count(attacker, attackKey + "_" + resultKey, info.Damage.ToString("F0"));
+                // 펀치는 콤보 단계를 같이 남긴다 (예: "25 combo2")
+                string detail = info.ComboStep > 0 ? info.Damage.ToString("F0") + " combo" + info.ComboStep : info.Damage.ToString("F0");
+                Count(attacker, attackKey + "_" + resultKey, detail);
+                if (info.Type == AttackType.Punch && info.ComboStep > 0) CountSilent(attacker, "combo" + info.ComboStep + "_" + resultKey);
                 if (result == HitResult.Hit || result == HitResult.Guarded || result == HitResult.GuardBroken)
                 {
                     CountSilent(attacker, attackKey + "_landed");

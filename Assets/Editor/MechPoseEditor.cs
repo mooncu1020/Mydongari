@@ -111,6 +111,14 @@ namespace MyDongari.EditorTools
                 return;
             }
 
+            if (GUILayout.Button(new GUIContent("코드 초안에만 있는 포즈 추가", "에셋을 만든 뒤 코드에 새로 생긴 포즈(예: N2 잽·훅)를 초안 값으로 에셋에 넣는다. 있는 포즈는 안 건드림")))
+            {
+                Undo.RecordObject(_library, "Add Draft Poses");
+                int added = _library.AddMissingDraftPoses();
+                EditorUtility.SetDirty(_library);
+                AssetDatabase.SaveAssetIfDirty(_library);
+                ShowNotification(new GUIContent($"{added}개 추가"));
+            }
             DrawPoseSelector();
             EditorGUILayout.Space();
             if (Application.isPlaying) DrawPlayMode();

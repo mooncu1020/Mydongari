@@ -17,6 +17,7 @@ namespace MyDongari.Combat
         private BernardTuning.TackleValues Tackle => _tuning.Get(this).Tackle;
         private BernardTuning.DashAttackValues DashAttack => _tuning.Get(this).DashAttack;
         private BernardTuning.AttackStartupValues Startup => _tuning.Get(this).Startup;
+        private BernardTuning.ComboValues Combo => _tuning.Get(this).Combo;
 
         public bool IsGuarding { get; private set; }
         public bool IsParrying { get; private set; }
@@ -36,9 +37,33 @@ namespace MyDongari.Combat
         /// <summary>펀치 발생 시간 중(버튼은 눌렀고 아직 판정 전)인지.</summary>
         public bool IsPunchPending => _punchElapsed >= 0f;
 
+        /// <summary>마지막으로 시작한 펀치의 콤보 단계 (1 원, 2 투, 3 쓰리). 콤보가 끊겼거나 꺼져 있으면 0. 외형·로그용.</summary>
+        public int ComboStep => _comboStep;
+        /// <summary>콤보 단계가 정해진 순간(펀치 시작). OnAttackStarted 바로 앞에 온다.</summary>
+        public event Action<int> OnComboStep;
+
+        /// <summary>
+        /// 콤보에 따른 이동 속도 비율 (N2): 콤보 중(누른 순간 ~ 다음 타 입력 창 끝) moveSpeedScale, 쓰리 회복 동안 thirdRecoveryMoveSpeedScale.
+        /// MechController가 이동 힘·최대 속도에 곱한다.
+        /// </summary>
+        public float MoveSpeedScale
+        {
+            get
+            {
+                BernardTuning.ComboValues combo = Combo;
+                if (!combo.enabled || _comboStep == 0) return 1f;
+                if (_punchElapsed >= 0f) return combo.moveSpeedScale;
+                float sinceResolve = Time.time - _lastPunchResolveTime;
+                if (_comboStep == 3) return sinceResolve < combo.thirdRecovery ? combo.thirdRecoveryMoveSpeedScale : 1f;
+                return sinceResolve <= combo.window ? combo.moveSpeedScale : 1f;
+            }
+        }
+
         private float _meleeTimer = 0f;
         // 펀치 발생 시간 경과(초). 음수면 발생 중인 펀치 없음
         private float _punchElapsed = -1f;
+        // 마지막으로 시작한 펀치의 콤보 단계 (0 = 콤보 아님)
+        private int _comboStep;
         // 마지막으로 펀치 판정을 한 시각 (맞딜 창 판정용)
         private float _lastPunchResolveTime = -999f;
         private float _parryTimer = 0f;
@@ -233,6 +258,7 @@ namespace MyDongari.Combat
             _tackleTimer = Tackle.cooldown;
             _punchElapsed = -1f;
             _lastPunchResolveTime = -999f;
+            _comboStep = 0;
             if (_stateMachine != null) _stateMachine.MechController.SetBaselineDamping(Guard.releaseDamping);
         }
 
@@ -246,6 +272,8 @@ namespace MyDongari.Combat
             }
             IsStunned = true;
             _stunTimer = -duration;
+            // 맞아서 굳으면 콤보는 끊긴다 (다음 펀치는 원부터)
+            _comboStep = 0;
         }
 
         /// <summary>
@@ -457,10 +485,17 @@ namespace MyDongari.Combat
             // 스턴 중엔 펀치를 시작할 수 없다 (런지·가드와 같은 규칙. 발생 중 스턴이면 취소되는 것과 짝)
             if (IsStunned) return false;
             BernardTuning.PunchValues punch = Punch;
-            if (_meleeTimer < punch.cooldown) return false;
+            BernardTuning.ComboValues combo = Combo;
+            int step = NextComboStep(combo);
+            if (combo.enabled && _comboStep == 3 && Time.time - _lastPunchResolveTime < combo.thirdRecovery) return false;
+            // 콤보 다음 타는 짧은 간격, 원(새 콤보·단발)은 예전 쿨다운
+            float needed = step >= 2 ? combo.interval : punch.cooldown;
+            if (_meleeTimer < needed) return false;
             // 과열이면 주먹이 안 나간다. 히트게이지가 없는 기체(더미)는 제한 없음
             if (_heatGauge != null && !_heatGauge.CanPunch()) return false;
             _meleeTimer = 0f;
+            _comboStep = step;
+            if (step > 0) OnComboStep?.Invoke(step);
             // 맞든 빗나가든 휘두른 순간 히트가 오른다
             if (_heatGauge != null) _heatGauge.AddHeat(punch.heatPerPunch);
             OnAttackStarted?.Invoke(AttackType.Punch);
@@ -470,12 +505,28 @@ namespace MyDongari.Combat
             return true;
         }
 
+        /// <summary>
+        /// 지금 펀치를 시작하면 몇 번째 타인지 (N2). 원·투를 친 뒤 판정 순간부터 window 안이면 다음 타, 아니면 원.
+        /// 쓰리 다음은 원. 콤보가 꺼져 있으면 0(단발).
+        /// </summary>
+        private int NextComboStep(BernardTuning.ComboValues combo)
+        {
+            if (!combo.enabled) return 0;
+            if ((_comboStep == 1 || _comboStep == 2) && _punchElapsed < 0f && Time.time - _lastPunchResolveTime <= combo.window)
+            {
+                return _comboStep + 1;
+            }
+            return 1;
+        }
+
         /// <summary>펀치 판정: 판정하는 순간의 내 정면·상대 위치 기준.</summary>
         private HitResult? ResolvePunch()
         {
             _punchElapsed = -1f;
             _lastPunchResolveTime = Time.time;
             BernardTuning.PunchValues punch = Punch;
+            BernardTuning.ComboValues combo = Combo;
+            bool third = _comboStep == 3;
 
             MechIdentity opponent = _identity.Opponent;
             if (opponent == null || !IsInFrontArc(opponent.transform, punch.halfAngle)) return null;
@@ -486,11 +537,15 @@ namespace MyDongari.Combat
             {
                 if (!_identity.IsOpponentCollider(hit)) continue;
 
+                // 쓰리는 피해 배율 + 넉백 (원·투는 예전 펀치 그대로)
                 HitInfo info = new HitInfo
                 {
                     Type = AttackType.Punch,
-                    Damage = punch.damage,
-                    Attacker = gameObject
+                    Damage = third ? punch.damage * combo.thirdDamageMultiplier : punch.damage,
+                    Attacker = gameObject,
+                    KnockbackDirection = third ? opponent.transform.position - transform.position : Vector3.zero,
+                    KnockbackForce = third ? combo.thirdKnockback : 0f,
+                    ComboStep = _comboStep
                 };
                 // 콜라이더가 여러 개여도 한 방은 한 번만 맞는다
                 return DeliverHit(opponent.gameObject, info);

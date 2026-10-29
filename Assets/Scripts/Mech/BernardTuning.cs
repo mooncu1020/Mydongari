@@ -135,6 +135,27 @@ namespace MyDongari.Mech
         }
 
         [Serializable]
+        public class ComboValues
+        {
+            [Tooltip("끄면 예전처럼 펀치 쿨다운(Punch.cooldown)만 있는 단발 펀치")]
+            public bool enabled = true;
+            [Tooltip("앞 타 회복이 시작된 뒤(판정 순간부터) 이 시간(초) 안에 누르면 다음 타. 넘기면 원부터")]
+            public float window = 0.4f;
+            [Tooltip("콤보 다음 타까지 최소 간격(초, 누름 → 누름). 단발 펀치 쿨다운(0.5초)보다 짧게")]
+            public float interval = 0.3f;
+            [Tooltip("쓰리 피해 배율 (Punch.damage × 이 값)")]
+            public float thirdDamageMultiplier = 1.5f;
+            [Tooltip("쓰리 넉백 힘(Impulse). 원·투는 넉백 없음")]
+            public float thirdKnockback = 8f;
+            [Tooltip("쓰리 판정 뒤 다음 펀치까지 회복(초)")]
+            public float thirdRecovery = 0.6f;
+            [Tooltip("콤보 중(누른 순간 ~ 다음 타 입력 창 끝) 이동 속도 비율")]
+            [Range(0f, 1f)] public float moveSpeedScale = 0.6f;
+            [Tooltip("쓰리 회복 동안 이동 속도 비율")]
+            [Range(0f, 1f)] public float thirdRecoveryMoveSpeedScale = 0.4f;
+        }
+
+        [Serializable]
         public class AttackStartupValues
         {
             [Tooltip("버튼을 누른 뒤 펀치 판정까지(초). 이 동안 예비 동작이 보인다. 0이면 누른 프레임에 즉시 판정")]
@@ -688,6 +709,12 @@ namespace MyDongari.Mech
             public float punchFollowTime = 0.06f;
             [Tooltip("팔로스루 자세를 유지하는 시간(초). 그 뒤 쿨다운 끝까지 로우 가드로 묵직하게 복귀")]
             public float punchFollowHold = 0.04f;
+            [Tooltip("원(잽) 관절 사슬 지연 배율. 작을수록 허리를 덜 쓰는 가벼운 잽")]
+            public float jabChainScale = 0.5f;
+            [Tooltip("쓰리(훅) 관절 사슬 지연 배율. 클수록 하체부터 크게 돌린다")]
+            public float hookChainScale = 1.3f;
+            [Tooltip("새 동작이 앞 동작을 끊고 시작할 때, 끊긴 자세에서 새 동작으로 이어 붙이는 시간(초)")]
+            public float motionCarryTime = 0.06f;
 
             [Header("런지 (M4: 박기·뻗기 시간 = Lunge.plantTime·strikeExtendTime)")]
             [Tooltip("출발 순간 웅크리는 시간(초). 돌진은 이미 시작된 상태라 아주 짧게")]
@@ -777,6 +804,8 @@ namespace MyDongari.Mech
         [SerializeField] private HeatValues heat = new HeatValues();
         [Header("펀치 / 맞딜")]
         [SerializeField] private PunchValues punch = new PunchValues();
+        [Header("원투쓰리 콤보 (N2: 각 타 발동은 Startup.punch, 히트는 펀치당 그대로)")]
+        [SerializeField] private ComboValues combo = new ComboValues();
         [Header("공격 발생 시간·입력 버퍼 (버튼 → 판정)")]
         [SerializeField] private AttackStartupValues startup = new AttackStartupValues();
         [Header("가드")]
@@ -809,6 +838,7 @@ namespace MyDongari.Mech
         public HeatValues Heat => heat;
         public PunchValues Punch => punch;
         public AttackStartupValues Startup => startup;
+        public ComboValues Combo => combo;
         public GuardValues Guard => guard;
         public ParryValues Parry => parry;
         public TackleValues Tackle => tackle;

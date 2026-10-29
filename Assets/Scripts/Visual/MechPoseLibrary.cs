@@ -152,20 +152,65 @@ namespace MyDongari.Visual
             _cacheValid = true;
         }
 
-        /// <summary>이름으로 포즈. 없으면 null (그 단계는 밑에 깔린 자세 그대로).</summary>
+        /// <summary>
+        /// 이름으로 포즈. 이 에셋에 없으면 코드 초안에서 찾는다 (에셋을 만든 뒤 코드에 새로 생긴 포즈 — 예: N2 잽·훅).
+        /// 초안에도 없으면 null (그 단계는 밑에 깔린 자세 그대로).
+        /// </summary>
         public Baked Get(string poseName, bool mirror)
         {
             if (string.IsNullOrEmpty(poseName)) return null;
             EnsureCache();
-            return (mirror ? _bakedMirror : _baked).TryGetValue(poseName, out Baked baked) ? baked : null;
+            if ((mirror ? _bakedMirror : _baked).TryGetValue(poseName, out Baked baked)) return baked;
+            return this != Draft ? Draft.Get(poseName, mirror) : null;
         }
 
-        /// <summary>이징 값(0~1). 커브가 없으면 직선.</summary>
+        /// <summary>이징 값(0~1). 이 에셋에 없으면 코드 초안 커브, 그것도 없으면 직선.</summary>
         public float Evaluate(string easeName, float s)
         {
             s = Mathf.Clamp01(s);
             EnsureCache();
-            return easeName != null && _easeCache.TryGetValue(easeName, out AnimationCurve curve) ? curve.Evaluate(s) : s;
+            if (easeName != null && _easeCache.TryGetValue(easeName, out AnimationCurve curve)) return curve.Evaluate(s);
+            return this != Draft && easeName != null ? Draft.Evaluate(easeName, s) : s;
+        }
+
+        private static MechPoseLibrary _draft;
+
+        /// <summary>코드 초안 값만 든 인스턴스 (에셋에 없는 포즈·커브를 찾을 때).</summary>
+        public static MechPoseLibrary Draft
+        {
+            get
+            {
+                if (_draft == null)
+                {
+                    _draft = CreateInstance<MechPoseLibrary>();
+                    _draft.name = "MechPoseLibrary (코드 초안 참고용)";
+                    _draft.hideFlags = HideFlags.DontSave;
+                    _draft.ResetToDraft();
+                }
+                return _draft;
+            }
+        }
+
+        /// <summary>코드 초안에는 있는데 이 에셋에 없는 포즈·커브를 초안 값으로 추가한다. 추가한 개수.</summary>
+        public int AddMissingDraftPoses()
+        {
+            int added = 0;
+            foreach (Pose pose in Draft.poses)
+            {
+                if (FindPose(pose.name) != null) continue;
+                var copy = new Pose { name = pose.name, pelvisOffset = pose.pelvisOffset };
+                foreach (JointOffset offset in pose.joints) copy.joints.Add(new JointOffset { joint = offset.joint, rotation = offset.rotation });
+                poses.Add(copy);
+                added++;
+            }
+            foreach (Ease ease in Draft.eases)
+            {
+                if (eases.Exists(e => e != null && e.name == ease.name)) continue;
+                eases.Add(new Ease { name = ease.name, curve = new AnimationCurve(ease.curve.keys) });
+                added++;
+            }
+            _cacheValid = false;
+            return added;
         }
 
         public bool HasPose(string poseName) => FindPose(poseName) != null;
@@ -262,6 +307,37 @@ namespace MyDongari.Visual
                     J("Arm_R_Upper", -88, 0, -6), J("Arm_R_Lower", 66, 0, 0), J("Fist_R", 4, 0, 0),
                     J("Arm_L_Upper", -50, 0, 16), J("Arm_L_Lower", -88, 0, 0),
                     J("Leg_L", -14, 0, 0), J("Leg_R", 10, 0, 0), J("Shin.L", 28, 0, 0), J("Shin.R", 4, 0, 0)),
+                // N2 원투쓰리 콤보: 원 = 앞손(왼손) 잽, 투 = 위 Punch*(뒷손 스트레이트, 허리 크게), 쓰리 = 앞손 훅
+                P(PoseNames.JabWindup, Vector3.zero,
+                    J("Body", 4, -6, 0),
+                    J("Arm_L_Upper", -30, 0, 10), J("Arm_L_Lower", -76, 0, 0),
+                    J("Arm_R_Upper", -38, 0, -16), J("Arm_R_Lower", -70, 0, 0),
+                    J("Shin.L", 22, 0, 0), J("Shin.R", 20, 0, 0)),
+                P(PoseNames.JabStrike, new Vector3(0f, 0f, 0.02f),
+                    J("Pelvis", 0, 4, 0), J("Body", 8, 12, 0), J("Head", 0, -10, 0),
+                    J("Arm_L_Upper", -86, 0, 4), J("Arm_L_Lower", 62, 0, 0), J("Fist_L", 4, 0, 0),
+                    J("Arm_R_Upper", -42, 0, -18), J("Arm_R_Lower", -80, 0, 0),
+                    J("Leg_L", -10, 0, 0), J("Leg_R", 4, 0, 0), J("Shin.L", 22, 0, 0), J("Shin.R", 18, 0, 0)),
+                P(PoseNames.JabFollow, new Vector3(0f, 0f, 0.03f),
+                    J("Pelvis", 0, 5, 0), J("Body", 10, 14, 0), J("Head", 0, -12, 0),
+                    J("Arm_L_Upper", -87, 0, 4), J("Arm_L_Lower", 64, 0, 0), J("Fist_L", 4, 0, 0),
+                    J("Arm_R_Upper", -42, 0, -18), J("Arm_R_Lower", -80, 0, 0),
+                    J("Leg_L", -11, 0, 0), J("Leg_R", 5, 0, 0), J("Shin.L", 23, 0, 0), J("Shin.R", 17, 0, 0)),
+                P(PoseNames.HookWindup, new Vector3(0f, -0.03f, 0f),
+                    J("Pelvis", 0, -8, 0), J("Body", 10, -18, 0), J("Head", 0, 12, 0),
+                    J("Arm_L_Upper", -60, 0, -35), J("Arm_L_Lower", -96, 0, 0),
+                    J("Arm_R_Upper", -44, 0, -18), J("Arm_R_Lower", -84, 0, 0),
+                    J("Leg_L", -12, 0, 0), J("Shin.L", 32, 0, 0), J("Shin.R", 22, 0, 0)),
+                P(PoseNames.HookStrike, Vector3.zero,
+                    J("Pelvis", 0, 18, 0), J("Body", 12, 34, 0), J("Head", 0, -20, 0),
+                    J("Arm_L_Upper", -80, 0, -55), J("Arm_L_Lower", -90, 0, 0), J("Fist_L", 0, 0, 0),
+                    J("Arm_R_Upper", -46, 0, -18), J("Arm_R_Lower", -86, 0, 0),
+                    J("Leg_L", -8, 0, 0), J("Leg_R", 6, 0, 0), J("Shin.L", 26, 0, 0), J("Shin.R", 14, 0, 0)),
+                P(PoseNames.HookFollow, new Vector3(0f, 0f, 0.03f),
+                    J("Pelvis", 0, 22, 0), J("Body", 16, 40, 0), J("Head", 2, -22, 0),
+                    J("Arm_L_Upper", -78, 0, -50), J("Arm_L_Lower", -92, 0, 0),
+                    J("Arm_R_Upper", -46, 0, -18), J("Arm_R_Lower", -86, 0, 0),
+                    J("Leg_L", -9, 0, 0), J("Leg_R", 7, 0, 0), J("Shin.L", 28, 0, 0), J("Shin.R", 12, 0, 0)),
                 // 달리는 중 펀치: 앞발(왼발) 디딤 — 하체에만, 걸음 세기만큼
                 P(PoseNames.PunchStepIn, Vector3.zero,
                     J("Leg_L", -26, 0, 0), J("Shin.L", 30, 0, 0), J("Leg_R", 14, 0, 0), J("Shin.R", 8, 0, 0)),
@@ -406,6 +482,12 @@ namespace MyDongari.Visual
         public const string PunchStrike = "PunchStrike";
         public const string PunchFollow = "PunchFollow";
         public const string PunchStepIn = "PunchStepIn";
+        public const string JabWindup = "JabWindup";
+        public const string JabStrike = "JabStrike";
+        public const string JabFollow = "JabFollow";
+        public const string HookWindup = "HookWindup";
+        public const string HookStrike = "HookStrike";
+        public const string HookFollow = "HookFollow";
         public const string LungeCrouch = "LungeCrouch";
         public const string LungeFlight = "LungeFlight";
         public const string LungePlant = "LungePlant";
