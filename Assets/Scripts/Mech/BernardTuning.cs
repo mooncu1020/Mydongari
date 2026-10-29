@@ -24,8 +24,7 @@ namespace MyDongari.Mech
             public float sprintSpeed = 35f;
 
             [Header("최대 속도 (m/s)")]
-            [Tooltip("O1: 걷기는 체공 없는 진짜 걸음이 되도록 2.5")]
-            public float maxWalkSpeed = 2.5f;
+            public float maxWalkSpeed = 5f;
             public float maxRunSpeed = 10f;
             public float maxSprintSpeed = 20f;
 

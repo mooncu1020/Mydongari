@@ -388,3 +388,5 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (O2) 원투쓰리 후 0.8초 동안 공격이 안 나감(그동안 이동 40%). 0.8초가 지나면 원부터. 플레이 로그로 쓰리 판정 → 다음 combo1_start 간격이 0.8초 이상
 - [ ] (O3) `CombatFeedback`에 소리를 넣고: 슬램 명중 → Slam Hit, 파일 드라이버 → 어퍼컷이 닿는 순간 Pile Driver Hit(누른 순간 아님), 런지 박기·클로 버팀·달리기 착지 → Dust(착지는 발소리와 함께), 달리기 박차기마다 Thruster Burst
 - [ ] (O3) 전력질주에 들어가면 Hover Loop가 반복 재생되고, 질주를 풀면 0.15초에 걸쳐 작아지며 멈춤. 두 기체가 같이 질주하면 두 루프가 겹쳐 들림. 칸을 비우면 아무 소리 없음·에러 없음
+- [ ] (P1) `BernardTuning` 에셋 `Max Walk Speed` 10, `Max Run Speed` 20, `Max Sprint Speed` 30. 메뉴 `Mydongari/Tuning/Apply Feedback Values` 실행 → 대화 상자에 maxWalkSpeed가 안 나옴
+- [ ] (P1) 퀵턴·사이드스텝·슬라이딩 뒤 걷기로 넘어갈 때, 달리기 → 걷기로 바뀔 때 속도가 10m/s로 잘림(O1 이전과 같음)

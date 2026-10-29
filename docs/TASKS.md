@@ -244,6 +244,12 @@
 ### [x] O3. 효과음 칸 추가
 ### [x] O4. 포즈 라이브러리·.meta 커밋 정리
 
+## Phase P — O 피드백
+
+### [x] P1. 게임 속도 원복 (걷기 10, 달리기 20, 전력질주 30)
+### [ ] P2. 다리 모션을 실제 수평 속도로 결정 (걸음 / 스러스터 디딤걸음 / 도약 / 호버)
+### [ ] P3. 손으로 만든 .meta GUID 점검
+
 ---
 
 ## 작업 메모 (Claude Code가 태스크마다 추가)
@@ -319,3 +325,4 @@
 - **O2** 완료. 바뀐 파일: `BernardTuning.Combo.thirdRecovery` 0.6 → 0.8(에셋엔 콤보 칸이 아직 저장 안 돼 코드 기본값이 그대로 쓰임), `Editor/TuningSetup`(에셋에 콤보 칸이 있으면 같은 메뉴가 0.8로), `GAME_SPEC` 콤보 시간, `QUESTIONS` O2(반복 초당 피해 58.3 — 단발 50보다 +17%).
 - **O3** 완료. 바뀐 파일: `CombatFeedback`(효과음 칸 5개 + 크기 4칸·페이드 1칸: 슬램 명중, 파일 드라이버 명중 — 전신 모션 기체는 외형 타격 순간, 먼지·착지(`OnMotionImpact`), 스러스터 분사(`rig.OnThrusterBurst`), 호버 루프 — 기체마다 루프 AudioSource를 처음 필요할 때 GameManager에 붙여 전력질주 동안만 재생·페이드), `SETUP` 80. 위험: 루프 AudioSource는 2D라 화면 분할 두 사람이 같은 크기로 들음(기존 효과음과 같음).
 - **O4** 완료. 커밋한 파일: `Assets/Resources/MechPoseLibrary.asset`·`.meta`(사용자 포즈 작업물 — 스크립트 GUID가 `MechPoseLibrary.cs.meta`와 일치하는 것 확인), `Feedback/HitSparkFx.cs.meta`·`Visual/MechVisualRig.Gait.cs.meta`(Unity가 아직 임포트하지 않아 없던 것 — 프로젝트의 다른 스크립트 .meta와 같은 형식으로 새 GUID). 위험: 없음 — 두 스크립트는 씬·프리팹에서 GUID로 참조되지 않는다.
+- **P1** 완료. 바뀐 파일: `BernardTuning`(`maxWalkSpeed` 코드 기본값 2.5 → 5, O1 이전 값), `Editor/TuningSetup`(`Apply Feedback Values`가 이동 속도를 안 건드림 — 콤보 쓰리 회복만), `QUESTIONS`·`SETUP`·`TEST_CHECKLIST`. 에셋은 처음부터 걷기 10이라 게임 속도는 O1 이전과 같다. 급감속 상한은 원래 코드 동작(걷기 최대 속도로 자름)이고 상한이 10이라 O1 이전과 같음.
