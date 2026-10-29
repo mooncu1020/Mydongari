@@ -866,7 +866,8 @@ namespace MyDongari.Visual
             if (UseMotions && IsClawMotionActive()) return true;
             if (_claw != null && _claw.Phase != AnchorClaw.ClawPhase.Ready) return true;
             if (InWindow(_punchStart, PunchVisualLength(v))) return true;
-            if (InWindow(_tackleStart, TackleWindup + v.tackleTime)) return true;
+            if (InWindow(_tackleStart, TackleVisualLength(v))) return true;
+            if (UseMotions && InWindow(_slamStart, SlamMotionLength(M))) return true;
             if (InWindow(_clawStart, v.clawHoldTime)) return true;
             float smash = v.smashRaiseTime + v.smashDownTime;
             return InWindow(_pileStart, smash) || InWindow(_slamStart, smash);
@@ -929,10 +930,17 @@ namespace MyDongari.Visual
                 SetRotation(_armRUpper, new Vector3(v.lungeArmBack, 0f, 0f));
             }
 
+            // 전신 모션: 대시 어택·태클·슬램 (M7)
+            if (motions)
+            {
+                PoseTackle();
+                PoseSlam();
+            }
+
             // 대시 어택·태클: 예비 동작 뒤 오른 어깨 앞으로
             t = _clock - _tackleStart;
             float tackleWindup = TackleWindup;
-            if (t >= 0f && t < tackleWindup + v.tackleTime)
+            if (!motions && t >= 0f && t < tackleWindup + v.tackleTime)
             {
                 if (t < tackleWindup)
                 {
@@ -979,7 +987,7 @@ namespace MyDongari.Visual
             t = _clock - _pileStart;
             if (!motions && t >= 0f && t < v.smashRaiseTime + v.smashDownTime) Smash(v, t, _armRUpper, null);
             t = _clock - _slamStart;
-            if (t >= 0f && t < v.smashRaiseTime + v.smashDownTime) Smash(v, t, _armRUpper, _armLUpper);
+            if (!motions && t >= 0f && t < v.smashRaiseTime + v.smashDownTime) Smash(v, t, _armRUpper, _armLUpper);
         }
 
         private void Smash(BernardTuning.VisualValues v, float t, Joint first, Joint second)

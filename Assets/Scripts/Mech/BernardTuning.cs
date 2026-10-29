@@ -657,6 +657,20 @@ namespace MyDongari.Mech
             [Tooltip("타격 순간 두 화면 흔들림 크기(m)·시간(초)")]
             public float pileDriverShake = 0.14f;
             public float pileDriverShakeTime = 0.4f;
+
+            [Header("대시 어택·태클 (M7: 발동 = Startup.dashAttack/chargedTackle, 복귀 끝 = Tackle.recoveryStun)")]
+            [Tooltip("스트레이트·어깨 자세를 유지하는 시간(초). 그 뒤 경직 끝까지 복귀")]
+            public float tackleHold = 0.1f;
+
+            [Header("임팩트 슬램 (M7: 판정은 누른 순간)")]
+            [Tooltip("두 주먹을 머리 위로 드는 시간(초)")]
+            public float slamRaiseTime = 0.08f;
+            [Tooltip("내려찍는 시간(초)")]
+            public float slamDownTime = 0.08f;
+            [Tooltip("내려찍은 자세 유지(초)")]
+            public float slamHold = 0.15f;
+            [Tooltip("로우 가드로 돌아오는 시간(초)")]
+            public float slamRecoverTime = 0.4f;
         }
 
         [Header("이동")]

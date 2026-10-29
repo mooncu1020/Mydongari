@@ -526,5 +526,78 @@ namespace MyDongari.Visual
                 : 1f - PoseLibrary.Evaluate(MechPoseLibrary.EaseSmooth, (t - m.pistonOutTime) / Mathf.Max(0.0001f, m.pistonBackTime));
             fist.DirectPosition += transform.InverseTransformDirection(axis.normalized) * (m.pistonDistance * out01);
         }
+
+        // ---------------- M7 대시 공격·태클·슬램 ----------------
+
+        /// <summary>대시 어택·태클 외형 길이: 전신 모션이면 발동 + 공격자 경직(회복), 아니면 예전 길이.</summary>
+        private float TackleVisualLength(BernardTuning.VisualValues v)
+        {
+            if (!UseMotions) return TackleWindup + v.tackleTime;
+            return TackleWindup + Mathf.Max(M.tackleHold + 0.01f, _tuning.Get(this).Tackle.recoveryStun);
+        }
+
+        /// <summary>
+        /// 대시 어택(질주 1.5초 미만) = 달리던 자세에서 오른 스트레이트, 차징 태클 = 어깨를 앞세운 돌격.
+        /// 발동 시간(Startup.dashAttack 0.12 / chargedTackle 0.1초)에 타격 포즈 도착, 공격자 경직(Tackle.recoveryStun) 동안 복귀.
+        /// 발동 중엔 아직 달리는 중이라 하체는 걸음에 양보한다(판정 뒤 멈추면 자연히 포즈 다리로).
+        /// </summary>
+        private void PoseTackle()
+        {
+            BernardTuning.VisualValues v = V;
+            float t = _clock - _tackleStart;
+            float length = TackleVisualLength(v);
+            if (t < 0f || t >= length) return;
+
+            BernardTuning.MotionValues m = M;
+            bool charged = _tackleType == AttackType.Tackle;
+            float hit = TackleWindup;
+            float hold = hit + m.tackleHold;
+            float d = m.punchChainDelay;
+            BeginMotion();
+            LeadAnchor(hit);
+            Key(0f, null);
+            Key(hit * 0.5f, charged ? PoseNames.TackleWindup : PoseNames.DashWindup, MechPoseLibrary.EaseSmooth);
+            Key(hit, charged ? PoseNames.TackleShoulder : PoseNames.DashStrike, MechPoseLibrary.EaseSnap);
+            Key(hold, charged ? PoseNames.TackleShoulder : PoseNames.DashStrike, MechPoseLibrary.EaseLinear);
+            Key(length, null, MechPoseLibrary.EaseHeavy);
+            Lead(MechPoseLibrary.LegRIndex, d * 3f, false);
+            Lead(MechPoseLibrary.ShinRIndex, d * 3f, false);
+            Lead(MechPoseLibrary.HipRIndex, d * 3f, false);
+            Lead(MechPoseLibrary.PelvisIndex, d * 2f, false);
+            Lead(MechPoseLibrary.BodyIndex, d, false);
+            Lead(MechPoseLibrary.HeadIndex, d, false);
+            MaskLowerBody(1f - _gaitWeight);
+            PlayMotion(t, 1f, false);
+        }
+
+        private float SlamMotionLength(BernardTuning.MotionValues m) => m.slamRaiseTime + m.slamDownTime + m.slamHold + m.slamRecoverTime;
+
+        /// <summary>
+        /// 임팩트 슬램: 두 주먹을 머리 위로 들었다가 내려찍기. 판정은 누른 순간(발동 0초)이라 외형은 짧게 들고 바로 내려찍는다.
+        /// </summary>
+        private void PoseSlam()
+        {
+            BernardTuning.MotionValues m = M;
+            float t = _clock - _slamStart;
+            float length = SlamMotionLength(m);
+            if (t < 0f || t >= length) return;
+
+            float raise = m.slamRaiseTime;
+            float down = raise + m.slamDownTime;
+            float hold = down + m.slamHold;
+            BeginMotion();
+            LeadAnchor(down);
+            Key(0f, null);
+            Key(raise, PoseNames.SlamRaise, MechPoseLibrary.EaseSmooth);
+            Key(down, PoseNames.SlamDown, MechPoseLibrary.EaseSnap);
+            Key(hold, PoseNames.SlamDown, MechPoseLibrary.EaseLinear);
+            Key(length, null, MechPoseLibrary.EaseHeavy);
+            // 내려찍을 땐 무릎·골반이 먼저 꺼지고 팔이 마지막에 떨어진다
+            Lead(MechPoseLibrary.ShinLIndex, m.punchChainDelay * 2f, false);
+            Lead(MechPoseLibrary.ShinRIndex, m.punchChainDelay * 2f, false);
+            Lead(MechPoseLibrary.PelvisIndex, m.punchChainDelay * 2f, false);
+            Lead(MechPoseLibrary.BodyIndex, m.punchChainDelay, false);
+            PlayMotion(t, 1f, false);
+        }
 }
 }

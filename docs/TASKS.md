@@ -229,7 +229,7 @@
 ### [x] M4. 스러스터 런지 모션 + 새 판정 방식(정면 타격 거리에서 박기+펀치)
 ### [x] M5. 가드·막음·패리·가드 브레이크
 ### [x] M6. 앵커 클로 → 파일 드라이버(어퍼컷·피스톤·히트스톱)
-### [ ] M7. 대시 공격·태클·슬램
+### [x] M7. 대시 공격·태클·슬램
 
 ---
 
@@ -298,3 +298,4 @@
 - **M4** 완료. 바뀐 파일: `ThrusterLunge`(`LungePhase` Dash/Plant/Strike, 새 판정: 돌진 중 상대 중심이 정면 ±`strikeHalfAngle` `strikeDistance` 안이면 `BeginPlant` → `plantTime` 판정 없음 → `strikeExtendTime` 동안만 예전 판정 구로 판정, 못 닿고 돌진 끝이면 같은 박기·헛펀치 후 `Finish(null)`, 박기·뻗기 중 `strikeStopDamping`, `OnLungePlant` 이벤트), `BernardTuning`(`LungeJudgeMode` 스위치·새 판정 5칸, `Motion` 런지 6칸), `MeleeDummy`(Parrier 런지 예상 시각), `MechVisualRig`(런지 이벤트 구독, 전신 모션이면 `PoseLunge`), `MechVisualRig.Moves`(`PoseLunge` — 웅크림·비행(접지 보정 멈춤)·박기·스트레이트·Heavy 복귀, `OnMotionImpact`, `ShakeCameras`), `MechVisualRig.Grounding`(`_groundingHold`), `GAME_SPEC` 5장, `QUESTIONS` M4. 위험: 런지 명중이 박기+뻗기만큼 늦어져 체감이 달라짐 — `Judge Mode`로 되돌릴 수 있음. 먼지 효과는 이벤트(`OnMotionImpact`)만 있고 표시물은 아직 없음.
 - **M5** 완료. 바뀐 파일: `MechVisualRig.Moves`(`PoseDefense` — Guard 포즈 섞기(올림 0.06·내림 0.12초, 걸으면 하체는 걸음), 막음 GuardBlocked + 골반 `DirectPosition`으로 때린 쪽 반대 방향 외형 미끄러짐, 패리 ParryDeflect, 가드 브레이크 GuardBreak를 `Guard.breakStun`(공격 스턴이 길면 그쪽) 동안 + 줄어드는 휘청, `OnDefenseResolved`), `MechVisualRig`(전신 모션이면 예전 가드 오프셋·패리/브레이크 킥 대신 위 모션, 브레이크 중 예전 스턴 흔들림 생략, 대기 판정), `BernardTuning.Motion`(가드 계열 10칸). 판정·시간은 그대로. 위험: 막음 미끄러짐이 넉백(물리)과 겹쳐 실제보다 더 밀려 보일 수 있음 — `Block Slide Distance`로 조정.
 - **M6** 완료. 바뀐 파일: `MechVisualRig.Moves`(`PoseClaw` — 단계 변화 추적, 예비 ClawWindup(windupTime) → 던지기 ClawThrow → 빗나감 복귀, 잡으면 ClawYank(뒷발·상체 먼저) → ClawReel 유지(당기는 동안 + 준비 중이면 `clawReelHold`) → 풀림; `PosePileDriver` — ClawReel(또는 기본 자세) → UppercutRise → UppercutStrike(`uppercutRiseTime`, 다리 → 골반 → 허리 → 주먹 지연) → 유지 → 복귀, 외형 타격 순간 `OnPileDriverImpact`: 히트스톱 `HitStop.pileDriver` 요청·두 화면 흔들림·`OnMotionImpact`; `ApplyPiston` — 실제 시간으로 Fist_R(없으면 아래팔)을 팔뚝 축 방향 `DirectPosition`), `MechVisualRig`(잡기·파일 드라이버 이벤트 처리, 전신 모션이면 예전 클로·내리찍기 생략, 대기 판정), `BernardTuning`(`Motion` 앵커 클로 7칸·파일 드라이버 8칸, `HitStop.pileDriver` 0.2). 판정·피해 시간은 그대로(누른 순간). 위험: 피해는 누른 순간이라 상대 HP가 외형 타격보다 0.08초 먼저 줄어듦. 히트스톱이 리그 요청이라 공격자 기체에 리그가 없으면(봇 등) 걸리지 않음 — 봇은 앵커 클로를 안 씀.
+- **M7** 완료. 바뀐 파일: `MechVisualRig.Moves`(`PoseTackle` — 대시 어택 DashWindup → DashStrike / 차징 태클 TackleWindup → TackleShoulder, 발동 시간에 도착, `Tackle.recoveryStun` 동안 복귀, 발동 중 하체는 걸음; `PoseSlam` — SlamRaise → SlamDown(무릎·골반 먼저) → 유지 → 복귀), `MechVisualRig`(전신 모션이면 예전 어깨·내리찍기 생략, 대기 판정 길이), `BernardTuning.Motion`(태클 1칸·슬램 4칸). 판정·시간 그대로. 남은 위험(M1~M7 공통): 초안 포즈 각도는 bernard 실제 뼈 축으로 확인 안 됨 — 부호가 반대인 관절이 있으면 캡처로 덮어쓰거나 슬롯 `rotationCorrection`으로 맞춘다. 먼지 표시물 없음(`OnMotionImpact` 이벤트만).
