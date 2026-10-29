@@ -429,3 +429,6 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (S1) `Tools/Toon Mech/1. Apply Toon Materials To Bernard (S1)` → 대화 상자에 머티리얼 2개 생성·씬 렌더러 교체 개수·리맵·"Render Face가 Both인 머티리얼 없음". 씬 저장 후 Mech·Mech_P2 둘 다 장갑은 밝은 회색, 관절은 어두운 회색 셀 셰이딩. 분홍(머티리얼 없음) 부위 없음
 - [ ] (S1) `bernard.fbx` 선택 → Inspector Materials 탭 → On Demand Remap에 Mecha_Armor → M_ToonMech_Armor, Mecha_Joint → M_ToonMech_Joint. 머티리얼 Base Color를 바꾸면 두 기체에 바로 반영
 - [ ] (S2) 셀 셰이딩 기체를 펀치로 때림 → 그늘 쪽까지 0.05초 하얗게 번쩍. 스턴 노랑·과열 빨강 깜빡임·가드 파랑 틴트가 새 머티리얼에서도 보이고, 풀리면 원래 색(#8A8D94·#3A3C41)으로 돌아옴. `BernardTuning → 타격감 → Flash Emission` 0이면 예전처럼 기본색만
+- [ ] (S3) 셰이더 `Assets/Materials/ScreenOutline.shader` 선택 → Inspector에 컴파일 오류 없음. `Tools/Toon Mech/2. Add Screen Outline Renderer Feature (S3)` → PC_Renderer에 ScreenOutline 기능(Injection Point = After Rendering Post Processing, Requirements = Depth, Normal, Fetch Color Buffer 켬, Pass Material = M_ScreenOutline)
+- [ ] (S3) VERSUS 화면 분할 → 두 화면 모두 기체·지형 모서리에 어두운 선. 하늘에는 선이 없고, 기체가 하늘 앞에 있으면 기체 쪽에 실루엣 선. `M_ScreenOutline`의 굵기·색·깊이/노멀 민감도·Fade Start/Range를 바꾸면 바로 반영. 먼 배경은 선이 옅어짐
+- [ ] (S3) 플레이 중 F10 → 오른쪽 위 표시가 `외곽선 끔`/`외곽선 켬`으로 바뀌며 선이 사라졌다 나타남. 플레이를 멈춘 뒤 PC_Renderer의 ScreenOutline 체크가 원래대로

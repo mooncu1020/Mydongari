@@ -265,7 +265,7 @@
 
 ### [x] S1. bernard 장갑·관절 머티리얼 (임포터 리맵)
 ### [x] S2. 피격 틴트·흰색 번쩍임 호환
-### [ ] S3. 화면 외곽선 렌더러 기능
+### [x] S3. 화면 외곽선 렌더러 기능
 ### [ ] S4. 외곽선 fps 비교
 ### [x] Q2. 방어 (스프링 안정화, 범위·0 검사, 잘못된 값이면 원래 자세로 되돌리고 상태 리셋)
 
@@ -355,3 +355,4 @@
 - **R3** 완료. 점검: 연습 봇 이동(`MeleeDummy.FixedUpdate`)은 원래 `ExternalControlLock`이면 멈추고, 펀치·런지·가드는 R1에서 `MeleeSystem`·`ThrusterLunge`가 넉다운을 막는다. 봇 두뇌는 넉다운 중에도 버튼을 누르려 해서 `MeleeDummy.CanAct`에 넉다운을 넣었다(버튼 전부 떼고 행동 안 함, 끝나면 원래 모드). 봇은 MechController가 없어 감속 0은 `KnockdownController`가 리지드바디에 직접 넣고 끝나면 되돌린다(R1). 30fps 확인 방법은 `TEST_CHECKLIST` R3(F9 + `Debug Log`/`knockdown_end`, 물리 고정 스텝 0.02초라 같은 결과 — 파이썬 재현 8.000m + 1.999m, 최고 1.498m).
 - **S1** 완료. 신규 `Editor/ToonMechSetup`(`Tools/Toon Mech/1. Apply Toon Materials To Bernard (S1)` — M_ToonMech 복제로 `M_ToonMech_Armor`(#8A8D94)·`M_ToonMech_Joint`(#3A3C41) 생성(이미 있으면 색 그대로), 씬 렌더러가 들고 있는 FBX 안 머티리얼을 먼저 새 머티리얼로 교체(Mech_P2는 bernard를 씬에 풀어 둬 리맵만으론 끊김), `ModelImporter.AddRemap`으로 Mecha_Armor·Mecha_Joint 리맵 후 재임포트, Render Face가 Both인 머티리얼 보고; S3 메뉴도 같은 파일). 셰이더 그래프·M_ToonMech는 안 건드림. 점검: 그래프 Render Face = Front(2)·머티리얼 덮어쓰기 꺼짐, M_ToonMech `_Cull` 2(앞면) — Both인 머티리얼 없음. 그래프 활성 서브타깃은 `UniversalLitSubTarget`(Unlit 아님), M_ToonMech의 `_ToonRamp`는 비어 있음(기본 흰색). 위험: 메뉴를 실행해야 적용됨(이 환경에선 에디터 실행 불가).
 - **S2** 완료. 점검: `MechTint`(스턴·과열·가드 틴트, 흰색 번쩍임)는 MaterialPropertyBlock으로 `_BaseColor`(URP Lit/셰이더 그래프)·`_Color`(빌트인)를 덮어쓴다. ToonMech 그래프에 `_BaseColor`·`_EmissionColor`가 노출(Exposed) 프로퍼티로 있어 **추가할 프로퍼티 없음**. 바뀐 파일: `MechTint`(이미시브가 있는 머티리얼은 `Apply(…, emission)`일 때 원래 이미시브 + 색 × 세기 — 셀 셰이딩 그늘 쪽까지 하얗게), `CombatFeedback`(번쩍임만 이미시브 사용, 다른 틴트는 기본색만), `BernardTuning.HitFeel.flashEmission`(1). 그래프의 EmissionMask 기본값이 흰색이라 마스크 없이도 이미시브가 나온다. 위험: 틴트가 걸린 동안 그 렌더러는 SRP Batcher에서 빠진다(예전과 같음).
+- **S3** 완료. 신규 `Assets/Materials/ScreenOutline.shader`(`Hidden/MyDongari/ScreenOutline` — URP Blit.hlsl 풀스크린, 상하좌우 4이웃의 선형 깊이 상대 차이·노멀 각도 차이로 모서리, 하늘(깊이 = 먼 평면) 픽셀은 선 없음·이웃이 하늘이면 실루엣, 굵기는 카메라 화면 높이 1080 기준 px, 먼 곳 옅어짐; 머티리얼 값: 선 색·굵기·깊이/노멀 민감도·옅어짐 거리), `Editor/ToonMechSetup`의 `Tools/Toon Mech/2. Add Screen Outline Renderer Feature (S3)`(M_ScreenOutline 생성, 쓰이는 URP 렌더러(PC_Renderer)마다 URP 기본 `FullScreenPassRendererFeature`를 `ScreenOutline` 이름으로 추가 — 후처리 뒤, 색 복사, 깊이+노멀 요구; 인스펙터의 Add Renderer Feature와 같이 목록·로컬 ID 맵에 넣음), `FrameRateTester`(F10으로 외곽선 켜기/끄기 — S4 비교용, 끝나면 원래 상태로, 화면 표시에 외곽선 상태). 화면 분할 두 카메라는 같은 렌더러라 둘 다 적용. 위험: 셰이더는 이 환경에서 컴파일 확인 불가(URP CoreBlit.shader와 같은 include 구성) — 에디터 콘솔에서 셰이더 오류 확인 필요. 월드 공간 팝업 글자(STATUS)에도 선이 생길 수 있음.

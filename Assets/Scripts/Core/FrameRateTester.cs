@@ -1,5 +1,8 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace MyDongari.Core
 {
@@ -7,6 +10,7 @@ namespace MyDongari.Core
     /// 테스트용 프레임 제한 전환 (Q 이후): F9를 누를 때마다 제한 없음 → 60 → 30 → 20 → 제한 없음.
     /// 바꿀 때 VSync를 끄고 Application.targetFrameRate를 건다. 현재 제한과 실제 fps를 화면 오른쪽 위에 작게 표시.
     /// F9는 게임 입력이 아니라 운영자 키라서 AppRuntime의 ESC처럼 전용 InputAction으로 읽는다 (패드·키보드 페어링과 무관).
+    /// F10은 화면 외곽선(S3 렌더러 기능)을 켜고 끈다 — 외곽선 비용 비교용(S4). 끝나면 원래 상태로 되돌린다(에셋에 남기지 않게).
     /// 빌드에서도 동작. GameManager 오브젝트에 하나 (없으면 GameManager가 자동 부착).
     /// </summary>
     public class FrameRateTester : MonoBehaviour
@@ -21,7 +25,12 @@ namespace MyDongari.Core
         [Tooltip("표시 글자 크기(px, 화면 높이 1080 기준)")]
         [SerializeField] private int fontSize = 16;
 
+        private const string OutlineFeatureName = "ScreenOutline";
+
         private InputAction _cycleAction;
+        private InputAction _outlineAction;
+        private readonly List<ScriptableRendererFeature> _outlineFeatures = new List<ScriptableRendererFeature>();
+        private readonly List<bool> _outlineInitial = new List<bool>();
         // 아직 F9를 안 눌렀으면 -1 (프로젝트 설정 그대로)
         private int _index = -1;
         private int _frames;
@@ -34,11 +43,66 @@ namespace MyDongari.Core
         {
             _cycleAction = new InputAction("FrameRateCycle", InputActionType.Button, "<Keyboard>/f9");
             _cycleAction.performed += _ => Cycle();
+            _outlineAction = new InputAction("OutlineToggle", InputActionType.Button, "<Keyboard>/f10");
+            _outlineAction.performed += _ => ToggleOutline();
+            FindOutlineFeatures();
         }
 
-        private void OnEnable() => _cycleAction.Enable();
-        private void OnDisable() => _cycleAction.Disable();
-        private void OnDestroy() => _cycleAction.Dispose();
+        private void OnEnable()
+        {
+            _cycleAction.Enable();
+            _outlineAction.Enable();
+        }
+
+        private void OnDisable()
+        {
+            _cycleAction.Disable();
+            _outlineAction.Disable();
+        }
+
+        private void OnDestroy()
+        {
+            // 렌더러 기능은 에셋이라 플레이를 멈춰도 바뀐 채 남는다 — 처음 상태로 되돌린다
+            for (int i = 0; i < _outlineFeatures.Count; i++)
+            {
+                if (_outlineFeatures[i] != null) _outlineFeatures[i].SetActive(_outlineInitial[i]);
+            }
+            _cycleAction.Dispose();
+            _outlineAction.Dispose();
+        }
+
+        /// <summary>지금 파이프라인 렌더러들에서 이름이 ScreenOutline인 렌더러 기능을 찾는다.</summary>
+        private void FindOutlineFeatures()
+        {
+            _outlineFeatures.Clear();
+            _outlineInitial.Clear();
+            if (!(GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset pipeline)) return;
+            foreach (ScriptableRendererData data in pipeline.rendererDataList)
+            {
+                if (data == null) continue;
+                foreach (ScriptableRendererFeature feature in data.rendererFeatures)
+                {
+                    if (feature == null || feature.name != OutlineFeatureName || _outlineFeatures.Contains(feature)) continue;
+                    _outlineFeatures.Add(feature);
+                    _outlineInitial.Add(feature.isActive);
+                }
+            }
+        }
+
+        private void ToggleOutline()
+        {
+            if (_outlineFeatures.Count == 0) return;
+            bool on = !_outlineFeatures[0].isActive;
+            foreach (ScriptableRendererFeature feature in _outlineFeatures) feature.SetActive(on);
+            _frames = 0;
+            _elapsed = 0f;
+        }
+
+        private string OutlineText()
+        {
+            if (_outlineFeatures.Count == 0) return "외곽선 없음";
+            return _outlineFeatures[0].isActive ? "외곽선 켬 (F10)" : "외곽선 끔 (F10)";
+        }
 
         private void Cycle()
         {
@@ -87,8 +151,8 @@ namespace MyDongari.Core
             _style.fontSize = Mathf.Max(8, Mathf.RoundToInt(fontSize * scale));
             _shadow.fontSize = _style.fontSize;
 
-            string text = $"제한 {LimitText()} · 실제 {_fps:0} fps (F9)";
-            float width = 400f * scale;
+            string text = $"제한 {LimitText()} · 실제 {_fps:0} fps (F9) · {OutlineText()}";
+            float width = 640f * scale;
             float height = _style.fontSize * 1.6f;
             var rect = new Rect(Screen.width - width - 8f * scale, 6f * scale, width, height);
             // 밝은 배경에서도 읽히게 그림자 한 번
