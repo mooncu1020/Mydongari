@@ -4165,6 +4165,7 @@ MonoBehaviour:
     flickReachTime: 0.15
     flickReleaseTime: 0.25
     sectorHalfAngle: 30
+  gameplayActionMap: Player
   menuNavigateThreshold: 0.5
   selectHoldTime: 0.6
 --- !u!54 &775153500
@@ -8318,6 +8319,10 @@ MonoBehaviour:
   practiceRespawnDelay: 1
   idleReturnToTitle: 0
   idleTimeout: 120
+  logInputOnVersusStart: 1
+  traceP2Input: 0
+  traceP2InputSeconds: 3
+  traceP2InputInterval: 0.25
   roundsToWin: 2
   countdownDuration: 3
   fightBannerDuration: 1
@@ -9198,6 +9203,7 @@ MonoBehaviour:
     flickReachTime: 0.15
     flickReleaseTime: 0.25
     sectorHalfAngle: 30
+  gameplayActionMap: Player
   menuNavigateThreshold: 0.5
   selectHoldTime: 0.6
 --- !u!54 &1437728197
