@@ -914,11 +914,10 @@ namespace MyDongari.Visual
                 speed = velocity.magnitude;
             }
 
-            // 상태 → 0 Idle, 1 Walk, 2 Run, 3 Sprint. 제동·슬라이딩·사이드스텝·퀵턴·런지는 직전 반복 동작 유지
+            // 상태 → 0 Idle, 2 Run, 3 Sprint (V3: 걷기 상태 삭제 — 1은 상태 머신 없는 봇만). 사이드스텝·런지는 직전 반복 동작 유지
             if (_stateMachine != null)
             {
                 if (_stateMachine.IsIdle) _moveState = 0;
-                else if (_stateMachine.IsWalking) _moveState = 1;
                 else if (_stateMachine.IsRunning) _moveState = 2;
                 else if (_stateMachine.IsSprinting) _moveState = 3;
             }

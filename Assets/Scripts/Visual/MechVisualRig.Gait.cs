@@ -529,7 +529,7 @@ namespace MyDongari.Visual
             string text = $"[MechVisualRig] {name} 이동: 엉덩이~발바닥 {(_legLengthL + _legLengthR) * 0.5f:0.00}m, 허벅지 {(_thighL + _thighR) * 0.5f:0.00}m, " +
                           $"정강이 {(_shinLenL + _shinLenR) * 0.5f:0.00}m, 최대 보폭 걸음 {walkMax:0.00}m / 디딤걸음 {strideMax:0.00}m" +
                           $"\n  걸음(~{g.strideStartSpeed:0.#}m/s): 보폭 {walkStride:0.00}m, {g.strideStartSpeed:0.#}m/s에서 {g.strideStartSpeed / walkStride:0.0}걸음/초";
-            foreach (float speed in new[] { g.strideStartSpeed, move.maxWalkSpeed, g.leapStartSpeed })
+            foreach (float speed in new[] { g.strideStartSpeed, move.closeMoveSpeed, g.leapStartSpeed })
             {
                 float cadence = Mathf.Clamp(speed / strideMax, 0.5f, g.strideMaxCadence);
                 float stepDistance = speed / cadence;

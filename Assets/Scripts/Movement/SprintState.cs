@@ -6,6 +6,21 @@ using MyDongari.Mech;
 
 namespace MyDongari.Movement
 {
+    /// <summary>전력질주가 끝난 이유 (로그용). V3에서 트윈스틱 해제 이유(각도·스틱 놓음 등)는 삭제.</summary>
+    public enum SprintExitReason
+    {
+        Other,
+        ButtonReleased,
+        Exhausted,
+        SideStep,
+        Stun,
+        Tackle
+    }
+
+    /// <summary>
+    /// 임시 전력질주 (V3 2단계): 키보드 Space를 누르고 있는 동안만. 패드 트윈스틱 진입·슬라이딩은 삭제됐다.
+    /// 3단계 ○ 대시가 이 상태의 태클 차징·대시 어택 판정을 이어받는다.
+    /// </summary>
     public class SprintState : MechState
     {
         private float _tackleChargeTimer = 0f;
@@ -15,32 +30,14 @@ namespace MyDongari.Movement
         private AttackType _pendingTackleType;
         private float _pendingTacklePower;
         private BernardTuning.TackleValues Tackle => StateMachine.MechController.Tuning.Tackle;
-        private BernardTuning.MovementValues Move => StateMachine.MechController.Tuning.Movement;
 
-        // 패드 두 스틱으로 들어왔는지 (false = 키보드 Space). 유지·해제 규칙이 다르다
-        private bool _byStick;
-        // 두 스틱 질주를 스틱을 놓아서 끝낸 뒤 슬라이딩 입력을 기다린 시간(초). 음수면 대기 아님
-        private float _slideWaitTimer = -1f;
         private SprintExitReason _exitReason;
         private bool _exitReported;
-        // 마지막으로 유지 조건을 만족한 프레임의 두 스틱 사이 방향. 각도 해제가 굴리기인지 볼 기준
-        private Vector2 _heldHeading;
-        // 해제 조건이 이어진 시간(초). 음수면 해제 조건 아님. sprintExitConfirmTime을 넘어야 실제로 해제
-        private float _exitPendingTimer = -1f;
-        private SprintExitReason _pendingExitReason;
-        private bool _exitSticksCaptured;
 
-        /// <summary>해제 이유가 정해진 순간의 패드 왼쪽·오른쪽 스틱 원래 값. 로그용 (OnSprintEnded 때 읽는다).</summary>
-        public Vector2 ExitLeftStick { get; private set; }
-        public Vector2 ExitRightStick { get; private set; }
-
-        /// <summary>전력질주가 실제로 시작됐을 때 (true = 패드 두 스틱, false = 버튼). 로그용.</summary>
-        public event Action<bool> OnSprintStarted;
-        /// <summary>전력질주가 끝났을 때 (이유). 슬라이딩 대기로 들어가면 대기 시작 시점에 한 번. 로그용.</summary>
+        /// <summary>전력질주가 실제로 시작됐을 때. 로그용.</summary>
+        public event Action OnSprintStarted;
+        /// <summary>전력질주가 끝났을 때 (이유). 로그용.</summary>
         public event Action<SprintExitReason> OnSprintEnded;
-
-        /// <summary>스틱을 놓아서 끝난 뒤 슬라이딩 입력을 기다리는 중인지 (아직 상태는 SprintState).</summary>
-        public bool IsWaitingForSlide => _slideWaitTimer >= 0f;
         // 차징 상태로 이 거리(m) 안에 상대가 닿으면 자동 태클 (기존 동작 유지)
         private float ContactRadius => Tackle.contactRadius;
         public bool IsTackleCharged => _tackleChargeTimer >= Tackle.chargeStartTime;
@@ -59,27 +56,14 @@ namespace MyDongari.Movement
         {
         }
 
-        /// <summary>RunState가 진입 직전에 부른다. 부르지 않고 들어오면 버튼 질주로 본다.</summary>
-        public void PrepareEntry(bool byStick)
-        {
-            _byStick = byStick;
-        }
-
         public override void Enter()
         {
             _tackleChargeTimer = 0f;
             _tackleRequested = false;
             _pendingTackleElapsed = -1f;
-            _slideWaitTimer = -1f;
             _exitReason = SprintExitReason.Other;
             _exitReported = false;
-            _exitPendingTimer = -1f;
-            _exitSticksCaptured = false;
-            InputReader entryInput = StateMachine.InputReader;
-            _heldHeading = entryInput != null
-                ? entryInput.MoveStickRaw.normalized + entryInput.LookStickRaw.normalized
-                : Vector2.zero;
-            OnSprintStarted?.Invoke(_byStick);
+            OnSprintStarted?.Invoke();
         }
 
         private void Leave(SprintExitReason reason, MechState next)
@@ -92,20 +76,7 @@ namespace MyDongari.Movement
         {
             if (_exitReported) return;
             _exitReported = true;
-            // 디바운스로 처음 어긋난 순간을 이미 잡아 뒀으면 그 값, 아니면(탈진·스턴 등) 지금 값
-            if (!_exitSticksCaptured)
-            {
-                InputReader input = StateMachine.InputReader;
-                CaptureExitSticks(input != null ? input.MoveStickRaw : Vector2.zero, input != null ? input.LookStickRaw : Vector2.zero);
-            }
             OnSprintEnded?.Invoke(reason);
-        }
-
-        private void CaptureExitSticks(Vector2 left, Vector2 right)
-        {
-            ExitLeftStick = left;
-            ExitRightStick = right;
-            _exitSticksCaptured = true;
         }
 
         public override void Update()
@@ -117,121 +88,42 @@ namespace MyDongari.Movement
                 return;
             }
 
-            // 태클 발생 시간 동안은 어깨를 내민 채 그대로 돌진한다 (제동·퀵턴·사이드스텝·탈진 전환 안 받음)
+            // 태클 발생 시간 동안은 어깨를 내민 채 그대로 돌진한다 (사이드스텝·탈진 전환 안 받음)
             if (_pendingTackleElapsed >= 0f) return;
 
             if (StateMachine.MechController.BoostGauge.IsExhausted)
             {
-                Leave(SprintExitReason.Exhausted, StateMachine.BrakeState);
+                Leave(SprintExitReason.Exhausted, StateMachine.RunState);
                 return;
             }
 
-            // 스펙: 초신지선회·사이드스텝은 전력질주 중에도 쓸 수 있다
-            if (StateMachine.InputReader.QuickTurnInput)
-            {
-                Leave(SprintExitReason.QuickTurn, StateMachine.QuickTurnState);
-                return;
-            }
-
+            // 사이드스텝은 전력질주 중에도 쓸 수 있다
             if (StateMachine.InputReader.SideStepDirection != 0)
             {
                 Leave(SprintExitReason.SideStep, StateMachine.SideStepState);
                 return;
             }
 
-            InputReader input = StateMachine.InputReader;
-
-            // 슬라이딩 대기: 이 동안은 제동으로 넘어가지 않는다. 입력이 안 들어오면 그때 제동
-            if (_slideWaitTimer >= 0f)
-            {
-                if (TwinStickSprintInput.IsSlideInput(input.MoveStickRaw, input.LookStickRaw, Move))
-                {
-                    StateMachine.ChangeState(StateMachine.SlideState);
-                    return;
-                }
-                _slideWaitTimer += Time.deltaTime;
-                if (_slideWaitTimer >= Move.slideInputWindow)
-                {
-                    StateMachine.ChangeState(StateMachine.BrakeState);
-                }
-                return;
-            }
-
             _tackleChargeTimer += Time.deltaTime;
 
-            if (_byStick)
+            InputReader input = StateMachine.InputReader;
+            if (!input.IsMoveInputActive || !input.SprintInput)
             {
-                Vector2 left = input.MoveStickRaw;
-                Vector2 right = input.LookStickRaw;
-                SprintExitReason reason = TwinStickSprintInput.CheckHold(left, right, Move);
-                if (reason == SprintExitReason.Other)
-                {
-                    _heldHeading = left.normalized + right.normalized;
-                    _exitPendingTimer = -1f;
-                    _exitSticksCaptured = false;
-                    return;
-                }
-
-                // 순간적인 흔들림은 무시: 해제 조건이 sprintExitConfirmTime 동안 이어져야 해제한다.
-                // 이유·스틱 값은 처음 어긋난 순간 것으로 정한다 (그 뒤 슬라이딩 입력으로 스틱이 움직여도 이유가 안 바뀌게)
-                if (_exitPendingTimer < 0f)
-                {
-                    // 각도로 풀렸어도 L ↗ 쪽·R ↖ 쪽으로 안쪽 굴리기면 중립 해제와 같이 슬라이딩 대기
-                    if (reason == SprintExitReason.Angle && TwinStickSprintInput.IsInwardRoll(_heldHeading, left, right))
-                    {
-                        reason = SprintExitReason.AngleRoll;
-                    }
-                    _pendingExitReason = reason;
-                    CaptureExitSticks(left, right);
-                    _exitPendingTimer = 0f;
-                }
-                _exitPendingTimer += Time.deltaTime;
-                if (_exitPendingTimer < Move.sprintExitConfirmTime) return;
-                reason = _pendingExitReason;
-                _exitPendingTimer = -1f;
-
-                if (reason == SprintExitReason.Angle)
-                {
-                    Leave(reason, StateMachine.BrakeState);
-                }
-                else
-                {
-                    // 스틱 중립 해제·안쪽 굴리기 → 질주는 끝, 슬라이딩 입력 대기
-                    ReportExit(reason);
-                    _slideWaitTimer = 0f;
-                    // 굴리기는 이미 ↗/↖에 닿아 있을 수 있어 이 프레임에도 바로 본다
-                    if (TwinStickSprintInput.IsSlideInput(left, right, Move))
-                    {
-                        StateMachine.ChangeState(StateMachine.SlideState);
-                    }
-                }
-                return;
-            }
-
-            if (input.MoveInput.sqrMagnitude < 0.25f || !input.SprintInput)
-            {
-                Leave(SprintExitReason.ButtonReleased, StateMachine.BrakeState);
+                Leave(SprintExitReason.ButtonReleased,
+                    input.IsMoveInputActive ? (MechState)StateMachine.RunState : StateMachine.IdleState);
             }
         }
 
         public override void FixedUpdate()
         {
-            // 슬라이딩 대기 중엔 추진하지 않고 관성으로 미끄러진다 (태클도 안 나감)
-            if (_slideWaitTimer >= 0f) return;
-
-            Vector2 input = StateMachine.InputReader.MoveInput;
-            // V3: 이동 기준은 몸 (카메라는 몸을 따라오므로 화면 위 = 몸 정면)
-            Vector3 moveDir = StateMachine.MechController.BodyRelativeDirection(input);
-            // 스틱을 놓는 순간 튕겨 돌아오는 작은 값으로 슬라이딩 방향이 뒤집히지 않게, 이동 입력이 있을 때만 기억
-            if (moveDir != Vector3.zero && StateMachine.InputReader.IsMoveInputActive)
+            // V3: 가속도 없이 몸 기준 방향으로 바로 그 속도. 스틱을 놓으면(태클 발생 중) 지금 속도 그대로 돌진
+            InputReader input = StateMachine.InputReader;
+            if (input.IsMoveInputActive)
             {
-                StateMachine.LastMoveDirection = moveDir;
+                StateMachine.MechController.SetMoveVelocity(
+                    StateMachine.MechController.BodyRelativeDirection(input.MoveInput),
+                    StateMachine.MechController.MaxSprintSpeed);
             }
-
-            StateMachine.MechController.ApplyMoveForce(
-                moveDir,
-                StateMachine.MechController.SprintSpeed,
-                StateMachine.MechController.MaxSprintSpeed);
 
             MeleeSystem melee = StateMachine.MechController.MeleeSystem;
 
@@ -290,7 +182,7 @@ namespace MyDongari.Movement
         {
             MeleeSystem melee = StateMachine.MechController.MeleeSystem;
             if (_tackleRequested) return true;
-            if (_slideWaitTimer >= 0f || _pendingTackleElapsed >= 0f || melee == null || !melee.CanTackle) return false;
+            if (_pendingTackleElapsed >= 0f || melee == null || !melee.CanTackle) return false;
             _tackleRequested = true;
             return true;
         }
@@ -314,8 +206,6 @@ namespace MyDongari.Movement
         {
             // 라운드 리셋 등 바깥에서 끊긴 경우는 Other
             ReportExit(_exitReason);
-            _slideWaitTimer = -1f;
-            _byStick = false;
 
             // 발생 중에 질주가 끝났다면(스턴·라운드 리셋 등) 그 태클은 나가지 않는다
             if (_pendingTackleElapsed >= 0f)

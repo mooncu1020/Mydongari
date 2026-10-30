@@ -19,17 +19,15 @@ namespace MyDongari.Input
     }
 
     /// <summary>
-    /// 왼쪽 스틱 "튕기기" 제스처 판정기. 걷기·달리기(스틱을 계속 밀고 있음)와 구분하려고
+    /// 왼쪽 스틱 "튕기기" 제스처 판정기. 달리기(스틱을 계속 밀고 있음)와 구분하려고
     /// "중립 → 끝 → 중립"이 짧은 시간 안에 일어난 경우만 튕기기로 본다.
-    /// 방향은 카메라와 무관하게 스틱 원래 방향 기준.
-    /// (E6: 전력질주 ↑↑·슬라이딩 ↗↖은 두 스틱 조작으로 바뀌어 여기서 뺐다 — Movement/TwinStickSprintInput)
+    /// 방향은 카메라와 무관하게 스틱 원래 방향 기준. V3에서는 ←→(사이드스텝)만 쓴다 (↓ 초신지선회 삭제).
     /// </summary>
     public class StickGestureDetector
     {
         private enum Phase { Neutral, Rising, AtEdge, Held }
 
         // 한 프레임짜리 출력
-        public bool FlickDown { get; private set; }
         public int FlickSide { get; private set; }
 
         private Phase _phase = Phase.Neutral;
@@ -103,7 +101,6 @@ namespace MyDongari.Input
 
         private void ClearOneShots()
         {
-            FlickDown = false;
             FlickSide = 0;
         }
 
@@ -112,12 +109,8 @@ namespace MyDongari.Input
             float angleFromUp = Vector2.SignedAngle(dir, Vector2.up);
             float absAngle = Mathf.Abs(angleFromUp);
 
-            // ↑ 튕기기는 쓰지 않는다 (E6에서 ↑↑ 전력질주 삭제)
-            if (absAngle >= 180f - s.sectorHalfAngle)
-            {
-                FlickDown = true;
-            }
-            else if (Mathf.Abs(absAngle - 90f) <= s.sectorHalfAngle)
+            // ↑·↓ 튕기기는 쓰지 않는다 (E6에서 ↑↑ 전력질주, V3에서 ↓ 초신지선회 삭제)
+            if (Mathf.Abs(absAngle - 90f) <= s.sectorHalfAngle)
             {
                 FlickSide = angleFromUp > 0f ? 1 : -1;
             }

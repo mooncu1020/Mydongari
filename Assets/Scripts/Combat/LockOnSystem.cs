@@ -12,16 +12,15 @@ namespace MyDongari.Combat
         private Transform _camera;
         private MechIdentity _identity;
 
+        /// <summary>하드 락온 중이면 상대, 아니면 소프트 락온(카메라 정면 부채꼴·가려짐 없음)이 잡은 상대. 앵커 클로·HUD 마커가 쓴다.</summary>
         public Transform Target { get; private set; }
         public bool IsHardLocked { get; private set; }
 
         // 하드 락온 금지: 내 런지 돌진 중(플래그) + 런지 빗나감 직후(타이머)
         private bool _hardLockSuppressed;
         private float _hardLockBlockTimer;
-        // 락온 전체(소프트 포함) 금지: 상대가 슬라이딩으로 내 락온을 끊었을 때
-        private float _allLockBlockTimer;
 
-        public bool IsHardLockBlocked => _hardLockSuppressed || _hardLockBlockTimer > 0f || _allLockBlockTimer > 0f;
+        public bool IsHardLockBlocked => _hardLockSuppressed || _hardLockBlockTimer > 0f;
 
         private void Awake()
         {
@@ -33,22 +32,22 @@ namespace MyDongari.Combat
         private void Update()
         {
             if (_hardLockBlockTimer > 0f) _hardLockBlockTimer -= Time.deltaTime;
-            if (_allLockBlockTimer > 0f) _allLockBlockTimer -= Time.deltaTime;
 
-            if (_camera == null) return;
-            DetectTarget();
+            // V3: 하드 락온은 거리만 보므로 카메라가 없어도 판정한다
             UpdateHardLock();
+            DetectTarget();
         }
 
         private void DetectTarget()
         {
-            if (_allLockBlockTimer > 0f)
+            MechIdentity opponent = _identity.Opponent;
+            if (IsHardLocked)
             {
-                Target = null;
+                Target = opponent.transform;
                 return;
             }
             // 1대1이라 후보는 상대 하나뿐. 주변 콜라이더를 훑을 필요가 없다.
-            Target = CanSoftLock(_identity.Opponent) ? _identity.Opponent.transform : null;
+            Target = _camera != null && CanSoftLock(opponent) ? opponent.transform : null;
         }
 
         private bool CanSoftLock(MechIdentity opponent)
@@ -83,41 +82,28 @@ namespace MyDongari.Combat
             return col != null ? col.bounds.center : opponent.transform.position;
         }
 
+        /// <summary>
+        /// V3 하드 락온: 상대가 기체 기준 3D 거리 hardLockEnterRange(10m) 안이면 걸리고 hardLockExitRange(12m) 밖이면 풀린다.
+        /// 시야 각도·가려짐은 보지 않는다 — 뒤로 돌아 들어온 상대도 10m 안이면 몸이 돌아 마주 본다.
+        /// </summary>
         private void UpdateHardLock()
         {
-            if (Target == null || IsHardLockBlocked)
+            MechIdentity opponent = _identity.Opponent;
+            if (opponent == null || !opponent.gameObject.activeInHierarchy || IsHardLockBlocked)
             {
                 ReleaseHardLock();
                 return;
             }
 
-            // 거리는 기체 기준: 카메라 기준이면 카메라 오프셋만큼 펀치 전환 거리가 흔들린다
-            float dist = Vector3.Distance(transform.position, Target.position);
-
+            // 거리는 기체 기준: 카메라 기준이면 카메라 오프셋만큼 흔들린다
+            float dist = Vector3.Distance(transform.position, opponent.transform.position);
             if (!IsHardLocked)
             {
-                if (dist <= T.hardEnterRange)
-                {
-                    IsHardLocked = true;
-                }
+                if (dist <= T.hardLockEnterRange) IsHardLocked = true;
             }
-            else
+            else if (dist > T.hardLockExitRange)
             {
-                if (dist > T.hardExitRange)
-                {
-                    ReleaseHardLock();
-                    return;
-                }
-
-                // 각도는 "내가 보고 있는 방향" 기준이라 카메라 정면 유지
-                Vector3 dirToTarget = (Target.position - _camera.position).normalized;
-                float angle = Vector3.Angle(_camera.forward, dirToTarget);
-
-                if (angle > T.hardMaxAngle * 0.5f)
-                {
-                    ReleaseHardLock();
-                    return;
-                }
+                ReleaseHardLock();
             }
         }
 
@@ -141,20 +127,11 @@ namespace MyDongari.Combat
             ReleaseHardLock();
         }
 
-        /// <summary>일정 시간 소프트·하드 락온 모두 금지 (상대의 슬라이딩).</summary>
-        public void BlockAllLockFor(float seconds)
-        {
-            _allLockBlockTimer = Mathf.Max(_allLockBlockTimer, seconds);
-            ReleaseHardLock();
-            Target = null;
-        }
-
         /// <summary>라운드 시작: 락온 해제 + 금지 타이머 초기화.</summary>
         public void ResetForRound()
         {
             _hardLockSuppressed = false;
             _hardLockBlockTimer = 0f;
-            _allLockBlockTimer = 0f;
             ForceRelease();
         }
 

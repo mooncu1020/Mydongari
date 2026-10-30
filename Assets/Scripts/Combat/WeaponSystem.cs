@@ -132,7 +132,7 @@ namespace MyDongari.Combat
 
         /// <summary>
         /// 지금 상황으로 공격 버튼 한 번의 동작을 고르고 시작한다. 우선순위 (GAME_SPEC 4장):
-        /// 1 파일드라이버 준비 → 파일드라이버, 2 전력질주 → 대시 어택·태클, 3 하드 락온 → 펀치, 4 그 외 → 런지.
+        /// 1 파일드라이버 준비 → 파일드라이버, 2 전력질주 → 대시 어택·태클, 3 상대 6m 안 → 펀치, 4 그 외 → 런지.
         /// 시작했으면 그 종류, 지금 못 하면(쿨다운·발생 중·런지 중·스턴 등) null.
         /// </summary>
         private AttackType? TryStartAttack()
@@ -152,8 +152,8 @@ namespace MyDongari.Combat
                 return _stateMachine.SprintState.IsTackleCharged ? AttackType.Tackle : AttackType.DashAttack;
             }
 
-            // 근접 전환 거리는 하드 락온 진입 거리 하나로 통일 (거리 값이 두 군데 있으면 서로 어긋남)
-            if (_lockOnSystem != null && _lockOnSystem.IsHardLocked)
+            // V3: 펀치/런지 전환은 하드 락온(10m)과 따로 meleeSwitchRange(6m). 6~10m는 하드락 안이어도 런지
+            if (IsOpponentInMeleeRange())
             {
                 return _meleeSystem != null && _meleeSystem.TryMeleeAttack() ? AttackType.Punch : (AttackType?)null;
             }
@@ -163,6 +163,15 @@ namespace MyDongari.Combat
                 return _thrusterLunge.TryLunge() ? AttackType.Lunge : (AttackType?)null;
             }
             return null;
+        }
+
+        /// <summary>상대가 펀치 전환 거리 안인지 (기체 기준 3D 거리).</summary>
+        private bool IsOpponentInMeleeRange()
+        {
+            MechIdentity opponent = _identity != null ? _identity.Opponent : null;
+            if (opponent == null || !opponent.gameObject.activeInHierarchy) return false;
+            float range = _tuning.Get(this).LockOn.meleeSwitchRange;
+            return Vector3.Distance(transform.position, opponent.transform.position) <= range;
         }
 
         private void TryFire()

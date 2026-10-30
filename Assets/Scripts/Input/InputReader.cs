@@ -10,11 +10,9 @@ namespace MyDongari.Input
         [SerializeField] private float doubleTapWindow = 0.3f;
 
         [Header("패드 왼쪽 스틱")]
-        [Tooltip("이동 입력 크기가 이 값 이상이면 걷기 시작 (키보드는 항상 1이라 영향 없음)")]
+        [Tooltip("이동 입력 크기가 이 값 이상이면 달리기 시작. 속도는 이 값 ~ 끝을 0 ~ 최대로 다시 맞춘다 (키보드는 항상 1)")]
         [SerializeField] private float moveDeadzone = 0.3f;
-        [Tooltip("스틱 크기가 이 값 이상이면 달리기 (스펙: 80% 경계)")]
-        [SerializeField] private float runThreshold = 0.8f;
-        [Tooltip("튕기기(↓ 초신지선회, ←→ 사이드스텝) 판정 수치. 전력질주·슬라이딩은 두 스틱 조작이라 BernardTuning(이동)에 있다")]
+        [Tooltip("튕기기(←→ 사이드스텝) 판정 수치")]
         [SerializeField] private StickGestureSettings gesture = new StickGestureSettings();
 
         [Header("액션 맵")]
@@ -31,22 +29,18 @@ namespace MyDongari.Input
 
         public Vector2 MoveInput { get; private set; }
         public Vector2 LookInput { get; private set; }
-        public bool RunInput { get; private set; }
-        /// <summary>버튼 전력질주(키보드 Space)를 누르고 있는지. 패드 두 스틱 전력질주는 MoveStickRaw/LookStickRaw로 상태머신이 판정한다.</summary>
+        /// <summary>임시 버튼 전력질주(키보드 Space)를 누르고 있는지. 3단계 ○ 대시 전까지. 패드 경로는 없다(V3에서 트윈스틱 삭제).</summary>
         public bool SprintInput { get; private set; }
-        /// <summary>버튼 슬라이딩(키보드 Ctrl)을 이번 프레임에 눌렀는지. 패드 두 스틱 슬라이딩은 SprintState가 판정한다.</summary>
-        public bool SlideInput { get; private set; }
-        public bool QuickTurnInput { get; private set; }
         public bool Skill1Input { get; private set; }
         public bool Skill2Input { get; private set; }
         public int SideStepDirection { get; private set; }
-        /// <summary>패드 왼쪽 스틱 원래 값 (키보드 WASD 제외). 두 스틱 전력질주·슬라이딩 방향 비교용.</summary>
+        /// <summary>패드 왼쪽 스틱 원래 값 (키보드 WASD 제외). 튕기기 판정용.</summary>
         public Vector2 MoveStickRaw { get; private set; }
-        /// <summary>패드 오른쪽 스틱 원래 값 (마우스 제외). 두 스틱 전력질주·슬라이딩 방향 비교용.</summary>
-        public Vector2 LookStickRaw { get; private set; }
 
-        /// <summary>이동 입력이 걷기를 시작할 만큼 있는지. 상태들의 이동 시작/정지 판정은 이걸 쓴다.</summary>
+        /// <summary>이동 입력이 달리기를 시작할 만큼 있는지. 상태들의 이동 시작/정지 판정은 이걸 쓴다.</summary>
         public bool IsMoveInputActive => MoveInput.magnitude >= moveDeadzone;
+        /// <summary>이동 데드존. 달리기 속도는 이 값부터 0으로 시작한다.</summary>
+        public float MoveDeadzone => moveDeadzone;
 
         public bool AttackHeld { get; private set; }
         public bool AttackPressedThisFrame { get; private set; }
@@ -89,10 +83,7 @@ namespace MyDongari.Input
         private PlayerInput _playerInput;
         private InputAction _moveAction;
         private InputAction _lookAction;
-        private InputAction _runAction;
         private InputAction _sprintAction;
-        private InputAction _slideAction;
-        private InputAction _quickTurnAction;
         private InputAction _skill1Action;
         private InputAction _skill2Action;
         private InputAction _attackAction;
@@ -100,7 +91,6 @@ namespace MyDongari.Input
         private InputAction _stepLeftAction;
         private InputAction _stepRightAction;
         private InputAction _moveStickAction;
-        private InputAction _lookStickAction;
         private InputAction _startAction;
         private InputAction _submitAction;
         private InputAction _menuNavigateAction;
@@ -119,7 +109,6 @@ namespace MyDongari.Input
         private float _lastLeftTapTime = 0f;
         private float _lastRightTapTime = 0f;
 
-        private bool _quickTurnPending = false;
         private bool _skill1Pending = false;
         private bool _skill2Pending = false;
 
@@ -128,10 +117,8 @@ namespace MyDongari.Input
             _playerInput = GetComponent<PlayerInput>();
             _moveAction = _playerInput.actions["Move"];
             _lookAction = _playerInput.actions["Look"];
-            _runAction = _playerInput.actions["Run"];
+            // Run·Slide·QuickTurn 액션은 .inputactions에 남아 있지만 V3에서 읽지 않는다 (걷기·슬라이딩·초신지선회 삭제)
             _sprintAction = _playerInput.actions["Sprint"];
-            _slideAction = _playerInput.actions["Slide"];
-            _quickTurnAction = _playerInput.actions["QuickTurn"];
             _skill1Action = _playerInput.actions["Skill1"];
             _skill2Action = _playerInput.actions["Skill2"];
             _attackAction = _playerInput.actions["Attack"];
@@ -140,8 +127,6 @@ namespace MyDongari.Input
             _stepRightAction = _playerInput.actions["StepRight"];
             // 패드 스틱만 바인딩된 액션. 키보드 WASD가 튕기기로 오인되지 않게 제스처는 이것만 본다
             _moveStickAction = _playerInput.actions["MoveStick"];
-            // 오른쪽 스틱만 바인딩된 액션. 마우스 델타가 가속 스틱으로 오인되지 않게 전력질주 판정은 이것만 본다
-            _lookStickAction = _playerInput.actions["LookStick"];
             _startAction = _playerInput.actions["Start"];
             _submitAction = _playerInput.actions["Submit"];
             _menuNavigateAction = _playerInput.actions["MenuNavigate"];
@@ -153,7 +138,6 @@ namespace MyDongari.Input
                 _heatPresetActions[i] = _playerInput.actions["HeatPreset" + (i + 1)];
             }
 
-            _quickTurnAction.performed += _ => _quickTurnPending = true;
             _skill1Action.performed += _ => _skill1Pending = true;
             _skill2Action.performed += _ => _skill2Pending = true;
         }
@@ -220,21 +204,13 @@ namespace MyDongari.Input
             Vector2 stick = _moveStickAction.ReadValue<Vector2>();
             _gesture.Tick(stick, Time.unscaledTime, gesture);
             MoveStickRaw = stick;
-            LookStickRaw = _lookStickAction.ReadValue<Vector2>();
 
-            // 키보드 경로(Shift/R/A·D 더블탭)와 패드 스틱 경로를 같은 프로퍼티로 합친다.
-            // 전력질주·슬라이딩의 패드 경로는 두 스틱 조작이라 상태머신 쪽(TwinStickSprintInput)에서 판정한다
-            RunInput = _runAction.IsPressed() || stick.magnitude >= runThreshold;
             SprintInput = _sprintAction.IsPressed();
-            SlideInput = _slideAction.WasPressedThisFrame();
 
             AttackHeld = _attackAction.IsPressed();
             AttackPressedThisFrame = _attackAction.WasPressedThisFrame();
             GuardHeld = _guardAction.IsPressed();
             GuardPressedThisFrame = _guardAction.WasPressedThisFrame();
-
-            QuickTurnInput = _quickTurnPending || _gesture.FlickDown;
-            _quickTurnPending = false;
 
             Skill1Input = _skill1Pending;
             _skill1Pending = false;
@@ -331,12 +307,8 @@ namespace MyDongari.Input
         {
             MoveInput = Vector2.zero;
             LookInput = Vector2.zero;
-            RunInput = false;
             SprintInput = false;
-            SlideInput = false;
             MoveStickRaw = Vector2.zero;
-            LookStickRaw = Vector2.zero;
-            QuickTurnInput = false;
             Skill1Input = false;
             Skill2Input = false;
             SideStepDirection = 0;

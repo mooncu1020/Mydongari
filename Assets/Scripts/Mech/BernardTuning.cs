@@ -18,18 +18,17 @@ namespace MyDongari.Mech
         [Serializable]
         public class MovementValues
         {
-            [Header("가속 (AddForce, m/s²)")]
-            public float walkSpeed = 10f;
-            public float runSpeed = 20f;
-            public float sprintSpeed = 35f;
-
-            [Header("최대 속도 (m/s)")]
-            public float maxWalkSpeed = 5f;
-            public float maxRunSpeed = 10f;
+            [Header("속도 (V3: 가속도 없이 스틱 기울기만큼 즉시, m/s)")]
+            [Tooltip("하드락 밖 달리기 최대 속도 (몸 기준 이동)")]
+            public float maxRunSpeed = 20f;
+            [Tooltip("하드락 안 근접 이동 최대 속도 (상대 기준 이동). 하드락이 걸리면 거리로 저절로 바뀐다")]
+            public float closeMoveSpeed = 8f;
+            [Tooltip("임시 키보드 Space 전력질주 속도 (3단계 ○ 대시 전까지)")]
             public float maxSprintSpeed = 20f;
+            [Tooltip("넉백을 받은 뒤 이 시간(초) 동안은 달리기·정지가 속도를 덮어쓰지 않는다 (넉백이 지워지지 않게)")]
+            public float knockbackMoveHold = 0.35f;
 
             [Header("회전")]
-            public float rotationSpeed = 15f;
             [Tooltip("하드 락온 중 몸통이 상대 쪽으로 자동으로 도는 속도 (수평 회전만)")]
             public float hardLockTurnSpeed = 10f;
             [Tooltip("V3: R스틱을 끝까지 밀었을 때 제자리 몸 회전 속도(°/초). 느릴수록 상대를 놓쳤을 때 빈틈이 크다")]
@@ -37,80 +36,26 @@ namespace MyDongari.Mech
             [Tooltip("V3: 마우스 좌우 이동량 1당 몸 회전(°). 키보드·마우스 예비 조작용 (예전 카메라 마우스 감도와 같은 값)")]
             public float mouseTurnSensitivity = 2f;
 
-            [Header("무게감 (관성 보정)")]
-            [Tooltip("0 = 관성 없음, 1 = 방향 반대로 꺾을 때 추진력 최대 90%까지 깎임")]
-            public float turnResistance = 0.6f;
-            [Tooltip("정지 상태에서 출발할 때 목표 가속도까지 도달하는 데 걸리는 시간(초). 0이면 즉시 풀파워")]
-            public float spinUpTime = 0.25f;
-
             [Header("사이드스텝")]
             public float sideStepDuration = 0.3f;
             public float sideStepSpeed = 20f;
-
-            [Header("슬라이딩")]
-            [Tooltip("미끄러지는 시간(초). 이 동안 상대의 락온이 끊긴다")]
-            public float slideDuration = 0.8f;
-            public float slideSpeed = 25f;
-
-            [Header("초신지선회 / 제동")]
-            public float quickTurnDuration = 0.15f;
-            [Tooltip("전력질주를 놓은 뒤 제동 상태 시간(초)")]
-            public float brakeDuration = 1f;
-            [Tooltip("제동 시작 후 이 시간(초) 안에 슬라이딩 입력이 들어오면 슬라이딩 (키보드 Ctrl 경로)")]
-            public float brakeSlideWindow = 0.5f;
-
-            [Header("전력질주 (패드 두 스틱: 왼쪽 = 방향, 오른쪽 = 가속)")]
-            [Tooltip("오른쪽 스틱 크기가 이 값 미만이면 중립")]
-            public float sprintStickNeutral = 0.3f;
-            [Tooltip("두 스틱 크기가 이 값 이상이어야 전력질주 진입 (왼쪽은 달리기 80% 경계와 같게 둔다)")]
-            public float sprintStickThreshold = 0.8f;
-            [Tooltip("두 스틱 크기가 이 값 이상이어야 전력질주 유지. 진입 기준과 따로 조정한다 (이 값 미만 = 스틱 크기 미달, 중립 미만 = 스틱 놓음)")]
-            public float sprintHoldStickThreshold = 0.8f;
-            [Tooltip("해제 조건(각도 초과·스틱 크기 미달·놓음)이 이 시간(초) 이상 계속돼야 해제. 순간적인 흔들림 무시. 0이면 즉시")]
-            public float sprintExitConfirmTime = 0.1f;
-            [Tooltip("오른쪽 스틱이 중립을 벗어난 뒤 이 시간(초) 안에 임계값까지 꺾여야 진입")]
-            public float sprintEntryTime = 0.15f;
-            [Tooltip("진입 순간 두 스틱 방향 차이가 이 각도(°) 이하여야 진입")]
-            public float sprintEntryAngle = 20f;
-            [Tooltip("유지 중 두 스틱 방향 차이가 이 각도(°)를 넘으면 해제")]
-            public float sprintExitAngle = 20f;
-
-            [Header("전력질주 카메라 (패드 오른쪽 스틱)")]
-            [Tooltip("진입 판정 중·전력질주 중 카메라가 기체 진행 방향 뒤로 따라오는 빠르기 (클수록 빨리)")]
-            public float sprintCameraFollowSpeed = 5f;
-            [Tooltip("전력질주가 풀린 뒤 오른쪽 스틱 크기가 이 값 미만(중립)으로 한 번 돌아와야 카메라 회전 입력을 다시 받는다")]
-            public float cameraLookResumeNeutral = 0.3f;
-
-            [Header("슬라이딩 (패드 두 스틱)")]
-            [Tooltip("전력질주가 스틱을 놓아서 풀린 뒤 이 시간(초) 안에 슬라이딩 입력을 받는다. 이 동안은 제동으로 안 넘어가고 대기")]
-            public float slideInputWindow = 0.2f;
-            [Tooltip("두 스틱 크기가 이 값 이상이어야 슬라이딩")]
-            public float slideStickThreshold = 0.8f;
-            [Tooltip("왼쪽 스틱 목표 각도(°, 오른쪽 = 0, 위 = 90). 45 = ↗")]
-            public float slideLeftAngle = 45f;
-            [Tooltip("오른쪽 스틱 목표 각도(°). 135 = ↖")]
-            public float slideRightAngle = 135f;
-            [Tooltip("목표 각도에서 이만큼(°) 벗어나도 인정")]
-            public float slideAngleTolerance = 25f;
         }
 
         [Serializable]
         public class BoostValues
         {
             public float maxBoost = 100f;
-            [Tooltip("걷기/정지로 바뀐 뒤 회복이 시작되기까지(초)")]
+            [Tooltip("땅에서 달리기·근접 이동·정지로 바뀐 뒤 회복이 시작되기까지(초)")]
             public float recoveryDelay = 0.5f;
             [Tooltip("초당 회복량")]
             public float recoveryRate = 25f;
             [Tooltip("전력질주 초당 소모량")]
             public float sprintDrainRate = 5f;
-            [Tooltip("탈진(0%) 후 걷기/정지로 회복해 최대치의 이 비율에 도달하면 탈진 해제")]
+            [Tooltip("탈진(0%) 후 회복해 최대치의 이 비율에 도달하면 탈진 해제")]
             [Range(0f, 1f)] public float exhaustRecoverRatio = 0.5f;
 
             [Header("소모량")]
             public float sideStepCost = 10f;
-            public float quickTurnCost = 10f;
-            public float slideCost = 10f;
         }
 
         [Serializable]
@@ -420,13 +365,15 @@ namespace MyDongari.Mech
             [Tooltip("카메라 정면에서 상대 방향까지의 각도(°)가 이 값보다 작아야 소프트 락온 (반각)")]
             public float softAngle = 30f;
 
-            [Header("하드 락온")]
-            [Tooltip("기체 위치 기준. 이 거리(m) 안으로 들어오면 하드 락온 + 기본 공격이 펀치로 전환")]
-            public float hardEnterRange = 6f;
-            [Tooltip("기체 위치 기준. 이 거리(m) 밖으로 나가면 하드 락온 해제")]
-            public float hardExitRange = 7f;
-            [Tooltip("카메라 정면 기준 전체 각도(°). 120이면 ±60° 밖에서 해제")]
-            public float hardMaxAngle = 120f;
+            [Header("하드 락온 (V3: 거리만, 기체 위치 기준 3D 거리)")]
+            [Tooltip("상대가 이 거리(m) 안으로 들어오면 하드 락온 (몸이 상대를 봄, 근접 이동 속도, R스틱 회전 꺼짐)")]
+            public float hardLockEnterRange = 10f;
+            [Tooltip("이 거리(m) 밖으로 나가면 하드 락온 해제. 걸림과 2m 떼어 경계에서 깜빡이지 않게 (앵커 클로 사거리와 같음)")]
+            public float hardLockExitRange = 12f;
+
+            [Header("공격 전환")]
+            [Tooltip("상대까지 이 거리(m) 안이면 공격 버튼 = 펀치 콤보, 밖이면 스러스터 런지. 하드 락온 거리와 따로")]
+            public float meleeSwitchRange = 6f;
         }
 
         [Serializable]

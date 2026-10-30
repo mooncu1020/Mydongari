@@ -702,6 +702,9 @@ namespace MyDongari.Core
             MechStateMachine stateMachine = mech.GetComponent<MechStateMachine>();
             if (stateMachine != null) stateMachine.ResetForRound();
 
+            MechController controller = mech.GetComponent<MechController>();
+            if (controller != null) controller.ResetForRound();
+
             // 카메라 시점도 스폰 방향으로 (안 하면 Idle이 기체를 예전 카메라 방향으로 돌려버림)
             MechIdentity identity = mech.GetComponent<MechIdentity>();
             MyDongari.Camera.MechCamera mechCamera = identity != null ? identity.MechCamera : null;

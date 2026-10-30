@@ -19,7 +19,7 @@ namespace MyDongari.Movement
             if (!StateMachine.MechController.BoostGauge.TryConsume(
                 StateMachine.MechController.BoostGauge.GetSideStepCost()))
             {
-                StateMachine.ChangeState(StateMachine.WalkState);
+                StateMachine.ChangeState(StateMachine.RunState);
                 return;
             }
 
@@ -44,7 +44,7 @@ namespace MyDongari.Movement
             {
                 if (StateMachine.InputReader.IsMoveInputActive)
                 {
-                    StateMachine.ChangeState(StateMachine.WalkState);
+                    StateMachine.ChangeState(StateMachine.RunState);
                 }
                 else
                 {

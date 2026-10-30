@@ -14,13 +14,9 @@ namespace MyDongari.Movement
         public BernardTuning Tuning => _tuning.Get(this);
         private BernardTuning.MovementValues Move => Tuning.Movement;
 
-        public float WalkSpeed => Move.walkSpeed;
-        public float RunSpeed => Move.runSpeed;
-        public float SprintSpeed => Move.sprintSpeed;
-        public float MaxWalkSpeed => Move.maxWalkSpeed;
         public float MaxRunSpeed => Move.maxRunSpeed;
+        public float CloseMoveSpeed => Move.closeMoveSpeed;
         public float MaxSprintSpeed => Move.maxSprintSpeed;
-        public float RotationSpeed => Move.rotationSpeed;
 
         public Rigidbody Rb { get; private set; }
         public InputReader InputReader { get; private set; }
@@ -66,59 +62,76 @@ namespace MyDongari.Movement
             _defaultDamping = Rb.linearDamping;
         }
 
-        public void ClampVelocity(float maxSpeed)
-        {
-            Vector3 flatVel = new Vector3(Rb.linearVelocity.x, 0f, Rb.linearVelocity.z);
-            if (flatVel.magnitude > maxSpeed)
-            {
-                Vector3 clamped = flatVel.normalized * maxSpeed;
-                Rb.linearVelocity = new Vector3(clamped.x, Rb.linearVelocity.y, clamped.z);
-            }
-        }
+        // 넉백 뒤 이동 로직이 속도를 덮어쓰지 않는 남은 시간(초). 이동이 속도를 직접 넣으므로, 안 막으면 넉백 임펄스가 다음 물리 스텝에 지워진다
+        private float _moveHoldTimer;
 
-        private float _spinUpTimer = 0f;
+        /// <summary>넉백 유지 중이라 이동 로직이 속도를 건드리면 안 되는지.</summary>
+        public bool IsMoveHeld => _moveHoldTimer > 0f;
+
+        /// <summary>넉백을 받았을 때 부른다 (MeleeSystem). knockbackMoveHold초 동안 달리기·정지가 속도를 덮어쓰지 않는다.</summary>
+        public void HoldMoveControl()
+        {
+            _moveHoldTimer = Mathf.Max(_moveHoldTimer, Move.knockbackMoveHold);
+        }
 
         /// <summary>
-        /// 관성/무게감을 보정해서 힘을 주는 이동 함수.
-        /// 기존 AddForce + ClampVelocity 두 줄을 이 함수 한 줄로 대체해서 쓴다.
+        /// V3 이동의 핵심: 가속도 없이 수평 속도를 바로 direction × speed로 (세로 속도는 그대로).
+        /// 콤보 중·쓰리 회복 중엔 느리게 (N2). 외부 제어(앵커 클로 등)·넉백 유지 중엔 양보.
         /// </summary>
-        public void ApplyMoveForce(Vector3 moveDir, float accel, float maxSpeed)
+        public void SetMoveVelocity(Vector3 direction, float speed)
         {
-            if (IsExternallyControlled) return; // 앵커클로 등에 붙잡혀 있으면 자기 힘 넣지 않고 양보
-
-            // 원투쓰리 콤보 중·쓰리 회복 중엔 느리게 (N2). 힘과 최대 속도를 같이 줄인다
+            if (IsExternallyControlled || IsMoveHeld) return;
             float speedScale = _melee != null ? _melee.MoveSpeedScale : 1f;
-            accel *= speedScale;
-            maxSpeed *= speedScale;
-
-            if (moveDir == Vector3.zero)
-            {
-                _spinUpTimer = 0f;
-                return;
-            }
-
-            // 1) 방향 전환 저항: 현재 속도 방향과 입력 방향이 어긋날수록 힘을 깎는다
-            //    (기존 관성이 남아있는 상태에서 억지로 방향을 트는 걸 표현)
-            Vector3 flatVel = new Vector3(Rb.linearVelocity.x, 0f, Rb.linearVelocity.z);
-            float alignment = flatVel.sqrMagnitude > 0.25f
-                ? Vector3.Dot(flatVel.normalized, moveDir)
-                : 1f; // 거의 정지 상태면 저항 없음
-            float turnPenalty = Mathf.Lerp(1f, 1f - Move.turnResistance, (1f - alignment) * 0.5f);
-
-            // 2) 스핀업: 정지→출발 순간에는 풀파워가 아니라 점점 힘이 붙는 느낌
-            float spinUp = Move.spinUpTime;
-            _spinUpTimer = Mathf.Min(_spinUpTimer + Time.fixedDeltaTime, spinUp);
-            float spinUpRatio = spinUp > 0f ? _spinUpTimer / spinUp : 1f;
-
-            Rb.AddForce(moveDir * accel * turnPenalty * spinUpRatio, ForceMode.Acceleration);
-            ClampVelocity(maxSpeed);
+            Vector3 horizontal = direction * (speed * speedScale);
+            Rb.linearVelocity = new Vector3(horizontal.x, Rb.linearVelocity.y, horizontal.z);
         }
 
-        public void RotateTowards(Vector3 direction)
+        /// <summary>정지: 수평 속도 0 (V3: 미끄러지는 감속 없음). 스턴 중엔 넉백·밀림이 남게 건드리지 않는다.</summary>
+        public void StopHorizontal()
         {
-            if (direction == Vector3.zero) return;
-            Quaternion targetRot = Quaternion.LookRotation(direction, Vector3.up);
-            Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, Move.rotationSpeed * Time.fixedDeltaTime));
+            if (_melee != null && _melee.IsStunned) return;
+            SetMoveVelocity(Vector3.zero, 0f);
+        }
+
+        /// <summary>
+        /// 항상 달리기 (V3). 스틱 기울기(데드존 ~ 끝을 0 ~ 1로 다시 맞춤)만큼 즉시 그 속도.
+        /// 하드락 밖: 몸 기준, 최대 maxRunSpeed. 하드락 안: 상대 기준(위 = 상대 쪽), 최대 closeMoveSpeed —
+        /// 20m/s면 6m를 0.3초에 지나쳐 거리 조절이 안 되므로 거리로 저절로 바뀐다.
+        /// </summary>
+        public void ApplyRunVelocity(Vector2 input)
+        {
+            float deadzone = InputReader != null ? InputReader.MoveDeadzone : 0f;
+            float tilt = Mathf.InverseLerp(deadzone, 1f, Mathf.Clamp01(input.magnitude));
+            Vector2 stick = input.sqrMagnitude > 0.0001f ? input.normalized : Vector2.zero;
+
+            Vector3 direction;
+            float maxSpeed;
+            if (TryGetHardLockForward(out Vector3 toOpponent))
+            {
+                Vector3 right = new Vector3(toOpponent.z, 0f, -toOpponent.x);
+                direction = (toOpponent * stick.y + right * stick.x).normalized;
+                maxSpeed = Move.closeMoveSpeed;
+            }
+            else
+            {
+                direction = BodyRelativeDirection(stick);
+                maxSpeed = Move.maxRunSpeed;
+            }
+            SetMoveVelocity(direction, maxSpeed * tilt);
+        }
+
+        /// <summary>하드락 중이면 상대 쪽 수평 방향(크기 1). 물리 위치로 잰다.</summary>
+        private bool TryGetHardLockForward(out Vector3 forward)
+        {
+            forward = Vector3.zero;
+            if (LockOn == null || !LockOn.IsHardLocked || LockOn.Target == null) return false;
+            Rigidbody targetRb = LockOn.Target.GetComponent<Rigidbody>();
+            Vector3 targetPosition = targetRb != null ? targetRb.position : LockOn.Target.position;
+            forward = targetPosition - Rb.position;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.0001f) return false;
+            forward.Normalize();
+            return true;
         }
 
         /// <summary>
@@ -193,6 +206,17 @@ namespace MyDongari.Movement
         public void SetBaselineDamping(float value)
         {
             _defaultDamping = value;
+        }
+
+        private void FixedUpdate()
+        {
+            if (_moveHoldTimer > 0f) _moveHoldTimer -= Time.fixedDeltaTime;
+        }
+
+        /// <summary>라운드 시작: 넉백 유지 시간 초기화.</summary>
+        public void ResetForRound()
+        {
+            _moveHoldTimer = 0f;
         }
 
         private void LateUpdate()

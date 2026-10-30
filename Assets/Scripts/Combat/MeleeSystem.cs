@@ -395,6 +395,9 @@ namespace MyDongari.Combat
         {
             if (rb == null || force <= 0f || direction == Vector3.zero) return;
             rb.AddForce(direction.normalized * force, ForceMode.Impulse);
+            // V3 이동은 속도를 직접 넣으므로, 잠깐 이동 로직을 멈춰야 넉백이 다음 물리 스텝에 지워지지 않는다
+            MechController controller = rb.GetComponent<MechController>();
+            if (controller != null) controller.HoldMoveControl();
         }
 
         /// <summary>

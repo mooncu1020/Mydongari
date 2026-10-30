@@ -249,7 +249,7 @@ namespace MyDongari.Combat
         }
 
         /// <summary>
-        /// 발동 시점 상황으로 공격을 고른다 — 플레이어와 같은 기준: 하드 락온 진입 거리 안이면 펀치, 밖이면 런지.
+        /// 발동 시점 상황으로 공격을 고른다 — 플레이어와 같은 기준: 펀치 전환 거리(6m) 안이면 펀치, 밖이면 런지.
         /// 스턴·쿨다운·발생 중·런지 중이면 null (버퍼가 다시 시도).
         /// </summary>
         private AttackType? TryStartAttack()
@@ -258,7 +258,7 @@ namespace MyDongari.Combat
             if (_meleeSystem != null && _meleeSystem.IsStunned) return null;
 
             float dist = Vector3.Distance(transform.position, _player.position);
-            if (dist <= _tuning.Get(this).LockOn.hardEnterRange)
+            if (dist <= _tuning.Get(this).LockOn.meleeSwitchRange)
             {
                 return _meleeSystem != null && _meleeSystem.TryMeleeAttack() ? AttackType.Punch : (AttackType?)null;
             }

@@ -56,9 +56,8 @@ namespace MyDongari.Core
             "sidestep", "anchor_hit", "slam_landed",
             // 입력 버퍼로(누른 프레임보다 뒤에) 발동한 공격 수. 종류별은 buffered_punch 등으로 따로
             "buffered_attack",
-            // E6 두 스틱 전력질주: 진입 수와 해제 이유별 수 (버튼 경로·퀵턴·스턴 등 나머지 이유는 0이 아닐 때만 추가로 나온다)
-            "sprint_enter", "sprint_exit_angle", "sprint_exit_angle_roll", "sprint_exit_left_release", "sprint_exit_right_release",
-            "sprint_exit_exhausted", "slide"
+            // 임시 키보드 전력질주(V3 3단계 ○ 대시 전까지): 진입 수와 해제 이유별 수 (나머지 이유는 0이 아닐 때만 추가로 나온다)
+            "sprint_enter", "sprint_exit_button_release", "sprint_exit_exhausted"
         };
         private static readonly string[] BandNames = { "near", "mid", "far" };
 
@@ -243,7 +242,6 @@ namespace MyDongari.Core
                 Action<MechState> onState = state => ErrorLog.Run(() =>
                 {
                     if (state is SideStepState) Count(index, "sidestep");
-                    else if (state is SlideState) Count(index, "slide");
                 }, "PlayLogger.onState");
                 sm.OnStateChanged += onState;
                 _unsubscribers.Add(() => sm.OnStateChanged -= onState);
@@ -251,11 +249,10 @@ namespace MyDongari.Core
                 SprintState sprint = sm.SprintState;
                 if (sprint != null)
                 {
-                    Action<bool> onSprintStart = byStick => ErrorLog.Run(
-                        () => Count(index, "sprint_enter", byStick ? "stick" : "button"), "PlayLogger.onSprintStart");
-                    // 상세: 해제 이유가 정해진 순간의 두 스틱 원래 값과 사이 각도 (F2 — 질주가 왜 풀렸는지 추적)
+                    Action onSprintStart = () => ErrorLog.Run(
+                        () => Count(index, "sprint_enter", "button"), "PlayLogger.onSprintStart");
                     Action<SprintExitReason> onSprintEnd = reason => ErrorLog.Run(
-                        () => Count(index, "sprint_exit_" + SprintExitKey(reason), SprintExitDetail(sprint)), "PlayLogger.onSprintEnd");
+                        () => Count(index, "sprint_exit_" + SprintExitKey(reason), ""), "PlayLogger.onSprintEnd");
                     sprint.OnSprintStarted += onSprintStart;
                     sprint.OnSprintEnded += onSprintEnd;
                     _unsubscribers.Add(() =>
@@ -394,31 +391,12 @@ namespace MyDongari.Core
             }
         }
 
-        /// <summary>"L=(x y) R=(x y) Lmag=.. Rmag=.. angle=..". CSV 칸이 갈리지 않게 쉼표 없이 쓴다.</summary>
-        private static string SprintExitDetail(SprintState sprint)
-        {
-            Vector2 l = sprint.ExitLeftStick;
-            Vector2 r = sprint.ExitRightStick;
-            string angle = l.sqrMagnitude > 0f && r.sqrMagnitude > 0f
-                ? Vector2.Angle(l, r).ToString("F1", CultureInfo.InvariantCulture)
-                : "-";
-            return string.Format(CultureInfo.InvariantCulture, "L=({0:F2} {1:F2}) R=({2:F2} {3:F2}) Lmag={4:F2} Rmag={5:F2} angle={6}",
-                l.x, l.y, r.x, r.y, l.magnitude, r.magnitude, angle);
-        }
-
         private static string SprintExitKey(SprintExitReason reason)
         {
             switch (reason)
             {
-                case SprintExitReason.Angle: return "angle";
-                case SprintExitReason.AngleRoll: return "angle_roll";
-                case SprintExitReason.LeftReleased: return "left_release";
-                case SprintExitReason.RightReleased: return "right_release";
-                case SprintExitReason.LeftWeak: return "left_weak";
-                case SprintExitReason.RightWeak: return "right_weak";
                 case SprintExitReason.ButtonReleased: return "button_release";
                 case SprintExitReason.Exhausted: return "exhausted";
-                case SprintExitReason.QuickTurn: return "quickturn";
                 case SprintExitReason.SideStep: return "sidestep";
                 case SprintExitReason.Stun: return "stun";
                 case SprintExitReason.Tackle: return "tackle";

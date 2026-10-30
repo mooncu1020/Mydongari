@@ -5,6 +5,11 @@ using MyDongari.Mech;
 
 namespace MyDongari.Movement
 {
+    /// <summary>
+    /// 이동 상태 (V3): Idle(정지) / Run(항상 달리기, 하드락 안이면 근접 이동) / SideStep / Lunge / Knockdown,
+    /// 그리고 3단계 ○ 대시 전까지 임시로 남긴 Sprint(키보드 Space만).
+    /// 걷기·제동·슬라이딩·초신지선회·트윈스틱 전력질주는 V3에서 삭제됐다.
+    /// </summary>
     public class MechStateMachine : MonoBehaviour
     {
         public InputReader InputReader { get; private set; }
@@ -16,23 +21,15 @@ namespace MyDongari.Movement
         public event Action<MechState> OnStateChanged;
 
         public IdleState IdleState { get; private set; }
-        public WalkState WalkState { get; private set; }
         public RunState RunState { get; private set; }
         public SprintState SprintState { get; private set; }
-        public BrakeState BrakeState { get; private set; }
-        public SlideState SlideState { get; private set; }
         public SideStepState SideStepState { get; private set; }
-        public QuickTurnState QuickTurnState { get; private set; }
         public LungeState LungeState { get; private set; }
         public KnockdownState KnockdownState { get; private set; }
-
-        /// <summary>패드 두 스틱 전력질주·슬라이딩 판정기 (E6). 매 프레임 상태 Update 전에 갱신된다.</summary>
-        public TwinStickSprintInput TwinStick { get; } = new TwinStickSprintInput();
 
         public bool IsSprinting => _currentState is SprintState;
 
         public bool IsStunned => MechController.MeleeSystem != null && MechController.MeleeSystem.IsStunned;
-        public bool IsWalking => _currentState is WalkState;
         public bool IsIdle => _currentState is IdleState;
 
         public bool IsRunning => _currentState is RunState;
@@ -49,46 +46,29 @@ namespace MyDongari.Movement
             }
         }
 
-        /// <summary>스러스터 런지를 시작할 수 있는 상태(정지·걷기·달리기·제동). 다른 기동 중엔 불가.</summary>
-        public bool CanStartLunge =>
-            _currentState is IdleState || _currentState is WalkState ||
-            _currentState is RunState || _currentState is BrakeState;
+        /// <summary>스러스터 런지를 시작할 수 있는 상태(정지·달리기). 다른 기동 중엔 불가.</summary>
+        public bool CanStartLunge => _currentState is IdleState || _currentState is RunState;
 
         /// <summary>
         /// 하드 락온 몸통 자동 회전을 허용하는 상태인지.
-        /// 전력질주·슬라이딩·초신지선회(·런지)는 진행 방향이 정해진 기동이라 몸을 돌리면 안 된다.
+        /// 전력질주·런지·넉다운은 진행 방향이 정해진 기동이라 몸을 돌리면 안 된다.
         /// </summary>
         public bool AllowsHardLockFacing =>
             !(_currentState is SprintState) &&
-            !(_currentState is SlideState) &&
-            !(_currentState is QuickTurnState) &&
             !(_currentState is LungeState) &&
             !(_currentState is KnockdownState);
 
         public string CurrentStateName => _currentState != null ? _currentState.GetType().Name : "None";
 
-        public Vector3 LastMoveDirection { get; set; }
-
-        /// <summary>
-        /// 카메라가 오른쪽 스틱(시점) 입력을 무시해야 하는지 (F2): 전력질주 진입 판정 중, 전력질주 중,
-        /// 그리고 전력질주가 풀린 뒤 오른쪽 스틱이 중립으로 한 번 돌아올 때까지.
-        /// 질주 조작에 쓰던 오른쪽 스틱이 그대로 카메라를 돌려 화면이 튀는 것을 막는다.
-        /// </summary>
-        public bool IsLookInputBlocked { get; private set; }
-        /// <summary>카메라가 기체 진행 방향 뒤로 따라가야 하는지 (진입 판정 중·전력질주 중).</summary>
-        public bool IsCameraFollowingVelocity { get; private set; }
-        private bool _lookBlockedUntilNeutral;
-        private bool _wasSprinting;
         // R스틱·마우스로 모은 몸 회전량(°). 입력은 Update에서, 회전은 물리 스텝에서 (마우스 델타가 프레임마다라 그대로 모아 둔다)
         private float _pendingTurn;
 
         /// <summary>
         /// R스틱 몸 회전을 받는 상태인지 (V3). 하드락 몸통 회전 중(하드락 안에서는 R스틱 꺼짐), 스턴, 외부 제어,
-        /// 진행 방향이 정해진 기동(사이드스텝·런지·넉다운·초신지선회) 중엔 받지 않는다.
+        /// 진행 방향이 정해진 기동(사이드스텝·런지·넉다운) 중엔 받지 않는다.
         /// </summary>
         public bool AllowsTurnInput =>
-            (_currentState is IdleState || _currentState is WalkState ||
-             _currentState is RunState || _currentState is SprintState || _currentState is BrakeState) &&
+            (_currentState is IdleState || _currentState is RunState || _currentState is SprintState) &&
             !IsStunned && !MechController.IsExternallyControlled && !MechController.IsHardLockFacing;
 
         private void Awake()
@@ -97,13 +77,9 @@ namespace MyDongari.Movement
             MechController = GetComponent<MechController>();
 
             IdleState = new IdleState(this);
-            WalkState = new WalkState(this);
             RunState = new RunState(this);
             SprintState = new SprintState(this);
-            BrakeState = new BrakeState(this);
-            SlideState = new SlideState(this);
             SideStepState = new SideStepState(this);
-            QuickTurnState = new QuickTurnState(this);
             LungeState = new LungeState(this);
             KnockdownState = new KnockdownState(this);
         }
@@ -117,10 +93,6 @@ namespace MyDongari.Movement
         public void ResetForRound()
         {
             enabled = true;
-            LastMoveDirection = Vector3.zero;
-            TwinStick.Reset();
-            _lookBlockedUntilNeutral = false;
-            _wasSprinting = false;
             _pendingTurn = 0f;
             ChangeState(IdleState);
         }
@@ -128,10 +100,6 @@ namespace MyDongari.Movement
         public void ChangeState(MechState newState)
         {
             _currentState?.Exit();
-            if (newState is SlideState)
-            {
-                newState = new SlideState(this);
-            }
             _currentState = newState;
             _currentState.Enter();
             // Enter 안에서 부스트 부족 등으로 다른 상태로 넘어갔으면 그쪽 호출이 이미 알렸다
@@ -140,16 +108,9 @@ namespace MyDongari.Movement
 
         private void Update()
         {
-            // InputReader와 같이 히트스톱(timeScale 0) 중에도 실제 시간으로 잰다
-            if (InputReader != null)
-            {
-                TwinStick.Tick(InputReader.MoveStickRaw, InputReader.LookStickRaw,
-                    Time.unscaledTime, MechController.Tuning.Movement);
-            }
             // 넉다운이 시작되면 어느 상태에서든 넉다운 상태로 (입력 무시, 속도는 KnockdownController가)
             if (IsKnockedDown && !(_currentState is KnockdownState)) ChangeState(KnockdownState);
             _currentState?.Update();
-            UpdateLookBlock();
             AccumulateTurnInput();
 
             if (InputTrace.ShouldLog(this, "4 MechStateMachine"))
@@ -160,34 +121,10 @@ namespace MyDongari.Movement
             }
         }
 
-        /// <summary>상태 Update 뒤(이번 프레임 상태가 정해진 뒤)에 카메라 입력 차단을 정한다. 카메라는 LateUpdate에서 읽는다.</summary>
-        private void UpdateLookBlock()
-        {
-            if (InputReader == null)
-            {
-                IsLookInputBlocked = false;
-                IsCameraFollowingVelocity = false;
-                return;
-            }
-
-            BernardTuning.MovementValues m = MechController.Tuning.Movement;
-            bool rightNeutral = InputReader.LookStickRaw.magnitude < m.cameraLookResumeNeutral;
-            bool sprinting = IsSprinting;
-
-            // 질주가 끝나는 프레임에 오른쪽 스틱이 아직 기울어 있으면(슬라이딩 ↖ 입력 포함) 중립으로 돌아올 때까지 막는다
-            if (_wasSprinting && !sprinting) _lookBlockedUntilNeutral = !rightNeutral;
-            else if (rightNeutral) _lookBlockedUntilNeutral = false;
-            _wasSprinting = sprinting;
-
-            bool judging = !sprinting && TwinStick.IsJudgingEntry(InputReader.MoveStickRaw, Time.unscaledTime, m);
-            IsCameraFollowingVelocity = sprinting || judging;
-            IsLookInputBlocked = IsCameraFollowingVelocity || _lookBlockedUntilNeutral;
-        }
-
         /// <summary>R스틱 좌우(패드는 기울기 × 초당 각도 × 시간, 마우스는 이동량 × 감도)를 몸 회전량으로 모은다.</summary>
         private void AccumulateTurnInput()
         {
-            if (InputReader == null || !AllowsTurnInput || IsLookInputBlocked)
+            if (InputReader == null || !AllowsTurnInput)
             {
                 _pendingTurn = 0f;
                 return;
