@@ -9,32 +9,27 @@ namespace MyDongari.Movement
 {
     public class MechController : MonoBehaviour
     {
-        [Header("이동 수치")]
-        [SerializeField] private float walkSpeed = 10f;
-        [SerializeField] private float runSpeed = 20f;
-        [SerializeField] private float sprintSpeed = 35f;
+        private TuningRef _tuning;
+        /// <summary>이 기체의 수치 에셋. 상태들도 이걸 통해 읽는다.</summary>
+        public BernardTuning Tuning => _tuning.Get(this);
+        private BernardTuning.MovementValues Move => Tuning.Movement;
 
-        [Header("최대 속도")]
-        [SerializeField] private float maxWalkSpeed = 5f;
-        [SerializeField] private float maxRunSpeed = 10f;
-        [SerializeField] private float maxSprintSpeed = 20f;
-
-        [Header("회전 수치")]
-        [SerializeField] private float rotationSpeed = 15f;
-
-        public float WalkSpeed => walkSpeed;
-        public float RunSpeed => runSpeed;
-        public float SprintSpeed => sprintSpeed;
-        public float MaxWalkSpeed => maxWalkSpeed;
-        public float MaxRunSpeed => maxRunSpeed;
-        public float MaxSprintSpeed => maxSprintSpeed;
-        public float RotationSpeed => rotationSpeed;
+        public float WalkSpeed => Move.walkSpeed;
+        public float RunSpeed => Move.runSpeed;
+        public float SprintSpeed => Move.sprintSpeed;
+        public float MaxWalkSpeed => Move.maxWalkSpeed;
+        public float MaxRunSpeed => Move.maxRunSpeed;
+        public float MaxSprintSpeed => Move.maxSprintSpeed;
+        public float RotationSpeed => Move.rotationSpeed;
 
         public Rigidbody Rb { get; private set; }
         public InputReader InputReader { get; private set; }
         public MechStateMachine StateMachine { get; private set; }
 
-
+        [Header("물리 보간")]
+        [Tooltip("켜면 시작할 때 Rigidbody Interpolate를 강제로 켠다. 끄면(None) 물리 스텝(50Hz)마다 위치가 계단처럼 바뀌어 " +
+                 "화면 분할처럼 프레임이 물리 주기에 가까울 때 카메라·락온·외형이 떨린다 (J3)")]
+        [SerializeField] private bool forceInterpolation = true;
 
         [Header("카메라")]
         [SerializeField] private BoostGauge boostGauge;
@@ -48,18 +43,25 @@ namespace MyDongari.Movement
         public MechCamera MechCamera => mechCamera;
         public Transform CameraTransform => cameraTransform;
         public ExternalControlLock ControlLock { get; private set; }
+        public MechIdentity Identity { get; private set; }
+        public LockOnSystem LockOn { get; private set; }
         public bool IsExternallyControlled => ControlLock != null && ControlLock.IsLocked;
 
         private float _defaultDamping;
+        private MeleeSystem _melee;
 
         private void Awake()
         {
             Rb = GetComponent<Rigidbody>();
+            if (forceInterpolation && Rb != null) Rb.interpolation = RigidbodyInterpolation.Interpolate;
             InputReader = GetComponent<InputReader>();
             StateMachine = GetComponent<MechStateMachine>();
 
             ControlLock = GetComponent<ExternalControlLock>();
             if (ControlLock == null) ControlLock = gameObject.AddComponent<ExternalControlLock>();
+            Identity = MechIdentity.GetOrAdd(gameObject);
+            LockOn = GetComponent<LockOnSystem>();
+            _melee = GetComponent<MeleeSystem>();
 
             _defaultDamping = Rb.linearDamping;
         }
@@ -74,12 +76,6 @@ namespace MyDongari.Movement
             }
         }
 
-        [Header("무게감 (관성 보정)")]
-        [Tooltip("0 = 관성 없음(현재 상태), 1 = 방향 반대로 꺾을 때 추진력 최대 90%까지 깎임")]
-        [SerializeField] private float turnResistance = 0.6f;
-        [Tooltip("정지 상태에서 출발할 때 목표 가속도까지 도달하는 데 걸리는 시간(초). 0이면 즉시 풀파워.")]
-        [SerializeField] private float spinUpTime = 0.25f;
-
         private float _spinUpTimer = 0f;
 
         /// <summary>
@@ -89,6 +85,11 @@ namespace MyDongari.Movement
         public void ApplyMoveForce(Vector3 moveDir, float accel, float maxSpeed)
         {
             if (IsExternallyControlled) return; // 앵커클로 등에 붙잡혀 있으면 자기 힘 넣지 않고 양보
+
+            // 원투쓰리 콤보 중·쓰리 회복 중엔 느리게 (N2). 힘과 최대 속도를 같이 줄인다
+            float speedScale = _melee != null ? _melee.MoveSpeedScale : 1f;
+            accel *= speedScale;
+            maxSpeed *= speedScale;
 
             if (moveDir == Vector3.zero)
             {
@@ -102,11 +103,12 @@ namespace MyDongari.Movement
             float alignment = flatVel.sqrMagnitude > 0.25f
                 ? Vector3.Dot(flatVel.normalized, moveDir)
                 : 1f; // 거의 정지 상태면 저항 없음
-            float turnPenalty = Mathf.Lerp(1f, 1f - turnResistance, (1f - alignment) * 0.5f);
+            float turnPenalty = Mathf.Lerp(1f, 1f - Move.turnResistance, (1f - alignment) * 0.5f);
 
             // 2) 스핀업: 정지→출발 순간에는 풀파워가 아니라 점점 힘이 붙는 느낌
-            _spinUpTimer = Mathf.Min(_spinUpTimer + Time.fixedDeltaTime, spinUpTime);
-            float spinUpRatio = spinUpTime > 0f ? _spinUpTimer / spinUpTime : 1f;
+            float spinUp = Move.spinUpTime;
+            _spinUpTimer = Mathf.Min(_spinUpTimer + Time.fixedDeltaTime, spinUp);
+            float spinUpRatio = spinUp > 0f ? _spinUpTimer / spinUp : 1f;
 
             Rb.AddForce(moveDir * accel * turnPenalty * spinUpRatio, ForceMode.Acceleration);
             ClampVelocity(maxSpeed);
@@ -116,17 +118,42 @@ namespace MyDongari.Movement
         {
             if (direction == Vector3.zero) return;
             Quaternion targetRot = Quaternion.LookRotation(direction, Vector3.up);
-            Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, rotationSpeed * Time.fixedDeltaTime));
+            Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, Move.rotationSpeed * Time.fixedDeltaTime));
+        }
+
+        /// <summary>
+        /// 지금 하드 락온 몸통 회전이 기체 방향을 맡고 있는지.
+        /// 이때는 상태들의 RotateToCamera가 같은 물리 스텝에 회전을 덮어쓰지 않게 양보한다.
+        /// </summary>
+        public bool IsHardLockFacing =>
+            LockOn != null && LockOn.IsHardLocked && LockOn.Target != null &&
+            StateMachine != null && StateMachine.AllowsHardLockFacing &&
+            !IsExternallyControlled;
+
+        /// <summary>하드 락온 중 몸통을 상대 쪽으로 수평 회전. MechStateMachine이 매 물리 스텝 부른다.</summary>
+        public void ApplyHardLockFacing()
+        {
+            if (!IsHardLockFacing) return;
+
+            // 물리 스텝이라 보간된 트랜스폼이 아니라 두 리지드바디의 물리 위치로 방향을 잰다 (보간을 켜면 트랜스폼은 한 스텝 뒤라 J3)
+            Rigidbody targetRb = LockOn.Target.GetComponent<Rigidbody>();
+            Vector3 targetPosition = targetRb != null ? targetRb.position : LockOn.Target.position;
+            Vector3 toTarget = targetPosition - Rb.position;
+            toTarget.y = 0f;
+            if (toTarget.sqrMagnitude < 0.0001f) return;
+            Quaternion targetRot = Quaternion.LookRotation(toTarget.normalized, Vector3.up);
+            Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, Move.hardLockTurnSpeed * Time.fixedDeltaTime));
         }
 
         public void RotateToCamera()
         {
+            if (IsHardLockFacing) return;
             if (CameraTransform == null) return;
             Vector3 camForward = CameraTransform.forward;
             camForward.y = 0f;
             if (camForward == Vector3.zero) return;
             Quaternion targetRot = Quaternion.LookRotation(camForward);
-            Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, rotationSpeed * Time.fixedDeltaTime));
+            Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, Move.rotationSpeed * Time.fixedDeltaTime));
         }
 
         // ---- Rigidbody 댐핑 소유권 조정 ----
@@ -161,6 +188,13 @@ namespace MyDongari.Movement
             Rb.linearDamping = _requestedDamping ?? _defaultDamping;
             _requestedDamping = null;
             _requestedDampingPriority = int.MinValue;
+
+            if (InputTrace.ShouldLog(this, "5 MechController"))
+            {
+                InputTrace.Log("5 MechController", $"{gameObject.name} reader={(InputReader != null ? InputReader.gameObject.name : "없음")} " +
+                    $"move={(InputReader != null ? InputReader.MoveInput.ToString() : "-")} vel={Rb.linearVelocity} " +
+                    $"external={IsExternallyControlled} kinematic={Rb.isKinematic}");
+            }
         }
     }
 }

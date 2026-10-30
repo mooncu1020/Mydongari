@@ -1,12 +1,15 @@
 using UnityEngine;
+using MyDongari.Core;
+using MyDongari.Combat;
 
 namespace MyDongari.Movement
 {
     public class SlideState : MechState
     {
         private float _slideTimer = 0f;
-        private const float SlideDuration = 0.8f;
-        private const float SlideSpeed = 25f;
+        // 시간·속도는 BernardTuning(이동)에서 매번 읽는다 (플레이 중 조정 반영)
+        private float SlideDuration => StateMachine.MechController.Tuning.Movement.slideDuration;
+        private float SlideSpeed => StateMachine.MechController.Tuning.Movement.slideSpeed;
 
         public SlideState(MechStateMachine stateMachine) : base(stateMachine)
         {
@@ -22,6 +25,11 @@ namespace MyDongari.Movement
             }
 
             _slideTimer = 0f;
+
+            // 스펙: 슬라이딩은 상대의 락온을 강제로 해제한다 (미끄러지는 동안 다시 못 잡음)
+            MechIdentity opponent = StateMachine.MechController.Identity.Opponent;
+            LockOnSystem opponentLock = opponent != null ? opponent.GetComponent<LockOnSystem>() : null;
+            if (opponentLock != null) opponentLock.BlockAllLockFor(SlideDuration);
         }
 
         public override void Update()
@@ -30,7 +38,7 @@ namespace MyDongari.Movement
 
             if (_slideTimer >= SlideDuration)
             {
-                if (StateMachine.InputReader.MoveInput.sqrMagnitude >= 0.64f)
+                if (StateMachine.InputReader.IsMoveInputActive)
                 {
                     StateMachine.ChangeState(StateMachine.WalkState);
                 }

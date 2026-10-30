@@ -7,6 +7,7 @@ namespace MyDongari.Combat
     {
         [SerializeField] private float maxHealth = 100f;
         public float CurrentHealth { get; private set; }
+        public float MaxHealth => maxHealth;
         public bool IsDead { get; private set; }
 
         private MechStateMachine _stateMachine;
