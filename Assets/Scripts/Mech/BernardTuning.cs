@@ -23,8 +23,6 @@ namespace MyDongari.Mech
             public float maxRunSpeed = 20f;
             [Tooltip("하드락 안 근접 이동 최대 속도 (상대 기준 이동). 하드락이 걸리면 거리로 저절로 바뀐다")]
             public float closeMoveSpeed = 8f;
-            [Tooltip("임시 키보드 Space 전력질주 속도 (3단계 ○ 대시 전까지)")]
-            public float maxSprintSpeed = 20f;
             [Tooltip("넉백을 받은 뒤 이 시간(초) 동안은 달리기·정지가 속도를 덮어쓰지 않는다 (넉백이 지워지지 않게)")]
             public float knockbackMoveHold = 0.35f;
 
@@ -39,6 +37,22 @@ namespace MyDongari.Mech
             [Header("사이드스텝")]
             public float sideStepDuration = 0.3f;
             public float sideStepSpeed = 20f;
+
+            [Header("○ 대시 (V3)")]
+            [Tooltip("대시 속도(m/s). 누르고 있는 동안 유지, 부스트는 Boost.dashDrainRate로 초당 소모")]
+            public float dashSpeed = 30f;
+            [Tooltip("하드락 밖 대시 중 L스틱으로 방향을 트는 최대 속도(°/초)")]
+            public float dashTurnRate = 120f;
+            [Tooltip("공격 없이 대시로 상대 몸에 부딪혔을 때 둘이 서로 밀려나는 속도(m/s). 피해 없음")]
+            public float bumpSpeed = 4f;
+
+            [Header("백대시 (○ + L스틱 뒤)")]
+            [Tooltip("뒤로 튀는 거리(m). 하드락 안에서는 상대 반대 방향")]
+            public float backDashDistance = 6f;
+            [Tooltip("튀는 데 걸리는 시간(초). 속도 = 거리 / 시간")]
+            public float backDashDuration = 0.25f;
+            [Tooltip("○를 누른 순간 L스틱 아래로 이만큼 이상(그리고 좌우보다 더) 기울어 있으면 백대시")]
+            [Range(0f, 1f)] public float backDashStickThreshold = 0.5f;
         }
 
         [Serializable]
@@ -49,13 +63,15 @@ namespace MyDongari.Mech
             public float recoveryDelay = 0.5f;
             [Tooltip("초당 회복량")]
             public float recoveryRate = 25f;
-            [Tooltip("전력질주 초당 소모량")]
-            public float sprintDrainRate = 5f;
+            [Tooltip("○ 대시 초당 소모량 (100이면 약 4초)")]
+            public float dashDrainRate = 25f;
             [Tooltip("탈진(0%) 후 회복해 최대치의 이 비율에 도달하면 탈진 해제")]
             [Range(0f, 1f)] public float exhaustRecoverRatio = 0.5f;
 
             [Header("소모량")]
             public float sideStepCost = 10f;
+            [Tooltip("백대시 한 번 소모량")]
+            public float backDashCost = 15f;
         }
 
         [Serializable]
@@ -64,7 +80,7 @@ namespace MyDongari.Mech
             public float maxHeat = 100f;
             [Tooltip("초당 냉각량")]
             public float coolingRate = 20f;
-            [Tooltip("전력질주 중 냉각 속도 감소율. 0.7이면 냉각 속도가 평소의 30%로 떨어진다")]
+            [Tooltip("대시 중 냉각 속도 감소율. 0.7이면 냉각 속도가 평소의 30%로 떨어진다 (이름은 에셋 값 유지를 위해 그대로)")]
             [Range(0f, 1f)] public float sprintCoolingReduction = 0.7f;
         }
 
@@ -168,9 +184,9 @@ namespace MyDongari.Mech
             public float recoveryStun = 0.5f;
 
             [Header("차징")]
-            [Tooltip("전력질주를 이 시간(초) 이상 유지하면 차징 태클 (미만은 대시 어택)")]
+            [Tooltip("○ 대시를 이 시간(초) 이상 유지하면 차징 태클 (미만은 대시 어택)")]
             public float chargeStartTime = 1.5f;
-            [Tooltip("전력질주를 이 시간(초) 유지하면 차징 최대 (피해·넉백 2배)")]
+            [Tooltip("○ 대시를 이 시간(초) 유지하면 차징 최대 (피해·넉백 2배)")]
             public float fullChargeTime = 3f;
             [Tooltip("차징 상태로 이 거리(m) 안에 상대가 정면으로 닿으면 자동 태클")]
             public float contactRadius = 2f;

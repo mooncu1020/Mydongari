@@ -28,7 +28,7 @@ namespace MyDongari.Visual
         private void PoseStance(BernardTuning.VisualValues v, float dt)
         {
             BernardTuning.MotionValues m = M;
-            float target = _stateMachine != null && _stateMachine.IsSprinting ? 1f : 0f;
+            float target = _stateMachine != null && _stateMachine.IsDashing ? 1f : 0f;
             _sprintStance = m.sprintStanceBlendTime > 0f
                 ? Mathf.MoveTowards(_sprintStance, target, dt / m.sprintStanceBlendTime)
                 : target;

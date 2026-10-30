@@ -25,6 +25,8 @@ namespace MyDongari.Movement
                 return;
             }
 
+            if (StateMachine.TryStartDash()) return;
+
             InputReader input = StateMachine.InputReader;
             if (input.SideStepDirection != 0 && !StateMachine.MechController.BoostGauge.IsExhausted)
             {
@@ -36,12 +38,6 @@ namespace MyDongari.Movement
             {
                 StateMachine.ChangeState(StateMachine.IdleState);
                 return;
-            }
-
-            // 임시: 키보드 Space 전력질주 (3단계 ○ 대시가 대신할 때까지). 패드 진입 경로는 없다
-            if (input.SprintInput && !StateMachine.MechController.BoostGauge.IsExhausted)
-            {
-                StateMachine.ChangeState(StateMachine.SprintState);
             }
         }
 

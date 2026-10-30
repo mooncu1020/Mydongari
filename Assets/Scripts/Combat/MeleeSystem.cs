@@ -190,8 +190,8 @@ namespace MyDongari.Combat
 
         private void HandleGuard()
         {
-            // 전력질주 중엔 가드 자체를 못 건다 (질주=공격적 상태, 방어자세 병행 불가)
-            bool sprinting = _stateMachine != null && _stateMachine.IsSprinting;
+            // 대시 중엔 가드 자체를 못 건다 (대시 = 공격적 상태, 방어자세 병행 불가)
+            bool sprinting = _stateMachine != null && _stateMachine.IsDashing;
             bool guardHeld = _input != null && _input.GuardHeld;
 
             if (guardHeld && !sprinting && (IsGuarding || _reraiseTimer <= 0f))
@@ -430,7 +430,7 @@ namespace MyDongari.Combat
 
         /// <summary>
         /// 어깨 태클 시작(버튼을 누른 순간): 쿨다운을 쓰고 OnAttackStarted를 알린다. 쿨다운 중이면 false.
-        /// 판정은 발생 시간 뒤 ResolveTackle (SprintState가 진행).
+        /// 판정은 발생 시간 뒤 ResolveTackle (DashState가 진행).
         /// </summary>
         public bool BeginTackle(AttackType type)
         {
@@ -455,7 +455,7 @@ namespace MyDongari.Combat
 
         /// <summary>
         /// 어깨 태클 판정(판정하는 순간의 위치·방향 기준). type은 DashAttack(질주 1.5초 미만, 가드에 막힘) 또는 Tackle(차징, 관통 + 스턴).
-        /// 범위 안에 상대가 없으면 null. 공격자 경직은 호출 쪽(SprintState)이 결과를 보고 건다 — 패리당했으면 경직 없음.
+        /// 범위 안에 상대가 없으면 null. 공격자 경직은 호출 쪽(DashState)이 결과를 보고 건다 — 패리당했으면 경직 없음.
         /// </summary>
         public HitResult? ResolveTackle(float chargePower, AttackType type)
         {

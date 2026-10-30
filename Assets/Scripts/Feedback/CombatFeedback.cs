@@ -458,7 +458,7 @@ namespace MyDongari.Feedback
                 fb.WasExhausted = exhausted;
 
                 UpdateTint(fb, stunned, overheated, guarding);
-                UpdateHoverLoop(fb, active && fb.StateMachine != null && fb.StateMachine.IsSprinting);
+                UpdateHoverLoop(fb, active && fb.StateMachine != null && fb.StateMachine.IsDashing);
                 UpdateKnockdownSlideDust(fb, active);
                 float scrape = active && fb.Rig != null ? fb.Rig.ScrapeAmount : 0f;
                 UpdateLoop(ref fb.ScrapeLoop, strideScrapeLoopClip, strideScrapeVolume * Mathf.Clamp01(scrape));

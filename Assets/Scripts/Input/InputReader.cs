@@ -29,8 +29,10 @@ namespace MyDongari.Input
 
         public Vector2 MoveInput { get; private set; }
         public Vector2 LookInput { get; private set; }
-        /// <summary>임시 버튼 전력질주(키보드 Space)를 누르고 있는지. 3단계 ○ 대시 전까지. 패드 경로는 없다(V3에서 트윈스틱 삭제).</summary>
-        public bool SprintInput { get; private set; }
+        /// <summary>○ 대시 버튼(패드 B / 키보드 Space)을 누르고 있는지. 누르고 있는 동안 대시 유지.</summary>
+        public bool DashHeld { get; private set; }
+        /// <summary>○ 대시 버튼을 이번 프레임에 눌렀는지. 대시·백대시 시작은 누른 순간만.</summary>
+        public bool DashPressedThisFrame { get; private set; }
         public bool Skill1Input { get; private set; }
         public bool Skill2Input { get; private set; }
         public int SideStepDirection { get; private set; }
@@ -83,7 +85,7 @@ namespace MyDongari.Input
         private PlayerInput _playerInput;
         private InputAction _moveAction;
         private InputAction _lookAction;
-        private InputAction _sprintAction;
+        private InputAction _dashAction;
         private InputAction _skill1Action;
         private InputAction _skill2Action;
         private InputAction _attackAction;
@@ -117,8 +119,8 @@ namespace MyDongari.Input
             _playerInput = GetComponent<PlayerInput>();
             _moveAction = _playerInput.actions["Move"];
             _lookAction = _playerInput.actions["Look"];
-            // Run·Slide·QuickTurn 액션은 .inputactions에 남아 있지만 V3에서 읽지 않는다 (걷기·슬라이딩·초신지선회 삭제)
-            _sprintAction = _playerInput.actions["Sprint"];
+            // Run·Slide·QuickTurn·Sprint 액션은 .inputactions에 남아 있지만 V3에서 읽지 않는다 (걷기·슬라이딩·초신지선회·전력질주 삭제)
+            _dashAction = _playerInput.actions["Dash"];
             _skill1Action = _playerInput.actions["Skill1"];
             _skill2Action = _playerInput.actions["Skill2"];
             _attackAction = _playerInput.actions["Attack"];
@@ -205,7 +207,8 @@ namespace MyDongari.Input
             _gesture.Tick(stick, Time.unscaledTime, gesture);
             MoveStickRaw = stick;
 
-            SprintInput = _sprintAction.IsPressed();
+            DashHeld = _dashAction.IsPressed();
+            DashPressedThisFrame = _dashAction.WasPressedThisFrame();
 
             AttackHeld = _attackAction.IsPressed();
             AttackPressedThisFrame = _attackAction.WasPressedThisFrame();
@@ -307,7 +310,8 @@ namespace MyDongari.Input
         {
             MoveInput = Vector2.zero;
             LookInput = Vector2.zero;
-            SprintInput = false;
+            DashHeld = false;
+            DashPressedThisFrame = false;
             MoveStickRaw = Vector2.zero;
             Skill1Input = false;
             Skill2Input = false;

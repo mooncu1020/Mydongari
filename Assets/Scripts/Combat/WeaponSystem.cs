@@ -126,7 +126,7 @@ namespace MyDongari.Combat
         private bool IsRangedContext()
         {
             if (_anchorClaw != null && _anchorClaw.IsPileDriverReady) return false;
-            if (_stateMachine != null && _stateMachine.IsSprinting) return false;
+            if (_stateMachine != null && _stateMachine.IsDashing) return false;
             return _lockOnSystem == null || !_lockOnSystem.IsHardLocked;
         }
 
@@ -145,11 +145,11 @@ namespace MyDongari.Combat
                 return _anchorClaw.TryPileDriver() ? AttackType.PileDriver : (AttackType?)null;
             }
 
-            if (_stateMachine != null && _stateMachine.IsSprinting)
+            if (_stateMachine != null && _stateMachine.IsDashing)
             {
-                // 질주 중 공격 버튼 = 어깨 태클 (1.5초 미만 대시 어택 / 이상 차징 태클)
-                if (!_stateMachine.SprintState.RequestTackle()) return null;
-                return _stateMachine.SprintState.IsTackleCharged ? AttackType.Tackle : AttackType.DashAttack;
+                // 대시 중 공격 버튼 = 어깨 태클 (1.5초 미만 대시 어택 / 이상 차징 태클)
+                if (!_stateMachine.DashState.RequestTackle()) return null;
+                return _stateMachine.DashState.IsTackleCharged ? AttackType.Tackle : AttackType.DashAttack;
             }
 
             // V3: 펀치/런지 전환은 하드 락온(10m)과 따로 meleeSwitchRange(6m). 6~10m는 하드락 안이어도 런지

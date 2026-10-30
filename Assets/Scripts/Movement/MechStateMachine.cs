@@ -6,8 +6,7 @@ using MyDongari.Mech;
 namespace MyDongari.Movement
 {
     /// <summary>
-    /// 이동 상태 (V3): Idle(정지) / Run(항상 달리기, 하드락 안이면 근접 이동) / SideStep / Lunge / Knockdown,
-    /// 그리고 3단계 ○ 대시 전까지 임시로 남긴 Sprint(키보드 Space만).
+    /// 이동 상태 (V3): Idle(정지) / Run(항상 달리기, 하드락 안이면 근접 이동) / Dash(○) / BackDash(○ + 뒤) / SideStep / Lunge / Knockdown.
     /// 걷기·제동·슬라이딩·초신지선회·트윈스틱 전력질주는 V3에서 삭제됐다.
     /// </summary>
     public class MechStateMachine : MonoBehaviour
@@ -22,12 +21,15 @@ namespace MyDongari.Movement
 
         public IdleState IdleState { get; private set; }
         public RunState RunState { get; private set; }
-        public SprintState SprintState { get; private set; }
+        public DashState DashState { get; private set; }
+        public BackDashState BackDashState { get; private set; }
         public SideStepState SideStepState { get; private set; }
         public LungeState LungeState { get; private set; }
         public KnockdownState KnockdownState { get; private set; }
 
-        public bool IsSprinting => _currentState is SprintState;
+        /// <summary>○ 대시 중 (백대시 제외). 가드 불가·히트 냉각 감소·호버 활주 외형의 기준.</summary>
+        public bool IsDashing => _currentState is DashState;
+        public bool IsBackDashing => _currentState is BackDashState;
 
         public bool IsStunned => MechController.MeleeSystem != null && MechController.MeleeSystem.IsStunned;
         public bool IsIdle => _currentState is IdleState;
@@ -51,10 +53,10 @@ namespace MyDongari.Movement
 
         /// <summary>
         /// 하드 락온 몸통 자동 회전을 허용하는 상태인지.
-        /// 전력질주·런지·넉다운은 진행 방향이 정해진 기동이라 몸을 돌리면 안 된다.
+        /// 대시(방향을 DashState가 정함)·런지·넉다운은 진행 방향이 정해진 기동이라 몸을 돌리면 안 된다.
         /// </summary>
         public bool AllowsHardLockFacing =>
-            !(_currentState is SprintState) &&
+            !(_currentState is DashState) &&
             !(_currentState is LungeState) &&
             !(_currentState is KnockdownState);
 
@@ -65,10 +67,10 @@ namespace MyDongari.Movement
 
         /// <summary>
         /// R스틱 몸 회전을 받는 상태인지 (V3). 하드락 몸통 회전 중(하드락 안에서는 R스틱 꺼짐), 스턴, 외부 제어,
-        /// 진행 방향이 정해진 기동(사이드스텝·런지·넉다운) 중엔 받지 않는다.
+        /// 진행 방향이 정해진 기동(대시·백대시·사이드스텝·런지·넉다운) 중엔 받지 않는다. 대시 방향은 L스틱으로 튼다.
         /// </summary>
         public bool AllowsTurnInput =>
-            (_currentState is IdleState || _currentState is RunState || _currentState is SprintState) &&
+            (_currentState is IdleState || _currentState is RunState) &&
             !IsStunned && !MechController.IsExternallyControlled && !MechController.IsHardLockFacing;
 
         private void Awake()
@@ -78,7 +80,8 @@ namespace MyDongari.Movement
 
             IdleState = new IdleState(this);
             RunState = new RunState(this);
-            SprintState = new SprintState(this);
+            DashState = new DashState(this);
+            BackDashState = new BackDashState(this);
             SideStepState = new SideStepState(this);
             LungeState = new LungeState(this);
             KnockdownState = new KnockdownState(this);
@@ -95,6 +98,20 @@ namespace MyDongari.Movement
             enabled = true;
             _pendingTurn = 0f;
             ChangeState(IdleState);
+        }
+
+        /// <summary>
+        /// ○를 이번 프레임에 눌렀으면 대시 또는 백대시(L스틱 뒤)로 넘어간다. Idle·Run이 부른다. 넘어갔으면 true.
+        /// 탈진(0%)·스턴이면 안 나간다.
+        /// </summary>
+        public bool TryStartDash()
+        {
+            if (InputReader == null || !InputReader.DashPressedThisFrame) return false;
+            if (IsStunned || MechController.BoostGauge.IsExhausted) return false;
+            Vector2 move = InputReader.MoveInput;
+            bool back = move.y <= -MechController.Tuning.Movement.backDashStickThreshold && -move.y >= Mathf.Abs(move.x);
+            ChangeState(back ? (MechState)BackDashState : DashState);
+            return true;
         }
 
         public void ChangeState(MechState newState)

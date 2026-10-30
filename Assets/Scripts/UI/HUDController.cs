@@ -93,14 +93,14 @@ namespace MyDongari.UI
         {
             if (tackleBarFill == null || mechStateMachine == null) return;
 
-            if (!mechStateMachine.IsSprinting)
+            if (!mechStateMachine.IsDashing)
             {
                 tackleBarFill.SetFill(0f);
                 tackleBarFill.SetColor(new Color(1f, 0.9f, 0f, 0f));
                 return;
             }
 
-            SprintState sprintState = mechStateMachine.SprintState;
+            DashState sprintState = mechStateMachine.DashState;
             float chargeAmount = sprintState.TackleChargePower;
             Color col = sprintState.IsTackleCharged
                 ? new Color(1f, 0.9f, 0f, 1f)

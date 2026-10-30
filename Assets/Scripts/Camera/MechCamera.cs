@@ -211,7 +211,7 @@ namespace MyDongari.Camera
             if (_camera == null || _mechController == null) return;
 
             float speed = _mechController.Rb.linearVelocity.magnitude;
-            float maxSpeed = _mechController.MaxSprintSpeed;
+            float maxSpeed = _mechController.DashSpeed;
             float t = maxSpeed > 0.0001f ? Mathf.Clamp01(speed / maxSpeed) : 0f;
             float targetFov = Mathf.Lerp(baseFov, sprintFov, t);
             _camera.fieldOfView = Mathf.Lerp(_camera.fieldOfView, targetFov, fovLerpSpeed * Time.deltaTime);

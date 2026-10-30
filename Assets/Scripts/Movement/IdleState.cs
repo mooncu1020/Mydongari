@@ -20,6 +20,8 @@ namespace MyDongari.Movement
         {
             if (StateMachine.IsStunned) return;
 
+            if (StateMachine.TryStartDash()) return;
+
             if (StateMachine.InputReader.SideStepDirection != 0 &&
                 !StateMachine.MechController.BoostGauge.IsExhausted)
             {

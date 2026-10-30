@@ -12,7 +12,7 @@ namespace MyDongari.Mech
         public float MaxHeat => T.maxHeat;
 
         // 상태 머신이 없는 기체(연습 봇)는 질주하지 않으므로 항상 평소 냉각
-        private bool IsSprinting => _stateMachine != null && _stateMachine.IsSprinting;
+        private bool IsDashing => _stateMachine != null && _stateMachine.IsDashing;
         public bool IsOverheated { get; private set; }
 
         private MechStateMachine _stateMachine;
@@ -34,7 +34,7 @@ namespace MyDongari.Mech
             if (IsOverheated)
             {
                 float currentCoolingRate = T.coolingRate;
-                if (IsSprinting)
+                if (IsDashing)
                 {
                     currentCoolingRate *= (1f - T.sprintCoolingReduction);
                 }
@@ -49,7 +49,7 @@ namespace MyDongari.Mech
             if (CurrentHeat >= T.maxHeat) return;
 
             float normalCoolingRate = T.coolingRate;
-            if (IsSprinting)
+            if (IsDashing)
             {
                 normalCoolingRate *= (1f - T.sprintCoolingReduction);
             }

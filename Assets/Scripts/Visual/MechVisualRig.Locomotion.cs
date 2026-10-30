@@ -211,7 +211,7 @@ namespace MyDongari.Visual
         {
             if (_stateMachine != null)
             {
-                if (_stateMachine.IsSprinting) return v.sprintStepLength;
+                if (_stateMachine.IsDashing) return v.sprintStepLength;
                 if (_stateMachine.IsRunning) return v.runStepLength;
                 return v.walkStepLength;
             }

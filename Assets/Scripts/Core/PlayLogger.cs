@@ -56,8 +56,8 @@ namespace MyDongari.Core
             "sidestep", "anchor_hit", "slam_landed",
             // 입력 버퍼로(누른 프레임보다 뒤에) 발동한 공격 수. 종류별은 buffered_punch 등으로 따로
             "buffered_attack",
-            // 임시 키보드 전력질주(V3 3단계 ○ 대시 전까지): 진입 수와 해제 이유별 수 (나머지 이유는 0이 아닐 때만 추가로 나온다)
-            "sprint_enter", "sprint_exit_button_release", "sprint_exit_exhausted"
+            // ○ 대시(V3): 진입 수와 해제 이유별 수 (나머지 이유는 0이 아닐 때만 추가로 나온다), 백대시 수
+            "dash_enter", "dash_exit_button_release", "dash_exit_exhausted", "dash_exit_bump", "backdash"
         };
         private static readonly string[] BandNames = { "near", "mid", "far" };
 
@@ -242,23 +242,24 @@ namespace MyDongari.Core
                 Action<MechState> onState = state => ErrorLog.Run(() =>
                 {
                     if (state is SideStepState) Count(index, "sidestep");
+                    else if (state is BackDashState) Count(index, "backdash");
                 }, "PlayLogger.onState");
                 sm.OnStateChanged += onState;
                 _unsubscribers.Add(() => sm.OnStateChanged -= onState);
 
-                SprintState sprint = sm.SprintState;
-                if (sprint != null)
+                DashState dash = sm.DashState;
+                if (dash != null)
                 {
-                    Action onSprintStart = () => ErrorLog.Run(
-                        () => Count(index, "sprint_enter", "button"), "PlayLogger.onSprintStart");
-                    Action<SprintExitReason> onSprintEnd = reason => ErrorLog.Run(
-                        () => Count(index, "sprint_exit_" + SprintExitKey(reason), ""), "PlayLogger.onSprintEnd");
-                    sprint.OnSprintStarted += onSprintStart;
-                    sprint.OnSprintEnded += onSprintEnd;
+                    Action onDashStart = () => ErrorLog.Run(
+                        () => Count(index, "dash_enter"), "PlayLogger.onDashStart");
+                    Action<DashExitReason> onDashEnd = reason => ErrorLog.Run(
+                        () => Count(index, "dash_exit_" + DashExitKey(reason)), "PlayLogger.onDashEnd");
+                    dash.OnDashStarted += onDashStart;
+                    dash.OnDashEnded += onDashEnd;
                     _unsubscribers.Add(() =>
                     {
-                        sprint.OnSprintStarted -= onSprintStart;
-                        sprint.OnSprintEnded -= onSprintEnd;
+                        dash.OnDashStarted -= onDashStart;
+                        dash.OnDashEnded -= onDashEnd;
                     });
                 }
             }
@@ -391,15 +392,15 @@ namespace MyDongari.Core
             }
         }
 
-        private static string SprintExitKey(SprintExitReason reason)
+        private static string DashExitKey(DashExitReason reason)
         {
             switch (reason)
             {
-                case SprintExitReason.ButtonReleased: return "button_release";
-                case SprintExitReason.Exhausted: return "exhausted";
-                case SprintExitReason.SideStep: return "sidestep";
-                case SprintExitReason.Stun: return "stun";
-                case SprintExitReason.Tackle: return "tackle";
+                case DashExitReason.ButtonReleased: return "button_release";
+                case DashExitReason.Exhausted: return "exhausted";
+                case DashExitReason.Stun: return "stun";
+                case DashExitReason.Tackle: return "tackle";
+                case DashExitReason.Bump: return "bump";
                 default: return "other";
             }
         }

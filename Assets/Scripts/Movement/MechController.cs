@@ -16,7 +16,7 @@ namespace MyDongari.Movement
 
         public float MaxRunSpeed => Move.maxRunSpeed;
         public float CloseMoveSpeed => Move.closeMoveSpeed;
-        public float MaxSprintSpeed => Move.maxSprintSpeed;
+        public float DashSpeed => Move.dashSpeed;
 
         public Rigidbody Rb { get; private set; }
         public InputReader InputReader { get; private set; }
@@ -121,7 +121,7 @@ namespace MyDongari.Movement
         }
 
         /// <summary>하드락 중이면 상대 쪽 수평 방향(크기 1). 물리 위치로 잰다.</summary>
-        private bool TryGetHardLockForward(out Vector3 forward)
+        public bool TryGetHardLockForward(out Vector3 forward)
         {
             forward = Vector3.zero;
             if (LockOn == null || !LockOn.IsHardLocked || LockOn.Target == null) return false;
@@ -211,6 +211,38 @@ namespace MyDongari.Movement
         private void FixedUpdate()
         {
             if (_moveHoldTimer > 0f) _moveHoldTimer -= Time.fixedDeltaTime;
+        }
+
+        /// <summary>
+        /// 대시 중 공격 없이 상대 몸에 부딪히면 둘 다 멈추고 살짝 밀려난다(V3 "충돌", 피해 없음).
+        /// 차징이 찬 상태로 정면에서 닿으면 예전처럼 자동 태클로 넘긴다. 상대가 대시 중이면 상대 대시도 끝난다.
+        /// </summary>
+        private void OnCollisionEnter(Collision collision)
+        {
+            if (StateMachine == null || !StateMachine.IsDashing || Identity == null) return;
+            if (!Identity.IsOpponentCollider(collision.collider)) return;
+            DashState dash = StateMachine.DashState;
+            if (dash.IsAttacking) return;
+            if (dash.IsTackleCharged && _melee != null && _melee.IsOpponentInTackleArc() && dash.RequestTackle()) return;
+
+            MechController other = Identity.Opponent != null ? Identity.Opponent.GetComponent<MechController>() : null;
+            Vector3 apart = Rb.position - (other != null ? other.Rb.position : collision.transform.position);
+            apart.y = 0f;
+            if (apart.sqrMagnitude < 0.0001f) apart = -(Rb.rotation * Vector3.forward);
+            apart.Normalize();
+
+            ApplyBump(apart);
+            if (other != null) other.ApplyBump(-apart);
+        }
+
+        /// <summary>몸 충돌 반동: 대시를 끝내고 direction 쪽으로 bumpSpeed만큼 밀린다(넉백처럼 잠깐 이동 입력을 막음).</summary>
+        public void ApplyBump(Vector3 direction)
+        {
+            if (IsExternallyControlled) return;
+            if (StateMachine != null && StateMachine.IsDashing && !StateMachine.DashState.IsAttacking) StateMachine.DashState.EndByBump();
+            Vector3 push = direction * Move.bumpSpeed;
+            Rb.linearVelocity = new Vector3(push.x, Rb.linearVelocity.y, push.z);
+            HoldMoveControl();
         }
 
         /// <summary>라운드 시작: 넉백 유지 시간 초기화.</summary>
