@@ -25,6 +25,8 @@ namespace MyDongari.Movement
                 return;
             }
 
+            if (StateMachine.CheckFall()) return;
+            if (StateMachine.TryStartJump()) return;
             if (StateMachine.TryStartDash()) return;
 
             InputReader input = StateMachine.InputReader;

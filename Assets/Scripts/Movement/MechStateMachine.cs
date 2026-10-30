@@ -6,7 +6,8 @@ using MyDongari.Mech;
 namespace MyDongari.Movement
 {
     /// <summary>
-    /// 이동 상태 (V3): Idle(정지) / Run(항상 달리기, 하드락 안이면 근접 이동) / Dash(○, 8방향 고정) / DashStop(대시 끝 미끄러짐) / SideStep / Lunge / Knockdown.
+    /// 이동 상태 (V3): Idle(정지) / Run(항상 달리기, 하드락 안이면 근접 이동) / Dash(○, 8방향 고정, 땅·공중) / DashStop(대시 끝 미끄러짐) /
+    /// Air(△ 점프·낙하) / Landing(착지 경직) / SideStep / Lunge / Knockdown.
     /// 걷기·제동·슬라이딩·초신지선회·트윈스틱 전력질주는 V3에서 삭제됐다.
     /// </summary>
     public class MechStateMachine : MonoBehaviour
@@ -23,6 +24,8 @@ namespace MyDongari.Movement
         public RunState RunState { get; private set; }
         public DashState DashState { get; private set; }
         public DashStopState DashStopState { get; private set; }
+        public AirState AirState { get; private set; }
+        public LandingState LandingState { get; private set; }
         public SideStepState SideStepState { get; private set; }
         public LungeState LungeState { get; private set; }
         public KnockdownState KnockdownState { get; private set; }
@@ -31,6 +34,12 @@ namespace MyDongari.Movement
         public bool IsDashing => _currentState is DashState;
         /// <summary>대시 끝 미끄러짐 중 (약 0.2초). 공격·대시 불가, 이동 가능.</summary>
         public bool IsDashStopping => _currentState is DashStopState;
+        /// <summary>공중 (점프·낙하·공중 대시). 가드·패리·앵커 클로·공격 불가, 외형 접지 보정 끔. 대공 판정의 "공중"도 이것.</summary>
+        public bool IsAirborne => _currentState is AirState || (_currentState is DashState && DashState.IsAirborne);
+        /// <summary>착지 경직 중. 이동·공격·대시·점프·가드 불가.</summary>
+        public bool IsLanding => _currentState is LandingState;
+        /// <summary>점프 락온으로 몸을 상대 쪽으로 돌리는 0.2초 (카메라가 몸에 바로 붙는다).</summary>
+        public bool IsJumpTurning => _currentState is AirState && AirState.IsJumpTurning;
 
         public bool IsStunned => MechController.MeleeSystem != null && MechController.MeleeSystem.IsStunned;
         public bool IsIdle => _currentState is IdleState;
@@ -58,6 +67,7 @@ namespace MyDongari.Movement
         /// 대시는 허용 — V3.1: 대시 방향은 고정이고 몸 정면은 따로라, 하드락이면 상대를 정면에 둔 채 옆으로 빠진다.
         /// </summary>
         public bool AllowsHardLockFacing =>
+            !IsJumpTurning &&
             !(_currentState is LungeState) &&
             !(_currentState is KnockdownState);
 
@@ -83,6 +93,8 @@ namespace MyDongari.Movement
             RunState = new RunState(this);
             DashState = new DashState(this);
             DashStopState = new DashStopState(this);
+            AirState = new AirState(this);
+            LandingState = new LandingState(this);
             SideStepState = new SideStepState(this);
             LungeState = new LungeState(this);
             KnockdownState = new KnockdownState(this);
@@ -91,6 +103,28 @@ namespace MyDongari.Movement
         private void Start()
         {
             ChangeState(IdleState);
+            // 공중에서 맞으면 그 자리에서 떨어져 착지 경직 (V5). 넉백은 수평만 지운다
+            if (MechController.MeleeSystem != null) MechController.MeleeSystem.OnHitResolved += OnHitResolved;
+        }
+
+        private void OnDestroy()
+        {
+            if (MechController != null && MechController.MeleeSystem != null) MechController.MeleeSystem.OnHitResolved -= OnHitResolved;
+        }
+
+        private void OnHitResolved(Combat.HitInfo info, Combat.HitResult result)
+        {
+            if (!IsAirborne) return;
+            if (result != Combat.HitResult.Hit && result != Combat.HitResult.GuardBroken) return;
+            Rigidbody rb = MechController.Rb;
+            rb.linearVelocity = new Vector3(0f, Mathf.Min(0f, rb.linearVelocity.y), 0f);
+            if (_currentState is AirState) AirState.MarkLandingLag();
+            else
+            {
+                // 공중 대시 중이었으면 대시를 끊고 떨어진다
+                AirState.PrepareFallWithLandingLag();
+                ChangeState(AirState);
+            }
         }
 
         /// <summary>라운드 시작: 사망으로 꺼졌던 상태머신을 켜고 Idle로.</summary>
@@ -109,8 +143,47 @@ namespace MyDongari.Movement
         {
             if (InputReader == null || !InputReader.DashPressedThisFrame) return false;
             if (IsStunned || MechController.BoostGauge.IsExhausted) return false;
+            // 공중에서 누르면 공중 대시 (같은 규칙: 방향 고정, 1초 후 취소, 중력 약하게)
+            DashState.PrepareAirborne(_currentState is AirState);
             ChangeState(DashState);
             return true;
+        }
+
+        /// <summary>
+        /// △를 이번 프레임에 눌렀으면 점프 (V5). Idle·Run이 부른다. 부스트 jumpCost(15)를 한 번 쓰고, 탈진·스턴·부족이면 안 나간다.
+        /// </summary>
+        public bool TryStartJump()
+        {
+            if (InputReader == null || !InputReader.JumpPressedThisFrame) return false;
+            BoostGauge boost = MechController.BoostGauge;
+            if (IsStunned || boost.IsExhausted || !boost.TryConsume(boost.GetJumpCost())) return false;
+            AirState.PrepareJump();
+            ChangeState(AirState);
+            return true;
+        }
+
+        /// <summary>땅을 coyoteTime보다 오래 못 밟으면(발판 끝에서 떨어짐) 공중으로. Idle·Run·DashStop이 부른다.</summary>
+        public bool CheckFall()
+        {
+            if (MechController.IsGrounded || MechController.IsExternallyControlled) return false;
+            if (MechController.TimeSinceGrounded < MechController.Tuning.Movement.coyoteTime) return false;
+            ChangeState(AirState);
+            return true;
+        }
+
+        /// <summary>
+        /// 착지: 경직이 필요하면(점프·공중 대시·공중 피격) landingLag, 부스트 0%면 exhaustedLandingLag 동안 LandingState.
+        /// 그냥 떨어진 착지는 경직 없이 바로 달리기·정지 (먼지·흔들림은 둘 다).
+        /// </summary>
+        public void Land(bool needsLag)
+        {
+            BernardTuning.MovementValues m = MechController.Tuning.Movement;
+            BoostGauge boost = MechController.BoostGauge;
+            bool exhausted = boost != null && (boost.CurrentBoost <= 0.01f || boost.IsExhausted);
+            float duration = needsLag ? (exhausted ? m.exhaustedLandingLag : m.landingLag) : 0f;
+            LandingState.Prepare(duration, exhausted && needsLag);
+            if (duration > 0f) ChangeState(LandingState);
+            else ChangeState(InputReader != null && InputReader.IsMoveInputActive ? (MechState)RunState : IdleState);
         }
 
         public void ChangeState(MechState newState)

@@ -79,6 +79,13 @@ namespace MyDongari.Combat
                 return;
             }
 
+            // V5: 공중·착지 경직 중엔 공격·스킬 입력 무시 (공중 공격은 6단계). 버퍼에도 안 남긴다
+            if (_stateMachine != null && (_stateMachine.IsAirborne || _stateMachine.IsLanding))
+            {
+                _attackBuffer.Clear();
+                return;
+            }
+
             if (_inputReader.Skill1Input)
             {
                 if (_anchorClaw != null)
@@ -148,7 +155,7 @@ namespace MyDongari.Combat
                 return _anchorClaw.TryPileDriver() ? AttackType.PileDriver : (AttackType?)null;
             }
 
-            // 2) 내가 공중 → 유도 내려찍기, 3) 상대가 공중 + 6m 안 → 대공 어퍼컷: 점프(5단계)가 없어 아직 자리만
+            // 2) 내가 공중 → 유도 내려찍기(6단계, 지금은 공중 입력을 위 Update에서 무시), 3) 상대가 공중 + 6m 안 → 대공 어퍼컷(6단계): 자리만
 
             if (_stateMachine != null && _stateMachine.IsDashing)
             {

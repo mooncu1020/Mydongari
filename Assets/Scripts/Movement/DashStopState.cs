@@ -28,6 +28,8 @@ namespace MyDongari.Movement
                 return;
             }
 
+            if (StateMachine.CheckFall()) return;
+
             _timer += Time.deltaTime;
             if (_timer >= StateMachine.MechController.Tuning.Movement.dashStopDuration)
             {

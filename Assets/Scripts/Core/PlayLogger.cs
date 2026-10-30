@@ -57,7 +57,9 @@ namespace MyDongari.Core
             // 입력 버퍼로(누른 프레임보다 뒤에) 발동한 공격 수. 종류별은 buffered_punch 등으로 따로
             "buffered_attack",
             // ○ 대시(V3.1): 진입 수와 끝난 이유별 수 (나머지 이유는 0이 아닐 때만 추가로 나온다)
-            "dash_enter", "dash_exit_canceled", "dash_exit_exhausted", "dash_exit_bump", "dash_exit_wall"
+            "dash_enter", "dash_exit_canceled", "dash_exit_exhausted", "dash_exit_bump", "dash_exit_wall",
+            // 점프(V5): 점프 수, 공중 대시 수, 착지 경직 수 (짧게·부스트 0% 길게)
+            "jump", "air_dash", "landing_lag", "landing_lag_long"
         };
         private static readonly string[] BandNames = { "near", "mid", "far" };
 
@@ -242,9 +244,24 @@ namespace MyDongari.Core
                 Action<MechState> onState = state => ErrorLog.Run(() =>
                 {
                     if (state is SideStepState) Count(index, "sidestep");
+                    else if (state is DashState && sm.IsAirborne) Count(index, "air_dash");
                 }, "PlayLogger.onState");
                 sm.OnStateChanged += onState;
                 _unsubscribers.Add(() => sm.OnStateChanged -= onState);
+
+                // 점프·착지 경직 (V5)
+                Action onJump = () => ErrorLog.Run(() => Count(index, "jump"), "PlayLogger.onJump");
+                sm.AirState.OnJumped += onJump;
+                Action<float, bool> onLand = (lag, exhausted) => ErrorLog.Run(() =>
+                {
+                    if (lag > 0f) Count(index, exhausted ? "landing_lag_long" : "landing_lag", lag.ToString("F2", CultureInfo.InvariantCulture));
+                }, "PlayLogger.onLand");
+                sm.LandingState.OnLanded += onLand;
+                _unsubscribers.Add(() =>
+                {
+                    sm.AirState.OnJumped -= onJump;
+                    sm.LandingState.OnLanded -= onLand;
+                });
 
                 DashState dash = sm.DashState;
                 if (dash != null)
@@ -397,6 +414,7 @@ namespace MyDongari.Core
             {
                 case DashExitReason.Canceled: return "canceled";
                 case DashExitReason.Wall: return "wall";
+                case DashExitReason.Landed: return "landed";
                 case DashExitReason.Exhausted: return "exhausted";
                 case DashExitReason.Stun: return "stun";
                 case DashExitReason.Tackle: return "tackle";

@@ -603,7 +603,8 @@ namespace MyDongari.Visual
                 joint.DirectPosition = Vector3.zero;
                 if (joint.Target != null) CaptureBase(joint, animated);
             }
-            _groundingHold = false;
+            // V5: 공중에선 외형 접지 보정을 끈다 (발이 땅에 붙으려고 몸을 내리지 않게 — 지금 보정량 유지)
+            _groundingHold = _stateMachine != null && _stateMachine.IsAirborne;
 
             // 상하체 방향(G2)을 먼저 정하고 나머지 포즈를 얹는다
             UpdateFacing(v, dt);

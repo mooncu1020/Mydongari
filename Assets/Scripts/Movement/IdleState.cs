@@ -20,6 +20,8 @@ namespace MyDongari.Movement
         {
             if (StateMachine.IsStunned) return;
 
+            if (StateMachine.CheckFall()) return;
+            if (StateMachine.TryStartJump()) return;
             if (StateMachine.TryStartDash()) return;
 
             if (StateMachine.InputReader.SideStepDirection != 0 &&

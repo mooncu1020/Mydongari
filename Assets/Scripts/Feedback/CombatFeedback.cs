@@ -39,6 +39,16 @@ namespace MyDongari.Feedback
         [SerializeField] private string exhaustedLabel = "EXHAUSTED";
         [SerializeField] private Color exhaustedColor = new Color(0.6f, 0.7f, 0.85f);
 
+        [Header("착지 경직 표시 (V5, 발밑 — 상대 화면에도 보인다)")]
+        [SerializeField] private string landingLabel = "LANDING";
+        [Tooltip("부스트 0%로 착지(긴 경직)했을 때 문구. 색은 EXHAUSTED 색")]
+        [SerializeField] private string landingExhaustedLabel = "HARD LANDING";
+        [SerializeField] private Color landingColor = new Color(1f, 0.75f, 0.3f);
+        [Tooltip("머리 위 팝업 글자 크기 대비 배율")]
+        [SerializeField] private float landingLabelScale = 0.8f;
+        [Tooltip("발바닥에서 이만큼(m) 위에 띄운다")]
+        [SerializeField] private float landingLabelHeight = 0.3f;
+
         [Header("색 틴트 (우선순위: 스턴 > 과열 > 가드)")]
         [SerializeField] private bool enableTint = true;
         [SerializeField] private Color stunTint = new Color(1f, 0.9f, 0.2f);
@@ -175,6 +185,11 @@ namespace MyDongari.Feedback
                 Action onDash = () => ErrorLog.Run(() => DashBurst(fb), "CombatFeedback.onDash");
                 dash.OnDashStarted += onDash;
                 _unsubscribers.Add(() => dash.OnDashStarted -= onDash);
+
+                LandingState landing = fb.StateMachine.LandingState;
+                Action<float, bool> onLand = (lag, exhausted) => ErrorLog.Run(() => OnLanded(fb, lag, exhausted), "CombatFeedback.onLand");
+                landing.OnLanded += onLand;
+                _unsubscribers.Add(() => landing.OnLanded -= onLand);
             }
 
             ThrusterLunge lunge = mech.GetComponent<ThrusterLunge>();
@@ -470,7 +485,7 @@ namespace MyDongari.Feedback
                 UpdateTint(fb, stunned, overheated, guarding);
                 UpdateHoverLoop(fb, active && fb.StateMachine != null && fb.StateMachine.IsDashing);
                 UpdateKnockdownSlideDust(fb, active);
-                UpdateDashScrape(fb, active && fb.StateMachine != null && fb.StateMachine.IsDashing);
+                UpdateDashScrape(fb, active && fb.StateMachine != null && fb.StateMachine.IsDashing && !fb.StateMachine.IsAirborne);
                 float scrape = active && fb.Rig != null ? fb.Rig.ScrapeAmount : 0f;
                 UpdateLoop(ref fb.ScrapeLoop, strideScrapeLoopClip, strideScrapeVolume * Mathf.Clamp01(scrape));
             }
@@ -526,6 +541,39 @@ namespace MyDongari.Feedback
                 FlashTime = feel.dashBurstTime
             };
             HitSparkFx.SpawnHit(center, -fb.StateMachine.DashState.Heading, scale, style);
+        }
+
+        /// <summary>
+        /// 착지 (V5): 발밑 먼지 + 내 화면 흔들림. 착지 경직이 있으면 발밑에 경직 표시(월드 글자라 상대 화면에도 보인다).
+        /// </summary>
+        private void OnLanded(MechFeedback fb, float lag, bool exhausted)
+        {
+            if (fb.Mech == null) return;
+            BernardTuning.HitFeelValues feel = TuningOf(fb.Mech).HitFeel;
+            Vector3 foot = FootPoint(fb.Mech);
+            float strength = lag > 0f ? feel.landDustStrength : feel.landDustStrength * 0.5f;
+            HitSparkFx.SpawnDust(foot, strength, DustStyleOf(feel));
+            Play(dustClip, dustVolume * strength);
+            MechIdentity identity = fb.Mech.GetComponent<MechIdentity>();
+            MyDongari.Camera.MechCamera cam = identity != null ? identity.MechCamera : null;
+            if (cam != null) cam.AddShake(feel.landShake * (lag > 0f ? 1f : 0.5f), feel.landShakeTime);
+
+            if (lag <= 0f || !enablePopups || !fb.Mech.activeInHierarchy) return;
+            var style = new PopupStyle
+            {
+                lifetime = lag,
+                riseDistance = 0f,
+                stackSpacing = popupStyle.stackSpacing,
+                characterSize = popupStyle.characterSize * landingLabelScale,
+                fontSize = popupStyle.fontSize,
+                referenceDistance = popupStyle.referenceDistance,
+                maxDistanceScale = popupStyle.maxDistanceScale,
+                fadeStart = 0.8f
+            };
+            // 기체 루트 기준 발밑 높이 (+ 조금 위)
+            float footOffset = foot.y - fb.Mech.transform.position.y + landingLabelHeight;
+            StatusPopup.Spawn(fb.Mech.transform, footOffset, exhausted ? landingExhaustedLabel : landingLabel,
+                exhausted ? exhaustedColor : landingColor, style);
         }
 
         /// <summary>대시 중 발밑에서 진행 반대쪽·위로 튀는 긁힘 불꽃 (V3.1). 히트스톱 중엔 멈춘다(게임 시간).</summary>

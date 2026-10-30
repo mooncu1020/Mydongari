@@ -15,7 +15,8 @@ namespace MyDongari.Movement
         Stun,
         Tackle,
         Bump,
-        Wall
+        Wall,
+        Landed
     }
 
     /// <summary>
@@ -27,6 +28,8 @@ namespace MyDongari.Movement
     /// 대시 중 공격 (V4): 1.5초 미만 = 유도 대시 어택(상대 25m 안이면 꺾는 속도 상한으로 곡선 추적, 지나치면 직진),
     /// 1.5초 이상 = 차징 태클(직선). 발생 시간 뒤 activeTime 동안 돌진하며 닿으면 판정, 끝까지 못 닿으면 빗나감 경직.
     /// 대시 중엔 가드 불가(MeleeSystem), 부스트 회복 멈춤·초당 소모(BoostGauge).
+    /// 공중 대시 (V5): 공중에서 ○ — 같은 규칙(방향 고정, 1초 후 취소)이고, 출발할 때 세로 속도를 0으로 한 뒤 중력을
+    /// airDashGravityScale만큼만 받는다. 공중 대시 중 공격은 무시(6단계 전), 끝나면 떨어지고(AirState) 착지하면 착지 경직.
     /// </summary>
     public class DashState : MechState
     {
@@ -52,6 +55,18 @@ namespace MyDongari.Movement
         public Vector3 Heading => _heading;
         /// <summary>발동 후 경과 시간(초).</summary>
         public float Elapsed => _elapsed;
+
+        // 공중 대시인지 (TryStartDash가 Enter 직전에 정한다)
+        private bool _airborne;
+        private bool _pendingAirborne;
+        /// <summary>공중 대시 중인지.</summary>
+        public bool IsAirborne => _airborne;
+
+        /// <summary>다음 Enter가 공중 대시인지 정한다 (MechStateMachine.TryStartDash).</summary>
+        public void PrepareAirborne(bool airborne)
+        {
+            _pendingAirborne = airborne;
+        }
         private DashExitReason _exitReason;
         private bool _exitReported;
 
@@ -87,8 +102,16 @@ namespace MyDongari.Movement
             _exitReason = DashExitReason.Other;
             _exitReported = false;
             _elapsed = 0f;
+            _airborne = _pendingAirborne;
+            _pendingAirborne = false;
 
             MechController controller = StateMachine.MechController;
+            if (_airborne)
+            {
+                // 공중 대시는 수평으로 미끄러지듯: 오르내리던 속도를 지우고 약한 중력만
+                Vector3 v = controller.Rb.linearVelocity;
+                controller.Rb.linearVelocity = new Vector3(v.x, 0f, v.z);
+            }
             _heading = SnappedDirection(controller, StateMachine.InputReader);
             // 입력 지연 없음: 누른 프레임에 바로 최고 속도 (물리 스텝을 기다리지 않는다)
             controller.SetMoveVelocity(_heading, Move.dashSpeed);
@@ -115,6 +138,12 @@ namespace MyDongari.Movement
         private void Leave(DashExitReason reason, MechState next)
         {
             _exitReason = reason;
+            // 공중 대시가 끝나면(취소·탈진·벽·충돌·넉백) 땅 상태 대신 떨어지고, 착지하면 착지 경직
+            if (_airborne && (next is IdleState || next is RunState || next is DashStopState))
+            {
+                StateMachine.AirState.PrepareFallWithLandingLag();
+                next = StateMachine.AirState;
+            }
             StateMachine.ChangeState(next);
         }
 
@@ -136,6 +165,15 @@ namespace MyDongari.Movement
             }
 
             _elapsed += Time.deltaTime;
+
+            // 공중 대시 중 땅에 닿으면 착지 (뜬 직후 바닥 검사에 걸리지 않게 잠깐 뒤부터)
+            if (_airborne && StateMachine.MechController.IsGrounded && _elapsed >= Move.jumpGroundIgnoreTime &&
+                StateMachine.MechController.Rb.linearVelocity.y <= 0.5f)
+            {
+                _exitReason = DashExitReason.Landed;
+                StateMachine.Land(true);
+                return;
+            }
 
             // 공격 중(발생 시간 + 판정 구간)은 어깨를 내민 채 그대로 돌진한다 (취소·탈진으로 끊지 않음)
             if (IsAttacking) return;
@@ -162,6 +200,15 @@ namespace MyDongari.Movement
             if (_attackElapsed >= 0f)
             {
                 TickAttack(controller);
+                return;
+            }
+
+            if (_airborne)
+            {
+                controller.ApplyAirGravity(AirState.JumpGravity(Move) * Move.airDashGravityScale);
+                Advance(controller);
+                // 공중 대시 중 공격·자동 태클은 아직 없다 (6단계 공중 공격)
+                _tackleRequested = false;
                 return;
             }
 
@@ -319,6 +366,7 @@ namespace MyDongari.Movement
         /// </summary>
         public bool RequestTackle()
         {
+            if (_airborne) return false;
             MeleeSystem melee = StateMachine.MechController.MeleeSystem;
             if (_tackleRequested) return true;
             if (_attackElapsed >= 0f || melee == null || !melee.CanTackle) return false;

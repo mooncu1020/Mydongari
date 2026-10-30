@@ -51,6 +51,38 @@ namespace MyDongari.Mech
             [Range(0f, 1f)] public float dashWallMaxNormalY = 0.5f;
             [Tooltip("벽 판정: 면이 진행 방향을 이만큼 이상 정면으로 막아야(법선·진행 방향 내적 ≤ -값) 대시가 끝남. 비스듬히 스치면 계속")]
             [Range(0f, 1f)] public float dashWallFacingDot = 0.5f;
+
+            [Header("점프 (V5: △, 높고 느린 스러스터 점프)")]
+            [Tooltip("최고 높이(m)")]
+            public float jumpHeight = 5f;
+            [Tooltip("최고 높이까지 올라가는 시간(초). 중력 = 2 × 높이 / 시간², 내려올 때도 같은 중력")]
+            public float jumpRiseTime = 1f;
+            [Tooltip("점프 락온: 뛰는 순간 몸(과 카메라)을 상대 쪽으로 돌리는 시간(초). 거리 무관")]
+            public float jumpTurnTime = 0.2f;
+            [Tooltip("공중에서 L스틱으로 움직이는 최대 수평 속도(m/s, 몸 기준)")]
+            public float airMoveSpeed = 8f;
+            [Tooltip("공중 수평 속도가 스틱 목표 쪽으로 바뀌는 가속도(m/s²). 작을수록 뛰기 전 속도가 오래 남는다")]
+            public float airAccel = 15f;
+            [Tooltip("공중 대시 중 중력 배율 (점프 중력 기준). 0이면 수평으로 떠서 간다")]
+            [Range(0f, 1f)] public float airDashGravityScale = 0.2f;
+            [Tooltip("최대 낙하 속도(m/s)")]
+            public float maxFallSpeed = 40f;
+
+            [Header("착지 (V5)")]
+            [Tooltip("점프·공중 대시·공중 피격 뒤 착지 경직(초). 이동·공격·대시·점프·가드 불가")]
+            public float landingLag = 0.2f;
+            [Tooltip("부스트 0%로 착지했을 때 경직(초)")]
+            public float exhaustedLandingLag = 0.8f;
+
+            [Header("접지 판정 (V5: Walkable 레이어 + 위를 향한 면)")]
+            [Tooltip("이 값 이상 위를 향한 면(법선 y)만 땅. 경사가 이보다 가파르면 벽")]
+            [Range(0f, 1f)] public float groundMinNormalY = 0.7f;
+            [Tooltip("콜라이더 바닥 아래로 이만큼(m)까지 땅을 찾는다")]
+            public float groundProbeSkin = 0.15f;
+            [Tooltip("땅에서 이 시간(초)보다 오래 떨어져 있어야 낙하로 본다 (울퉁불퉁한 바닥에서 깜빡이지 않게)")]
+            public float coyoteTime = 0.1f;
+            [Tooltip("뛴 뒤 이 시간(초) 동안은 착지 판정을 안 한다 (뛴 직후 아직 바닥 검사에 걸리므로)")]
+            public float jumpGroundIgnoreTime = 0.15f;
         }
 
         [Serializable]
@@ -68,6 +100,8 @@ namespace MyDongari.Mech
 
             [Header("소모량")]
             public float sideStepCost = 10f;
+            [Tooltip("점프 한 번 소모량 (V5). 탈진(0%) 중엔 점프 불가")]
+            public float jumpCost = 15f;
         }
 
         [Serializable]
@@ -85,6 +119,8 @@ namespace MyDongari.Mech
         {
             [Tooltip("펀치 사거리(m)")]
             public float range = 3f;
+            [Tooltip("V5: 두 기체 높이 차가 이 값(m)을 넘으면 펀치가 빗나간다 (점프한 상대·고지대 위아래)")]
+            public float heightTolerance = 2f;
             [Tooltip("펀치 판정 부채꼴 반각(°). 기체 정면 기준 ±이 각도 안의 상대만 맞는다")]
             public float halfAngle = 45f;
             public float damage = 25f;
@@ -615,6 +651,14 @@ namespace MyDongari.Mech
             public float dashScrapeInterval = 0.05f;
             [Tooltip("발밑 긁힘 불꽃 배율 (타격 불꽃 기준)")]
             public float dashScrapeScale = 0.35f;
+
+            [Header("착지 연출 (V5)")]
+            [Tooltip("착지 먼지 세기 (0~1, 착지 경직이 있는 착지)")]
+            [Range(0f, 1f)] public float landDustStrength = 0.8f;
+            [Tooltip("착지 화면 흔들림 세기(m, 내 카메라)")]
+            public float landShake = 0.15f;
+            [Tooltip("착지 화면 흔들림 시간(초)")]
+            public float landShakeTime = 0.2f;
 
             [Header("착지 먼지 (런지 앞발 박기·앵커 클로 버팀)")]
             public Color dustColor = new Color(0.55f, 0.5f, 0.42f, 0.8f);

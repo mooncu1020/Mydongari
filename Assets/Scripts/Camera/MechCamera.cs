@@ -194,7 +194,9 @@ namespace MyDongari.Camera
             // 몸의 수평 회전을 지수 감쇠로 따라간다 (보간된 트랜스폼이라 물리 스텝 계단이 안 보인다)
             float bodyYaw = target.eulerAngles.y;
             float k = 1f - Mathf.Exp(-yawFollowSpeed * Time.deltaTime);
-            _yaw = Mathf.LerpAngle(_yaw, bodyYaw, k);
+            // V5 점프 락온: 몸이 0.2초에 걸쳐 상대 쪽으로 도는 동안 카메라는 몸에 바로 붙어 같이 돈다
+            bool jumpTurning = _mechController != null && _mechController.StateMachine != null && _mechController.StateMachine.IsJumpTurning;
+            _yaw = jumpTurning ? bodyYaw : Mathf.LerpAngle(_yaw, bodyYaw, k);
 
             // 기준점은 기체 위치를 늦게 따라간다: 대시 중엔 느리게 따라가 기체가 옆·앞으로 처진다 (V3.1). 몸 방향은 대시 중 안 돈다
             bool dashing = _mechController != null && _mechController.StateMachine != null && _mechController.StateMachine.IsDashing;

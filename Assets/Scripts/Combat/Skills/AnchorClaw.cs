@@ -94,6 +94,8 @@ namespace MyDongari.Combat.Skills
             UpdateFx();
         }
 
+        private MyDongari.Movement.MechStateMachine _stateMachine;
+
         /// <summary>예비 동작 시작. 쿨다운 중이거나 이미 쏘는 중·락온 목표가 없으면 아무것도 안 한다.</summary>
         public void TryActivate()
         {
@@ -101,6 +103,9 @@ namespace MyDongari.Combat.Skills
             if (_cooldownTimer < T.cooldown) return;
             if (_lockOnSystem == null || _lockOnSystem.Target == null) return;
             if (_melee != null && _melee.IsStunned) return;
+            // V5: 공중에서는 쏠 수 없다 (땅에서 쏘면 공중의 상대도 잡아 끌어내린다 — 끌기는 3차원)
+            if (_stateMachine == null) _stateMachine = GetComponent<MyDongari.Movement.MechStateMachine>();
+            if (_stateMachine != null && (_stateMachine.IsAirborne || _stateMachine.IsLanding)) return;
 
             _target = _lockOnSystem.Target;
             _targetRb = _target.GetComponent<Rigidbody>();

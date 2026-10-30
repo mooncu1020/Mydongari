@@ -228,6 +228,7 @@ namespace MyDongari.Movement
         private void FixedUpdate()
         {
             if (_moveHoldTimer > 0f) _moveHoldTimer -= Time.fixedDeltaTime;
+            UpdateGrounded();
         }
 
         /// <summary>
@@ -269,11 +270,13 @@ namespace MyDongari.Movement
         private void CheckDashWall(Collision collision, DashState dash)
         {
             if (dash.IsAttacking || collision.collider == null || collision.collider.attachedRigidbody != null) return;
+            // Wall 레이어(V5)는 면 방향과 상관없이 벽, 나머지 정적 지형은 옆면만 벽
+            bool wallLayer = GroundLayers.IsWallLayer(collision.collider);
             int count = collision.contactCount;
             for (int i = 0; i < count; i++)
             {
                 Vector3 normal = collision.GetContact(i).normal;
-                if (Mathf.Abs(normal.y) > Move.dashWallMaxNormalY) continue;
+                if (!wallLayer && Mathf.Abs(normal.y) > Move.dashWallMaxNormalY) continue;
                 normal.y = 0f;
                 if (normal.sqrMagnitude < 0.0001f) continue;
                 if (Vector3.Dot(normal.normalized, dash.Heading) <= -Move.dashWallFacingDot)
@@ -294,10 +297,72 @@ namespace MyDongari.Movement
             HoldMoveControl();
         }
 
-        /// <summary>라운드 시작: 넉백 유지 시간 초기화.</summary>
+        /// <summary>라운드 시작: 넉백 유지 시간 초기화, 땅에 있는 것으로.</summary>
         public void ResetForRound()
         {
             _moveHoldTimer = 0f;
+            IsGrounded = true;
+            _lastGroundedTime = Time.time;
+        }
+
+        // ---- 접지 (V5) ----
+
+        /// <summary>발밑에 설 수 있는 땅이 있는지 (Walkable 레이어의 위를 향한 면, GroundLayers). 물리 스텝마다 갱신.</summary>
+        public bool IsGrounded { get; private set; } = true;
+        private float _lastGroundedTime;
+        /// <summary>마지막으로 땅을 밟은 뒤 지난 시간(초).</summary>
+        public float TimeSinceGrounded => IsGrounded ? 0f : Time.time - _lastGroundedTime;
+
+        private Collider _bodyCollider;
+        private static readonly RaycastHit[] GroundHits = new RaycastHit[16];
+
+        /// <summary>
+        /// 기체 콜라이더 중심에서 아래로 구를 쏴서, 콜라이더 바닥 + groundProbeSkin 안에 땅이 있으면 접지.
+        /// 내 콜라이더·다른 기체·트리거는 무시. 면 판정은 GroundLayers (Walkable + 법선 y ≥ groundMinNormalY).
+        /// </summary>
+        private void UpdateGrounded()
+        {
+            if (_bodyCollider == null) _bodyCollider = GetComponent<Collider>();
+            if (_bodyCollider == null)
+            {
+                IsGrounded = true;
+                return;
+            }
+            Bounds bounds = _bodyCollider.bounds;
+            float radius = Mathf.Max(0.05f, Mathf.Min(bounds.extents.x, bounds.extents.z) * 0.9f);
+            Vector3 origin = bounds.center;
+            float distance = Mathf.Max(0f, bounds.extents.y - radius) + Move.groundProbeSkin;
+            int count = Physics.SphereCastNonAlloc(origin, radius, Vector3.down, GroundHits, distance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            bool grounded = false;
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit hit = GroundHits[i];
+                if (hit.collider == null || hit.collider.attachedRigidbody != null) continue;
+                if (Identity != null && Identity.IsOwnCollider(hit.collider)) continue;
+                // 시작부터 겹친 것(distance 0)은 법선이 의미 없다 — 바닥 판정 기준만 본다
+                Vector3 normal = hit.distance > 0f ? hit.normal : Vector3.up;
+                if (GroundLayers.IsGround(hit.collider, normal, Move.groundMinNormalY))
+                {
+                    grounded = true;
+                    break;
+                }
+            }
+            IsGrounded = grounded;
+            if (grounded) _lastGroundedTime = Time.time;
+        }
+
+        /// <summary>
+        /// 공중 중력 (V5): 알짜 중력이 아래로 gravity(m/s²)가 되게 물리 중력과의 차이를 더한다. 낙하 속도는 maxFallSpeed까지.
+        /// 앵커 클로에 잡혀 끌려가는 중(외부 제어)엔 끌어당기는 쪽에 맡긴다.
+        /// </summary>
+        public void ApplyAirGravity(float gravity)
+        {
+            if (IsExternallyControlled || Rb.isKinematic) return;
+            float extra = -Physics.gravity.y - gravity;
+            if (Rb.useGravity) Rb.AddForce(Vector3.up * extra, ForceMode.Acceleration);
+            else Rb.AddForce(Vector3.down * gravity, ForceMode.Acceleration);
+            Vector3 v = Rb.linearVelocity;
+            if (v.y < -Move.maxFallSpeed) Rb.linearVelocity = new Vector3(v.x, -Move.maxFallSpeed, v.z);
         }
 
         private void LateUpdate()

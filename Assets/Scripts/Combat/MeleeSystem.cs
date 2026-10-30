@@ -190,8 +190,10 @@ namespace MyDongari.Combat
 
         private void HandleGuard()
         {
-            // 대시 중엔 가드 자체를 못 건다 (대시 = 공격적 상태, 방어자세 병행 불가)
-            bool sprinting = _stateMachine != null && _stateMachine.IsDashing;
+            // 대시 중엔 가드 자체를 못 건다 (대시 = 공격적 상태, 방어자세 병행 불가).
+            // V5: 공중(점프는 회피 대신 무방비)과 착지 경직 중에도 가드·패리 불가
+            bool sprinting = _stateMachine != null &&
+                (_stateMachine.IsDashing || _stateMachine.IsAirborne || _stateMachine.IsLanding);
             bool guardHeld = _input != null && _input.GuardHeld;
 
             if (guardHeld && !sprinting && (IsGuarding || _reraiseTimer <= 0f))
@@ -566,6 +568,8 @@ namespace MyDongari.Combat
 
             MechIdentity opponent = _identity.Opponent;
             if (opponent == null || !IsInFrontArc(opponent.transform, punch.halfAngle)) return null;
+            // V5: 위아래 차이가 크면(점프한 상대·고지대) 빗나감
+            if (Mathf.Abs(opponent.transform.position.y - transform.position.y) > punch.heightTolerance) return null;
 
             // 거리는 콜라이더 표면 기준(OverlapSphere)이라 덩치 큰 기체도 사거리가 자연스럽다
             Collider[] hits = Physics.OverlapSphere(transform.position, punch.range);

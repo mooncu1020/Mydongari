@@ -31,8 +31,10 @@ namespace MyDongari.Input
         public Vector2 LookInput { get; private set; }
         /// <summary>○ 대시 버튼(패드 B / 키보드 Space)을 누르고 있는지. 누르고 있는 동안 대시 유지.</summary>
         public bool DashHeld { get; private set; }
-        /// <summary>○ 대시 버튼을 이번 프레임에 눌렀는지. 대시·백대시 시작은 누른 순간만.</summary>
+        /// <summary>○ 대시 버튼을 이번 프레임에 눌렀는지. 대시 시작·취소는 누른 순간만.</summary>
         public bool DashPressedThisFrame { get; private set; }
+        /// <summary>△ 점프 버튼(패드 Y·△ / 키보드 F)을 이번 프레임에 눌렀는지.</summary>
+        public bool JumpPressedThisFrame { get; private set; }
         public bool Skill1Input { get; private set; }
         public bool Skill2Input { get; private set; }
         public int SideStepDirection { get; private set; }
@@ -86,6 +88,7 @@ namespace MyDongari.Input
         private InputAction _moveAction;
         private InputAction _lookAction;
         private InputAction _dashAction;
+        private InputAction _jumpAction;
         private InputAction _skill1Action;
         private InputAction _skill2Action;
         private InputAction _attackAction;
@@ -121,6 +124,7 @@ namespace MyDongari.Input
             _lookAction = _playerInput.actions["Look"];
             // Run·Slide·QuickTurn·Sprint 액션은 .inputactions에 남아 있지만 V3에서 읽지 않는다 (걷기·슬라이딩·초신지선회·전력질주 삭제)
             _dashAction = _playerInput.actions["Dash"];
+            _jumpAction = _playerInput.actions["Jump"];
             _skill1Action = _playerInput.actions["Skill1"];
             _skill2Action = _playerInput.actions["Skill2"];
             _attackAction = _playerInput.actions["Attack"];
@@ -209,6 +213,7 @@ namespace MyDongari.Input
 
             DashHeld = _dashAction.IsPressed();
             DashPressedThisFrame = _dashAction.WasPressedThisFrame();
+            JumpPressedThisFrame = _jumpAction.WasPressedThisFrame();
 
             AttackHeld = _attackAction.IsPressed();
             AttackPressedThisFrame = _attackAction.WasPressedThisFrame();
@@ -312,6 +317,7 @@ namespace MyDongari.Input
             LookInput = Vector2.zero;
             DashHeld = false;
             DashPressedThisFrame = false;
+            JumpPressedThisFrame = false;
             MoveStickRaw = Vector2.zero;
             Skill1Input = false;
             Skill2Input = false;
