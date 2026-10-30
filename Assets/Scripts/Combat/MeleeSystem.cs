@@ -469,6 +469,14 @@ namespace MyDongari.Combat
         /// </summary>
         public HitResult? ResolveTackle(float chargePower, AttackType type)
         {
+            return ResolveTackle(chargePower, type, MechFacing.AttackForward(transform));
+        }
+
+        /// <summary>
+        /// 어깨 태클 판정, 부채꼴 기준 방향을 따로 받는다 (V3.1: 대시는 몸 정면과 진행 방향이 달라서 진행 방향으로 잰다).
+        /// </summary>
+        public HitResult? ResolveTackle(float chargePower, AttackType type, Vector3 forward)
+        {
             BernardTuning.TackleValues tackle = Tackle;
             bool charged = type == AttackType.Tackle;
             // 차징 태클은 기존 공식(TackleChargePower 반영), 대시 어택은 고정 수치
@@ -478,7 +486,7 @@ namespace MyDongari.Combat
             float finalStun = charged ? tackle.victimStun : dash.stun;
 
             // 정면 부채꼴 밖이면 헛침 (등 뒤·옆으로 스친 상대는 안 맞는다)
-            if (!IsOpponentInTackleArc()) return null;
+            if (!IsOpponentInTackleArc(forward)) return null;
 
             Collider[] hits = Physics.OverlapSphere(transform.position, tackle.range);
             foreach (Collider hit in hits)
@@ -584,19 +592,31 @@ namespace MyDongari.Combat
         /// <summary>상대가 태클 부채꼴(정면 ±Tackle.halfAngle) 안인지. 거리는 따로 본다. 자동 접촉 태클 판정에도 쓴다.</summary>
         public bool IsOpponentInTackleArc()
         {
+            return IsOpponentInTackleArc(MechFacing.AttackForward(transform));
+        }
+
+        /// <summary>상대가 forward 기준 ±Tackle.halfAngle 안인지 (대시 진행 방향 기준 판정용).</summary>
+        public bool IsOpponentInTackleArc(Vector3 forward)
+        {
             MechIdentity opponent = _identity.Opponent;
-            return opponent != null && IsInFrontArc(opponent.transform, Tackle.halfAngle);
+            return opponent != null && IsInFrontArc(opponent.transform, Tackle.halfAngle, forward);
         }
 
         private bool IsInFrontArc(Transform target, float halfAngle)
+        {
+            // 공격 방향 = 상체 방향 (G2. 상하체 분리가 없는 기체는 기체 정면)
+            return IsInFrontArc(target, halfAngle, MechFacing.AttackForward(transform));
+        }
+
+        private bool IsInFrontArc(Transform target, float halfAngle, Vector3 forward)
         {
             // 위아래 차이는 무시하고 수평 방향만 본다 (지면 밀착 격투)
             Vector3 toTarget = target.position - transform.position;
             toTarget.y = 0f;
             if (toTarget.sqrMagnitude < 0.0001f) return true;
 
-            // 공격 방향 = 상체 방향 (G2. 상하체 분리가 없는 기체는 기체 정면)
-            Vector3 forward = MechFacing.AttackForward(transform);
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.0001f) forward = MechFacing.AttackForward(transform);
             return Vector3.Angle(forward, toTarget) <= halfAngle;
         }
     }

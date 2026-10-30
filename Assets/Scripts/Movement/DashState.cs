@@ -10,20 +10,23 @@ namespace MyDongari.Movement
     public enum DashExitReason
     {
         Other,
-        ButtonReleased,
+        Canceled,
         Exhausted,
         Stun,
         Tackle,
-        Bump
+        Bump,
+        Wall
     }
 
     /// <summary>
-    /// ○ 대시 (V3 "이동"). 버튼을 누르고 있는 동안 dashSpeed(30m/s)로 돌진하고 부스트를 초당 소모한다(BoostGauge).
-    /// 하드락 밖: 보는 방향으로 돌진, L스틱으로 방향을 튼다(초당 dashTurnRate° 상한 — 스틱 쪽으로 계속 돌아간다).
-    /// 하드락 안: 상대에게 돌진. 1.5초 이상 유지하면 태클 차징(3초 최대).
+    /// ○ 대시 (V3.1 "대시 상세"). ○를 누른 프레임에 L스틱 방향(8방향 스냅, 중립이면 앞)으로 방향을 고정하고 바로 dashSpeed(30m/s)로
+    /// 일직선 출발한다 — 누르고 있을 필요 없음(토글). 방향 기준은 하드락 밖이면 몸 정면, 안이면 그 순간 상대 쪽. 대시 중엔 방향을 틀 수 없다.
+    /// 발동 후 dashCancelLockTime(1초) 동안 취소 불가, 그 뒤 ○를 다시 누르면 취소. 부스트 0%·벽 충돌이면 끝, 상대 몸 충돌은 반동(MechController).
+    /// 끝나면 DashStopState(약 0.2초 미끄러지며 섬). 몸 정면(조준·카메라 기준)은 돌리지 않는다 — 외형 모델만 대시 방향으로 튼다(MechVisualRig).
+    /// 1.5초 이상 계속이면 태클 차징(3초 최대).
     /// 대시 중 공격 (V4): 1.5초 미만 = 유도 대시 어택(상대 25m 안이면 꺾는 속도 상한으로 곡선 추적, 지나치면 직진),
     /// 1.5초 이상 = 차징 태클(직선). 발생 시간 뒤 activeTime 동안 돌진하며 닿으면 판정, 끝까지 못 닿으면 빗나감 경직.
-    /// 몸은 대시 방향을 본다(카메라가 따라온다). 대시 중엔 가드 불가(MeleeSystem), 부스트 회복 멈춤(BoostGauge).
+    /// 대시 중엔 가드 불가(MeleeSystem), 부스트 회복 멈춤·초당 소모(BoostGauge).
     /// </summary>
     public class DashState : MechState
     {
@@ -40,8 +43,15 @@ namespace MyDongari.Movement
         private BernardTuning.DashAttackValues DashAttack => StateMachine.MechController.Tuning.DashAttack;
         private BernardTuning.MovementValues Move => StateMachine.MechController.Tuning.Movement;
 
-        // 지금 돌진 방향(수평, 크기 1)
+        // 지금 돌진 방향(수평, 크기 1). 누른 순간 고정, 대시 어택 유도만 바꾼다
         private Vector3 _heading;
+        // 발동 후 경과(초). dashCancelLockTime이 지나야 ○로 취소된다
+        private float _elapsed;
+
+        /// <summary>지금 돌진 방향 (외형이 몸을 트는 방향, 태클 판정 부채꼴 기준).</summary>
+        public Vector3 Heading => _heading;
+        /// <summary>발동 후 경과 시간(초).</summary>
+        public float Elapsed => _elapsed;
         private DashExitReason _exitReason;
         private bool _exitReported;
 
@@ -76,13 +86,30 @@ namespace MyDongari.Movement
             _attackElapsed = -1f;
             _exitReason = DashExitReason.Other;
             _exitReported = false;
+            _elapsed = 0f;
 
-            // 시작 방향: 하드락이면 상대 쪽, 아니면 보는 방향(몸 정면)
             MechController controller = StateMachine.MechController;
-            _heading = controller.TryGetHardLockForward(out Vector3 toOpponent)
+            _heading = SnappedDirection(controller, StateMachine.InputReader);
+            // 입력 지연 없음: 누른 프레임에 바로 최고 속도 (물리 스텝을 기다리지 않는다)
+            controller.SetMoveVelocity(_heading, Move.dashSpeed);
+            OnDashStarted?.Invoke();
+        }
+
+        /// <summary>
+        /// 누른 순간 방향: 기준(하드락 안 = 상대 쪽, 밖 = 몸 정면)에서 L스틱 각도를 45° 단위로 스냅해 돌린 방향.
+        /// 스틱 중립이면 기준 그대로(앞).
+        /// </summary>
+        private static Vector3 SnappedDirection(MechController controller, InputReader input)
+        {
+            Vector3 basis = controller.TryGetHardLockForward(out Vector3 toOpponent)
                 ? toOpponent
                 : controller.BodyRelativeDirection(Vector2.up);
-            OnDashStarted?.Invoke();
+            if (input == null || !input.IsMoveInputActive) return basis;
+            Vector2 stick = input.MoveInput;
+            // 스틱 위 = 0°, 오른쪽 = 90° (Y축 회전과 같은 방향)
+            float angle = Mathf.Atan2(stick.x, stick.y) * Mathf.Rad2Deg;
+            angle = Mathf.Round(angle / 45f) * 45f;
+            return (Quaternion.Euler(0f, angle, 0f) * basis).normalized;
         }
 
         private void Leave(DashExitReason reason, MechState next)
@@ -98,10 +125,6 @@ namespace MyDongari.Movement
             OnDashEnded?.Invoke(reason);
         }
 
-        /// <summary>대시가 끝나면 스틱을 밀고 있으면 달리기, 아니면 정지로.</summary>
-        private MechState AfterDash => StateMachine.InputReader.IsMoveInputActive
-            ? (MechState)StateMachine.RunState
-            : StateMachine.IdleState;
 
         public override void Update()
         {
@@ -112,18 +135,21 @@ namespace MyDongari.Movement
                 return;
             }
 
-            // 공격 중(발생 시간 + 판정 구간)은 어깨를 내민 채 그대로 돌진한다 (버튼을 떼도·탈진해도 끝까지)
+            _elapsed += Time.deltaTime;
+
+            // 공격 중(발생 시간 + 판정 구간)은 어깨를 내민 채 그대로 돌진한다 (취소·탈진으로 끊지 않음)
             if (IsAttacking) return;
 
             if (StateMachine.MechController.BoostGauge.IsExhausted)
             {
-                Leave(DashExitReason.Exhausted, AfterDash);
+                Leave(DashExitReason.Exhausted, StateMachine.DashStopState);
                 return;
             }
 
-            if (!StateMachine.InputReader.DashHeld)
+            // 1초 취소 불가가 대가 — 그 전에 누른 ○는 무시
+            if (_elapsed >= Move.dashCancelLockTime && StateMachine.InputReader.DashPressedThisFrame)
             {
-                Leave(DashExitReason.ButtonReleased, AfterDash);
+                Leave(DashExitReason.Canceled, StateMachine.DashStopState);
                 return;
             }
 
@@ -139,7 +165,6 @@ namespace MyDongari.Movement
                 return;
             }
 
-            UpdateHeading(controller);
             Advance(controller);
 
             bool requested = _tackleRequested;
@@ -161,11 +186,10 @@ namespace MyDongari.Movement
             }
         }
 
-        /// <summary>지금 방향으로 대시 속도 + 몸을 진행 방향으로.</summary>
+        /// <summary>지금 방향으로 대시 속도. 몸(정면·카메라 기준)은 돌리지 않는다 — 하드락이면 상대를 계속 본다(MechController).</summary>
         private void Advance(MechController controller)
         {
             controller.SetMoveVelocity(_heading, Move.dashSpeed);
-            if (!controller.IsExternallyControlled) controller.Rb.MoveRotation(Quaternion.LookRotation(_heading, Vector3.up));
         }
 
         /// <summary>
@@ -192,7 +216,8 @@ namespace MyDongari.Movement
                 // 판정하는 동안엔 공격 중이 아닌 것으로: 패리 반사·맞딜 넉백이 대시를 끝내도 "취소"로 알리지 않게
                 float elapsed = _attackElapsed;
                 _attackElapsed = -1f;
-                HitResult? result = melee.ResolveTackle(_attackPower, _attackType);
+                // 몸 정면이 아니라 돌진 방향 기준 부채꼴 (옆·뒤 대시 중에도 진행 방향으로 부딪힌다)
+                HitResult? result = melee.ResolveTackle(_attackPower, _attackType, _heading);
                 if (result != null)
                 {
                     FinishAttack(melee, result);
@@ -247,7 +272,7 @@ namespace MyDongari.Movement
             MeleeSystem melee = StateMachine.MechController.MeleeSystem;
             if (melee == null) return false;
             if (melee.TackleStartup(_attackType) - _attackElapsed > seconds) return false;
-            return IsOpponentWithin(HitDistance(_attackType) + Move.dashSpeed * seconds) && melee.IsOpponentInTackleArc();
+            return IsOpponentWithin(HitDistance(_attackType) + Move.dashSpeed * seconds) && melee.IsOpponentInTackleArc(_heading);
         }
 
         /// <summary>대시 어택·태클끼리 맞딜: 공격을 끊고 멈춘다(경직 없음). 밀려남은 부르는 쪽(MeleeSystem)이 넣는다.</summary>
@@ -289,27 +314,6 @@ namespace MyDongari.Movement
         }
 
         /// <summary>
-        /// 돌진 방향 갱신. 하드락 안: 상대 쪽으로 바로. 밖: L스틱(몸 기준) 쪽으로 초당 dashTurnRate°까지만 돌린다.
-        /// 스틱 방향을 몸 기준으로 재므로, 옆으로 밀고 있으면 그쪽으로 계속 돌아간다(운전대처럼). 발생 중인 태클은 방향 고정.
-        /// </summary>
-        private void UpdateHeading(MechController controller)
-        {
-            if (controller.TryGetHardLockForward(out Vector3 toOpponent))
-            {
-                _heading = toOpponent;
-                return;
-            }
-            InputReader input = StateMachine.InputReader;
-            if (!input.IsMoveInputActive) return;
-            Vector3 desired = controller.BodyRelativeDirection(input.MoveInput);
-            if (desired.sqrMagnitude < 0.0001f) return;
-            float maxRadians = Move.dashTurnRate * Mathf.Deg2Rad * Time.fixedDeltaTime;
-            _heading = Vector3.RotateTowards(_heading, desired, maxRadians, 0f);
-            _heading.y = 0f;
-            _heading.Normalize();
-        }
-
-        /// <summary>
         /// 공격 버튼으로 어깨 태클 요청. 받아들이면 true(다음 물리 스텝에 시작), 쿨다운·발생 중이면 false
         /// (입력 버퍼가 다시 시도한다).
         /// </summary>
@@ -328,6 +332,12 @@ namespace MyDongari.Movement
             Leave(DashExitReason.Other, StateMachine.IdleState);
         }
 
+        /// <summary>벽·지형에 정면으로 부딪혀 대시가 끝남 (MechController). 짧게 미끄러지며 선다.</summary>
+        public void EndByWall()
+        {
+            Leave(DashExitReason.Wall, StateMachine.DashStopState);
+        }
+
         /// <summary>몸끼리 부딪혀 대시가 끝남 (MechController.OnCollisionEnter). 속도는 부르는 쪽이 넣는다.</summary>
         public void EndByBump()
         {
@@ -338,7 +348,7 @@ namespace MyDongari.Movement
         {
             // 정면 부채꼴 밖(옆으로 스침)이면 자동 태클을 걸지 않는다. 걸면 헛치고 경직만 남는다
             MeleeSystem melee = StateMachine.MechController.MeleeSystem;
-            if (melee == null || !melee.IsOpponentInTackleArc()) return false;
+            if (melee == null || !melee.IsOpponentInTackleArc(_heading)) return false;
 
             Collider[] hits = Physics.OverlapSphere(
                 StateMachine.MechController.transform.position, ContactRadius);

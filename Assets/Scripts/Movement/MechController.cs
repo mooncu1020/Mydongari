@@ -84,9 +84,14 @@ namespace MyDongari.Movement
         /// </summary>
         public void SetMoveVelocity(Vector3 direction, float speed)
         {
-            if (IsExternallyControlled || IsMoveHeld) return;
             float speedScale = _melee != null ? _melee.MoveSpeedScale : 1f;
-            Vector3 horizontal = direction * (speed * speedScale);
+            SetHorizontalVelocity(direction * (speed * speedScale));
+        }
+
+        /// <summary>수평 속도를 그대로 지정 (배율 없음). 외부 제어·넉백 유지 중엔 양보.</summary>
+        public void SetHorizontalVelocity(Vector3 horizontal)
+        {
+            if (IsExternallyControlled || IsMoveHeld) return;
             Rb.linearVelocity = new Vector3(horizontal.x, Rb.linearVelocity.y, horizontal.z);
         }
 
@@ -104,6 +109,13 @@ namespace MyDongari.Movement
         /// </summary>
         public void ApplyRunVelocity(Vector2 input)
         {
+            SetHorizontalVelocity(ComputeRunVelocity(input));
+        }
+
+        /// <summary>달리기가 원하는 수평 속도 (콤보 이동 배율 포함). 대시 끝 미끄러짐이 이 속도 쪽으로 감속한다.</summary>
+        public Vector3 ComputeRunVelocity(Vector2 input)
+        {
+            if (InputReader != null && input.magnitude < InputReader.MoveDeadzone) return Vector3.zero;
             float deadzone = InputReader != null ? InputReader.MoveDeadzone : 0f;
             float tilt = Mathf.InverseLerp(deadzone, 1f, Mathf.Clamp01(input.magnitude));
             Vector2 stick = input.sqrMagnitude > 0.0001f ? input.normalized : Vector2.zero;
@@ -121,7 +133,8 @@ namespace MyDongari.Movement
                 direction = BodyRelativeDirection(stick);
                 maxSpeed = Move.maxRunSpeed;
             }
-            SetMoveVelocity(direction, maxSpeed * tilt);
+            float speedScale = _melee != null ? _melee.MoveSpeedScale : 1f;
+            return direction * (maxSpeed * tilt * speedScale);
         }
 
         /// <summary>하드락 중이면 상대 쪽 수평 방향(크기 1). 물리 위치로 잰다.</summary>
@@ -219,15 +232,20 @@ namespace MyDongari.Movement
 
         /// <summary>
         /// 대시 중 공격 없이 상대 몸에 부딪히면 둘 다 멈추고 살짝 밀려난다(V3 "충돌", 피해 없음).
-        /// 차징이 찬 상태로 정면에서 닿으면 예전처럼 자동 태클로 넘긴다. 상대가 대시 중이면 상대 대시도 끝난다.
+        /// 차징이 찬 상태로 진행 방향 정면에서 닿으면 예전처럼 자동 태클로 넘긴다. 상대가 대시 중이면 상대 대시도 끝난다.
+        /// 벽·지형(리지드바디 없는 콜라이더)에 진행 방향으로 부딪히면 대시가 끝난다(바닥은 무시).
         /// </summary>
         private void OnCollisionEnter(Collision collision)
         {
             if (StateMachine == null || !StateMachine.IsDashing || Identity == null) return;
-            if (!Identity.IsOpponentCollider(collision.collider)) return;
             DashState dash = StateMachine.DashState;
+            if (!Identity.IsOpponentCollider(collision.collider))
+            {
+                CheckDashWall(collision, dash);
+                return;
+            }
             if (dash.IsAttacking) return;
-            if (dash.IsTackleCharged && _melee != null && _melee.IsOpponentInTackleArc() && dash.RequestTackle()) return;
+            if (dash.IsTackleCharged && _melee != null && _melee.IsOpponentInTackleArc(dash.Heading) && dash.RequestTackle()) return;
 
             MechController other = Identity.Opponent != null ? Identity.Opponent.GetComponent<MechController>() : null;
             Vector3 apart = Rb.position - (other != null ? other.Rb.position : collision.transform.position);
@@ -237,6 +255,33 @@ namespace MyDongari.Movement
 
             ApplyBump(apart);
             if (other != null) other.ApplyBump(-apart);
+        }
+
+        // 벽에 붙은 채 그쪽으로 대시를 시작하면 Enter가 다시 안 오므로 붙어 있는 동안에도 본다
+        private void OnCollisionStay(Collision collision)
+        {
+            if (StateMachine == null || !StateMachine.IsDashing || Identity == null) return;
+            if (Identity.IsOpponentCollider(collision.collider)) return;
+            CheckDashWall(collision, StateMachine.DashState);
+        }
+
+        /// <summary>정적 지형의 옆면(법선이 수평에 가까움)이 진행 방향을 막고 있으면 대시를 끝낸다. 공격 중엔 끝까지 간다.</summary>
+        private void CheckDashWall(Collision collision, DashState dash)
+        {
+            if (dash.IsAttacking || collision.collider == null || collision.collider.attachedRigidbody != null) return;
+            int count = collision.contactCount;
+            for (int i = 0; i < count; i++)
+            {
+                Vector3 normal = collision.GetContact(i).normal;
+                if (Mathf.Abs(normal.y) > Move.dashWallMaxNormalY) continue;
+                normal.y = 0f;
+                if (normal.sqrMagnitude < 0.0001f) continue;
+                if (Vector3.Dot(normal.normalized, dash.Heading) <= -Move.dashWallFacingDot)
+                {
+                    dash.EndByWall();
+                    return;
+                }
+            }
         }
 
         /// <summary>몸 충돌 반동: 대시를 끝내고 direction 쪽으로 bumpSpeed만큼 밀린다(넉백처럼 잠깐 이동 입력을 막음).</summary>

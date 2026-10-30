@@ -140,6 +140,8 @@ namespace MyDongari.Combat
         {
             // 스턴 중엔 어떤 공격도 시작하지 않는다 (펀치·런지는 각자도 막지만 파일드라이버까지 한 곳에서)
             if (_meleeSystem != null && _meleeSystem.IsStunned) return null;
+            // 대시 끝 미끄러짐(약 0.2초) 중엔 공격 불가 — 버퍼에 남았다가 끝나면 나간다
+            if (_stateMachine != null && _stateMachine.IsDashStopping) return null;
 
             if (_anchorClaw != null && _anchorClaw.IsPileDriverReady)
             {

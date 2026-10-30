@@ -38,21 +38,19 @@ namespace MyDongari.Mech
             public float sideStepDuration = 0.3f;
             public float sideStepSpeed = 20f;
 
-            [Header("○ 대시 (V3)")]
-            [Tooltip("대시 속도(m/s). 누르고 있는 동안 유지, 부스트는 Boost.dashDrainRate로 초당 소모")]
+            [Header("○ 대시 (V3.1: 누른 순간 8방향 고정, 토글)")]
+            [Tooltip("대시 속도(m/s). 누른 프레임에 바로 이 속도, 부스트는 Boost.dashDrainRate로 초당 소모")]
             public float dashSpeed = 30f;
-            [Tooltip("하드락 밖 대시 중 L스틱으로 방향을 트는 최대 속도(°/초)")]
-            public float dashTurnRate = 120f;
+            [Tooltip("발동 후 이 시간(초) 동안은 ○를 다시 눌러도 취소되지 않는다")]
+            public float dashCancelLockTime = 1f;
+            [Tooltip("대시가 끝난 뒤 미끄러지며 감속해 서는 시간(초). 이 동안 공격·대시 불가, 이동은 가능")]
+            public float dashStopDuration = 0.2f;
             [Tooltip("공격 없이 대시로 상대 몸에 부딪혔을 때 둘이 서로 밀려나는 속도(m/s). 피해 없음")]
             public float bumpSpeed = 4f;
-
-            [Header("백대시 (○ + L스틱 뒤)")]
-            [Tooltip("뒤로 튀는 거리(m). 하드락 안에서는 상대 반대 방향")]
-            public float backDashDistance = 6f;
-            [Tooltip("튀는 데 걸리는 시간(초). 속도 = 거리 / 시간")]
-            public float backDashDuration = 0.25f;
-            [Tooltip("○를 누른 순간 L스틱 아래로 이만큼 이상(그리고 좌우보다 더) 기울어 있으면 백대시")]
-            [Range(0f, 1f)] public float backDashStickThreshold = 0.5f;
+            [Tooltip("벽 판정: 닿은 면 법선의 위아래 성분이 이 값 이하(옆면)여야 벽 — 바닥·경사는 무시")]
+            [Range(0f, 1f)] public float dashWallMaxNormalY = 0.5f;
+            [Tooltip("벽 판정: 면이 진행 방향을 이만큼 이상 정면으로 막아야(법선·진행 방향 내적 ≤ -값) 대시가 끝남. 비스듬히 스치면 계속")]
+            [Range(0f, 1f)] public float dashWallFacingDot = 0.5f;
         }
 
         [Serializable]
@@ -70,8 +68,6 @@ namespace MyDongari.Mech
 
             [Header("소모량")]
             public float sideStepCost = 10f;
-            [Tooltip("백대시 한 번 소모량")]
-            public float backDashCost = 15f;
         }
 
         [Serializable]
@@ -212,8 +208,8 @@ namespace MyDongari.Mech
             public float homingRange = 25f;
             [Tooltip("따라갈 때 꺾는 최대 속도(°/초). 클수록 잘 따라가고, 작을수록 사이드스텝으로 피하기 쉽다")]
             public float homingTurnRate = 120f;
-            [Tooltip("발생 시간 뒤 이 시간(초) 동안 돌진하며 닿으면 판정. 대시 30m/s × 0.8초 = 약 24m")]
-            public float activeTime = 0.8f;
+            [Tooltip("발생 시간 뒤 이 시간(초) 동안 돌진하며 닿으면 판정, 못 닿으면 빗나감 경직. V3.1: 최대 0.6초로 제한 (30m/s × 0.6초 = 18m)")]
+            [Range(0.05f, 0.6f)] public float activeTime = 0.6f;
             [Tooltip("두 기체 중심 거리가 이 값(m) 안이면 닿은 것으로 보고 판정")]
             public float hitDistance = 3f;
         }
@@ -606,6 +602,20 @@ namespace MyDongari.Mech
             public float flashFxSize = 0.8f;
             public float flashFxTime = 0.06f;
 
+            [Header("대시 연출 (V3.1)")]
+            [Tooltip("출발 순간 기체를 덮는 분사 섬광 색")]
+            public Color dashBurstColor = new Color(1f, 0.7f, 0.35f, 0.95f);
+            [Tooltip("출발 분사 섬광 크기(m). 기체를 덮을 만큼")]
+            public float dashBurstSize = 4.5f;
+            [Tooltip("출발 분사 섬광 시간(초). 0.03 ≈ 60fps 2프레임")]
+            public float dashBurstTime = 0.03f;
+            [Tooltip("출발 분사 불꽃 배율 (타격 불꽃 기준)")]
+            public float dashBurstSparkScale = 2f;
+            [Tooltip("대시 중 발밑 긁힘 불꽃 간격(초)")]
+            public float dashScrapeInterval = 0.05f;
+            [Tooltip("발밑 긁힘 불꽃 배율 (타격 불꽃 기준)")]
+            public float dashScrapeScale = 0.35f;
+
             [Header("착지 먼지 (런지 앞발 박기·앵커 클로 버팀)")]
             public Color dustColor = new Color(0.55f, 0.5f, 0.42f, 0.8f);
             [Tooltip("먼지 알갱이 크기(m). 진공이라 퍼지며 커지지 않는다 (T3)")]
@@ -849,6 +859,8 @@ namespace MyDongari.Mech
             public float sprintStanceBlendTime = 0.2f;
             [Tooltip("전력질주 돌격 자세에서 걸음 팔 스윙 비율 (1 = 평소 그대로, 0 = 안 흔듦)")]
             [Range(0f, 1f)] public float sprintArmSwingScale = 0.3f;
+            [Tooltip("V3.1 대시 중 상체를 앞으로 숙이는 각도(°, 돌격 자세 위에 더함). 스펙 30~40°")]
+            public float dashLeanAngle = 35f;
 
             [Header("펀치 (M3: 발동 = Startup.punch, 회복 끝 = Punch.cooldown)")]
             [Tooltip("발동 시간 중 예비 자세(살짝 젖힘)에 도착하는 시점 비율. 0.4면 0.1초 발동에서 0.04초")]

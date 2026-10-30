@@ -121,6 +121,8 @@ namespace MyDongari.Feedback
             // 넉다운 미끄러짐 먼지 (R2)
             public KnockdownController Knockdown;
             public float NextSlideDust;
+            // 대시 중 발밑 긁힘 불꽃 (V3.1)
+            public float NextDashScrape;
         }
 
         private readonly List<MechFeedback> _mechs = new List<MechFeedback>();
@@ -165,6 +167,14 @@ namespace MyDongari.Feedback
                 fb.Melee.OnHitResolved += onHit;
                 MeleeSystem melee = fb.Melee;
                 _unsubscribers.Add(() => melee.OnHitResolved -= onHit);
+            }
+
+            if (fb.StateMachine != null)
+            {
+                DashState dash = fb.StateMachine.DashState;
+                Action onDash = () => ErrorLog.Run(() => DashBurst(fb), "CombatFeedback.onDash");
+                dash.OnDashStarted += onDash;
+                _unsubscribers.Add(() => dash.OnDashStarted -= onDash);
             }
 
             ThrusterLunge lunge = mech.GetComponent<ThrusterLunge>();
@@ -460,6 +470,7 @@ namespace MyDongari.Feedback
                 UpdateTint(fb, stunned, overheated, guarding);
                 UpdateHoverLoop(fb, active && fb.StateMachine != null && fb.StateMachine.IsDashing);
                 UpdateKnockdownSlideDust(fb, active);
+                UpdateDashScrape(fb, active && fb.StateMachine != null && fb.StateMachine.IsDashing);
                 float scrape = active && fb.Rig != null ? fb.Rig.ScrapeAmount : 0f;
                 UpdateLoop(ref fb.ScrapeLoop, strideScrapeLoopClip, strideScrapeVolume * Mathf.Clamp01(scrape));
             }
@@ -491,6 +502,40 @@ namespace MyDongari.Feedback
             source.volume = Mathf.MoveTowards(source.volume, target, step * Mathf.Max(0.01f, sfxVolume));
             if (target > 0f && !source.isPlaying) source.Play();
             else if (target <= 0f && source.isPlaying && source.volume <= 0.0001f) source.Stop();
+        }
+
+        /// <summary>
+        /// 대시 출발 분사 (V3.1): 기체를 덮는 큰 섬광이 1~2프레임(dashBurstTime) + 진행 반대쪽으로 튀는 불꽃.
+        /// </summary>
+        private void DashBurst(MechFeedback fb)
+        {
+            if (fb.Mech == null || fb.StateMachine == null) return;
+            BernardTuning.HitFeelValues feel = TuningOf(fb.Mech).HitFeel;
+            Collider body = fb.Mech.GetComponent<Collider>();
+            Vector3 center = body != null ? body.bounds.center : fb.Mech.transform.position;
+            float scale = Mathf.Max(0.01f, feel.dashBurstSparkScale);
+            var style = new HitSparkFx.Style
+            {
+                Spark = feel.dashBurstColor,
+                Flash = feel.dashBurstColor,
+                SparkSize = feel.sparkSize,
+                SparkCount = feel.sparkCount,
+                SparkSpeed = feel.sparkSpeed,
+                // SpawnHit이 섬광 크기에 scale을 곱하므로 미리 나눠 둔다
+                FlashSize = feel.dashBurstSize / scale,
+                FlashTime = feel.dashBurstTime
+            };
+            HitSparkFx.SpawnHit(center, -fb.StateMachine.DashState.Heading, scale, style);
+        }
+
+        /// <summary>대시 중 발밑에서 진행 반대쪽·위로 튀는 긁힘 불꽃 (V3.1). 히트스톱 중엔 멈춘다(게임 시간).</summary>
+        private void UpdateDashScrape(MechFeedback fb, bool dashing)
+        {
+            if (!dashing || Time.time < fb.NextDashScrape) return;
+            BernardTuning.HitFeelValues feel = TuningOf(fb.Mech).HitFeel;
+            fb.NextDashScrape = Time.time + Mathf.Max(0.02f, feel.dashScrapeInterval);
+            Vector3 back = -fb.StateMachine.DashState.Heading;
+            HitSparkFx.SpawnHit(FootPoint(fb.Mech), (back + Vector3.up * 0.6f).normalized, feel.dashScrapeScale, SparkStyle(feel, feel.sparkColor));
         }
 
         /// <summary>넉다운 미끄러짐 동안 땅을 긁는 먼지 (R2). 히트스톱 중엔 멈춘다(게임 시간).</summary>

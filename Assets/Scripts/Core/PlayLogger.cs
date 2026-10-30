@@ -56,8 +56,8 @@ namespace MyDongari.Core
             "sidestep", "anchor_hit", "slam_landed",
             // 입력 버퍼로(누른 프레임보다 뒤에) 발동한 공격 수. 종류별은 buffered_punch 등으로 따로
             "buffered_attack",
-            // ○ 대시(V3): 진입 수와 해제 이유별 수 (나머지 이유는 0이 아닐 때만 추가로 나온다), 백대시 수
-            "dash_enter", "dash_exit_button_release", "dash_exit_exhausted", "dash_exit_bump", "backdash"
+            // ○ 대시(V3.1): 진입 수와 끝난 이유별 수 (나머지 이유는 0이 아닐 때만 추가로 나온다)
+            "dash_enter", "dash_exit_canceled", "dash_exit_exhausted", "dash_exit_bump", "dash_exit_wall"
         };
         private static readonly string[] BandNames = { "near", "mid", "far" };
 
@@ -242,7 +242,6 @@ namespace MyDongari.Core
                 Action<MechState> onState = state => ErrorLog.Run(() =>
                 {
                     if (state is SideStepState) Count(index, "sidestep");
-                    else if (state is BackDashState) Count(index, "backdash");
                 }, "PlayLogger.onState");
                 sm.OnStateChanged += onState;
                 _unsubscribers.Add(() => sm.OnStateChanged -= onState);
@@ -396,7 +395,8 @@ namespace MyDongari.Core
         {
             switch (reason)
             {
-                case DashExitReason.ButtonReleased: return "button_release";
+                case DashExitReason.Canceled: return "canceled";
+                case DashExitReason.Wall: return "wall";
                 case DashExitReason.Exhausted: return "exhausted";
                 case DashExitReason.Stun: return "stun";
                 case DashExitReason.Tackle: return "tackle";

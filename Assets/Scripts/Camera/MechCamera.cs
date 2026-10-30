@@ -27,6 +27,14 @@ namespace MyDongari.Camera
         [Tooltip("몸의 수평 회전을 따라가는 빠르기(지수 감쇠, 1/초). 클수록 딱 붙고 작을수록 늦게 돈다")]
         [SerializeField] private float yawFollowSpeed = 8f;
 
+        [Header("위치 따라가기 (V3.1 대시 처짐)")]
+        [Tooltip("평소 카메라 기준점이 기체 위치를 따라가는 빠르기(지수 감쇠, 1/초). 클수록 딱 붙는다 (20m/s에서 처짐 ≈ 20 / 값 m)")]
+        [SerializeField] private float positionFollowSpeed = 100f;
+        [Tooltip("대시 중 따라가는 빠르기. 작을수록 기체가 화면 앞·옆으로 더 처져 속도감이 난다 (30m/s에서 처짐 ≈ 30 / 값 m)")]
+        [SerializeField] private float dashPositionFollowSpeed = 12f;
+        [Tooltip("두 빠르기 사이를 바꾸는 속도(초당 변화량). 대시가 끝날 때 처짐이 한 번에 튀어 돌아오지 않게")]
+        [SerializeField] private float positionFollowBlendRate = 200f;
+
         [Header("카메라 충돌 (T4)")]
         [Tooltip("카메라가 바위·테두리·벽 등 정적 지형을 뚫으면 기체 쪽으로 당긴다 (기체·리지드바디가 있는 콜라이더는 무시)")]
         [SerializeField] private bool collideWithWorld = true;
@@ -47,6 +55,9 @@ namespace MyDongari.Camera
         [SerializeField] private bool addOffscreenArrow = true;
 
         private float _yaw = 0f;
+        // 카메라 기준점(기체 위치를 늦게 따라감)과 지금 따라가는 빠르기
+        private Vector3 _followPosition;
+        private float _currentFollowSpeed;
         private InputReader _inputReader;
         private MechController _mechController;
         private UnityEngine.Camera _camera;
@@ -135,6 +146,8 @@ namespace MyDongari.Camera
             _shakeTimer = 0f;
             _kickTimer = 0f;
             _yaw = yaw;
+            if (target != null) _followPosition = target.position;
+            _currentFollowSpeed = positionFollowSpeed;
             if (_camera != null) _camera.fieldOfView = baseFov;
         }
 
@@ -151,7 +164,9 @@ namespace MyDongari.Camera
                 _rig = target.GetComponent<MechVisualRig>();
                 if (_rig != null) _rig.OnFootstep += OnFootstep;
                 _yaw = target.eulerAngles.y;
+                _followPosition = target.position;
             }
+            _currentFollowSpeed = positionFollowSpeed;
 
             _camera = GetComponent<UnityEngine.Camera>();
             if (_camera != null)
@@ -181,9 +196,17 @@ namespace MyDongari.Camera
             float k = 1f - Mathf.Exp(-yawFollowSpeed * Time.deltaTime);
             _yaw = Mathf.LerpAngle(_yaw, bodyYaw, k);
 
+            // 기준점은 기체 위치를 늦게 따라간다: 대시 중엔 느리게 따라가 기체가 옆·앞으로 처진다 (V3.1). 몸 방향은 대시 중 안 돈다
+            bool dashing = _mechController != null && _mechController.StateMachine != null && _mechController.StateMachine.IsDashing;
+            float wantedSpeed = dashing ? dashPositionFollowSpeed : positionFollowSpeed;
+            _currentFollowSpeed = Mathf.MoveTowards(_currentFollowSpeed, wantedSpeed, positionFollowBlendRate * Time.deltaTime);
+            float kp = 1f - Mathf.Exp(-_currentFollowSpeed * Time.deltaTime);
+            _followPosition = Vector3.Lerp(_followPosition, target.position, kp);
+            Vector3 anchor = _followPosition;
+
             Quaternion yawRotation = Quaternion.Euler(0f, _yaw, 0f);
-            Vector3 lookPoint = target.position + Vector3.up * lookHeight + yawRotation * (Vector3.forward * lookAhead);
-            Vector3 desired = target.position + Vector3.up * followHeight - yawRotation * (Vector3.forward * followDistance);
+            Vector3 lookPoint = anchor + Vector3.up * lookHeight + yawRotation * (Vector3.forward * lookAhead);
+            Vector3 desired = anchor + Vector3.up * followHeight - yawRotation * (Vector3.forward * followDistance);
             Vector3 toLook = lookPoint - desired;
 
             transform.position = desired;

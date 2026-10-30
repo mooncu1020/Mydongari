@@ -33,7 +33,7 @@ namespace MyDongari.Mech
             }
 
             // V3: 땅에서 달리기·근접 이동(둘 다 Run 상태)·정지 중에 회복. 가드를 올리고 있으면 멈춘다 (가드 유지에 대가)
-            // 대시·백대시·사이드스텝·런지·넉다운 중엔 회복 안 함. 공중(점프)은 5단계에서 추가
+            // 대시·대시 끝 미끄러짐·사이드스텝·런지·넉다운 중엔 회복 안 함. 공중(점프)은 5단계에서 추가
             bool guarding = _meleeSystem != null && _meleeSystem.IsGuarding;
             // 상태 머신이 없는 기체(연습 봇)는 땅에서 걷기·정지만 하므로 가드 중이 아니면 회복
             bool calm = _stateMachine == null || _stateMachine.IsRunning || _stateMachine.IsIdle;
@@ -101,6 +101,5 @@ namespace MyDongari.Mech
         }
 
         public float GetSideStepCost() => T.sideStepCost;
-        public float GetBackDashCost() => T.backDashCost;
     }
 }

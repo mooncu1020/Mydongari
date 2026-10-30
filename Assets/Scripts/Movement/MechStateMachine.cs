@@ -6,7 +6,7 @@ using MyDongari.Mech;
 namespace MyDongari.Movement
 {
     /// <summary>
-    /// 이동 상태 (V3): Idle(정지) / Run(항상 달리기, 하드락 안이면 근접 이동) / Dash(○) / BackDash(○ + 뒤) / SideStep / Lunge / Knockdown.
+    /// 이동 상태 (V3): Idle(정지) / Run(항상 달리기, 하드락 안이면 근접 이동) / Dash(○, 8방향 고정) / DashStop(대시 끝 미끄러짐) / SideStep / Lunge / Knockdown.
     /// 걷기·제동·슬라이딩·초신지선회·트윈스틱 전력질주는 V3에서 삭제됐다.
     /// </summary>
     public class MechStateMachine : MonoBehaviour
@@ -22,14 +22,15 @@ namespace MyDongari.Movement
         public IdleState IdleState { get; private set; }
         public RunState RunState { get; private set; }
         public DashState DashState { get; private set; }
-        public BackDashState BackDashState { get; private set; }
+        public DashStopState DashStopState { get; private set; }
         public SideStepState SideStepState { get; private set; }
         public LungeState LungeState { get; private set; }
         public KnockdownState KnockdownState { get; private set; }
 
-        /// <summary>○ 대시 중 (백대시 제외). 가드 불가·히트 냉각 감소·호버 활주 외형의 기준.</summary>
+        /// <summary>○ 대시 중 (끝 미끄러짐 제외). 가드 불가·히트 냉각 감소·호버 활주 외형의 기준.</summary>
         public bool IsDashing => _currentState is DashState;
-        public bool IsBackDashing => _currentState is BackDashState;
+        /// <summary>대시 끝 미끄러짐 중 (약 0.2초). 공격·대시 불가, 이동 가능.</summary>
+        public bool IsDashStopping => _currentState is DashStopState;
 
         public bool IsStunned => MechController.MeleeSystem != null && MechController.MeleeSystem.IsStunned;
         public bool IsIdle => _currentState is IdleState;
@@ -53,10 +54,10 @@ namespace MyDongari.Movement
 
         /// <summary>
         /// 하드 락온 몸통 자동 회전을 허용하는 상태인지.
-        /// 대시(방향을 DashState가 정함)·런지·넉다운은 진행 방향이 정해진 기동이라 몸을 돌리면 안 된다.
+        /// 런지·넉다운은 진행 방향이 정해진 기동이라 몸을 돌리면 안 된다.
+        /// 대시는 허용 — V3.1: 대시 방향은 고정이고 몸 정면은 따로라, 하드락이면 상대를 정면에 둔 채 옆으로 빠진다.
         /// </summary>
         public bool AllowsHardLockFacing =>
-            !(_currentState is DashState) &&
             !(_currentState is LungeState) &&
             !(_currentState is KnockdownState);
 
@@ -67,10 +68,10 @@ namespace MyDongari.Movement
 
         /// <summary>
         /// R스틱 몸 회전을 받는 상태인지 (V3). 하드락 몸통 회전 중(하드락 안에서는 R스틱 꺼짐), 스턴, 외부 제어,
-        /// 진행 방향이 정해진 기동(대시·백대시·사이드스텝·런지·넉다운) 중엔 받지 않는다. 대시 방향은 L스틱으로 튼다.
+        /// 대시(카메라·정면 고정)·사이드스텝·런지·넉다운 중엔 받지 않는다. 대시 끝 미끄러짐은 이동이라 받는다.
         /// </summary>
         public bool AllowsTurnInput =>
-            (_currentState is IdleState || _currentState is RunState) &&
+            (_currentState is IdleState || _currentState is RunState || _currentState is DashStopState) &&
             !IsStunned && !MechController.IsExternallyControlled && !MechController.IsHardLockFacing;
 
         private void Awake()
@@ -81,7 +82,7 @@ namespace MyDongari.Movement
             IdleState = new IdleState(this);
             RunState = new RunState(this);
             DashState = new DashState(this);
-            BackDashState = new BackDashState(this);
+            DashStopState = new DashStopState(this);
             SideStepState = new SideStepState(this);
             LungeState = new LungeState(this);
             KnockdownState = new KnockdownState(this);
@@ -101,16 +102,14 @@ namespace MyDongari.Movement
         }
 
         /// <summary>
-        /// ○를 이번 프레임에 눌렀으면 대시 또는 백대시(L스틱 뒤)로 넘어간다. Idle·Run이 부른다. 넘어갔으면 true.
-        /// 탈진(0%)·스턴이면 안 나간다.
+        /// ○를 이번 프레임에 눌렀으면 대시로 넘어간다(방향은 DashState가 누른 순간 L스틱으로 정함 — 뒤 대시가 예전 백대시를 대신한다).
+        /// Idle·Run이 부른다. 넘어갔으면 true. 탈진(0%)·스턴이면 안 나간다.
         /// </summary>
         public bool TryStartDash()
         {
             if (InputReader == null || !InputReader.DashPressedThisFrame) return false;
             if (IsStunned || MechController.BoostGauge.IsExhausted) return false;
-            Vector2 move = InputReader.MoveInput;
-            bool back = move.y <= -MechController.Tuning.Movement.backDashStickThreshold && -move.y >= Mathf.Abs(move.x);
-            ChangeState(back ? (MechState)BackDashState : DashState);
+            ChangeState(DashState);
             return true;
         }
 

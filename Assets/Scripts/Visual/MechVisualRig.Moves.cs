@@ -35,6 +35,8 @@ namespace MyDongari.Visual
             float s = Mathf.SmoothStep(0f, 1f, _sprintStance);
             AddPose(PoseNames.LowGuard, 1f - s);
             AddPose(PoseNames.SprintGuard, s);
+            // V3.1 대시: 낮게 숙여 미끄러지는 자세 (돌격 자세 위에 상체 앞 숙임)
+            if (_body != null && s > 0f) AddRotation(_body, new Vector3(m.dashLeanAngle * s, 0f, 0f));
         }
 
         // ---------------- 공통: 타격 연출 ----------------
