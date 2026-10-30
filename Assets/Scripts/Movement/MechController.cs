@@ -68,10 +68,14 @@ namespace MyDongari.Movement
         /// <summary>넉백 유지 중이라 이동 로직이 속도를 건드리면 안 되는지.</summary>
         public bool IsMoveHeld => _moveHoldTimer > 0f;
 
-        /// <summary>넉백을 받았을 때 부른다 (MeleeSystem). knockbackMoveHold초 동안 달리기·정지가 속도를 덮어쓰지 않는다.</summary>
+        /// <summary>
+        /// 넉백을 받았을 때 부른다 (MeleeSystem). knockbackMoveHold초 동안 달리기·정지가 속도를 덮어쓰지 않는다.
+        /// 대시 중이었으면 대시를 끝낸다 — 안 끝내면 유지 시간이 지난 뒤 맞은 자리에서 다시 30m/s로 돌진한다.
+        /// </summary>
         public void HoldMoveControl()
         {
             _moveHoldTimer = Mathf.Max(_moveHoldTimer, Move.knockbackMoveHold);
+            if (StateMachine != null && StateMachine.IsDashing) StateMachine.DashState.EndByKnockback();
         }
 
         /// <summary>
@@ -239,7 +243,7 @@ namespace MyDongari.Movement
         public void ApplyBump(Vector3 direction)
         {
             if (IsExternallyControlled) return;
-            if (StateMachine != null && StateMachine.IsDashing && !StateMachine.DashState.IsAttacking) StateMachine.DashState.EndByBump();
+            if (StateMachine != null && StateMachine.IsDashing) StateMachine.DashState.EndByBump();
             Vector3 push = direction * Move.bumpSpeed;
             Rb.linearVelocity = new Vector3(push.x, Rb.linearVelocity.y, push.z);
             HoldMoveControl();

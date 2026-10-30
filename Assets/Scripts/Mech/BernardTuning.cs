@@ -190,6 +190,12 @@ namespace MyDongari.Mech
             public float fullChargeTime = 3f;
             [Tooltip("차징 상태로 이 거리(m) 안에 상대가 정면으로 닿으면 자동 태클")]
             public float contactRadius = 2f;
+
+            [Header("돌진 판정 (V4: 직선)")]
+            [Tooltip("발생 시간 뒤 이 시간(초) 동안 직선으로 돌진하며 닿으면 판정. 못 닿으면 빗나감(recoveryStun 경직)")]
+            public float activeTime = 0.4f;
+            [Tooltip("두 기체 중심 거리가 이 값(m) 안이면 닿은 것으로 보고 판정(정면 ±halfAngle도 만족해야 함)")]
+            public float hitDistance = 3f;
         }
 
         [Serializable]
@@ -200,6 +206,16 @@ namespace MyDongari.Mech
             public float knockback = 6f;
             [Tooltip("그대로 맞았을 때 상대 스턴(초). 0이면 없음")]
             public float stun = 0f;
+
+            [Header("유도 (V4)")]
+            [Tooltip("공격을 시작할 때 상대가 이 거리(m) 안이면 따라간다. 밖이면 직선")]
+            public float homingRange = 25f;
+            [Tooltip("따라갈 때 꺾는 최대 속도(°/초). 클수록 잘 따라가고, 작을수록 사이드스텝으로 피하기 쉽다")]
+            public float homingTurnRate = 120f;
+            [Tooltip("발생 시간 뒤 이 시간(초) 동안 돌진하며 닿으면 판정. 대시 30m/s × 0.8초 = 약 24m")]
+            public float activeTime = 0.8f;
+            [Tooltip("두 기체 중심 거리가 이 값(m) 안이면 닿은 것으로 보고 판정")]
+            public float hitDistance = 3f;
         }
 
         /// <summary>스러스터 런지 판정 방식 (M4).</summary>

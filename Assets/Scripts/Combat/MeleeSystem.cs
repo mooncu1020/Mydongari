@@ -321,6 +321,16 @@ namespace MyDongari.Combat
                 return Resolve(info, HitResult.Clash);
             }
 
+            // 1-2) 대시 어택·태클끼리 맞딜 (V4): 내 대시 공격도 clashWindow 안에 상대를 맞힐 상황이면 둘 다 0 피해 + 밀려남.
+            //      내 공격을 먼저 끊고(속도 0) 밀어야 대시 속도에 넉백이 더해지지 않는다
+            if ((info.Type == AttackType.DashAttack || info.Type == AttackType.Tackle) &&
+                _stateMachine != null && _stateMachine.IsDashing && _stateMachine.DashState.WouldHitWithin(Startup.clashWindow))
+            {
+                _stateMachine.DashState.EndByClash();
+                ApplyClash(info);
+                return Resolve(info, HitResult.Clash);
+            }
+
             // 2) 패리: 피해 0, 히트 증가 없음. 런지·태클은 공격자에게 되돌려 준다 (공격자 스턴은 없음)
             if (IsParrying && !info.IgnoresParry)
             {
@@ -430,7 +440,7 @@ namespace MyDongari.Combat
 
         /// <summary>
         /// 어깨 태클 시작(버튼을 누른 순간): 쿨다운을 쓰고 OnAttackStarted를 알린다. 쿨다운 중이면 false.
-        /// 판정은 발생 시간 뒤 ResolveTackle (DashState가 진행).
+        /// 판정은 발생 시간 뒤 판정 구간 동안 닿으면 ResolveTackle (DashState가 진행).
         /// </summary>
         public bool BeginTackle(AttackType type)
         {

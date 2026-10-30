@@ -403,9 +403,17 @@ namespace MyDongari.Combat
 
             // 런지와 같은 반응 방식: 상대 예비 동작을 보고 reactionTime 뒤, 판정 시각에 패리 창이 걸치도록 누른다.
             // 발생 시간이 반응 시간보다 짧으면(0 = 즉시 판정 포함) 늦어서 못 막는다
-            BernardTuning.AttackStartupValues startup = TuningOf(_watchedOpponent).Startup;
+            BernardTuning opponentTuning = TuningOf(_watchedOpponent);
+            BernardTuning.AttackStartupValues startup = opponentTuning.Startup;
             float hitIn = type == AttackType.Punch ? startup.punch
                 : type == AttackType.Tackle ? startup.chargedTackle : startup.dashAttack;
+            // V4: 대시 어택·태클은 발생 시간 뒤 돌진해서 닿을 때 맞는다 — 남은 거리를 대시 속도로 나눈 만큼 늦다
+            if (type != AttackType.Punch && _player != null)
+            {
+                float reach = type == AttackType.Tackle ? opponentTuning.Tackle.hitDistance : opponentTuning.DashAttack.hitDistance;
+                float distance = Vector3.Distance(transform.position, _player.position);
+                hitIn += Mathf.Max(0f, distance - reach) / Mathf.Max(0.1f, opponentTuning.Movement.dashSpeed);
+            }
             float window = _tuning.Get(this).Parry.window;
             _pendingGuardTime = Time.time + Mathf.Max(reactionTime, hitIn - window * 0.5f);
         }

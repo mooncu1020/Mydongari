@@ -131,8 +131,9 @@ namespace MyDongari.Combat
         }
 
         /// <summary>
-        /// 지금 상황으로 공격 버튼 한 번의 동작을 고르고 시작한다. 우선순위 (GAME_SPEC 4장):
-        /// 1 파일드라이버 준비 → 파일드라이버, 2 전력질주 → 대시 어택·태클, 3 상대 6m 안 → 펀치, 4 그 외 → 런지.
+        /// 지금 상황으로 공격 버튼 한 번의 동작을 고르고 시작한다. 우선순위 (GAME_SPEC_V3 "공격" 표):
+        /// 1 앵커 클로로 끌어온 직후 → 파일 드라이버, 2 내가 공중 → 유도 내려찍기(6단계), 3 상대 공중 + 6m 안 → 대공 어퍼컷(6단계),
+        /// 4 대시 1.5초 미만 → 유도 대시 어택, 5 대시 1.5초 이상 → 차징 태클, 6 상대 6m 안 → 펀치 콤보, 7 그 외 → 스러스터 런지.
         /// 시작했으면 그 종류, 지금 못 하면(쿨다운·발생 중·런지 중·스턴 등) null.
         /// </summary>
         private AttackType? TryStartAttack()
@@ -145,14 +146,16 @@ namespace MyDongari.Combat
                 return _anchorClaw.TryPileDriver() ? AttackType.PileDriver : (AttackType?)null;
             }
 
+            // 2) 내가 공중 → 유도 내려찍기, 3) 상대가 공중 + 6m 안 → 대공 어퍼컷: 점프(5단계)가 없어 아직 자리만
+
             if (_stateMachine != null && _stateMachine.IsDashing)
             {
-                // 대시 중 공격 버튼 = 어깨 태클 (1.5초 미만 대시 어택 / 이상 차징 태클)
+                // 4·5) 대시 중 공격 버튼 = 1.5초 미만 유도 대시 어택 / 이상 차징 태클
                 if (!_stateMachine.DashState.RequestTackle()) return null;
                 return _stateMachine.DashState.IsTackleCharged ? AttackType.Tackle : AttackType.DashAttack;
             }
 
-            // V3: 펀치/런지 전환은 하드 락온(10m)과 따로 meleeSwitchRange(6m). 6~10m는 하드락 안이어도 런지
+            // 6·7) V3: 펀치/런지 전환은 하드 락온(10m)과 따로 meleeSwitchRange(6m). 6~10m는 하드락 안이어도 런지
             if (IsOpponentInMeleeRange())
             {
                 return _meleeSystem != null && _meleeSystem.TryMeleeAttack() ? AttackType.Punch : (AttackType?)null;
