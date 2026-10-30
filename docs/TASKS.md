@@ -282,6 +282,11 @@
 ### [x] U1. Tools/Build And Smoke Test
 ### [x] Q2. 방어 (스프링 안정화, 범위·0 검사, 잘못된 값이면 원래 자세로 되돌리고 상태 리셋)
 
+## Phase V — V3 (`docs/GAME_SPEC_V3.md`, 계획 `docs/PLAN_V3_1.md`, 브랜치 `v3`)
+
+### [x] V1. 카메라: 몸 뒤 고정 백뷰(뒤 6m·위 2.5m), R스틱 좌우 = 제자리 몸 회전(하드락 안에선 꺼짐), 화면 밖 상대 화살표(두 화면)
+### [ ] V2. 이동 정리: 걷기·가속도·Brake·초신지선회·슬라이딩·트윈스틱 전력질주 삭제, 항상 달리기 20m/s, 하드락 10/12m + 근접 이동 8m/s, 땅에서 부스트 회복
+
 ---
 
 ## 작업 메모 (Claude Code가 태스크마다 추가)
@@ -377,3 +382,4 @@
 - **T5** 측정은 못 함 — 이 환경에선 에디터·빌드를 실행할 수 없다. 맵 전후 비교 방법·표를 `TEST_CHECKLIST` T5에 남겼다. 예상 부담: 그림자 켠 해 1개(기체·바위·테두리 바위 26개·경사가 그림자를 드리움 — 가장 큰 비용 후보), 지형 메시(바닥 약 3.5천·경사 약 1천 정점, 바위 80면씩), 스카이박스 픽셀 셰이더(별 두 겹 + 노이즈 8회), 먼지 월드 충돌 파티클. 화면 분할이라 그림자·하늘은 카메라마다.
 - **T1.1** 완료. 바뀐 파일: `AnchorClaw.UpdateFlight`(같은 SphereCastAll 결과에서 목표보다 가까운 지형이 있으면 그 지점에서 빗나감 → Retracting·`OnMissed`; `IsBlockingTerrain` — 리지드바디 없는 정적 콜라이더, 위를 향한 면(바닥)·시작부터 겹친 것 무시), `BernardTuning.AnchorClaw.terrainFloorNormalY`(0.7), `QUESTIONS` T1.1. 발사·쿨다운 규칙은 그대로.
 - **U1** 완료. 신규 `Editor/BuildAndSmokeTest`(`Tools/Build And Smoke Test` — 열린 씬 저장 → `Builds/yyyyMMdd_HHmmss/제품명.exe`로 Windows 64비트 빌드(빌드 설정의 켜진 씬) → `-logFile Builds/…/Player.log -screen-fullscreen 0 -screen-width 1280 -screen-height 720 -smokeTest`로 실행 → 10초 뒤 창 닫기 요청, 3초 안에 안 끝나면 강제 종료 → Player.log에서 Exception·Error(대소문자 무시)·NaN 줄을 세고 같은 줄은 묶어 처음 줄 번호·횟수로 최대 30종류 콘솔 요약(있으면 경고, 없으면 일반 로그) + `SmokeTestSummary.txt`; 10초 전에 스스로 끝나면 크래시 가능으로 종료 코드 표시; 기다리는 동안 EditorApplication.update라 에디터가 멈추지 않음), `AppRuntime`(`-smokeTest` 인자면 전체 화면 강제 안 함). `Builds/`는 원래 .gitignore에 있음. 위험: 빌드 대상은 StandaloneWindows64 고정.
+- **V1** 완료. 바뀐 파일: `MechCamera`(1인칭 → 몸 뒤 백뷰: 위치 = 기체 + 몸 yaw 기준 뒤 `followDistance` 6m·위 `followHeight` 2.5m, 시선 = 기체 위 `lookHeight` 1.5m·앞 `lookAhead` 8m, yaw는 몸 회전을 `yawFollowSpeed` 8로 지수 감쇠 추적. 시점 회전·퀵턴·`LockToForward`·하드락 추적·질주 속도 따라가기 삭제. 충돌은 기체 위 시선 높이에서 SphereCast, 흔들림·FOV·`ResetView` 유지. 시작 시 `OffscreenTargetArrow` 자동 부착), 신규 `UI/OffscreenTargetArrow`(OnGUI, 카메라 `pixelRect` 기준이라 분할 화면마다, 뒤에 있으면 방향 반전, 1080p 기준 크기), `MechController`(`RotateToCamera` 삭제, `ApplyTurn`, `BodyRelativeDirection`), `MechStateMachine`(`AllowsTurnInput`, R스틱 기울기 × `bodyTurnSpeed`(120°/초)·마우스 × `mouseTurnSensitivity`(2)를 Update에서 모아 물리 스텝에 적용, 하드락 몸통 회전·스턴·외부 제어·사이드스텝·런지·넉다운·초신지선회 중엔 끔), Idle/Walk/Run/Sprint/QuickTurn(몸 기준 이동, 초신지선회는 몸을 180° 돌림 — V2에서 삭제), `LockOnSystem`(카메라 추적 호출 삭제), `ThrusterLunge`(런지 방향 = 상체 정면), `MechVisualRig.Locomotion`(상체 = 하드락이면 상대, 아니면 몸 정면), `BernardTuning`(`bodyTurnSpeed`, `mouseTurnSensitivity` 추가, `hardTrackSpeed` 삭제), `Editor/BuildAndSmokeTest`(`RunFromCommandLine` — batchmode 동기 실행, 종료 코드 0/2/1). 위험: 기존 씬의 MechCamera `offset`·감도 값은 무시됨(새 칸은 코드 기본값). 소프트 락온(앵커 클로·HUD 마커)은 여전히 카메라 정면 ±30° 기준이라, 카메라가 몸보다 늦게 도는 동안 조준이 살짝 늦다. V1 동안 트윈스틱 질주 판정 중엔 R스틱 회전이 꺼진다(V2에서 질주 판정 삭제).

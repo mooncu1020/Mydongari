@@ -43,12 +43,11 @@ namespace MyDongari.Visual
 
         // ---------------- G2 상하체 방향 ----------------
 
-        /// <summary>상체가 볼 방향: 하드 락온이면 상대, 아니면 내 카메라 정면, 카메라가 없으면(봇) 기체 정면.</summary>
+        /// <summary>상체가 볼 방향: 하드 락온이면 상대, 아니면 기체 정면 (V3: 카메라가 몸을 따라오므로 정면 = 몸 정면).</summary>
         private float LookYaw()
         {
             Vector3 dir;
             if (_lockOn != null && _lockOn.IsHardLocked && _lockOn.Target != null) dir = _lockOn.Target.position - transform.position;
-            else if (_identity != null && _identity.CameraTransform != null) dir = _identity.CameraTransform.forward;
             else dir = transform.forward;
             dir.y = 0f;
             return dir.sqrMagnitude > 0.0001f ? Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg : RootYaw;

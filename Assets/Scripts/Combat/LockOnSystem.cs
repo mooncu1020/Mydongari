@@ -1,5 +1,4 @@
 using UnityEngine;
-using MyDongari.Camera;
 using MyDongari.Core;
 using MyDongari.Mech;
 
@@ -11,7 +10,6 @@ namespace MyDongari.Combat
         private BernardTuning.LockOnValues T => _tuning.Get(this).LockOn;
 
         private Transform _camera;
-        private MechCamera _mechCamera;
         private MechIdentity _identity;
 
         public Transform Target { get; private set; }
@@ -30,7 +28,6 @@ namespace MyDongari.Combat
             // 화면 분할: 각 기체는 자기 카메라만 기준으로 조준한다
             _identity = MechIdentity.GetOrAdd(gameObject);
             _camera = _identity.CameraTransform;
-            _mechCamera = _identity.MechCamera;
         }
 
         private void Update()
@@ -122,17 +119,11 @@ namespace MyDongari.Combat
                     return;
                 }
             }
-
-            if (IsHardLocked && _mechCamera != null)
-            {
-                _mechCamera.TrackTarget(Target, T.hardTrackSpeed);
-            }
         }
 
         private void ReleaseHardLock()
         {
-            // 목표를 잃었을 때도 카메라 추적을 반드시 끊는다 (안 끊으면 사라진 목표를 계속 바라봄)
-            if (IsHardLocked && _mechCamera != null) _mechCamera.StopTracking();
+            // V3: 카메라는 몸을 따라가고 하드락이면 몸이 상대를 본다 — 카메라 추적을 따로 끊을 필요가 없다
             IsHardLocked = false;
         }
 
@@ -170,7 +161,6 @@ namespace MyDongari.Combat
         public void ForceRelease()
         {
             IsHardLocked = false;
-            if (_mechCamera != null) _mechCamera.StopTracking();
             Target = null;
         }
     }

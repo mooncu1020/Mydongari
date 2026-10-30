@@ -79,7 +79,6 @@ namespace MyDongari.Movement
             _heldHeading = entryInput != null
                 ? entryInput.MoveStickRaw.normalized + entryInput.LookStickRaw.normalized
                 : Vector2.zero;
-            StateMachine.MechController.MechCamera.LockToForward();
             OnSprintStarted?.Invoke(_byStick);
         }
 
@@ -221,15 +220,8 @@ namespace MyDongari.Movement
             if (_slideWaitTimer >= 0f) return;
 
             Vector2 input = StateMachine.InputReader.MoveInput;
-            Vector3 camForward = StateMachine.MechController.CameraTransform.forward;
-            Vector3 camRight = StateMachine.MechController.CameraTransform.right;
-
-            camForward.y = 0f;
-            camRight.y = 0f;
-            camForward.Normalize();
-            camRight.Normalize();
-
-            Vector3 moveDir = (camForward * input.y + camRight * input.x).normalized;
+            // V3: 이동 기준은 몸 (카메라는 몸을 따라오므로 화면 위 = 몸 정면)
+            Vector3 moveDir = StateMachine.MechController.BodyRelativeDirection(input);
             // 스틱을 놓는 순간 튕겨 돌아오는 작은 값으로 슬라이딩 방향이 뒤집히지 않게, 이동 입력이 있을 때만 기억
             if (moveDir != Vector3.zero && StateMachine.InputReader.IsMoveInputActive)
             {

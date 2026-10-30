@@ -32,6 +32,10 @@ namespace MyDongari.Mech
             public float rotationSpeed = 15f;
             [Tooltip("하드 락온 중 몸통이 상대 쪽으로 자동으로 도는 속도 (수평 회전만)")]
             public float hardLockTurnSpeed = 10f;
+            [Tooltip("V3: R스틱을 끝까지 밀었을 때 제자리 몸 회전 속도(°/초). 느릴수록 상대를 놓쳤을 때 빈틈이 크다")]
+            public float bodyTurnSpeed = 120f;
+            [Tooltip("V3: 마우스 좌우 이동량 1당 몸 회전(°). 키보드·마우스 예비 조작용 (예전 카메라 마우스 감도와 같은 값)")]
+            public float mouseTurnSensitivity = 2f;
 
             [Header("무게감 (관성 보정)")]
             [Tooltip("0 = 관성 없음, 1 = 방향 반대로 꺾을 때 추진력 최대 90%까지 깎임")]
@@ -423,8 +427,6 @@ namespace MyDongari.Mech
             public float hardExitRange = 7f;
             [Tooltip("카메라 정면 기준 전체 각도(°). 120이면 ±60° 밖에서 해제")]
             public float hardMaxAngle = 120f;
-            [Tooltip("하드 락온 중 카메라가 상대를 따라가는 속도")]
-            public float hardTrackSpeed = 5f;
         }
 
         [Serializable]

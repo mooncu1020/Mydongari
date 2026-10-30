@@ -79,6 +79,17 @@ namespace MyDongari.Movement
         public bool IsCameraFollowingVelocity { get; private set; }
         private bool _lookBlockedUntilNeutral;
         private bool _wasSprinting;
+        // R스틱·마우스로 모은 몸 회전량(°). 입력은 Update에서, 회전은 물리 스텝에서 (마우스 델타가 프레임마다라 그대로 모아 둔다)
+        private float _pendingTurn;
+
+        /// <summary>
+        /// R스틱 몸 회전을 받는 상태인지 (V3). 하드락 몸통 회전 중(하드락 안에서는 R스틱 꺼짐), 스턴, 외부 제어,
+        /// 진행 방향이 정해진 기동(사이드스텝·런지·넉다운·초신지선회) 중엔 받지 않는다.
+        /// </summary>
+        public bool AllowsTurnInput =>
+            (_currentState is IdleState || _currentState is WalkState ||
+             _currentState is RunState || _currentState is SprintState || _currentState is BrakeState) &&
+            !IsStunned && !MechController.IsExternallyControlled && !MechController.IsHardLockFacing;
 
         private void Awake()
         {
@@ -110,6 +121,7 @@ namespace MyDongari.Movement
             TwinStick.Reset();
             _lookBlockedUntilNeutral = false;
             _wasSprinting = false;
+            _pendingTurn = 0f;
             ChangeState(IdleState);
         }
 
@@ -138,6 +150,7 @@ namespace MyDongari.Movement
             if (IsKnockedDown && !(_currentState is KnockdownState)) ChangeState(KnockdownState);
             _currentState?.Update();
             UpdateLookBlock();
+            AccumulateTurnInput();
 
             if (InputTrace.ShouldLog(this, "4 MechStateMachine"))
             {
@@ -171,10 +184,29 @@ namespace MyDongari.Movement
             IsLookInputBlocked = IsCameraFollowingVelocity || _lookBlockedUntilNeutral;
         }
 
+        /// <summary>R스틱 좌우(패드는 기울기 × 초당 각도 × 시간, 마우스는 이동량 × 감도)를 몸 회전량으로 모은다.</summary>
+        private void AccumulateTurnInput()
+        {
+            if (InputReader == null || !AllowsTurnInput || IsLookInputBlocked)
+            {
+                _pendingTurn = 0f;
+                return;
+            }
+            BernardTuning.MovementValues m = MechController.Tuning.Movement;
+            float x = InputReader.LookInput.x;
+            _pendingTurn += InputReader.IsLookFromGamepad ? x * m.bodyTurnSpeed * Time.deltaTime : x * m.mouseTurnSensitivity;
+        }
+
         private void FixedUpdate()
         {
+            // 모인 회전량을 한 번에. 이번 프레임에 물리 스텝이 없으면 다음 스텝으로 넘어간다
+            if (_pendingTurn != 0f)
+            {
+                if (AllowsTurnInput) MechController.ApplyTurn(_pendingTurn);
+                _pendingTurn = 0f;
+            }
             _currentState?.FixedUpdate();
-            // 상태가 끝난 뒤에 돌려야 상태 쪽 회전과 겹치지 않는다 (RotateToCamera는 이때 양보함)
+            // 상태가 끝난 뒤에 돌려야 상태 쪽 회전과 겹치지 않는다 (하드락 몸통 회전 중엔 R스틱 회전이 꺼져 있다)
             MechController.ApplyHardLockFacing();
         }
     }

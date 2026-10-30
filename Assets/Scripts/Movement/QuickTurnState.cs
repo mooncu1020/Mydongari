@@ -6,6 +6,7 @@ namespace MyDongari.Movement
     {
         private float _quickTurnTimer = 0f;
         private float QuickTurnDuration => StateMachine.MechController.Tuning.Movement.quickTurnDuration;
+        private Quaternion _startRotation;
         private Quaternion _targetRotation;
 
         public QuickTurnState(MechStateMachine stateMachine) : base(stateMachine)
@@ -22,8 +23,9 @@ namespace MyDongari.Movement
             }
 
             _quickTurnTimer = 0f;
-            StateMachine.MechController.MechCamera.LockToForward();
-            StateMachine.MechController.MechCamera.QuickTurn();
+            // V1: 카메라가 몸을 따라오므로 카메라 대신 몸을 180° 돌린다 (V2에서 초신지선회 자체를 삭제)
+            _startRotation = StateMachine.MechController.Rb.rotation;
+            _targetRotation = _startRotation * Quaternion.Euler(0f, 180f, 0f);
         }
 
         public override void Update()
@@ -46,21 +48,15 @@ namespace MyDongari.Movement
         public override void FixedUpdate()
         {
             Vector2 input = StateMachine.InputReader.MoveInput;
-            Vector3 camForward = StateMachine.MechController.CameraTransform.forward;
-            Vector3 camRight = StateMachine.MechController.CameraTransform.right;
-            camForward.y = 0f;
-            camRight.y = 0f;
-            camForward.Normalize();
-            camRight.Normalize();
-
-            Vector3 moveDir = (camForward * input.y + camRight * input.x).normalized;
+            Vector3 moveDir = StateMachine.MechController.BodyRelativeDirection(input);
             if (moveDir != Vector3.zero)
             {
                 StateMachine.MechController.Rb.AddForce(moveDir * StateMachine.MechController.WalkSpeed, ForceMode.Acceleration);
                 StateMachine.MechController.ClampVelocity(StateMachine.MechController.MaxWalkSpeed);
             }
 
-            StateMachine.MechController.RotateToCamera();
+            float t = QuickTurnDuration > 0f ? Mathf.Clamp01(_quickTurnTimer / QuickTurnDuration) : 1f;
+            StateMachine.MechController.Rb.MoveRotation(Quaternion.Slerp(_startRotation, _targetRotation, t));
         }
 
         public override void Exit()

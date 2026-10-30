@@ -123,7 +123,7 @@ namespace MyDongari.Movement
 
         /// <summary>
         /// 지금 하드 락온 몸통 회전이 기체 방향을 맡고 있는지.
-        /// 이때는 상태들의 RotateToCamera가 같은 물리 스텝에 회전을 덮어쓰지 않게 양보한다.
+        /// 이때는 R스틱 몸 회전(ApplyTurn)을 끈다 (V3: 하드락 안에서는 R스틱 회전 꺼짐).
         /// </summary>
         public bool IsHardLockFacing =>
             LockOn != null && LockOn.IsHardLocked && LockOn.Target != null &&
@@ -145,15 +145,27 @@ namespace MyDongari.Movement
             Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, Move.hardLockTurnSpeed * Time.fixedDeltaTime));
         }
 
-        public void RotateToCamera()
+        /// <summary>
+        /// 몸 전체를 수평으로 degrees만큼 돌린다 (V3 R스틱 제자리 회전). MechStateMachine이 물리 스텝에서 부른다.
+        /// 카메라가 몸을 따라오므로 시점을 바꾸는 방법은 이것과 하드락 몸통 회전뿐이다.
+        /// </summary>
+        public void ApplyTurn(float degrees)
         {
-            if (IsHardLockFacing) return;
-            if (CameraTransform == null) return;
-            Vector3 camForward = CameraTransform.forward;
-            camForward.y = 0f;
-            if (camForward == Vector3.zero) return;
-            Quaternion targetRot = Quaternion.LookRotation(camForward);
-            Rb.MoveRotation(Quaternion.Slerp(Rb.rotation, targetRot, Move.rotationSpeed * Time.fixedDeltaTime));
+            if (Mathf.Abs(degrees) < 0.0001f || IsExternallyControlled) return;
+            Rb.MoveRotation(Rb.rotation * Quaternion.Euler(0f, degrees, 0f));
+        }
+
+        /// <summary>
+        /// 스틱 입력을 몸 기준 수평 방향으로 (V3: 이동 기준은 카메라가 아니라 몸). 위 = 몸 정면, 오른쪽 = 몸 오른쪽. 크기 1로 맞춘다.
+        /// 물리 위치·회전(Rb)으로 재야 보간된 트랜스폼과 한 스텝 어긋나지 않는다.
+        /// </summary>
+        public Vector3 BodyRelativeDirection(Vector2 input)
+        {
+            Vector3 forward = Rb.rotation * Vector3.forward;
+            forward.y = 0f;
+            forward.Normalize();
+            Vector3 right = new Vector3(forward.z, 0f, -forward.x);
+            return (forward * input.y + right * input.x).normalized;
         }
 
         // ---- Rigidbody 댐핑 소유권 조정 ----
