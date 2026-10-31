@@ -326,9 +326,9 @@ namespace MyDongari.Combat
             // 1-2) 대시 어택·태클끼리 맞딜 (V4): 내 대시 공격도 clashWindow 안에 상대를 맞힐 상황이면 둘 다 0 피해 + 밀려남.
             //      내 공격을 먼저 끊고(속도 0) 밀어야 대시 속도에 넉백이 더해지지 않는다
             if ((info.Type == AttackType.DashAttack || info.Type == AttackType.Tackle) &&
-                _stateMachine != null && _stateMachine.IsDashing && _stateMachine.DashState.WouldHitWithin(Startup.clashWindow))
+                _stateMachine != null && _stateMachine.IsDashing && _stateMachine.ActiveDash.WouldHitWithin(Startup.clashWindow))
             {
-                _stateMachine.DashState.EndByClash();
+                _stateMachine.ActiveDash.EndByClash();
                 ApplyClash(info);
                 return Resolve(info, HitResult.Clash);
             }
@@ -406,7 +406,8 @@ namespace MyDongari.Combat
         private static void ApplyKnockback(Rigidbody rb, Vector3 direction, float force)
         {
             if (rb == null || force <= 0f || direction == Vector3.zero) return;
-            rb.AddForce(direction.normalized * force, ForceMode.Impulse);
+            // V8 이동기면 외부 속도로 (MotionBridge), 아니면 리지드바디 충격
+            MotionBridge.AddImpulse(rb, direction.normalized * force);
             // V3 이동은 속도를 직접 넣으므로, 잠깐 이동 로직을 멈춰야 넉백이 다음 물리 스텝에 지워지지 않는다
             MechController controller = rb.GetComponent<MechController>();
             if (controller != null) controller.HoldMoveControl();

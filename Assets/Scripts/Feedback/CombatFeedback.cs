@@ -540,7 +540,7 @@ namespace MyDongari.Feedback
                 FlashSize = feel.dashBurstSize / scale,
                 FlashTime = feel.dashBurstTime
             };
-            HitSparkFx.SpawnHit(center, -fb.StateMachine.DashState.Heading, scale, style);
+            HitSparkFx.SpawnHit(center, -fb.StateMachine.ActiveDash.Heading, scale, style);
         }
 
         /// <summary>
@@ -582,7 +582,7 @@ namespace MyDongari.Feedback
             if (!dashing || Time.time < fb.NextDashScrape) return;
             BernardTuning.HitFeelValues feel = TuningOf(fb.Mech).HitFeel;
             fb.NextDashScrape = Time.time + Mathf.Max(0.02f, feel.dashScrapeInterval);
-            Vector3 back = -fb.StateMachine.DashState.Heading;
+            Vector3 back = -fb.StateMachine.ActiveDash.Heading;
             HitSparkFx.SpawnHit(FootPoint(fb.Mech), (back + Vector3.up * 0.6f).normalized, feel.dashScrapeScale, SparkStyle(feel, feel.sparkColor));
         }
 

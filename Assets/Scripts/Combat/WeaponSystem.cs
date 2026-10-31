@@ -123,9 +123,12 @@ namespace MyDongari.Combat
             }
 
             float bufferTime = _tuning.Get(this).Startup.inputBuffer;
-            if (_attackBuffer.Tick(bufferTime, TryStartAttack, out AttackType started, out bool fromBuffer) && fromBuffer)
+            if (_attackBuffer.Tick(bufferTime, TryStartAttack, out AttackType started, out bool fromBuffer))
             {
-                OnBufferedAttack?.Invoke(started);
+                if (fromBuffer) OnBufferedAttack?.Invoke(started);
+                // V8: 공격을 쓰면 "사격 조준" — 15f 동안 몸을 상대 쪽으로 돌린다 (대시 중 공격은 대시가 지속 조준)
+                MechController controller = _stateMachine != null ? _stateMachine.MechController : null;
+                if (controller != null && controller.IsV8) controller.Motor.NotifyAttackStarted();
             }
         }
 
@@ -148,8 +151,8 @@ namespace MyDongari.Combat
             // 스턴 중엔 어떤 공격도 시작하지 않는다 (펀치·런지는 각자도 막지만 파일드라이버까지 한 곳에서)
             if (_meleeSystem != null && _meleeSystem.IsStunned) return null;
             // 대시 시작 단계(0.27초)와 끝 단계 처음 0.05초는 공격 불가 (V6b·V6.1) — 버퍼에 남았다가 가능해지면 나간다
-            if (_stateMachine != null && _stateMachine.IsDashStopping && !_stateMachine.DashStopState.AllowsAttack) return null;
-            if (_stateMachine != null && _stateMachine.IsDashing && _stateMachine.DashState.IsInStartup) return null;
+            if (_stateMachine != null && _stateMachine.IsDashStopping && !_stateMachine.DashEndAllowsAttack) return null;
+            if (_stateMachine != null && _stateMachine.IsDashing && _stateMachine.ActiveDash.IsInStartup) return null;
 
             if (_anchorClaw != null && _anchorClaw.IsPileDriverReady)
             {
@@ -161,8 +164,8 @@ namespace MyDongari.Combat
             if (_stateMachine != null && _stateMachine.IsDashing)
             {
                 // 4·5) 대시 중 공격 버튼 = 0.8초 미만 유도 대시 어택 / 이상 차징 태클
-                if (!_stateMachine.DashState.RequestTackle()) return null;
-                return _stateMachine.DashState.IsTackleCharged ? AttackType.Tackle : AttackType.DashAttack;
+                if (!_stateMachine.ActiveDash.RequestTackle()) return null;
+                return _stateMachine.ActiveDash.IsTackleCharged ? AttackType.Tackle : AttackType.DashAttack;
             }
 
             // 6·7) V3: 펀치/런지 전환은 하드 락온(10m)과 따로 meleeSwitchRange(6m). 6~10m는 하드락 안이어도 런지

@@ -142,7 +142,7 @@ namespace MyDongari.Combat
                     float horizontal = _wallStopped ? 0f : _horizontalSpeed;
                     if (!_wallStopped && HitsObstacle(horizontal * dt, k, out RaycastHit hit)) WallStop(hit, k);
                     horizontal = _wallStopped ? 0f : horizontal;
-                    _rb.linearVelocity = _direction * horizontal + Vector3.up * vy;
+                    MotionBridge.SetVelocity(_rb, _direction * horizontal + Vector3.up * vy);
                     _phaseTime += dt;
                     _maxHeight = Mathf.Max(_maxHeight, _rb.position.y - _startHeight);
                     if (_phaseTime >= k.flightTime - PhaseEpsilon) Land(k);
@@ -190,8 +190,8 @@ namespace MyDongari.Combat
         private void Land(BernardTuning.KnockdownValues k)
         {
             RestoreGravity();
-            Vector3 velocity = _rb.linearVelocity;
-            _rb.linearVelocity = new Vector3(velocity.x, 0f, velocity.z);
+            Vector3 velocity = MotionBridge.GetVelocity(_rb);
+            MotionBridge.SetVelocity(_rb, new Vector3(velocity.x, 0f, velocity.z));
             Phase = KnockPhase.Slide;
             _phaseTime = 0f;
             // 미끄러짐: 선형으로 0까지 줄며 slideDistance만큼 (벽에 막혔으면 0)
@@ -258,7 +258,7 @@ namespace MyDongari.Combat
 
         private void SetHorizontalVelocity(Vector3 horizontal)
         {
-            _rb.linearVelocity = new Vector3(horizontal.x, _rb.linearVelocity.y, horizontal.z);
+            MotionBridge.SetHorizontalVelocity(_rb, horizontal);
         }
 
         /// <summary>이번 스텝에 distance만큼 수평으로 가면 벽·다른 콜라이더(자기 몸·트리거·바닥 제외)에 닿는지.</summary>

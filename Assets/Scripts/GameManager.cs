@@ -693,9 +693,8 @@ namespace MyDongari.Core
                 mech.transform.SetPositionAndRotation(spawnPoint.position, spawnPoint.rotation);
                 if (rb != null)
                 {
-                    // 트랜스폼만 옮기면 다음 물리 스텝에 리지드바디가 예전 자세로 덮어쓸 수 있다
-                    rb.position = spawnPoint.position;
-                    rb.rotation = spawnPoint.rotation;
+                    // 트랜스폼만 옮기면 다음 물리 스텝에 리지드바디가 예전 자세로 덮어쓸 수 있다. V8 이동기 상태도 같이 (MotionBridge)
+                    MotionBridge.Teleport(rb, spawnPoint.position, spawnPoint.rotation);
                 }
             }
             if (rb != null && !rb.isKinematic)

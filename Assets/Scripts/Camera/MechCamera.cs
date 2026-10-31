@@ -1,6 +1,7 @@
 using UnityEngine;
 using MyDongari.Input;
 using MyDongari.Movement;
+using MyDongari.Movement.V8;
 using MyDongari.Visual;
 using MyDongari.Mech;
 using MyDongari.UI;
@@ -10,28 +11,24 @@ namespace MyDongari.Camera
     /// <summary>
     /// 몸 뒤 고정 백뷰 (V3 "카메라와 시점"). 시점만 따로 돌리는 조작은 없다 — 카메라는 몸의 수평 회전을 부드럽게 따라간다.
     /// 몸을 돌리는 건 R스틱(MechStateMachine)과 하드락 몸통 회전(MechController)이 맡는다.
-    /// 위치 (V6d): 거리 숫자 대신 화면 구도(템진 기준)로 정한다 — 서 있는 기체가 화면 높이의 screenHeightFraction(45%),
-    /// 머리가 headScreenY(세로 가운데), 평지 지평선이 horizonScreenY(위에서 32%), 기체는 가로 가운데.
-    /// 기본 FOV(baseFieldOfView, 세로 화각)로 피치·거리·높이를 계산한다. Unity의 FOV는 세로 기준이라 화면 비율(화면 분할 반쪽 포함)이 달라도
-    /// 세로 구도는 같고, 가로로 보이는 폭만 달라진다. 대시 중 FOV가 넓어져도 카메라 위치는 그대로(기본 FOV 기준).
+    /// V8 이동기(사양서 5장): VoTickDriver가 틱 맨 앞에서 TickV8로 갱신(지난 틱 기체 상태 기준)하고, 그릴 때 두 틱 사이를 보간한다.
+    /// 기체 뒤 거리 = 78u(키 × 3.54), 피치 8.4° 아래, 시선 표적 = 발 + 키/2 + 6u, 기준점이 매 틱 12%씩 기체를 따라감, 세로 FOV 35°.
+    /// 방위는 이동기의 카메라 방위(기본 모드에선 몸에 강체로 붙음) + 선회 리드. 수치는 BernardTuning → V8 이동기 → 카메라.
+    /// 예전 이동기일 때는 V3 고정 백뷰(뒤 followDistance, 위 followHeight). V6d 화면 구도 계산은 V8에서 지웠다.
     /// </summary>
     public class MechCamera : MonoBehaviour
     {
         [SerializeField] private Transform target;
 
-        [Header("화면 구도 (V6d: 템진 기준 — 위치·피치는 이 값과 baseFieldOfView로 계산)")]
-        [Tooltip("서 있는 기체 키(m, 발바닥 ~ 머리 꼭대기). 버나드 2.6m. 모델 실제 키와 다르면 구도가 그 비율만큼 어긋난다 (debugLog로 렌더러 높이 확인)")]
-        [SerializeField] private float mechHeight = 2.6f;
-        [Tooltip("서 있는 기체가 차지하는 화면 높이 비율 (0.45 = 45%)")]
-        [Range(0.05f, 0.95f)] [SerializeField] private float screenHeightFraction = 0.45f;
-        [Tooltip("머리 꼭대기의 화면 세로 위치 (위 0 ~ 아래 1). 0.5 = 세로 가운데. 발은 이 값 + 화면 높이 비율")]
-        [Range(0f, 1f)] [SerializeField] private float headScreenY = 0.5f;
-        [Tooltip("평지 지평선의 화면 세로 위치 (위 0 ~ 아래 1). 0.32 = 위에서 32%. 이 값이 내려다보는 각도(피치)를 정한다")]
-        [Range(0.01f, 0.99f)] [SerializeField] private float horizonScreenY = 0.32f;
-        [Tooltip("카메라 충돌 검사 시작점: 기체 루트 위 높이(m)")]
+        [Header("예전 이동기 백뷰 (V3) — V8 카메라 수치는 BernardTuning → V8 이동기")]
+        [Tooltip("기체 뒤로 떨어지는 거리(m)")]
+        [SerializeField] private float followDistance = 6f;
+        [Tooltip("기체 루트 위로 올라가는 높이(m)")]
+        [SerializeField] private float followHeight = 2.5f;
+        [Tooltip("카메라가 바라보는 점: 기체 루트 위 높이(m). 카메라 충돌 검사 시작점도 여기")]
         [SerializeField] private float lookHeight = 1.5f;
-        [Tooltip("켜면 시작할 때 계산한 피치·거리·높이와 렌더러로 잰 기체 키를 콘솔에 한 번 찍는다")]
-        [SerializeField] private bool debugLog = false;
+        [Tooltip("카메라가 바라보는 점: 기체 앞 거리(m)")]
+        [SerializeField] private float lookAhead = 8f;
         [Tooltip("몸의 수평 회전을 따라가는 빠르기(지수 감쇠, 1/초). 클수록 딱 붙고 작을수록 늦게 돈다")]
         [SerializeField] private float yawFollowSpeed = 8f;
 
@@ -64,8 +61,6 @@ namespace MyDongari.Camera
         [SerializeField] private bool addOffscreenArrow = true;
 
         private float _yaw = 0f;
-        // 기체 루트 기준 발바닥 높이(m). 시작할 때 콜라이더 바닥으로 잰다 (캡슐 높이 2, 중심 = 루트라 보통 -1)
-        private float _footOffset = -1f;
         // 카메라 기준점(기체 위치를 늦게 따라감)과 지금 따라가는 빠르기
         private Vector3 _followPosition;
         private float _currentFollowSpeed;
@@ -159,6 +154,7 @@ namespace MyDongari.Camera
             _yaw = yaw;
             if (target != null) _followPosition = target.position;
             _currentFollowSpeed = positionFollowSpeed;
+            _v8Ready = false;
             if (_camera != null) _camera.fieldOfView = baseFieldOfView;
         }
 
@@ -176,8 +172,6 @@ namespace MyDongari.Camera
                 if (_rig != null) _rig.OnFootstep += OnFootstep;
                 _yaw = target.eulerAngles.y;
                 _followPosition = target.position;
-                Collider body = target.GetComponent<Collider>();
-                if (body != null) _footOffset = body.bounds.min.y - target.position.y;
             }
             _currentFollowSpeed = positionFollowSpeed;
 
@@ -186,8 +180,6 @@ namespace MyDongari.Camera
             {
                 _camera.fieldOfView = baseFieldOfView;
             }
-
-            if (debugLog) LogComposition();
 
             // 화면 분할 두 화면 모두에 나오도록 카메라마다 하나씩. 씬 배선 없이 코드로 붙인다
             if (addOffscreenArrow && GetComponent<OffscreenTargetArrow>() == null)
@@ -199,6 +191,11 @@ namespace MyDongari.Camera
         private void LateUpdate()
         {
             if (target == null || _inputReader == null) return;
+            if (_mechController != null && _mechController.IsV8)
+            {
+                LateUpdateV8();
+                return;
+            }
 
             if (InputTrace.ShouldLog(target, "6 MechCamera"))
             {
@@ -221,12 +218,20 @@ namespace MyDongari.Camera
             _followPosition = Vector3.Lerp(_followPosition, target.position, kp);
             Vector3 anchor = _followPosition;
 
-            // V6d 구도: 발바닥 기준 높이·뒤 거리·피치 (기본 FOV로 계산 — 대시 FOV 변화에 위치가 출렁이지 않게)
-            ComputeComposition(out float pitch, out float distance, out float height);
+            // V3 고정 백뷰 (예전 이동기)
             Quaternion yawRotation = Quaternion.Euler(0f, _yaw, 0f);
-            Vector3 feet = anchor + Vector3.up * _footOffset;
-            transform.position = feet + Vector3.up * height - yawRotation * (Vector3.forward * distance);
-            transform.rotation = Quaternion.Euler(pitch, _yaw, 0f);
+            Vector3 lookPoint = anchor + Vector3.up * lookHeight + yawRotation * (Vector3.forward * lookAhead);
+            Vector3 desired = anchor + Vector3.up * followHeight - yawRotation * (Vector3.forward * followDistance);
+            Vector3 toLook = lookPoint - desired;
+            transform.position = desired;
+            transform.rotation = toLook.sqrMagnitude > 0.0001f ? Quaternion.LookRotation(toLook, Vector3.up) : yawRotation;
+            ApplyShakeAndCollision();
+            UpdateFov();
+        }
+
+        /// <summary>흔들림·방향 흔들림을 더하고, 지형을 뚫으면 기체 쪽으로 당긴다 (두 이동기 공통).</summary>
+        private void ApplyShakeAndCollision()
+        {
             if (_shakeTimer > 0f)
             {
                 transform.position += UnityEngine.Random.insideUnitSphere * (_shakeAmplitude * (_shakeTimer / _shakeDuration));
@@ -241,51 +246,62 @@ namespace MyDongari.Camera
             }
             // 흔들림까지 더한 최종 위치가 지형을 뚫으면 기체 쪽으로 당긴다 (T4). 시작점은 기체 위 시선 높이
             if (collideWithWorld) transform.position = ResolveCollision(target.position + Vector3.up * lookHeight, transform.position);
-
-            UpdateFov();
         }
+
+        // ---- V8 카메라 (사양서 5장) ----
+        private bool _v8Ready;
+        private Vector3 _v8Anchor;
+        private Vector3 _v8PrevPosition, _v8Position;
+        private Quaternion _v8PrevRotation = Quaternion.identity, _v8Rotation = Quaternion.identity;
 
         /// <summary>
-        /// 화면 구도에서 카메라 피치(°, 아래로 +)·수평 거리(m)·발바닥 위 높이(m)를 계산한다.
-        /// 세로 화각 반각을 h라 하면, 고도각 α(위로 +)인 점의 화면 세로 좌표(가운데 0, 위 끝 +1)는 tan(α + 피치) / tan h.
-        /// 지평선(α = 0)이 horizonScreenY에 오게 피치를 정하고, 머리·발이 정한 위치에 오는 고도각에서 거리·높이를 푼다:
-        /// tan α머리 = (키 − 높이) / 거리, tan α발 = −높이 / 거리.
+        /// V8 틱 맨 앞(VoTickDriver): 지난 틱 기체 상태로 카메라를 한 틱 갱신한다. 기준점(시선 표적)은 매 틱 차이의 12%씩 기체를 따라가고,
+        /// 방위는 이동기의 카메라 방위 + 선회 리드, 피치 8.4° 아래, 시선 표적에서 78u 뒤.
         /// </summary>
-        private void ComputeComposition(out float pitch, out float distance, out float height)
+        public void TickV8(MechMotor motor)
         {
-            float tanHalf = Mathf.Tan(Mathf.Clamp(baseFieldOfView, 1f, 170f) * 0.5f * Mathf.Deg2Rad);
-            float headNdc = 1f - 2f * headScreenY;
-            float feetNdc = headNdc - 2f * screenHeightFraction;
-            float horizonNdc = 1f - 2f * horizonScreenY;
-            float pitchRad = Mathf.Atan(horizonNdc * tanHalf);
-            float tanHead = Mathf.Tan(Mathf.Atan(headNdc * tanHalf) - pitchRad);
-            float tanFeet = Mathf.Tan(Mathf.Atan(feetNdc * tanHalf) - pitchRad);
-            float span = tanHead - tanFeet;
-            // 비율이 말이 안 되면(머리가 발보다 아래) 거리 0이 되지 않게 최소 간격
-            distance = mechHeight / Mathf.Max(0.01f, span);
-            height = -distance * tanFeet;
-            pitch = pitchRad * Mathf.Rad2Deg;
+            if (motor == null) return;
+            BernardTuning.V8Values v = motor.V;
+            Vector3 targetPoint = new Vector3(motor.Position.x,
+                motor.FeetY + motor.BodyHeight * v.cameraBaseHeightRatio + v.cameraTargetUp * motor.U,
+                motor.Position.z);
+            if (!_v8Ready)
+            {
+                _v8Anchor = targetPoint;
+            }
+            else
+            {
+                _v8Anchor += (targetPoint - _v8Anchor) * v.cameraFollow;
+            }
+            float yaw = motor.CameraYaw + motor.CameraLead;
+            float pitch = BernardTuning.AngleUnitsToDegrees(v.cameraPitch);
+            Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
+            Vector3 position = _v8Anchor - rotation * (Vector3.forward * (v.cameraDistance * motor.U));
+
+            _v8PrevPosition = _v8Ready ? _v8Position : position;
+            _v8PrevRotation = _v8Ready ? _v8Rotation : rotation;
+            _v8Position = position;
+            _v8Rotation = rotation;
+            _v8Ready = true;
+            _yaw = yaw;
         }
 
-        private void LogComposition()
+        /// <summary>두 틱 사이를 보간해 그린다 (리지드바디 보간과 같은 비율).</summary>
+        private void LateUpdateV8()
         {
-            ComputeComposition(out float pitch, out float distance, out float height);
-            float measured = -1f;
-            Renderer[] renderers = target != null ? target.GetComponentsInChildren<Renderer>() : new Renderer[0];
-            foreach (Renderer r in renderers)
-            {
-                if (r is ParticleSystemRenderer || r is TrailRenderer || r is LineRenderer) continue;
-                measured = Mathf.Max(measured, r.bounds.max.y - (target.position.y + _footOffset));
-            }
-            Debug.Log($"[MechCamera] {name} 구도: FOV {baseFieldOfView:0.#}° → 피치 {pitch:0.00}° 아래, 뒤 거리 {distance:0.000}m, " +
-                      $"발바닥 위 높이 {height:0.000}m (루트 위 {height + _footOffset:0.000}m), 기체 키 설정 {mechHeight:0.##}m / 렌더러로 잰 키 {measured:0.00}m", this);
+            if (!_v8Ready) return;
+            float alpha = Time.fixedDeltaTime > 0f ? Mathf.Clamp01((Time.time - Time.fixedTime) / Time.fixedDeltaTime) : 1f;
+            transform.position = Vector3.Lerp(_v8PrevPosition, _v8Position, alpha);
+            transform.rotation = Quaternion.Slerp(_v8PrevRotation, _v8Rotation, alpha);
+            ApplyShakeAndCollision();
+            if (_camera != null) _camera.fieldOfView = _mechController.Tuning.V8.cameraFov;
         }
 
         private void UpdateFov()
         {
             if (_camera == null || _mechController == null) return;
 
-            float speed = _mechController.Rb.linearVelocity.magnitude;
+            float speed = _mechController.Velocity.magnitude;
             float maxSpeed = _mechController.DashSpeed;
             float t = maxSpeed > 0.0001f ? Mathf.Clamp01(speed / maxSpeed) : 0f;
             float targetFov = Mathf.Lerp(baseFieldOfView, sprintFov, t);

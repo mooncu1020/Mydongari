@@ -34,7 +34,7 @@ namespace MyDongari.Movement
     /// 공중 대시 (V6c): 점프 상승 중에만 공중 ○ — 같은 시간표, 공중 대시 속도표. 세로 속도는 그대로 두고 상승 중이면 중력 × airDashRisingGravityScale(0.5).
     /// 공중 대시 중 공격은 무시(6단계 전), 끝 단계도 공중에서 미끄러지고(DashStopState) 그 뒤 떨어지며, 착지하면 착지 경직.
     /// </summary>
-    public class DashState : MechState
+    public class DashState : MechState, IDashMove
     {
         private float _tackleChargeTimer = 0f;
         private bool _tackleRequested = false;
@@ -84,6 +84,10 @@ namespace MyDongari.Movement
         public event Action OnDashStarted;
         /// <summary>대시가 끝났을 때 (이유). 로그용.</summary>
         public event Action<DashExitReason> OnDashEnded;
+
+        /// <summary>V8 지상·공중 대시가 같은 이벤트로 알린다 (로그·출발 분사 연출이 그대로 듣도록).</summary>
+        public void RaiseStarted() => OnDashStarted?.Invoke();
+        public void RaiseEnded(DashExitReason reason) => OnDashEnded?.Invoke(reason);
         // 차징 상태로 이 거리(m) 안에 상대가 닿으면 자동 태클 (기존 동작 유지)
         private float ContactRadius => Tackle.contactRadius;
         public bool IsTackleCharged => _tackleChargeTimer >= Tackle.dashChargeStartTime;

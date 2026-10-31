@@ -35,6 +35,14 @@ namespace MyDongari.Input
         public bool DashPressedThisFrame { get; private set; }
         /// <summary>△ 점프 버튼(패드 Y·△ / 키보드 F)을 이번 프레임에 눌렀는지.</summary>
         public bool JumpPressedThisFrame { get; private set; }
+        /// <summary>△를 누르고 있는지 (V8 하강 호버).</summary>
+        public bool JumpHeld { get; private set; }
+        /// <summary>
+        /// ○·△를 지금까지 누른 횟수 (V8). 60Hz 고정 틱은 화면 프레임과 어긋나므로 "이번 프레임에 눌렀나" 대신
+        /// 틱마다 이 값이 바뀌었는지로 새 입력을 본다 — 두 틱 사이 짧은 탭도 놓치지 않는다.
+        /// </summary>
+        public int DashPressCount { get; private set; }
+        public int JumpPressCount { get; private set; }
         public bool Skill1Input { get; private set; }
         public bool Skill2Input { get; private set; }
         public int SideStepDirection { get; private set; }
@@ -214,6 +222,7 @@ namespace MyDongari.Input
             DashHeld = _dashAction.IsPressed();
             DashPressedThisFrame = _dashAction.WasPressedThisFrame();
             JumpPressedThisFrame = _jumpAction.WasPressedThisFrame();
+            JumpHeld = _jumpAction.IsPressed();
 
             AttackHeld = _attackAction.IsPressed();
             AttackPressedThisFrame = _attackAction.WasPressedThisFrame();
@@ -233,6 +242,9 @@ namespace MyDongari.Input
             UpdateMenuInput();
             UpdatePracticeInput();
             if (_inputLocked) ClearGameplayInput();
+            // 잠금으로 지운 뒤에 센다 (잠금 중 누른 건 안 셈)
+            if (DashPressedThisFrame) DashPressCount++;
+            if (JumpPressedThisFrame) JumpPressCount++;
 
             if (InputTrace.ShouldLog(this, "2 InputReader"))
             {
@@ -318,6 +330,7 @@ namespace MyDongari.Input
             DashHeld = false;
             DashPressedThisFrame = false;
             JumpPressedThisFrame = false;
+            JumpHeld = false;
             MoveStickRaw = Vector2.zero;
             Skill1Input = false;
             Skill2Input = false;

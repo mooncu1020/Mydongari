@@ -100,7 +100,7 @@ namespace MyDongari.UI
                 return;
             }
 
-            DashState sprintState = mechStateMachine.DashState;
+            IDashMove sprintState = mechStateMachine.ActiveDash;
             float chargeAmount = sprintState.TackleChargePower;
             Color col = sprintState.IsTackleCharged
                 ? new Color(1f, 0.9f, 0f, 1f)

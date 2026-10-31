@@ -256,7 +256,7 @@ namespace MyDongari.Combat.Skills
             _selfLock.Acquire();
             if (_selfRb != null)
             {
-                _selfRb.linearVelocity = new Vector3(0f, _selfRb.linearVelocity.y, 0f);
+                MotionBridge.SetHorizontalVelocity(_selfRb, Vector3.zero);
             }
 
             OnGrabbed?.Invoke(_target.gameObject);
@@ -279,12 +279,12 @@ namespace MyDongari.Combat.Skills
             float easeT = t.hookEaseTime > 0f ? Mathf.Clamp01(_pullTimer / t.hookEaseTime) : 1f;
             float currentSpeed = Mathf.Lerp(t.hookImpactSpeed, t.pullSpeed, easeT);
 
-            _targetRb.linearVelocity = dirToMe * currentSpeed;
+            MotionBridge.SetVelocity(_targetRb, dirToMe * currentSpeed);
 
             float dist = Vector3.Distance(transform.position, _target.position);
             if (dist < t.pullStopDistance || _pullTimer >= t.pullDuration)
             {
-                _targetRb.linearVelocity = Vector3.zero;
+                MotionBridge.SetVelocity(_targetRb, Vector3.zero);
                 EndPull();
             }
         }

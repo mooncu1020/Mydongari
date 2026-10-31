@@ -4,6 +4,7 @@ using MyDongari.Input;
 using MyDongari.Core;
 using UnityEngine;
 using MyDongari.Mech;
+using MyDongari.Movement.V8;
 
 namespace MyDongari.Movement
 {
@@ -61,7 +62,18 @@ namespace MyDongari.Movement
             _melee = GetComponent<MeleeSystem>();
 
             _defaultDamping = Rb.linearDamping;
+
+            // V8 이동기: 항상 붙여 두고, BernardTuning 이동기 선택이 VirtualOn일 때만 켜진다
+            Motor = GetComponent<MechMotor>();
+            if (Motor == null) Motor = gameObject.AddComponent<MechMotor>();
         }
+
+        /// <summary>V8 이동기 (이동기 선택이 Legacy면 꺼져 있음).</summary>
+        public MechMotor Motor { get; private set; }
+        /// <summary>V8 이동기가 이 기체를 움직이는지.</summary>
+        public bool IsV8 => Motor != null && Motor.IsActive;
+        /// <summary>지금 속도(m/s). V8이면 이동기가 실제로 움직인 속도 (키네마틱 리지드바디의 속도는 쓸 수 없다).</summary>
+        public Vector3 Velocity => MotionBridge.GetVelocity(Rb);
 
         // 넉백 뒤 이동 로직이 속도를 덮어쓰지 않는 남은 시간(초). 이동이 속도를 직접 넣으므로, 안 막으면 넉백 임펄스가 다음 물리 스텝에 지워진다
         private float _moveHoldTimer;
@@ -76,7 +88,7 @@ namespace MyDongari.Movement
         public void HoldMoveControl()
         {
             _moveHoldTimer = Mathf.Max(_moveHoldTimer, Move.knockbackMoveHold);
-            if (StateMachine != null && StateMachine.IsDashing) StateMachine.DashState.EndByKnockback();
+            if (StateMachine != null && StateMachine.IsDashing) StateMachine.ActiveDash.EndByKnockback();
         }
 
         /// <summary>
@@ -93,6 +105,12 @@ namespace MyDongari.Movement
         public void SetHorizontalVelocity(Vector3 horizontal)
         {
             if (IsExternallyControlled || IsMoveHeld) return;
+            // V8: 이동 상태는 틱마다 속력을 직접 넣으므로 여기선 외부 속도 쪽만 (착지 경직의 "제자리" 등은 원래 0)
+            if (IsV8)
+            {
+                if (Motor.IsExternalMode) MotionBridge.SetHorizontalVelocity(Rb, horizontal);
+                return;
+            }
             Rb.linearVelocity = new Vector3(horizontal.x, Rb.linearVelocity.y, horizontal.z);
         }
 
@@ -224,7 +242,9 @@ namespace MyDongari.Movement
         private void FixedUpdate()
         {
             if (_moveHoldTimer > 0f) _moveHoldTimer -= Time.fixedDeltaTime;
-            UpdateGrounded();
+            // V8은 이동기가 지면을 직접 본다
+            if (IsV8) IsGrounded = Motor.IsGrounded;
+            else UpdateGrounded();
         }
 
         /// <summary>
@@ -234,6 +254,8 @@ namespace MyDongari.Movement
         /// </summary>
         private void OnCollisionEnter(Collision collision)
         {
+            // V8: 벽·몸 충돌은 이동기가 캐스트로 처리한다 (키네마틱이라 정적 지형과는 접촉이 안 생김)
+            if (IsV8) return;
             if (StateMachine == null || !StateMachine.IsDashing || Identity == null) return;
             DashState dash = StateMachine.DashState;
             if (!Identity.IsOpponentCollider(collision.collider))
@@ -257,6 +279,7 @@ namespace MyDongari.Movement
         // 벽에 붙은 채 그쪽으로 대시를 시작하면 Enter가 다시 안 오므로 붙어 있는 동안에도 본다
         private void OnCollisionStay(Collision collision)
         {
+            if (IsV8) return;
             if (StateMachine == null || !StateMachine.IsDashing || Identity == null) return;
             if (Identity.IsOpponentCollider(collision.collider)) return;
             CheckDashWall(collision, StateMachine.DashState);
@@ -287,9 +310,11 @@ namespace MyDongari.Movement
         public void ApplyBump(Vector3 direction)
         {
             if (IsExternallyControlled) return;
-            if (StateMachine != null && StateMachine.IsDashing) StateMachine.DashState.EndByBump();
+            if (StateMachine != null && StateMachine.IsDashing) StateMachine.ActiveDash.EndByBump();
             Vector3 push = direction * Move.bumpSpeed;
-            Rb.linearVelocity = new Vector3(push.x, Rb.linearVelocity.y, push.z);
+            // 넉백 유지를 먼저 걸어야 V8 외부 속도가 "걷던 속도 + 반동"이 아니라 반동만으로 시작한다
+            if (IsV8) MotionBridge.AddImpulse(Rb, new Vector3(push.x, 0f, push.z) * Rb.mass);
+            else Rb.linearVelocity = new Vector3(push.x, Rb.linearVelocity.y, push.z);
             HoldMoveControl();
         }
 
@@ -299,6 +324,7 @@ namespace MyDongari.Movement
             _moveHoldTimer = 0f;
             IsGrounded = true;
             _lastGroundedTime = Time.time;
+            if (IsV8) Motor.ResetForRound();
         }
 
         // ---- 접지 (V5) ----
@@ -371,7 +397,7 @@ namespace MyDongari.Movement
             if (InputTrace.ShouldLog(this, "5 MechController"))
             {
                 InputTrace.Log("5 MechController", $"{gameObject.name} reader={(InputReader != null ? InputReader.gameObject.name : "없음")} " +
-                    $"move={(InputReader != null ? InputReader.MoveInput.ToString() : "-")} vel={Rb.linearVelocity} " +
+                    $"move={(InputReader != null ? InputReader.MoveInput.ToString() : "-")} vel={Velocity} " +
                     $"external={IsExternallyControlled} kinematic={Rb.isKinematic}");
             }
         }

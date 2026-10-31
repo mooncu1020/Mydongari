@@ -245,6 +245,9 @@ namespace MyDongari.Core
                 {
                     if (state is SideStepState) Count(index, "sidestep");
                     else if (state is DashState && sm.IsAirborne) Count(index, "air_dash");
+                    else if (state is MyDongari.Movement.V8.VoAirDashState) Count(index, "air_dash");
+                    else if (state is MyDongari.Movement.V8.VoCloseStepState) Count(index, "close_step");
+                    else if (state is MyDongari.Movement.V8.VoDiveState) Count(index, "dive");
                 }, "PlayLogger.onState");
                 sm.OnStateChanged += onState;
                 _unsubscribers.Add(() => sm.OnStateChanged -= onState);

@@ -293,7 +293,7 @@ namespace MyDongari.Combat
 
         private void SetDashVelocity(float speed)
         {
-            _rb.linearVelocity = new Vector3(_direction.x * speed, _rb.linearVelocity.y, _direction.z * speed);
+            MotionBridge.SetHorizontalVelocity(_rb, new Vector3(_direction.x * speed, 0f, _direction.z * speed));
         }
     }
 }

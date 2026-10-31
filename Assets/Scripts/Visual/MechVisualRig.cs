@@ -861,7 +861,7 @@ namespace MyDongari.Visual
         private void PoseMovement(BernardTuning.VisualValues v, float dt)
         {
             if (_rb == null) return;
-            Vector3 local = transform.InverseTransformDirection(_rb.linearVelocity);
+            Vector3 local = transform.InverseTransformDirection(MotionBridge.GetVelocity(_rb));
             local.y = 0f;
             float speed = local.magnitude;
 
@@ -910,7 +910,7 @@ namespace MyDongari.Visual
             float speed = 0f;
             if (_rb != null)
             {
-                Vector3 velocity = _rb.linearVelocity;
+                Vector3 velocity = MotionBridge.GetVelocity(_rb);
                 velocity.y = 0f;
                 speed = velocity.magnitude;
             }
@@ -943,7 +943,7 @@ namespace MyDongari.Visual
             if (_stateMachine != null) moving = !_stateMachine.IsIdle;
             else
             {
-                Vector3 velocity = _rb != null ? _rb.linearVelocity : Vector3.zero;
+                Vector3 velocity = MotionBridge.GetVelocity(_rb);
                 velocity.y = 0f;
                 moving = velocity.magnitude >= v.breathStopSpeed;
             }

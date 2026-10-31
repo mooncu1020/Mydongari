@@ -50,7 +50,7 @@ namespace MyDongari.Visual
         private float LookYaw()
         {
             Vector3 dir;
-            if (_stateMachine != null && _stateMachine.IsDashing) dir = _stateMachine.DashState.Heading;
+            if (_stateMachine != null && _stateMachine.IsDashing) dir = _stateMachine.ActiveDash.Heading;
             else if (_lockOn != null && _lockOn.IsHardLocked && _lockOn.Target != null) dir = _lockOn.Target.position - transform.position;
             else dir = transform.forward;
             dir.y = 0f;
@@ -60,7 +60,7 @@ namespace MyDongari.Visual
         private Vector3 HorizontalVelocity()
         {
             if (_rb == null) return Vector3.zero;
-            Vector3 velocity = _rb.linearVelocity;
+            Vector3 velocity = Movement.MotionBridge.GetVelocity(_rb);
             velocity.y = 0f;
             // 물리가 잘못된 값을 내도 외형 계산으로 퍼지지 않게 (Q2)
             return velocity.x == velocity.x && velocity.z == velocity.z && !float.IsInfinity(velocity.x) && !float.IsInfinity(velocity.z) ? velocity : Vector3.zero;

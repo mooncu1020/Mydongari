@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using MyDongari.Input;
 using MyDongari.Mech;
+using MyDongari.Movement.V8;
 
 namespace MyDongari.Movement
 {
@@ -9,6 +10,9 @@ namespace MyDongari.Movement
     /// 이동 상태 (V3): Idle(정지) / Run(항상 달리기, 하드락 안이면 근접 이동) / Dash(○, 8방향 고정, 땅·공중) / DashStop(대시 끝 미끄러짐) /
     /// Air(△ 점프·낙하) / Landing(착지 경직) / SideStep / Lunge / Knockdown.
     /// 걷기·제동·슬라이딩·초신지선회·트윈스틱 전력질주는 V3에서 삭제됐다.
+    /// V8: BernardTuning 이동기 선택이 VirtualOn이면 위 이동 상태 대신 V8 상태(서기·걷기·근접 스텝·지상 대시·대시 정지·점프·공중 대시·급강하)를 쓰고,
+    /// 상태는 Update/FixedUpdate가 아니라 MechMotor의 60Hz 틱에서 돈다. 런지·넉다운·착지 경직은 두 이동기가 같이 쓴다.
+    /// 예전 상태로 가라는 요청(ChangeState(IdleState) 등)은 V8이면 대응하는 V8 상태로 바꿔 넣는다.
     /// </summary>
     public class MechStateMachine : MonoBehaviour
     {
@@ -30,23 +34,60 @@ namespace MyDongari.Movement
         public LungeState LungeState { get; private set; }
         public KnockdownState KnockdownState { get; private set; }
 
+        // ---- V8 ----
+        /// <summary>V8 이동기 (MechController가 붙인다).</summary>
+        public MechMotor Motor
+        {
+            get
+            {
+                if (_motor == null) _motor = GetComponent<MechMotor>();
+                return _motor;
+            }
+        }
+        private MechMotor _motor;
+        /// <summary>V8 이동기가 켜져 있는지.</summary>
+        public bool IsV8 => Motor != null && Motor.IsActive;
+        public VoStandState VoStand { get; private set; }
+        public VoWalkState VoWalk { get; private set; }
+        public VoCloseStepState VoCloseStep { get; private set; }
+        public VoGroundDashState VoGroundDash { get; private set; }
+        public VoDashStopState VoDashStop { get; private set; }
+        public VoJumpState VoJump { get; private set; }
+        public VoAirDashState VoAirDash { get; private set; }
+        public VoDiveState VoDive { get; private set; }
+        /// <summary>지금 상태.</summary>
+        public MechState CurrentState => _currentState;
+
+        /// <summary>지금 대시(V8 지상·공중 대시 중이면 그것, 아니면 예전 DashState). IsDashing과 같이 본다.</summary>
+        public IDashMove ActiveDash => _currentState as IDashMove ?? DashState;
+
         /// <summary>○ 대시 중 (끝 미끄러짐 제외). 가드 불가·히트 냉각 감소·호버 활주 외형의 기준.</summary>
-        public bool IsDashing => _currentState is DashState;
+        public bool IsDashing => _currentState is DashState ||
+                                 (_currentState is VoGroundDashState g && g.IsDashingPhase) ||
+                                 _currentState is VoAirDashState;
         /// <summary>대시 끝 단계 중 (V6b: 0.27초 선형 감속, 공중 대시 끝 포함). 대시 불가, 점프는 내내·공격은 0.05초 뒤부터 (V6.1, 땅만).</summary>
-        public bool IsDashStopping => _currentState is DashStopState;
+        public bool IsDashStopping => _currentState is DashStopState || _currentState is VoDashStopState ||
+                                      (_currentState is VoGroundDashState g && g.IsEndPhase);
+        /// <summary>대시 끝 단계·대시 정지에서 지금 공격을 받는지 (V6.1 0.05초 = V8 3f째부터).</summary>
+        public bool DashEndAllowsAttack =>
+            (_currentState is DashStopState && DashStopState.AllowsAttack) ||
+            (_currentState is VoDashStopState s && s.AllowsAttack) ||
+            (_currentState is VoGroundDashState g && g.EndAllowsAttack);
         /// <summary>공중 (점프·낙하·공중 대시). 가드·패리·앵커 클로·공격 불가, 외형 접지 보정 끔. 대공 판정의 "공중"도 이것.</summary>
         public bool IsAirborne => _currentState is AirState ||
                                   (_currentState is DashState && DashState.IsAirborne) ||
-                                  (_currentState is DashStopState && DashStopState.IsAirborne);
+                                  (_currentState is DashStopState && DashStopState.IsAirborne) ||
+                                  (_currentState is VoState vo && vo.IsAirState);
         /// <summary>착지 경직 중. 이동·공격·대시·점프·가드 불가.</summary>
         public bool IsLanding => _currentState is LandingState;
         /// <summary>점프 락온으로 몸을 상대 쪽으로 돌리는 0.2초 (카메라가 몸에 바로 붙는다).</summary>
-        public bool IsJumpTurning => _currentState is AirState && AirState.IsJumpTurning;
+        public bool IsJumpTurning => (_currentState is AirState && AirState.IsJumpTurning) ||
+                                     (_currentState is VoJumpState && VoJump.IsAiming);
 
         public bool IsStunned => MechController.MeleeSystem != null && MechController.MeleeSystem.IsStunned;
-        public bool IsIdle => _currentState is IdleState;
+        public bool IsIdle => _currentState is IdleState || _currentState is VoStandState;
 
-        public bool IsRunning => _currentState is RunState;
+        public bool IsRunning => _currentState is RunState || _currentState is VoWalkState;
         public bool IsLunging => _currentState is LungeState;
 
         private Combat.KnockdownController _knockdown;
@@ -62,7 +103,8 @@ namespace MyDongari.Movement
 
         /// <summary>스러스터 런지를 시작할 수 있는 상태(정지·달리기). 다른 기동 중엔 불가.</summary>
         public bool CanStartLunge => _currentState is IdleState || _currentState is RunState ||
-                                     (_currentState is DashStopState && DashStopState.AllowsAttack);
+                                     _currentState is VoStandState || _currentState is VoWalkState ||
+                                     ((IsDashStopping) && DashEndAllowsAttack);
 
         /// <summary>
         /// 하드 락온 몸통 자동 회전을 허용하는 상태인지.
@@ -102,6 +144,15 @@ namespace MyDongari.Movement
             SideStepState = new SideStepState(this);
             LungeState = new LungeState(this);
             KnockdownState = new KnockdownState(this);
+
+            VoStand = new VoStandState(this);
+            VoWalk = new VoWalkState(this);
+            VoCloseStep = new VoCloseStepState(this);
+            VoGroundDash = new VoGroundDashState(this);
+            VoDashStop = new VoDashStopState(this);
+            VoJump = new VoJumpState(this);
+            VoAirDash = new VoAirDashState(this);
+            VoDive = new VoDiveState(this);
         }
 
         private void Start()
@@ -120,6 +171,14 @@ namespace MyDongari.Movement
         {
             if (!IsAirborne) return;
             if (result != Combat.HitResult.Hit && result != Combat.HitResult.GuardBroken) return;
+            if (IsV8)
+            {
+                // V8: 공중에서 맞으면 수평 이동을 끊고 그 자리에서 떨어진다(착지 경직). 넉백은 외부 속도로 따로 들어온다
+                Motor.Vy = Mathf.Min(0f, Motor.Vy);
+                if (_currentState is VoJumpState && !VoJump.IsRising) VoJump.MarkLandingLag();
+                else V8Fall(Motor.Vy, true);
+                return;
+            }
             Rigidbody rb = MechController.Rb;
             rb.linearVelocity = new Vector3(0f, Mathf.Min(0f, rb.linearVelocity.y), 0f);
             if (_currentState is AirState) AirState.MarkLandingLag();
@@ -192,8 +251,79 @@ namespace MyDongari.Movement
             else ChangeState(InputReader != null && InputReader.IsMoveInputActive ? (MechState)RunState : IdleState);
         }
 
+        // ---- V8 전환 도우미 ----
+
+        /// <summary>이동기 선택이 바뀌었을 때 (MechMotor). 그 이동기의 정지 상태로.</summary>
+        public void OnMovementModelChanged()
+        {
+            _pendingTurn = 0f;
+            if (_currentState == null) return;
+            ChangeState(IsV8 ? (MechState)VoStand : IdleState);
+        }
+
+        /// <summary>V8이면 예전 이동 상태 요청을 대응하는 V8 상태로 바꾼다 (런지·넉다운·사망·착지 경직에서 돌아올 때 등).</summary>
+        private MechState RedirectForV8(MechState state)
+        {
+            if (state == IdleState || state == SideStepState || state == DashState || state == DashStopState) return VoStand;
+            if (state == RunState) return VoWalk;
+            if (state == AirState)
+            {
+                VoJump.PrepareFall(Motor != null ? Motor.Vy : 0f, AirState.NeedsLandingLag);
+                return VoJump;
+            }
+            return state;
+        }
+
+        /// <summary>V8 점프 시작 (△). 부스트 jumpCost를 쓰고, 탈진·부족이면 false.</summary>
+        public bool TryStartJumpV8()
+        {
+            BoostGauge boost = MechController.BoostGauge;
+            if (IsStunned || (boost != null && (boost.IsExhausted || !boost.TryConsume(boost.GetJumpCost())))) return false;
+            VoJump.PrepareJump();
+            ChangeState(VoJump);
+            return true;
+        }
+
+        /// <summary>V8 낙하 (발판 끝·공중 대시 끝·공중 피격). vy는 u/f.</summary>
+        public void V8Fall(float vy, bool landingLag)
+        {
+            VoJump.PrepareFall(vy, landingLag);
+            ChangeState(VoJump);
+        }
+
+        public void V8GroundDash(int code, bool fromWalk)
+        {
+            VoGroundDash.Prepare(code, fromWalk);
+            ChangeState(VoGroundDash);
+        }
+
+        public void V8CloseStep(int code)
+        {
+            VoCloseStep.Prepare(code);
+            ChangeState(VoCloseStep);
+        }
+
+        public void V8DashStop(Vector3 heading, float offset, bool airborne)
+        {
+            VoDashStop.Prepare(heading, offset, airborne);
+            ChangeState(VoDashStop);
+        }
+
+        public void V8AirDash(int code)
+        {
+            VoAirDash.Prepare(code);
+            ChangeState(VoAirDash);
+        }
+
+        public void V8Dive()
+        {
+            ChangeState(VoDive);
+        }
+
         public void ChangeState(MechState newState)
         {
+            if (IsV8) newState = RedirectForV8(newState);
+            else if (newState is VoState) newState = IdleState;
             _currentState?.Exit();
             _currentState = newState;
             _currentState.Enter();
@@ -205,6 +335,8 @@ namespace MyDongari.Movement
         {
             // 넉다운이 시작되면 어느 상태에서든 넉다운 상태로 (입력 무시, 속도는 KnockdownController가)
             if (IsKnockedDown && !(_currentState is KnockdownState)) ChangeState(KnockdownState);
+            // V8은 상태를 MechMotor의 60Hz 틱에서 돌린다
+            if (IsV8) return;
             _currentState?.Update();
             AccumulateTurnInput();
 
@@ -231,6 +363,11 @@ namespace MyDongari.Movement
 
         private void FixedUpdate()
         {
+            if (IsV8)
+            {
+                _pendingTurn = 0f;
+                return;
+            }
             // 모인 회전량을 한 번에. 이번 프레임에 물리 스텝이 없으면 다음 스텝으로 넘어간다
             if (_pendingTurn != 0f)
             {

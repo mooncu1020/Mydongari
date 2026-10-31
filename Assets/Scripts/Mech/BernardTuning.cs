@@ -10,7 +10,7 @@ namespace MyDongari.Mech
     /// 주의: 플레이 중 고친 에셋 값은 플레이를 멈춰도 그대로 남는다(컴포넌트 값과 다름).
     /// </summary>
     [CreateAssetMenu(menuName = "Mydongari/Bernard Tuning", fileName = "BernardTuning")]
-    public class BernardTuning : ScriptableObject
+    public partial class BernardTuning : ScriptableObject
     {
         /// <summary>Resources 폴더 기준 기본 에셋 이름. 기체에 연결이 안 돼 있으면 이걸 찾는다.</summary>
         public const string ResourcesName = "BernardTuning";
