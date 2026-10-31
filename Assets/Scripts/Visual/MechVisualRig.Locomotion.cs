@@ -50,7 +50,7 @@ namespace MyDongari.Visual
         private float LookYaw()
         {
             Vector3 dir;
-            if (_stateMachine != null && _stateMachine.IsDashing) dir = _stateMachine.ActiveDash.Heading;
+            if (_stateMachine != null && _stateMachine.IsDashMotion) dir = _stateMachine.DashMotionHeading;
             else if (_lockOn != null && _lockOn.IsHardLocked && _lockOn.Target != null) dir = _lockOn.Target.position - transform.position;
             else dir = transform.forward;
             dir.y = 0f;
@@ -215,7 +215,7 @@ namespace MyDongari.Visual
         {
             if (_stateMachine != null)
             {
-                if (_stateMachine.IsDashing) return v.sprintStepLength;
+                if (_stateMachine.IsDashMotion) return v.sprintStepLength;
                 if (_stateMachine.IsRunning) return v.runStepLength;
                 return v.walkStepLength;
             }

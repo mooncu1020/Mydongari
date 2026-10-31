@@ -920,7 +920,7 @@ namespace MyDongari.Visual
             {
                 if (_stateMachine.IsIdle) _moveState = 0;
                 else if (_stateMachine.IsRunning) _moveState = 2;
-                else if (_stateMachine.IsDashing) _moveState = 3;
+                else if (_stateMachine.IsDashMotion) _moveState = 3;
             }
             else
             {

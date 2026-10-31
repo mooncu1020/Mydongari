@@ -424,6 +424,7 @@ namespace MyDongari.Core
                 case DashExitReason.Bump: return "bump";
                 case DashExitReason.Timeout: return "timeout";
                 case DashExitReason.Jump: return "jump";
+                case DashExitReason.CloseStep: return "close_step";
                 default: return "other";
             }
         }

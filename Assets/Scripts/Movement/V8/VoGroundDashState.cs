@@ -10,6 +10,8 @@ namespace MyDongari.Movement.V8
     /// 발판 끝을 지나 공중이면 vy −0.081/f(하한 −1.801)로 떨어지다 착지.
     /// 지속: 공격 = 대시 어택·차징 태클(DashAttackRunner), △ = 점프. 종료: △ 언제든, 공격 3f째부터.
     /// 우리 규칙: 부스트 초당 소모(BoostGauge)·0%면 종료 단계로, 상대 몸 충돌 반동(MechMotor).
+    /// V8.2: 근접 구역 서기의 스틱 중립 ○로 시작한 앞 대시는 시작 후 closeStepFromDashFrames(15f) 안에 스틱이 들어오면
+    /// 그 순간 근접 스텝으로 바뀐다(방향은 그 순간 상대 기준으로 고정).
     /// </summary>
     public class VoGroundDashState : VoState, IDashMove
     {
@@ -17,6 +19,8 @@ namespace MyDongari.Movement.V8
 
         private int _code;
         private bool _fromWalk;
+        private bool _closeStepWindow;
+        private int _age;
         private Phase _phase;
         private int _frame;
         private int _startFrames;
@@ -48,10 +52,11 @@ namespace MyDongari.Movement.V8
         public override bool IsAirState => _airborne;
         public override bool LocksOnTurboPress => true;
 
-        public void Prepare(int code, bool fromWalk)
+        public void Prepare(int code, bool fromWalk, bool closeStepWindow)
         {
             _code = code;
             _fromWalk = fromWalk;
+            _closeStepWindow = closeStepWindow;
         }
 
         public override void Enter()
@@ -63,6 +68,7 @@ namespace MyDongari.Movement.V8
             _startFrames = back ? V.dashStartFramesBack : V.dashStartFrames;
             _phase = _fromWalk && !back ? Phase.Sustain : Phase.Start;
             _frame = 0;
+            _age = 0;
             _airborne = false;
             _exitReason = DashExitReason.Other;
             _attack.Reset();
@@ -109,6 +115,15 @@ namespace MyDongari.Movement.V8
             if (IsStunned)
             {
                 Leave(DashExitReason.Stun, StateMachine.VoStand);
+                return;
+            }
+
+            // 근접 구역 중립 ○ 앞 대시: 0.25초 안에 스틱이 오면 그 순간 근접 스텝으로
+            _age++;
+            if (_closeStepWindow && _age <= V.closeStepFromDashFrames && !_airborne && !_attack.IsAttacking && Motor.Lever.Direction >= 0)
+            {
+                _exitReason = DashExitReason.CloseStep;
+                StateMachine.V8CloseStep(Motor.Lever.Direction, true);
                 return;
             }
 

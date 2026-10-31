@@ -58,6 +58,14 @@ namespace MyDongari.Movement
         /// <summary>지금 상태.</summary>
         public MechState CurrentState => _currentState;
 
+        /// <summary>
+        /// 외형·연출용 "대시 모션 중" (V8.2): IsDashing + 앞 대시에서 바뀐 근접 스텝. 전환할 때 호버 활주·숙임·불꽃이 끊기지 않게.
+        /// 가드·부스트·히트 같은 규칙은 IsDashing을 그대로 본다.
+        /// </summary>
+        public bool IsDashMotion => IsDashing || (_currentState is VoCloseStepState c && c.FromDash);
+        /// <summary>대시 모션 중 진로 (외형이 몸을 트는 방향, 출발 분사 방향).</summary>
+        public Vector3 DashMotionHeading => _currentState is VoCloseStepState c ? c.Heading : ActiveDash.Heading;
+
         /// <summary>지금 대시(V8 지상·공중 대시 중이면 그것, 아니면 예전 DashState). IsDashing과 같이 본다.</summary>
         public IDashMove ActiveDash => _currentState as IDashMove ?? DashState;
 
@@ -291,15 +299,15 @@ namespace MyDongari.Movement
             ChangeState(VoJump);
         }
 
-        public void V8GroundDash(int code, bool fromWalk)
+        public void V8GroundDash(int code, bool fromWalk, bool closeStepWindow)
         {
-            VoGroundDash.Prepare(code, fromWalk);
+            VoGroundDash.Prepare(code, fromWalk, closeStepWindow);
             ChangeState(VoGroundDash);
         }
 
-        public void V8CloseStep(int code)
+        public void V8CloseStep(int code, bool fromDash)
         {
-            VoCloseStep.Prepare(code);
+            VoCloseStep.Prepare(code, fromDash);
             ChangeState(VoCloseStep);
         }
 

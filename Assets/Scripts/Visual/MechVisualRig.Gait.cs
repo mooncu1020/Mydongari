@@ -102,7 +102,7 @@ namespace MyDongari.Visual
             PoseAccelLean(v, dt, velocity);
 
             // ○ 대시 상태만 호버 활주(상태로), 나머지는 실제 수평 속도로
-            bool sprinting = _stateMachine != null && _stateMachine.IsDashing;
+            bool sprinting = _stateMachine != null && _stateMachine.IsDashMotion;
             _hoverMode = g.modeBlendTime > 0f
                 ? Mathf.MoveTowards(_hoverMode, sprinting ? 1f : 0f, dt / g.modeBlendTime)
                 : (sprinting ? 1f : 0f);

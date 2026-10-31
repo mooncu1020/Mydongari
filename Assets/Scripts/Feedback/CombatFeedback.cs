@@ -483,9 +483,9 @@ namespace MyDongari.Feedback
                 fb.WasExhausted = exhausted;
 
                 UpdateTint(fb, stunned, overheated, guarding);
-                UpdateHoverLoop(fb, active && fb.StateMachine != null && fb.StateMachine.IsDashing);
+                UpdateHoverLoop(fb, active && fb.StateMachine != null && fb.StateMachine.IsDashMotion);
                 UpdateKnockdownSlideDust(fb, active);
-                UpdateDashScrape(fb, active && fb.StateMachine != null && fb.StateMachine.IsDashing && !fb.StateMachine.IsAirborne);
+                UpdateDashScrape(fb, active && fb.StateMachine != null && fb.StateMachine.IsDashMotion && !fb.StateMachine.IsAirborne);
                 float scrape = active && fb.Rig != null ? fb.Rig.ScrapeAmount : 0f;
                 UpdateLoop(ref fb.ScrapeLoop, strideScrapeLoopClip, strideScrapeVolume * Mathf.Clamp01(scrape));
             }
@@ -582,7 +582,7 @@ namespace MyDongari.Feedback
             if (!dashing || Time.time < fb.NextDashScrape) return;
             BernardTuning.HitFeelValues feel = TuningOf(fb.Mech).HitFeel;
             fb.NextDashScrape = Time.time + Mathf.Max(0.02f, feel.dashScrapeInterval);
-            Vector3 back = -fb.StateMachine.ActiveDash.Heading;
+            Vector3 back = -fb.StateMachine.DashMotionHeading;
             HitSparkFx.SpawnHit(FootPoint(fb.Mech), (back + Vector3.up * 0.6f).normalized, feel.dashScrapeScale, SparkStyle(feel, feel.sparkColor));
         }
 

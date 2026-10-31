@@ -57,13 +57,10 @@ namespace MyDongari.Movement.V8
         protected bool IsStunned => StateMachine.IsStunned;
         protected bool BoostExhausted => StateMachine.MechController.BoostGauge != null && StateMachine.MechController.BoostGauge.IsExhausted;
 
-        /// <summary>
-        /// 대시 조건 (사양서 4장): 방향 잠금 + ○ 유지 + 게이지 허가 + 스턴·탈진 아님.
-        /// V8.1: 근접 구역 중립 ○를 기다리다 앞 대시로 잠근 틱은 ○를 이미 뗐어도 나간다(누른 입력이므로).
-        /// </summary>
+        /// <summary>대시 조건 (사양서 4장): 방향 잠금 + ○ 유지 + 게이지 허가 + 스턴·탈진 아님.</summary>
         protected bool DashCondition()
         {
-            return Motor.LockedDirection >= 0 && (Motor.TurboHeld || !Motor.LockedAfterPress) && Motor.DashAllowed && !IsStunned && !BoostExhausted;
+            return Motor.LockedDirection >= 0 && Motor.TurboHeld && Motor.DashAllowed && !IsStunned && !BoostExhausted;
         }
 
         /// <summary>점프 조건: △ 새 입력 + 스턴 아님 + 부스트(jumpCost) — 예전 규칙대로 부스트를 쓴다.</summary>
@@ -116,8 +113,8 @@ namespace MyDongari.Movement.V8
             if (DashCondition())
             {
                 // ○를 먼저 누르고 스틱이 나중에 들어왔고 근접 구역이면 근접 스텝, 아니면 지상 대시(시작 모션부터)
-                if (Motor.InCloseZone && Motor.LockedAfterPress) StateMachine.V8CloseStep(Motor.LockedDirection);
-                else StateMachine.V8GroundDash(Motor.LockedDirection, false);
+                if (Motor.InCloseZone && Motor.LockedAfterPress) StateMachine.V8CloseStep(Motor.LockedDirection, false);
+                else StateMachine.V8GroundDash(Motor.LockedDirection, false, Motor.LockedNeutralClose);
                 return;
             }
             if (!Motor.Lever.IsNeutral) StateMachine.ChangeState(StateMachine.VoWalk);
@@ -148,7 +145,7 @@ namespace MyDongari.Movement.V8
             // 걷기에서는 잠금만 보면 된다 (잠금이 ○ 입력 때만 일어남). 지속 단계부터 — 뒤 계열은 시작 모션부터
             if (Motor.LockedDirection >= 0 && Motor.DashAllowed && !BoostExhausted)
             {
-                StateMachine.V8GroundDash(Motor.LockedDirection, true);
+                StateMachine.V8GroundDash(Motor.LockedDirection, true, false);
                 return;
             }
             if (Motor.Lever.IsNeutral)
@@ -161,7 +158,8 @@ namespace MyDongari.Movement.V8
     }
 
     /// <summary>
-    /// 근접 스텝 (사양서 4.3): 근접 구역 서기에서 ○를 먼저 누르고 0.25초(15f) 안에 스틱. 진로 = 상대 방위 + 방향 오프셋으로 진입 때 고정,
+    /// 근접 스텝 (사양서 4.3): 근접 구역 서기에서 ○를 먼저 누르고 0.25초(15f) 안에 스틱.
+    /// V8.2: 근접 구역 서기의 스틱 중립 ○는 바로 앞 대시로 시작하고, 0.25초 안에 스틱이 들어오면 그 순간 여기로 바뀐다(FromDash — 외형은 대시 모션을 이어 감). 진로 = 상대 방위 + 방향 오프셋으로 진입 때 고정,
     /// 속력은 시작값 → 끝값을 sin(π/2 · t/길이)로 보간, 6f 시작 + 22f. 게이지 안 씀.
     /// 시작 6f 뒤 ○(+방향) = 지상 대시 지속 단계로, △ = 점프. 끝나면 서기.
     /// </summary>
@@ -171,16 +169,22 @@ namespace MyDongari.Movement.V8
         private float _offset;
         private Vector3 _heading;
         private int _frame;
+        private bool _fromDash;
 
         public VoCloseStepState(MechStateMachine sm) : base(sm)
         {
         }
 
         public override bool LocksOnTurboPress => true;
+        /// <summary>앞 대시에서 바뀌어 들어왔는지 (외형이 대시 모션을 이어 감).</summary>
+        public bool FromDash => _fromDash;
+        /// <summary>진로(상대 기준, 진입 때 고정).</summary>
+        public Vector3 Heading => _heading;
 
-        public void Prepare(int code)
+        public void Prepare(int code, bool fromDash)
         {
             _code = code;
+            _fromDash = fromDash;
         }
 
         public override void Enter()
@@ -201,7 +205,7 @@ namespace MyDongari.Movement.V8
             if (TryJump()) return;
             if (_frame >= V.closeStepStartFrames && Motor.TurboNew && Motor.LockedDirection >= 0 && Motor.DashAllowed && !BoostExhausted)
             {
-                StateMachine.V8GroundDash(Motor.LockedDirection, true);
+                StateMachine.V8GroundDash(Motor.LockedDirection, true, false);
                 return;
             }
             float length = Mathf.Max(1, V.closeStepFrames);

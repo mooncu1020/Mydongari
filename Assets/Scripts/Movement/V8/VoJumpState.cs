@@ -6,8 +6,8 @@ namespace MyDongari.Movement.V8
     /// 점프 (사양서 4.6, 7.1). 이륙 2f(vy 0) → vy = 3.25u/f, "점프 조준"(몸을 상대 쪽으로 최대 12.66°/f) → 상승(보조: vy −0.074, 0.001 이하면
     /// 다음 틱부터 하강, 천장이면 급강하 / 본: y += vy) → 하강(보조: y += vy → 착지 판정 → vy −0.074, 하한 −0.526 / 본: y += vy 한 번 더 — 실효 7.46m/s).
     /// 수평은 점프 속도 곡선 × 레버 벡터(기체 기준). 선회는 고정율 21°/s(○를 누르고 있으면 127°/s).
-    /// V8.1: 공중에서 △ 다시 누르기 = 급강하(상승·하강 모두 — 사양서의 상승 중 △ 재점프·하강 호버는 이 입력에 양보해 뺐다).
-    /// 상승 중 ○(+스틱, 중립이면 앞) = 공중 대시 8방향.
+    /// V8.2: △ 단독은 사양서대로 — 상승 중 재점프(vy 3.25로 한 번), 하강 중 누른 지 7~14f째 호버.
+    /// 급강하 = 공중(상승·하강)에서 L스틱 아래 + △. 상승 중 ○(+스틱, 중립이면 앞) = 공중 대시 8방향.
     /// 발판에서 떨어진 낙하(PrepareFall)도 이 상태의 하강 단계다.
     /// </summary>
     public class VoJumpState : VoState
@@ -17,6 +17,7 @@ namespace MyDongari.Movement.V8
         private Phase _phase;
         private int _frame;
         private bool _pendingFall;
+        private bool _reinputUsed;
         private bool _airActionUsed;
         private bool _needsLandingLag;
         // 다음 Enter 설정
@@ -56,6 +57,7 @@ namespace MyDongari.Movement.V8
         {
             _frame = 0;
             _pendingFall = false;
+            _reinputUsed = false;
             _airActionUsed = false;
             if (_prepareJump)
             {
@@ -127,7 +129,14 @@ namespace MyDongari.Movement.V8
                             StateMachine.V8Dive();
                             return;
                         }
-                        if (Motor.LockedDirection >= 0 && Motor.DashAllowed && !_airActionUsed && !BoostExhausted)
+                        if (Motor.JumpNew && !_reinputUsed)
+                        {
+                            // △ 재입력: 상승 중 한 번 vy를 다시 3.25로
+                            _reinputUsed = true;
+                            Motor.Vy = V.jumpVy;
+                            _pendingFall = false;
+                        }
+                        else if (Motor.LockedDirection >= 0 && Motor.DashAllowed && !_airActionUsed && !BoostExhausted)
                         {
                             _airActionUsed = true;
                             StateMachine.V8AirDash(Motor.LockedDirection);
@@ -144,10 +153,18 @@ namespace MyDongari.Movement.V8
                     break;
 
                 case Phase.Fall:
-                    if (!IsStunned && Motor.DiveNew)
+                    if (!IsStunned)
                     {
-                        StateMachine.V8Dive();
-                        return;
+                        if (Motor.DiveNew)
+                        {
+                            StateMachine.V8Dive();
+                            return;
+                        }
+                        // 호버: △를 누른 지 7~14f째 vy += (경과 − 7) × 0.1, 상한 −0.01
+                        if (Motor.JumpHeld && Motor.JumpHeldFrames >= V.hoverStartFrame && Motor.JumpHeldFrames <= V.hoverEndFrame)
+                        {
+                            Motor.Vy = Mathf.Min(V.hoverMaxVy, Motor.Vy + (Motor.JumpHeldFrames - V.hoverStartFrame) * V.hoverGain);
+                        }
                     }
                     if (V.fallDoubleIntegrate && Motor.AddVyAndCheckLanding())
                     {

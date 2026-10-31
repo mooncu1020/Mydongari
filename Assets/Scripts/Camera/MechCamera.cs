@@ -211,7 +211,7 @@ namespace MyDongari.Camera
             _yaw = jumpTurning ? bodyYaw : Mathf.LerpAngle(_yaw, bodyYaw, k);
 
             // 기준점은 기체 위치를 늦게 따라간다: 대시 중엔 느리게 따라가 기체가 옆·앞으로 처진다 (V3.1). 몸 방향은 대시 중 안 돈다
-            bool dashing = _mechController != null && _mechController.StateMachine != null && _mechController.StateMachine.IsDashing;
+            bool dashing = _mechController != null && _mechController.StateMachine != null && _mechController.StateMachine.IsDashMotion;
             float wantedSpeed = dashing ? dashPositionFollowSpeed : positionFollowSpeed;
             _currentFollowSpeed = Mathf.MoveTowards(_currentFollowSpeed, wantedSpeed, positionFollowBlendRate * Time.deltaTime);
             float kp = 1f - Mathf.Exp(-_currentFollowSpeed * Time.deltaTime);
