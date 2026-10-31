@@ -99,8 +99,10 @@ namespace MyDongari.Mech
             public float dashStartupTime = 0.27f;
             [Tooltip("지속 단계 최대(초). 공격·점프·○ 재입력(정지) 가능. 다 지나면 끝 단계로")]
             public float dashSustainTime = 1.4f;
-            [Tooltip("끝 단계(초). 속도를 0까지 선형으로 줄이며 미끄러진다. 이 동안 공격·대시·점프 불가, 끝난 뒤 경직 없음")]
+            [Tooltip("끝 단계(초). 속도를 0까지 선형으로 줄이며 미끄러진다(스틱 무시). 대시 불가, △ 점프는 내내 가능, 끝난 뒤 경직 없음")]
             public float dashStopDuration = 0.27f;
+            [Tooltip("끝 단계에 들어가고 이 시간(초) 뒤부터 공격 입력을 받는다 (V6.1 원본 분석: 0.05초)")]
+            public float dashStopAttackDelay = 0.05f;
             [Tooltip("대시 공격을 쓰고 끝난 뒤 경직(초), 대시 방향별: 앞 / 앞대각 / 옆 / 뒤대각 / 뒤. 차징 태클은 Tackle.recoveryStun")]
             public DirectionalValues dashAttackRecovery = new DirectionalValues(0.2f, 0.22f, 0.23f, 0.27f, 0.3f);
             [Tooltip("공격 없이 대시로 상대 몸에 부딪혔을 때 둘이 서로 밀려나는 속도(m/s). 피해 없음")]
@@ -229,9 +231,9 @@ namespace MyDongari.Mech
         {
             [Tooltip("버튼을 누른 뒤 펀치 판정까지(초). 이 동안 예비 동작이 보인다. 0이면 누른 프레임에 즉시 판정")]
             public float punch = 0.1f;
-            [Tooltip("대시 어택(질주 1.5초 미만 어깨 태클) 발생 시간(초). 0이면 즉시")]
+            [Tooltip("대시 어택(대시 0.8초 미만 어깨 태클) 발생 시간(초). 0이면 즉시")]
             public float dashAttack = 0.12f;
-            [Tooltip("차징 태클(질주 1.5초 이상) 발생 시간(초). 0이면 즉시")]
+            [Tooltip("차징 태클(대시 0.8초 이상) 발생 시간(초). 0이면 즉시")]
             public float chargedTackle = 0.1f;
             [Tooltip("양쪽 펀치의 판정 시점이 이 시간(초) 이내면 맞딜")]
             public float clashWindow = 0.1f;
@@ -287,11 +289,11 @@ namespace MyDongari.Mech
             [Tooltip("태클을 부딪친 뒤(또는 헛친 뒤) 공격자 자신의 경직(초). 패리당했을 땐 적용 안 함")]
             public float recoveryStun = 0.5f;
 
-            [Header("차징")]
-            [Tooltip("○ 대시를 이 시간(초) 이상 유지하면 차징 태클 (미만은 대시 어택)")]
-            public float chargeStartTime = 1.5f;
-            [Tooltip("○ 대시를 이 시간(초) 유지하면 차징 최대 (피해·넉백 2배)")]
-            public float fullChargeTime = 3f;
+            [Header("차징 (V6.1: 대시 시간표에 맞춤)")]
+            [Tooltip("대시 경과가 이 시간(초) 이상일 때 공격하면 차징 태클 (미만은 유도 대시 어택). V6.1에서 1.5 → 0.8 (이름을 바꿔 예전 에셋 값 1.5를 안 읽음)")]
+            public float dashChargeStartTime = 0.8f;
+            [Tooltip("대시 경과가 이 시간(초)이면 차징 최대 (피해·넉백 2배). V6.1에서 3 → 1.6")]
+            public float dashFullChargeTime = 1.6f;
             [Tooltip("차징 상태로 이 거리(m) 안에 상대가 정면으로 닿으면 자동 태클")]
             public float contactRadius = 2f;
 
@@ -1092,7 +1094,7 @@ namespace MyDongari.Mech
         [SerializeField] private ParryValues parry = new ParryValues();
         [Header("태클 (차징)")]
         [SerializeField] private TackleValues tackle = new TackleValues();
-        [Header("대시 어택 (전력질주 1.5초 미만 어깨 태클)")]
+        [Header("대시 어택 (대시 0.8초 미만 어깨 태클)")]
         [SerializeField] private DashAttackValues dashAttack = new DashAttackValues();
         [Header("스러스터 런지")]
         [SerializeField] private LungeValues lunge = new LungeValues();

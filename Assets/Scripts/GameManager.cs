@@ -71,6 +71,13 @@ namespace MyDongari.Core
         [SerializeField] private GameObject[] versusOnlyObjects;
         [Tooltip("연습 모드에서 화면 전체를 쓰게 할 P1 카메라")]
         [SerializeField] private UnityEngine.Camera player1Camera;
+
+        [Header("화면 분할 (V6.1)")]
+        [Tooltip("VERSUS에서 좌우 반쪽 안의 각 화면을 아래 비율로 줄여 위아래(또는 좌우) 검은 띠를 둔다. 끄면 예전처럼 반쪽 전체")]
+        [SerializeField] private bool letterboxVersus = true;
+        [Tooltip("VERSUS 각 플레이어 화면 비율(가로 / 세로). 16:9 = 1.7778 (1920×1080에서 960×540)")]
+        [SerializeField] private float versusAspect = 16f / 9f;
+        private SplitScreenLetterbox _letterbox;
         [Tooltip("연습 모드에서 한쪽이 쓰러진 뒤 두 기체를 되살릴 때까지(초). 카운트다운 없이 바로 이어진다")]
         [SerializeField] private float practiceRespawnDelay = 1f;
 
@@ -246,8 +253,31 @@ namespace MyDongari.Core
             else if (bot != null) bot.SetActive(true);
 
             player2 = versus ? _versusPlayer2 : bot;
-            if (player1Camera != null) player1Camera.rect = versus ? _player1VersusRect : new Rect(0f, 0f, 1f, 1f);
+            ApplyCameraLayout(versus);
             LinkOpponents();
+        }
+
+        /// <summary>
+        /// 카메라 영역: VERSUS면 P1 왼쪽·P2 오른쪽 반쪽 안의 16:9 (V6.1 레터박스), PRACTICE면 P1 전체.
+        /// 레터박스를 끄면 예전처럼 씬에 저장된 P1 반쪽 영역을 쓴다.
+        /// </summary>
+        private void ApplyCameraLayout(bool versus)
+        {
+            if (player1Camera == null) return;
+            if (!letterboxVersus)
+            {
+                player1Camera.rect = versus ? _player1VersusRect : new Rect(0f, 0f, 1f, 1f);
+                return;
+            }
+            if (_letterbox == null) _letterbox = GetComponent<SplitScreenLetterbox>();
+            if (_letterbox == null) _letterbox = gameObject.AddComponent<SplitScreenLetterbox>();
+            UnityEngine.Camera player2Camera = null;
+            if (_versusPlayer2 != null)
+            {
+                player2Camera = MechIdentity.GetOrAdd(_versusPlayer2).ViewCamera;
+                if (player2Camera == null) player2Camera = _versusPlayer2.GetComponentInChildren<UnityEngine.Camera>(true);
+            }
+            _letterbox.SetLayout(versus, player1Camera, player2Camera, true, versusAspect);
         }
 
         /// <summary>

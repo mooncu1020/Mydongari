@@ -32,7 +32,7 @@ namespace MyDongari.Movement
 
         /// <summary>○ 대시 중 (끝 미끄러짐 제외). 가드 불가·히트 냉각 감소·호버 활주 외형의 기준.</summary>
         public bool IsDashing => _currentState is DashState;
-        /// <summary>대시 끝 단계 중 (V6b: 0.27초 선형 감속, 공중 대시 끝 포함). 공격·대시·점프 불가.</summary>
+        /// <summary>대시 끝 단계 중 (V6b: 0.27초 선형 감속, 공중 대시 끝 포함). 대시 불가, 점프는 내내·공격은 0.05초 뒤부터 (V6.1, 땅만).</summary>
         public bool IsDashStopping => _currentState is DashStopState;
         /// <summary>공중 (점프·낙하·공중 대시). 가드·패리·앵커 클로·공격 불가, 외형 접지 보정 끔. 대공 판정의 "공중"도 이것.</summary>
         public bool IsAirborne => _currentState is AirState ||
@@ -61,7 +61,8 @@ namespace MyDongari.Movement
         }
 
         /// <summary>스러스터 런지를 시작할 수 있는 상태(정지·달리기). 다른 기동 중엔 불가.</summary>
-        public bool CanStartLunge => _currentState is IdleState || _currentState is RunState;
+        public bool CanStartLunge => _currentState is IdleState || _currentState is RunState ||
+                                     (_currentState is DashStopState && DashStopState.AllowsAttack);
 
         /// <summary>
         /// 하드 락온 몸통 자동 회전을 허용하는 상태인지.
@@ -155,7 +156,7 @@ namespace MyDongari.Movement
         }
 
         /// <summary>
-        /// △를 이번 프레임에 눌렀으면 점프 (V5). Idle·Run·대시 지속 단계가 부른다. 부스트 jumpCost(15)를 한 번 쓰고, 탈진·스턴·부족이면 안 나간다.
+        /// △를 이번 프레임에 눌렀으면 점프 (V5). Idle·Run·대시 지속 단계·대시 끝 단계(땅)가 부른다. 부스트 jumpCost(15)를 한 번 쓰고, 탈진·스턴·부족이면 안 나간다.
         /// </summary>
         public bool TryStartJump()
         {

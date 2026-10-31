@@ -140,15 +140,15 @@ namespace MyDongari.Combat
         /// <summary>
         /// 지금 상황으로 공격 버튼 한 번의 동작을 고르고 시작한다. 우선순위 (GAME_SPEC_V3 "공격" 표):
         /// 1 앵커 클로로 끌어온 직후 → 파일 드라이버, 2 내가 공중 → 유도 내려찍기(6단계), 3 상대 공중 + 6m 안 → 대공 어퍼컷(6단계),
-        /// 4 대시 1.5초 미만 → 유도 대시 어택, 5 대시 1.5초 이상 → 차징 태클, 6 상대 6m 안 → 펀치 콤보, 7 그 외 → 스러스터 런지.
+        /// 4 대시 0.8초 미만 → 유도 대시 어택, 5 대시 0.8초 이상 → 차징 태클, 6 상대 6m 안 → 펀치 콤보, 7 그 외 → 스러스터 런지.
         /// 시작했으면 그 종류, 지금 못 하면(쿨다운·발생 중·런지 중·스턴 등) null.
         /// </summary>
         private AttackType? TryStartAttack()
         {
             // 스턴 중엔 어떤 공격도 시작하지 않는다 (펀치·런지는 각자도 막지만 파일드라이버까지 한 곳에서)
             if (_meleeSystem != null && _meleeSystem.IsStunned) return null;
-            // 대시 끝 단계(0.27초)·시작 단계(0.27초) 중엔 공격 불가 (V6b) — 버퍼에 남았다가 가능해지면 나간다
-            if (_stateMachine != null && _stateMachine.IsDashStopping) return null;
+            // 대시 시작 단계(0.27초)와 끝 단계 처음 0.05초는 공격 불가 (V6b·V6.1) — 버퍼에 남았다가 가능해지면 나간다
+            if (_stateMachine != null && _stateMachine.IsDashStopping && !_stateMachine.DashStopState.AllowsAttack) return null;
             if (_stateMachine != null && _stateMachine.IsDashing && _stateMachine.DashState.IsInStartup) return null;
 
             if (_anchorClaw != null && _anchorClaw.IsPileDriverReady)
@@ -160,7 +160,7 @@ namespace MyDongari.Combat
 
             if (_stateMachine != null && _stateMachine.IsDashing)
             {
-                // 4·5) 대시 중 공격 버튼 = 1.5초 미만 유도 대시 어택 / 이상 차징 태클
+                // 4·5) 대시 중 공격 버튼 = 0.8초 미만 유도 대시 어택 / 이상 차징 태클
                 if (!_stateMachine.DashState.RequestTackle()) return null;
                 return _stateMachine.DashState.IsTackleCharged ? AttackType.Tackle : AttackType.DashAttack;
             }

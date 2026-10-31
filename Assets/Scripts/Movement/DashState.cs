@@ -28,8 +28,8 @@ namespace MyDongari.Movement
     /// 일직선 출발한다(가속 없음, 토글). 방향 기준은 하드락 밖이면 몸 정면, 안이면 그 순간 상대 쪽. 속도는 방향별 5점(앞이 빠르고 뒤가 느림).
     /// 시간표: 시작 dashStartupTime(0.27초, 공격·점프 불가) → 지속 최대 dashSustainTime(1.4초, 공격·점프 가능) → 끝(DashStopState, 0.27초 선형 감속).
     /// ○ 재입력은 어느 단계든 그 자리에서 끝 단계로(정지). 부스트 0%·벽 충돌도 끝 단계로, 상대 몸 충돌은 반동(MechController).
-    /// 몸 정면(조준·카메라 기준)은 돌리지 않는다 — 외형 모델만 대시 방향으로 튼다(MechVisualRig). 1.5초 이상 계속이면 태클 차징.
-    /// 대시 중 공격 (V4): 1.5초 미만 = 유도 대시 어택, 1.5초 이상 = 차징 태클(직선). 대시 어택이 끝나면 방향별 경직(dashAttackRecovery).
+    /// 몸 정면(조준·카메라 기준)은 돌리지 않는다 — 외형 모델만 대시 방향으로 튼다(MechVisualRig). 0.8초 이상 계속이면 태클 차징.
+    /// 대시 중 공격 (V4, V6.1 시간): 0.8초 미만 = 유도 대시 어택, 0.8초 이상 = 차징 태클(직선, 1.6초에 최대 위력). 대시 어택이 끝나면 방향별 경직(dashAttackRecovery).
     /// 대시 중엔 가드 불가(MeleeSystem), 부스트 회복 멈춤·초당 소모(BoostGauge).
     /// 공중 대시 (V6c): 점프 상승 중에만 공중 ○ — 같은 시간표, 공중 대시 속도표. 세로 속도는 그대로 두고 상승 중이면 중력 × airDashRisingGravityScale(0.5).
     /// 공중 대시 중 공격은 무시(6단계 전), 끝 단계도 공중에서 미끄러지고(DashStopState) 그 뒤 떨어지며, 착지하면 착지 경직.
@@ -86,17 +86,17 @@ namespace MyDongari.Movement
         public event Action<DashExitReason> OnDashEnded;
         // 차징 상태로 이 거리(m) 안에 상대가 닿으면 자동 태클 (기존 동작 유지)
         private float ContactRadius => Tackle.contactRadius;
-        public bool IsTackleCharged => _tackleChargeTimer >= Tackle.chargeStartTime;
+        public bool IsTackleCharged => _tackleChargeTimer >= Tackle.dashChargeStartTime;
         /// <summary>대시 어택·태클이 발생 중인지 (몸 충돌 대신 공격으로 처리해야 하는지).</summary>
         public bool IsAttacking => _tackleRequested || _attackElapsed >= 0f;
-        /// <summary>차징 시작(1.5초)에서 0, 최대 차징(3초)에서 1. 태클 피해·넉백 배율에 쓴다.</summary>
+        /// <summary>차징 시작(0.8초)에서 0, 최대 차징(1.6초)에서 1. 태클 피해·넉백 배율에 쓴다.</summary>
         public float TackleChargePower
         {
             get
             {
-                float span = Tackle.fullChargeTime - Tackle.chargeStartTime;
+                float span = Tackle.dashFullChargeTime - Tackle.dashChargeStartTime;
                 if (span <= 0f) return IsTackleCharged ? 1f : 0f;
-                return Mathf.Clamp01((_tackleChargeTimer - Tackle.chargeStartTime) / span);
+                return Mathf.Clamp01((_tackleChargeTimer - Tackle.dashChargeStartTime) / span);
             }
         }
 

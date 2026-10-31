@@ -12,14 +12,14 @@ namespace MyDongari.Camera
     /// 몸을 돌리는 건 R스틱(MechStateMachine)과 하드락 몸통 회전(MechController)이 맡는다.
     /// 위치 (V6d): 거리 숫자 대신 화면 구도(템진 기준)로 정한다 — 서 있는 기체가 화면 높이의 screenHeightFraction(45%),
     /// 머리가 headScreenY(세로 가운데), 평지 지평선이 horizonScreenY(위에서 32%), 기체는 가로 가운데.
-    /// 기본 FOV(baseFov, 세로 화각)로 피치·거리·높이를 계산한다. Unity의 FOV는 세로 기준이라 화면 비율(화면 분할 반쪽 포함)이 달라도
+    /// 기본 FOV(baseFieldOfView, 세로 화각)로 피치·거리·높이를 계산한다. Unity의 FOV는 세로 기준이라 화면 비율(화면 분할 반쪽 포함)이 달라도
     /// 세로 구도는 같고, 가로로 보이는 폭만 달라진다. 대시 중 FOV가 넓어져도 카메라 위치는 그대로(기본 FOV 기준).
     /// </summary>
     public class MechCamera : MonoBehaviour
     {
         [SerializeField] private Transform target;
 
-        [Header("화면 구도 (V6d: 템진 기준 — 위치·피치는 이 값과 baseFov로 계산)")]
+        [Header("화면 구도 (V6d: 템진 기준 — 위치·피치는 이 값과 baseFieldOfView로 계산)")]
         [Tooltip("서 있는 기체 키(m, 발바닥 ~ 머리 꼭대기). 버나드 2.6m. 모델 실제 키와 다르면 구도가 그 비율만큼 어긋난다 (debugLog로 렌더러 높이 확인)")]
         [SerializeField] private float mechHeight = 2.6f;
         [Tooltip("서 있는 기체가 차지하는 화면 높이 비율 (0.45 = 45%)")]
@@ -54,7 +54,8 @@ namespace MyDongari.Camera
         [SerializeField] private LayerMask collisionLayers = ~0;
 
         [Header("FOV 설정")]
-        [SerializeField] private float baseFov = 70f;
+        [Tooltip("기본 세로 화각(°). V6.1: 70 → 52 (템진 구도 — 피치 약 10°). 이름을 바꿔 씬에 저장된 예전 값 70을 안 읽는다")]
+        [SerializeField] private float baseFieldOfView = 52f;
         [SerializeField] private float sprintFov = 90f;
         [SerializeField] private float fovLerpSpeed = 5f;
 
@@ -158,7 +159,7 @@ namespace MyDongari.Camera
             _yaw = yaw;
             if (target != null) _followPosition = target.position;
             _currentFollowSpeed = positionFollowSpeed;
-            if (_camera != null) _camera.fieldOfView = baseFov;
+            if (_camera != null) _camera.fieldOfView = baseFieldOfView;
         }
 
         private void Start()
@@ -183,7 +184,7 @@ namespace MyDongari.Camera
             _camera = GetComponent<UnityEngine.Camera>();
             if (_camera != null)
             {
-                _camera.fieldOfView = baseFov;
+                _camera.fieldOfView = baseFieldOfView;
             }
 
             if (debugLog) LogComposition();
@@ -252,7 +253,7 @@ namespace MyDongari.Camera
         /// </summary>
         private void ComputeComposition(out float pitch, out float distance, out float height)
         {
-            float tanHalf = Mathf.Tan(Mathf.Clamp(baseFov, 1f, 170f) * 0.5f * Mathf.Deg2Rad);
+            float tanHalf = Mathf.Tan(Mathf.Clamp(baseFieldOfView, 1f, 170f) * 0.5f * Mathf.Deg2Rad);
             float headNdc = 1f - 2f * headScreenY;
             float feetNdc = headNdc - 2f * screenHeightFraction;
             float horizonNdc = 1f - 2f * horizonScreenY;
@@ -276,7 +277,7 @@ namespace MyDongari.Camera
                 if (r is ParticleSystemRenderer || r is TrailRenderer || r is LineRenderer) continue;
                 measured = Mathf.Max(measured, r.bounds.max.y - (target.position.y + _footOffset));
             }
-            Debug.Log($"[MechCamera] {name} 구도: FOV {baseFov:0.#}° → 피치 {pitch:0.00}° 아래, 뒤 거리 {distance:0.000}m, " +
+            Debug.Log($"[MechCamera] {name} 구도: FOV {baseFieldOfView:0.#}° → 피치 {pitch:0.00}° 아래, 뒤 거리 {distance:0.000}m, " +
                       $"발바닥 위 높이 {height:0.000}m (루트 위 {height + _footOffset:0.000}m), 기체 키 설정 {mechHeight:0.##}m / 렌더러로 잰 키 {measured:0.00}m", this);
         }
 
@@ -287,7 +288,7 @@ namespace MyDongari.Camera
             float speed = _mechController.Rb.linearVelocity.magnitude;
             float maxSpeed = _mechController.DashSpeed;
             float t = maxSpeed > 0.0001f ? Mathf.Clamp01(speed / maxSpeed) : 0f;
-            float targetFov = Mathf.Lerp(baseFov, sprintFov, t);
+            float targetFov = Mathf.Lerp(baseFieldOfView, sprintFov, t);
             _camera.fieldOfView = Mathf.Lerp(_camera.fieldOfView, targetFov, fovLerpSpeed * Time.deltaTime);
         }
     }
