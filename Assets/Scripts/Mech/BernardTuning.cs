@@ -15,14 +15,68 @@ namespace MyDongari.Mech
         /// <summary>Resources 폴더 기준 기본 에셋 이름. 기체에 연결이 안 돼 있으면 이걸 찾는다.</summary>
         public const string ResourcesName = "BernardTuning";
 
+        /// <summary>
+        /// 방향별 값 5점 (V6): 앞(0°) / 앞대각(45°) / 옆(90°) / 뒤대각(135°) / 뒤(180°). 사이 각도는 선형 보간, 좌우 대칭.
+        /// 템진 원본이 방향마다 속도가 다르다 — 앞이 제일 빠르고 뒤 대시는 크게 느리다.
+        /// </summary>
+        [Serializable]
+        public struct DirectionalValues
+        {
+            public float front;
+            public float frontDiagonal;
+            public float side;
+            public float backDiagonal;
+            public float back;
+
+            public DirectionalValues(float front, float frontDiagonal, float side, float backDiagonal, float back)
+            {
+                this.front = front;
+                this.frontDiagonal = frontDiagonal;
+                this.side = side;
+                this.backDiagonal = backDiagonal;
+                this.back = back;
+            }
+
+            /// <summary>기준 정면에서 잰 각도(°, 부호·범위 무관)의 값.</summary>
+            public float Evaluate(float angleDegrees)
+            {
+                float a = Mathf.Abs(Mathf.DeltaAngle(0f, angleDegrees));
+                float segment = a / 45f;
+                int i = Mathf.Clamp(Mathf.FloorToInt(segment), 0, 3);
+                return Mathf.Lerp(Point(i), Point(i + 1), segment - i);
+            }
+
+            /// <summary>L스틱 방향(위 = 앞)의 값. 스틱이 중립이면 앞.</summary>
+            public float Evaluate(Vector2 stick)
+            {
+                if (stick.sqrMagnitude < 0.000001f) return front;
+                return Evaluate(Mathf.Atan2(stick.x, stick.y) * Mathf.Rad2Deg);
+            }
+
+            private float Point(int index)
+            {
+                switch (index)
+                {
+                    case 0: return front;
+                    case 1: return frontDiagonal;
+                    case 2: return side;
+                    case 3: return backDiagonal;
+                    default: return back;
+                }
+            }
+
+            /// <summary>다섯 값 중 가장 큰 값 (FOV 등 "최고 속도" 기준용).</summary>
+            public float Max => Mathf.Max(front, Mathf.Max(frontDiagonal, Mathf.Max(side, Mathf.Max(backDiagonal, back))));
+        }
+
         [Serializable]
         public class MovementValues
         {
-            [Header("속도 (V3: 가속도 없이 스틱 기울기만큼 즉시, m/s)")]
-            [Tooltip("하드락 밖 달리기 최대 속도 (몸 기준 이동)")]
-            public float maxRunSpeed = 20f;
-            [Tooltip("하드락 안 근접 이동 최대 속도 (상대 기준 이동). 하드락이 걸리면 거리로 저절로 바뀐다")]
-            public float closeMoveSpeed = 8f;
+            [Header("걷기 (V6a: 템진 기준, 가속도 없이 즉시)")]
+            [Tooltip("방향별 걷기 최대 속도(m/s): 앞 / 앞대각 45° / 옆 / 뒤대각 135° / 뒤. 사이 각도는 선형 보간. 하드락 안팎 같은 값(안은 상대 기준 방향)")]
+            public DirectionalValues walkSpeed = new DirectionalValues(22.0f, 19.5f, 19.2f, 17.7f, 19.9f);
+            [Tooltip("L스틱 기울기가 이 값 이상이면 그 방향 최대 속도(디지털에 가깝게), 미만이면 정지")]
+            [Range(0f, 1f)] public float walkStickThreshold = 0.3f;
             [Tooltip("넉백을 받은 뒤 이 시간(초) 동안은 달리기·정지가 속도를 덮어쓰지 않는다 (넉백이 지워지지 않게)")]
             public float knockbackMoveHold = 0.35f;
 
@@ -38,13 +92,17 @@ namespace MyDongari.Mech
             public float sideStepDuration = 0.3f;
             public float sideStepSpeed = 20f;
 
-            [Header("○ 대시 (V3.1: 누른 순간 8방향 고정, 토글)")]
-            [Tooltip("대시 속도(m/s). 누른 프레임에 바로 이 속도, 부스트는 Boost.dashDrainRate로 초당 소모")]
-            public float dashSpeed = 30f;
-            [Tooltip("발동 후 이 시간(초) 동안은 ○를 다시 눌러도 취소되지 않는다")]
-            public float dashCancelLockTime = 1f;
-            [Tooltip("대시가 끝난 뒤 미끄러지며 감속해 서는 시간(초). 이 동안 공격·대시 불가, 이동은 가능")]
-            public float dashStopDuration = 0.2f;
+            [Header("○ 대시 (V6b: 템진 기준 시간표 — 시작 → 지속 → 끝)")]
+            [Tooltip("방향별 대시 속도(m/s): 앞 / 앞대각 / 옆 / 뒤대각 / 뒤. 누른 프레임부터 이 속도(가속 없음), 방향은 누른 순간 8방향 고정")]
+            public DirectionalValues dashSpeed = new DirectionalValues(24.1f, 22.7f, 22.3f, 21.3f, 14.2f);
+            [Tooltip("시작 단계(초). 공격·점프 불가, ○ 재입력은 정지(끝 단계로)")]
+            public float dashStartupTime = 0.27f;
+            [Tooltip("지속 단계 최대(초). 공격·점프·○ 재입력(정지) 가능. 다 지나면 끝 단계로")]
+            public float dashSustainTime = 1.4f;
+            [Tooltip("끝 단계(초). 속도를 0까지 선형으로 줄이며 미끄러진다. 이 동안 공격·대시·점프 불가, 끝난 뒤 경직 없음")]
+            public float dashStopDuration = 0.27f;
+            [Tooltip("대시 공격을 쓰고 끝난 뒤 경직(초), 대시 방향별: 앞 / 앞대각 / 옆 / 뒤대각 / 뒤. 차징 태클은 Tackle.recoveryStun")]
+            public DirectionalValues dashAttackRecovery = new DirectionalValues(0.2f, 0.22f, 0.23f, 0.27f, 0.3f);
             [Tooltip("공격 없이 대시로 상대 몸에 부딪혔을 때 둘이 서로 밀려나는 속도(m/s). 피해 없음")]
             public float bumpSpeed = 4f;
             [Tooltip("벽 판정: 닿은 면 법선의 위아래 성분이 이 값 이하(옆면)여야 벽 — 바닥·경사는 무시")]
@@ -52,21 +110,35 @@ namespace MyDongari.Mech
             [Tooltip("벽 판정: 면이 진행 방향을 이만큼 이상 정면으로 막아야(법선·진행 방향 내적 ≤ -값) 대시가 끝남. 비스듬히 스치면 계속")]
             [Range(0f, 1f)] public float dashWallFacingDot = 0.5f;
 
-            [Header("점프 (V5: △, 높고 느린 스러스터 점프)")]
-            [Tooltip("최고 높이(m)")]
-            public float jumpHeight = 5f;
-            [Tooltip("최고 높이까지 올라가는 시간(초). 중력 = 2 × 높이 / 시간², 내려올 때도 같은 중력")]
-            public float jumpRiseTime = 1f;
+            [Header("점프 (V6c: 템진 기준)")]
+            [Tooltip("이륙 준비(초). △를 누른 뒤 이 시간 뒤에 뜬다 (60fps 2프레임 ≈ 0.033초)")]
+            public float jumpTakeoffTime = 0.033f;
+            [Tooltip("이륙 순간 상승 속도(m/s). 최고 높이 = 속도² / (2 × 중력) ≈ 8.4m, 최고점까지 = 속도 / 중력 ≈ 0.73초")]
+            public float jumpRiseSpeed = 23.0f;
+            [Tooltip("공중 중력(m/s²). 오를 때·내려올 때 같은 값")]
+            public float jumpGravity = 31.5f;
+            [Tooltip("하강 속도 상한(m/s). 원본 판독이 3.7인지 7.5인지 미확정 — 둘 다 시험해 볼 것")]
+            public float maxFallSpeed = 7.5f;
             [Tooltip("점프 락온: 뛰는 순간 몸(과 카메라)을 상대 쪽으로 돌리는 시간(초). 거리 무관")]
             public float jumpTurnTime = 0.2f;
-            [Tooltip("공중에서 L스틱으로 움직이는 최대 수평 속도(m/s, 몸 기준)")]
-            public float airMoveSpeed = 8f;
+            [Tooltip("공중에서 L스틱으로 움직이는 방향별 최대 수평 속도(m/s, 몸 기준): 앞 / 앞대각 / 옆 / 뒤대각 / 뒤")]
+            public DirectionalValues airMoveSpeed = new DirectionalValues(11.4f, 13.8f, 14.2f, 13.8f, 11.4f);
             [Tooltip("공중 수평 속도가 스틱 목표 쪽으로 바뀌는 가속도(m/s²). 작을수록 뛰기 전 속도가 오래 남는다")]
             public float airAccel = 15f;
-            [Tooltip("공중 대시 중 중력 배율 (점프 중력 기준). 0이면 수평으로 떠서 간다")]
-            [Range(0f, 1f)] public float airDashGravityScale = 0.2f;
-            [Tooltip("최대 낙하 속도(m/s)")]
-            public float maxFallSpeed = 40f;
+
+            [Header("공중 대시 (V6c: 상승 중에만, 대시와 같은 시간표)")]
+            [Tooltip("방향별 공중 대시 속도(m/s): 앞 / 앞대각 / 옆 / 뒤대각 / 뒤")]
+            public DirectionalValues airDashSpeed = new DirectionalValues(24.8f, 22.7f, 22.7f, 22.7f, 14.2f);
+            [Tooltip("공중 대시 중 상승하는 동안의 중력 배율 (jumpGravity 기준). 내려오기 시작하면 1배")]
+            [Range(0f, 1f)] public float airDashRisingGravityScale = 0.5f;
+
+            [Header("급강하 (V6c: 튜닝 값만 — 입력은 아직 없음)")]
+            [Tooltip("급강하 시작 하강 속도(m/s)")]
+            public float diveStartSpeed = 12.4f;
+            [Tooltip("급강하 가속도(m/s²)")]
+            public float diveAccel = 106f;
+            [Tooltip("급강하 하강 속도 상한(m/s)")]
+            public float diveMaxSpeed = 21.3f;
 
             [Header("착지 (V5)")]
             [Tooltip("점프·공중 대시·공중 피격 뒤 착지 경직(초). 이동·공격·대시·점프·가드 불가")]

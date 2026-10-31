@@ -529,13 +529,13 @@ namespace MyDongari.Visual
             string text = $"[MechVisualRig] {name} 이동: 엉덩이~발바닥 {(_legLengthL + _legLengthR) * 0.5f:0.00}m, 허벅지 {(_thighL + _thighR) * 0.5f:0.00}m, " +
                           $"정강이 {(_shinLenL + _shinLenR) * 0.5f:0.00}m, 최대 보폭 걸음 {walkMax:0.00}m / 디딤걸음 {strideMax:0.00}m" +
                           $"\n  걸음(~{g.strideStartSpeed:0.#}m/s): 보폭 {walkStride:0.00}m, {g.strideStartSpeed:0.#}m/s에서 {g.strideStartSpeed / walkStride:0.0}걸음/초";
-            foreach (float speed in new[] { g.strideStartSpeed, move.closeMoveSpeed, g.leapStartSpeed })
+            foreach (float speed in new[] { g.strideStartSpeed, g.leapStartSpeed })
             {
                 float cadence = Mathf.Clamp(speed / strideMax, 0.5f, g.strideMaxCadence);
                 float stepDistance = speed / cadence;
                 text += $"\n  디딤걸음 {speed:0.#}m/s: {cadence:0.0}걸음/초, 걸음당 {stepDistance:0.00}m 중 미끄러짐 {Mathf.Max(0f, stepDistance - strideMax):0.00}m";
             }
-            text += $"\n  도약({g.leapStartSpeed:0.#}m/s~): {g.leapRate:0.0}회/초, 달리기 {move.maxRunSpeed:0.#}m/s에서 한 번에 {move.maxRunSpeed / g.leapRate:0.0}m" +
+            text += $"\n  도약({g.leapStartSpeed:0.#}m/s~): {g.leapRate:0.0}회/초, 앞 걷기 {move.walkSpeed.front:0.#}m/s에서 한 번에 {move.walkSpeed.front / g.leapRate:0.0}m" +
                     $"\n  전력질주 상태: 호버 활주 (걸음 없음)";
             Debug.Log(text, this);
         }

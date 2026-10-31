@@ -412,7 +412,7 @@ namespace MyDongari.Combat
             {
                 float reach = type == AttackType.Tackle ? opponentTuning.Tackle.hitDistance : opponentTuning.DashAttack.hitDistance;
                 float distance = Vector3.Distance(transform.position, _player.position);
-                hitIn += Mathf.Max(0f, distance - reach) / Mathf.Max(0.1f, opponentTuning.Movement.dashSpeed);
+                hitIn += Mathf.Max(0f, distance - reach) / Mathf.Max(0.1f, opponentTuning.Movement.dashSpeed.front);
             }
             float window = _tuning.Get(this).Parry.window;
             _pendingGuardTime = Time.time + Mathf.Max(reactionTime, hitIn - window * 0.5f);

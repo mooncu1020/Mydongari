@@ -14,9 +14,10 @@ namespace MyDongari.Movement
         public BernardTuning Tuning => _tuning.Get(this);
         private BernardTuning.MovementValues Move => Tuning.Movement;
 
-        public float MaxRunSpeed => Move.maxRunSpeed;
-        public float CloseMoveSpeed => Move.closeMoveSpeed;
-        public float DashSpeed => Move.dashSpeed;
+        /// <summary>앞 걷기 최대 속도 (방향별 값 중 앞).</summary>
+        public float MaxRunSpeed => Move.walkSpeed.front;
+        /// <summary>대시 최고 속도 (방향별 값 중 가장 큰 값). FOV 기준.</summary>
+        public float DashSpeed => Move.dashSpeed.Max;
 
         public Rigidbody Rb { get; private set; }
         public InputReader InputReader { get; private set; }
@@ -103,38 +104,33 @@ namespace MyDongari.Movement
         }
 
         /// <summary>
-        /// 항상 달리기 (V3). 스틱 기울기(데드존 ~ 끝을 0 ~ 1로 다시 맞춤)만큼 즉시 그 속도.
-        /// 하드락 밖: 몸 기준, 최대 maxRunSpeed. 하드락 안: 상대 기준(위 = 상대 쪽), 최대 closeMoveSpeed —
-        /// 20m/s면 6m를 0.3초에 지나쳐 거리 조절이 안 되므로 거리로 저절로 바뀐다.
+        /// 걷기 (V6a, 예전 "달리기"). 스틱 기울기가 walkStickThreshold(0.3) 이상이면 그 방향의 최대 속도, 미만이면 정지 — 디지털에 가깝게.
+        /// 하드락 밖: 몸 기준 방향. 하드락 안: 상대 기준 방향(위 = 상대 쪽), 같은 속도 (V6a에서 근접 8m/s 감속 제거).
+        /// 속도는 스틱 각도(앞 0° ~ 뒤 180°)로 방향별 5점 값을 보간한다.
         /// </summary>
         public void ApplyRunVelocity(Vector2 input)
         {
             SetHorizontalVelocity(ComputeRunVelocity(input));
         }
 
-        /// <summary>달리기가 원하는 수평 속도 (콤보 이동 배율 포함). 대시 끝 미끄러짐이 이 속도 쪽으로 감속한다.</summary>
+        /// <summary>걷기가 원하는 수평 속도 (콤보 이동 배율 포함).</summary>
         public Vector3 ComputeRunVelocity(Vector2 input)
         {
-            if (InputReader != null && input.magnitude < InputReader.MoveDeadzone) return Vector3.zero;
-            float deadzone = InputReader != null ? InputReader.MoveDeadzone : 0f;
-            float tilt = Mathf.InverseLerp(deadzone, 1f, Mathf.Clamp01(input.magnitude));
-            Vector2 stick = input.sqrMagnitude > 0.0001f ? input.normalized : Vector2.zero;
+            if (input.magnitude < Move.walkStickThreshold || input.sqrMagnitude < 0.000001f) return Vector3.zero;
+            Vector2 stick = input.normalized;
 
             Vector3 direction;
-            float maxSpeed;
             if (TryGetHardLockForward(out Vector3 toOpponent))
             {
                 Vector3 right = new Vector3(toOpponent.z, 0f, -toOpponent.x);
                 direction = (toOpponent * stick.y + right * stick.x).normalized;
-                maxSpeed = Move.closeMoveSpeed;
             }
             else
             {
                 direction = BodyRelativeDirection(stick);
-                maxSpeed = Move.maxRunSpeed;
             }
             float speedScale = _melee != null ? _melee.MoveSpeedScale : 1f;
-            return direction * (maxSpeed * tilt * speedScale);
+            return direction * (Move.walkSpeed.Evaluate(stick) * speedScale);
         }
 
         /// <summary>하드락 중이면 상대 쪽 수평 방향(크기 1). 물리 위치로 잰다.</summary>
@@ -352,7 +348,8 @@ namespace MyDongari.Movement
         }
 
         /// <summary>
-        /// 공중 중력 (V5): 알짜 중력이 아래로 gravity(m/s²)가 되게 물리 중력과의 차이를 더한다. 낙하 속도는 maxFallSpeed까지.
+        /// 공중 중력 (V5): 알짜 중력이 아래로 gravity(m/s²)가 되게 물리 중력과의 차이를 더한다. 낙하 속도는 maxFallSpeed(V6c 7.5m/s)까지 —
+        /// 떠오르듯 천천히 내려오는 템진식 하강.
         /// 앵커 클로에 잡혀 끌려가는 중(외부 제어)엔 끌어당기는 쪽에 맡긴다.
         /// </summary>
         public void ApplyAirGravity(float gravity)

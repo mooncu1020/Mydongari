@@ -32,10 +32,12 @@ namespace MyDongari.Movement
 
         /// <summary>○ 대시 중 (끝 미끄러짐 제외). 가드 불가·히트 냉각 감소·호버 활주 외형의 기준.</summary>
         public bool IsDashing => _currentState is DashState;
-        /// <summary>대시 끝 미끄러짐 중 (약 0.2초). 공격·대시 불가, 이동 가능.</summary>
+        /// <summary>대시 끝 단계 중 (V6b: 0.27초 선형 감속, 공중 대시 끝 포함). 공격·대시·점프 불가.</summary>
         public bool IsDashStopping => _currentState is DashStopState;
         /// <summary>공중 (점프·낙하·공중 대시). 가드·패리·앵커 클로·공격 불가, 외형 접지 보정 끔. 대공 판정의 "공중"도 이것.</summary>
-        public bool IsAirborne => _currentState is AirState || (_currentState is DashState && DashState.IsAirborne);
+        public bool IsAirborne => _currentState is AirState ||
+                                  (_currentState is DashState && DashState.IsAirborne) ||
+                                  (_currentState is DashStopState && DashStopState.IsAirborne);
         /// <summary>착지 경직 중. 이동·공격·대시·점프·가드 불가.</summary>
         public bool IsLanding => _currentState is LandingState;
         /// <summary>점프 락온으로 몸을 상대 쪽으로 돌리는 0.2초 (카메라가 몸에 바로 붙는다).</summary>
@@ -78,10 +80,11 @@ namespace MyDongari.Movement
 
         /// <summary>
         /// R스틱 몸 회전을 받는 상태인지 (V3). 하드락 몸통 회전 중(하드락 안에서는 R스틱 꺼짐), 스턴, 외부 제어,
-        /// 대시(카메라·정면 고정)·사이드스텝·런지·넉다운 중엔 받지 않는다. 대시 끝 미끄러짐은 이동이라 받는다.
+        /// 대시(카메라·정면 고정)·사이드스텝·런지·넉다운·공중 중엔 받지 않는다. 땅의 대시 끝 미끄러짐은 받는다.
         /// </summary>
         public bool AllowsTurnInput =>
-            (_currentState is IdleState || _currentState is RunState || _currentState is DashStopState) &&
+            (_currentState is IdleState || _currentState is RunState ||
+             (_currentState is DashStopState && !DashStopState.IsAirborne)) &&
             !IsStunned && !MechController.IsExternallyControlled && !MechController.IsHardLockFacing;
 
         private void Awake()
@@ -143,14 +146,16 @@ namespace MyDongari.Movement
         {
             if (InputReader == null || !InputReader.DashPressedThisFrame) return false;
             if (IsStunned || MechController.BoostGauge.IsExhausted) return false;
-            // 공중에서 누르면 공중 대시 (같은 규칙: 방향 고정, 1초 후 취소, 중력 약하게)
-            DashState.PrepareAirborne(_currentState is AirState);
+            // 공중에서 누르면 공중 대시 (V6c: 점프 상승 중에만. 같은 시간표, 상승 중 중력 절반)
+            bool airborne = _currentState is AirState;
+            if (airborne && !AirState.CanAirDash) return false;
+            DashState.PrepareAirborne(airborne);
             ChangeState(DashState);
             return true;
         }
 
         /// <summary>
-        /// △를 이번 프레임에 눌렀으면 점프 (V5). Idle·Run이 부른다. 부스트 jumpCost(15)를 한 번 쓰고, 탈진·스턴·부족이면 안 나간다.
+        /// △를 이번 프레임에 눌렀으면 점프 (V5). Idle·Run·대시 지속 단계가 부른다. 부스트 jumpCost(15)를 한 번 쓰고, 탈진·스턴·부족이면 안 나간다.
         /// </summary>
         public bool TryStartJump()
         {

@@ -3,25 +3,63 @@ using UnityEngine;
 namespace MyDongari.Movement
 {
     /// <summary>
-    /// 대시 끝 (V3.1 "대시 상세" 끝 단계): 분사가 끊기고 dashStopDuration(약 0.2초) 동안 짧게 미끄러지며 감속하다 일어선다.
-    /// 그동안 공격(WeaponSystem)·대시는 안 나가고, 이동은 된다 — 속도가 스틱이 원하는 달리기 속도 쪽으로
-    /// "대시 속도 / 끝 시간" 감속도로 다가간다(스틱 중립이면 0까지 미끄러져 섬).
+    /// 대시 끝 단계 (V6b, 템진 기준): 분사가 끊기고 dashStopDuration(0.27초) 동안 들어온 속도를 0까지 선형으로 줄이며 미끄러진다.
+    /// 스틱은 받지 않는다(정해진 미끄러짐). 그동안 공격(WeaponSystem)·대시·점프는 안 나가고, 끝난 뒤 경직은 없다.
+    /// 공중 대시의 끝 단계(PrepareAirborne)는 공중에서 같은 감속을 하며 중력을 받고, 끝나면 떨어진다(AirState, 착지 경직 있음).
     /// </summary>
     public class DashStopState : MechState
     {
         private float _timer;
+        // 들어온 순간 수평 속력(m/s). 감속도 = 이 값 / 끝 시간 → 정확히 끝 시간에 0
+        private float _decel;
+        private bool _airborne;
+        private bool _pendingAirborne;
+
+        /// <summary>공중 대시의 끝 단계인지.</summary>
+        public bool IsAirborne => _airborne;
 
         public DashStopState(MechStateMachine stateMachine) : base(stateMachine)
         {
         }
 
+        /// <summary>다음 Enter를 공중 끝 단계로 (DashState가 공중 대시를 끝낼 때).</summary>
+        public void PrepareAirborne(bool airborne)
+        {
+            _pendingAirborne = airborne;
+        }
+
         public override void Enter()
         {
             _timer = 0f;
+            _airborne = _pendingAirborne;
+            _pendingAirborne = false;
+            Vector3 v = StateMachine.MechController.Rb.linearVelocity;
+            float speed = new Vector3(v.x, 0f, v.z).magnitude;
+            _decel = speed / Mathf.Max(0.01f, StateMachine.MechController.Tuning.Movement.dashStopDuration);
         }
 
         public override void Update()
         {
+            MechController controller = StateMachine.MechController;
+            var m = controller.Tuning.Movement;
+
+            if (_airborne)
+            {
+                // 공중 끝 단계: 땅에 닿으면 착지 경직, 스턴(공중 피격은 MechStateMachine이 따로 떨어뜨림)이면 바로 떨어짐
+                if (controller.IsGrounded && controller.Rb.linearVelocity.y <= 0.5f)
+                {
+                    StateMachine.Land(true);
+                    return;
+                }
+                _timer += Time.deltaTime;
+                if (StateMachine.IsStunned || _timer >= m.dashStopDuration)
+                {
+                    StateMachine.AirState.PrepareFallWithLandingLag();
+                    StateMachine.ChangeState(StateMachine.AirState);
+                }
+                return;
+            }
+
             if (StateMachine.IsStunned)
             {
                 StateMachine.ChangeState(StateMachine.IdleState);
@@ -31,7 +69,7 @@ namespace MyDongari.Movement
             if (StateMachine.CheckFall()) return;
 
             _timer += Time.deltaTime;
-            if (_timer >= StateMachine.MechController.Tuning.Movement.dashStopDuration)
+            if (_timer >= m.dashStopDuration)
             {
                 StateMachine.ChangeState(StateMachine.InputReader.IsMoveInputActive
                     ? (MechState)StateMachine.RunState
@@ -42,16 +80,15 @@ namespace MyDongari.Movement
         public override void FixedUpdate()
         {
             MechController controller = StateMachine.MechController;
-            var m = controller.Tuning.Movement;
-            Vector3 target = controller.ComputeRunVelocity(StateMachine.InputReader.MoveInput);
+            if (_airborne) controller.ApplyAirGravity(controller.Tuning.Movement.jumpGravity);
             Vector3 velocity = controller.Rb.linearVelocity;
             Vector3 horizontal = new Vector3(velocity.x, 0f, velocity.z);
-            float decel = m.dashSpeed / Mathf.Max(0.01f, m.dashStopDuration);
-            controller.SetHorizontalVelocity(Vector3.MoveTowards(horizontal, target, decel * Time.fixedDeltaTime));
+            controller.SetHorizontalVelocity(Vector3.MoveTowards(horizontal, Vector3.zero, _decel * Time.fixedDeltaTime));
         }
 
         public override void Exit()
         {
+            _airborne = false;
         }
     }
 }

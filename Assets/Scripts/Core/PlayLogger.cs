@@ -57,7 +57,7 @@ namespace MyDongari.Core
             // 입력 버퍼로(누른 프레임보다 뒤에) 발동한 공격 수. 종류별은 buffered_punch 등으로 따로
             "buffered_attack",
             // ○ 대시(V3.1): 진입 수와 끝난 이유별 수 (나머지 이유는 0이 아닐 때만 추가로 나온다)
-            "dash_enter", "dash_exit_canceled", "dash_exit_exhausted", "dash_exit_bump", "dash_exit_wall",
+            "dash_enter", "dash_exit_canceled", "dash_exit_exhausted", "dash_exit_bump", "dash_exit_wall", "dash_exit_timeout",
             // 점프(V5): 점프 수, 공중 대시 수, 착지 경직 수 (짧게·부스트 0% 길게)
             "jump", "air_dash", "landing_lag", "landing_lag_long"
         };
@@ -419,6 +419,8 @@ namespace MyDongari.Core
                 case DashExitReason.Stun: return "stun";
                 case DashExitReason.Tackle: return "tackle";
                 case DashExitReason.Bump: return "bump";
+                case DashExitReason.Timeout: return "timeout";
+                case DashExitReason.Jump: return "jump";
                 default: return "other";
             }
         }

@@ -7,7 +7,9 @@ namespace MyDongari.Movement
 {
     /// <summary>
     /// 공중 (V5): △ 점프로 뛰었거나, 땅에서 떨어졌거나(발판 끝), 공중 대시가 끝나 떨어지는 중.
-    /// 점프는 최고 높이 jumpHeight(5m)에 jumpRiseTime(1초)에 닿도록 초기 속도와 중력을 정한다 (높고 느린 스러스터 점프).
+    /// 점프 (V6c, 템진 기준): 이륙 준비 jumpTakeoffTime(2프레임) 뒤 상승 속도 jumpRiseSpeed(23m/s), 중력 jumpGravity(31.5m/s²) →
+    /// 최고점 약 8.4m(0.73초). 내려올 땐 maxFallSpeed(7.5m/s)로 상한이 걸려 천천히 내려온다.
+    /// 공중 수평 이동은 방향별 airMoveSpeed(옆이 제일 빠름). 공중 대시는 상승 중에만(CanAirDash).
     /// 뛰는 순간 거리와 상관없이 몸(과 몸을 따라오는 카메라)을 jumpTurnTime(0.2초)에 걸쳐 상대 쪽으로 돌린다(점프 락온).
     /// 공중에선 가드·패리·앵커 클로·공격 불가, 부스트 회복 멈춤. 공중 ○ = 공중 대시(DashState). 착지하면 LandingState.
     /// </summary>
@@ -18,6 +20,8 @@ namespace MyDongari.Movement
         private bool _pendingJump;
         private bool _pendingLandingLag;
         private float _elapsed;
+        // 이륙 준비 남은 시간(초). 0보다 크면 아직 안 떴다
+        private float _takeoffTimer;
         // 착지 경직을 받아야 하는지: 점프·공중 대시·공중 피격이면 true, 그냥 떨어진 거면 false
         private bool _needsLandingLag;
         // 점프 락온 회전
@@ -34,12 +38,11 @@ namespace MyDongari.Movement
         /// <summary>착지하면 경직을 받는지.</summary>
         public bool NeedsLandingLag => _needsLandingLag;
 
-        /// <summary>점프 중력 (m/s²). 높이 h를 시간 t에 오르려면 g = 2h / t².</summary>
-        public static float JumpGravity(BernardTuning.MovementValues m)
-        {
-            float t = Mathf.Max(0.05f, m.jumpRiseTime);
-            return 2f * m.jumpHeight / (t * t);
-        }
+        /// <summary>이륙 준비 중(아직 안 뜸).</summary>
+        public bool IsTakingOff => _takeoffTimer > 0f;
+
+        /// <summary>공중 대시를 할 수 있는지 (V6c: 뜬 뒤 상승 중에만).</summary>
+        public bool CanAirDash => !IsTakingOff && StateMachine.MechController.Rb.linearVelocity.y > 0f;
 
         public AirState(MechStateMachine stateMachine) : base(stateMachine)
         {
@@ -71,17 +74,25 @@ namespace MyDongari.Movement
             _needsLandingLag = _pendingJump || _pendingLandingLag;
             _pendingLandingLag = false;
 
+            _takeoffTimer = 0f;
             if (_pendingJump)
             {
                 _pendingJump = false;
-                // 높이 h, 오르는 시간 t: 초기 속도 v = 2h / t
-                float t = Mathf.Max(0.05f, Move.jumpRiseTime);
-                float vy = 2f * Move.jumpHeight / t;
-                Vector3 v = controller.Rb.linearVelocity;
-                controller.Rb.linearVelocity = new Vector3(v.x, vy, v.z);
+                // 이륙 준비 2프레임: 그 자리 속도 그대로 웅크렸다가 뜬다 (준비가 0이면 바로)
+                _takeoffTimer = Move.jumpTakeoffTime;
                 BeginJumpTurn(controller);
                 OnJumped?.Invoke();
+                if (_takeoffTimer <= 0f) Launch(controller);
             }
+        }
+
+        /// <summary>이륙: 세로 속도를 jumpRiseSpeed로. 착지 판정 유예(jumpGroundIgnoreTime)는 여기서부터 잰다.</summary>
+        private void Launch(MechController controller)
+        {
+            _takeoffTimer = 0f;
+            _elapsed = 0f;
+            Vector3 v = controller.Rb.linearVelocity;
+            controller.Rb.linearVelocity = new Vector3(v.x, Move.jumpRiseSpeed, v.z);
         }
 
         /// <summary>점프 락온: 거리와 상관없이 상대 쪽 수평 방향으로 jumpTurnTime에 걸쳐 돈다.</summary>
@@ -101,9 +112,11 @@ namespace MyDongari.Movement
 
         public override void Update()
         {
+            // 이륙 준비 중엔 아직 땅이다 — 대시·착지 판정 없음 (뜨는 건 물리 스텝에서)
+            if (IsTakingOff) return;
             _elapsed += Time.deltaTime;
 
-            // 공중 ○ = 공중 대시 (스턴·탈진이면 안 나감)
+            // 공중 ○ = 공중 대시 (상승 중에만, 스턴·탈진이면 안 나감 — MechStateMachine.TryStartDash)
             if (StateMachine.TryStartDash()) return;
 
             if (CanLand()) StateMachine.Land(_needsLandingLag);
@@ -128,14 +141,21 @@ namespace MyDongari.Movement
                 if (t >= 1f) _turning = false;
             }
 
-            controller.ApplyAirGravity(JumpGravity(Move));
+            if (IsTakingOff)
+            {
+                _takeoffTimer -= Time.fixedDeltaTime;
+                if (_takeoffTimer <= 0f) Launch(controller);
+                return;
+            }
 
-            // 공중 이동: 스틱 쪽 airMoveSpeed로 airAccel만큼씩 다가간다 (달리던 속도는 서서히 줄어든다 — 높고 느린 점프)
+            controller.ApplyAirGravity(Move.jumpGravity);
+
+            // 공중 이동: 스틱 쪽 방향별 airMoveSpeed로 airAccel만큼씩 다가간다 (뛰기 전 속도는 서서히 줄어든다)
             InputReader input = StateMachine.InputReader;
             Vector3 velocity = controller.Rb.linearVelocity;
             Vector3 horizontal = new Vector3(velocity.x, 0f, velocity.z);
             Vector3 target = input != null && input.IsMoveInputActive
-                ? controller.BodyRelativeDirection(input.MoveInput) * Move.airMoveSpeed
+                ? controller.BodyRelativeDirection(input.MoveInput) * Move.airMoveSpeed.Evaluate(input.MoveInput)
                 : Vector3.zero;
             controller.SetHorizontalVelocity(Vector3.MoveTowards(horizontal, target, Move.airAccel * Time.fixedDeltaTime));
         }
@@ -143,6 +163,7 @@ namespace MyDongari.Movement
         public override void Exit()
         {
             _turning = false;
+            _takeoffTimer = 0f;
         }
     }
 }

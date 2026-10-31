@@ -4,8 +4,8 @@ using MyDongari.Input;
 namespace MyDongari.Movement
 {
     /// <summary>
-    /// 항상 달리기 (V3). L스틱을 기울인 만큼 즉시 그 속도 — 하드락 밖은 몸 기준 최대 20m/s,
-    /// 하드락 안은 상대 기준 근접 이동 최대 8m/s (거리로 저절로 바뀐다, MechController.ApplyRunVelocity).
+    /// 걷기 (V6a, 템진 기준 — 이름은 예전 "달리기" 그대로). L스틱 0.3 이상이면 그 방향 최대 속도(앞 22 ~ 뒤대각 17.7m/s) 즉시.
+    /// 하드락 밖은 몸 기준, 안은 상대 기준 방향이고 속도는 같다 (MechController.ApplyRunVelocity).
     /// </summary>
     public class RunState : MechState
     {
