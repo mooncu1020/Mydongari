@@ -57,10 +57,13 @@ namespace MyDongari.Movement.V8
         protected bool IsStunned => StateMachine.IsStunned;
         protected bool BoostExhausted => StateMachine.MechController.BoostGauge != null && StateMachine.MechController.BoostGauge.IsExhausted;
 
-        /// <summary>대시 조건 (사양서 4장): 방향 잠금 + ○ 유지 + 급강하 입력 아님 + 게이지 허가 + 스턴·탈진 아님.</summary>
+        /// <summary>
+        /// 대시 조건 (사양서 4장): 방향 잠금 + ○ 유지 + 게이지 허가 + 스턴·탈진 아님.
+        /// V8.1: 근접 구역 중립 ○를 기다리다 앞 대시로 잠근 틱은 ○를 이미 뗐어도 나간다(누른 입력이므로).
+        /// </summary>
         protected bool DashCondition()
         {
-            return Motor.LockedDirection >= 0 && Motor.TurboHeld && !Motor.DiveNew && Motor.DashAllowed && !IsStunned && !BoostExhausted;
+            return Motor.LockedDirection >= 0 && (Motor.TurboHeld || !Motor.LockedAfterPress) && Motor.DashAllowed && !IsStunned && !BoostExhausted;
         }
 
         /// <summary>점프 조건: △ 새 입력 + 스턴 아님 + 부스트(jumpCost) — 예전 규칙대로 부스트를 쓴다.</summary>
@@ -70,15 +73,17 @@ namespace MyDongari.Movement.V8
             return StateMachine.TryStartJumpV8();
         }
 
-        /// <summary>걷기·점프 수평: 속력 곡선(레버 각) × 레버 벡터 크기, 방향 = 레버 벡터를 몸 정면으로 돌린 것 (기체 기준).</summary>
+        /// <summary>
+        /// 걷기·점프 수평 (V8.1): 스틱 0.3 이상이면 즉시 그 방향의 최대 속도(곡선) × 입력 축소(상대 8.3~11.8m에서 0.7~1),
+        /// 방향 = 스틱 방향을 몸 정면으로 돌린 것(기체 기준). 23.6m 안 × 0.78은 이동 적분이 모든 이동에 곱한다.
+        /// </summary>
         protected void SetLeverMove(BernardTuning.DirectionalValues curve)
         {
-            Vector2 lever = Motor.Lever.Vector;
-            if (lever.sqrMagnitude < 0.000001f) return;
-            float magnitude = V.scaleByLeverMagnitude ? lever.magnitude : 1f;
-            float speed = curve.Evaluate(Motor.Lever.Angle) * magnitude;
+            Vector2 stick = Motor.Lever.Stick;
+            if (stick.sqrMagnitude < 0.000001f) return;
+            float speed = curve.Evaluate(Motor.Lever.Angle) * Motor.Lever.DistanceScale;
             float combo = StateMachine.MechController.MeleeSystem != null ? StateMachine.MechController.MeleeSystem.MoveSpeedScale : 1f;
-            Vector3 dir = Quaternion.Euler(0f, Motor.Yaw, 0f) * new Vector3(lever.x, 0f, lever.y);
+            Vector3 dir = Quaternion.Euler(0f, Motor.Yaw, 0f) * new Vector3(stick.x, 0f, stick.y);
             Motor.MoveDirection = dir.normalized;
             Motor.HorizontalSpeed = speed * combo;
         }
@@ -141,7 +146,7 @@ namespace MyDongari.Movement.V8
 
             if (TryJump()) return;
             // 걷기에서는 잠금만 보면 된다 (잠금이 ○ 입력 때만 일어남). 지속 단계부터 — 뒤 계열은 시작 모션부터
-            if (Motor.LockedDirection >= 0 && Motor.DashAllowed && !BoostExhausted && !Motor.DiveNew)
+            if (Motor.LockedDirection >= 0 && Motor.DashAllowed && !BoostExhausted)
             {
                 StateMachine.V8GroundDash(Motor.LockedDirection, true);
                 return;
@@ -280,7 +285,7 @@ namespace MyDongari.Movement.V8
     }
 
     /// <summary>
-    /// 급강하 (사양서 4.8): 점프 상승 중 급강하 입력(임시: 공중 L스틱 아래 + ○) 또는 천장. vy = −1.75u/f,
+    /// 급강하 (사양서 4.8): 점프 중 급강하 입력(V8.1: △ 다시 누르기 — 상승·하강 모두) 또는 천장. vy = −1.75u/f,
     /// 보조가 vy > −2.751이면 −0.25씩 + y += vy, 본 처리가 한 번 더 y += vy(2중). 수평 속력 0, 수동 선회만.
     /// </summary>
     public class VoDiveState : VoState

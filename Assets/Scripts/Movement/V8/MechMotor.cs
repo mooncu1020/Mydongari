@@ -106,15 +106,16 @@ namespace MyDongari.Movement.V8
         public int TurboFrames { get; private set; } = 9999;
         /// <summary>이번 틱에 잠긴 대시 방향(8방향 코드, -1 = 없음).</summary>
         public int LockedDirection { get; private set; } = -1;
+        /// <summary>스틱 중립으로 ○를 누른 뒤 남은 대기 틱 (근접 구역 서기: 스틱이 오면 근접 스텝, 안 오면 앞 대시).</summary>
+        private int _neutralDashWait = -1;
         /// <summary>잠금이 ○를 누른 틱보다 나중(스틱이 나중에 들어옴)인지 — 근접 스텝 조건.</summary>
         public bool LockedAfterPress { get; private set; }
         public bool JumpNew { get; private set; }
         public bool JumpHeld { get; private set; }
         /// <summary>△를 누른 채 지난 틱.</summary>
         public int JumpHeldFrames { get; private set; }
-        /// <summary>급강하 입력(공중 L스틱 아래 + ○) 새 입력.</summary>
+        /// <summary>급강하 입력(V8.1: 공중에서 △ 다시 누르기) 새 입력.</summary>
         public bool DiveNew { get; private set; }
-        public int DiveFrames { get; private set; } = 9999;
         /// <summary>수동 선회 계수 (−1 ~ 1, 부호 유지 제곱). 오른쪽 +.</summary>
         public float TurnCoefficient { get; private set; }
         /// <summary>마우스로 모은 선회(°, 키보드·마우스 예비 조작).</summary>
@@ -280,7 +281,7 @@ namespace MyDongari.Movement.V8
             AutoTurn = AutoTurnMode.Default;
             IsGrounded = true;
             TurboFrames = 9999;
-            DiveFrames = 9999;
+            _neutralDashWait = -1;
             if (Input != null)
             {
                 _lastDashCount = Input.DashPressCount;
@@ -469,10 +470,10 @@ namespace MyDongari.Movement.V8
 
             Vector2 stick = Input.MoveInput;
             bool airborne = StateMachine.CurrentState is VoState s && s.IsAirState;
-            DiveNew = airborne && TurboNew && stick.y <= v.diveStickY;
-            DiveFrames = DiveNew ? 0 : Mathf.Min(DiveFrames + 1, 9999);
+            // 급강하 = 공중에서 △ 다시 누르기 (V8.1)
+            DiveNew = airborne && JumpNew;
 
-            // 레버: 근접 구역 표, 상대 거리 보정 (8.3m 안 × 0.7, 11.8m까지 선형으로 1)
+            // 입력 축소: 상대 8.3m 안 × 0.7, 11.8m까지 선형으로 1 (걷기·점프 속력 배율)
             float distanceScale = 1f;
             if (HasOpponent)
             {
@@ -480,7 +481,7 @@ namespace MyDongari.Movement.V8
                     ? v.leverNearScale
                     : Mathf.Lerp(v.leverNearScale, 1f, Mathf.InverseLerp(v.leverNearDistance, v.leverFarDistance, OpponentDistanceU));
             }
-            Lever.Tick(stick, InCloseZone, v, distanceScale);
+            Lever.Tick(stick, v, distanceScale);
 
             // R스틱 좌우 = 수동 선회 (사양서의 레버 차동 대신). |s| ≤ 0.05 무시, 부호 유지 제곱
             float x = Input.IsLookFromGamepad ? Mathf.Clamp(Input.LookInput.x, -1f, 1f) : 0f;
@@ -488,21 +489,46 @@ namespace MyDongari.Movement.V8
             MouseTurnDegrees = _pendingMouseTurn;
             _pendingMouseTurn = 0f;
 
-            // 대시 방향 잠금 (사양서 2.1): ① ○를 새로 누른 틱에 스틱 방향(서기·걷기·지상 대시·점프·근접 스텝)
+            // 대시 방향 잠금 (사양서 2.1 + V8.1): ① ○를 새로 누른 틱에 스틱 방향(서기·걷기·지상 대시·점프·근접 스텝).
+            // 스틱 중립이면 앞(0) — 단 근접 구역 서기에서는 15f 동안 스틱을 기다린다(근접 스텝 규칙 유지).
             // ② 서기·걷기에서 ○를 누른 뒤 15f 안(누르고 있는 중)에 스틱이 들어옴 → "나중에 잠김"(근접 스텝 조건)
             LockedDirection = -1;
             LockedAfterPress = false;
-            if (DiveNew) return;
             VoState current = StateMachine.CurrentState as VoState;
-            if (current == null) return;
-            if (TurboNew && current.LocksOnTurboPress && Lever.Direction >= 0)
+            if (current == null)
             {
-                LockedDirection = Lever.Direction;
+                _neutralDashWait = -1;
+                return;
+            }
+            bool closeStand = current is VoStandState && InCloseZone;
+            if (TurboNew && current.LocksOnTurboPress)
+            {
+                if (Lever.Direction >= 0)
+                {
+                    LockedDirection = Lever.Direction;
+                    _neutralDashWait = -1;
+                }
+                else if (closeStand)
+                {
+                    _neutralDashWait = v.neutralDashWaitFrames;
+                }
+                else
+                {
+                    LockedDirection = 0;
+                    _neutralDashWait = -1;
+                }
             }
             else if (!TurboNew && TurboHeld && TurboFrames <= v.dashLockWindow && current.LocksWithinWindow && Lever.Direction >= 0)
             {
                 LockedDirection = Lever.Direction;
                 LockedAfterPress = true;
+                _neutralDashWait = -1;
+            }
+            else if (_neutralDashWait >= 0)
+            {
+                // 근접 구역 중립 ○: 기다리는 동안 스틱이 안 오면 앞 대시. 서기가 아니게 됐으면(점프 등) 취소
+                if (!(current is VoStandState)) _neutralDashWait = -1;
+                else if (--_neutralDashWait < 0) LockedDirection = 0;
             }
         }
 

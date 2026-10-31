@@ -39,8 +39,6 @@ namespace MyDongari.Mech
             public DirectionalValues closeStepStartSpeed = new DirectionalValues(1.5f, 2.85f, 4.2f, 2.85f, 1.5f);
             [Tooltip("근접 스텝 끝 속력. 사양서는 앞 2.9·옆 2.2만 있다 — 대각은 사이 값, 뒤는 앞과 같게 둠")]
             public DirectionalValues closeStepEndSpeed = new DirectionalValues(2.9f, 2.55f, 2.2f, 2.55f, 2.9f);
-            [Tooltip("걷기·점프 속력에 레버 이동 벡터 크기(0.8 ~ 1.2)를 곱한다 (사양서 4.2, 확신도 중간)")]
-            public bool scaleByLeverMagnitude = true;
 
             [Header("거리 (u)")]
             [Tooltip("상대가 이 거리 안이면 모든 이동 수평 속력 × closeSlowScale (사양서 200u = 23.6m)")]
@@ -48,22 +46,17 @@ namespace MyDongari.Mech
             public float closeSlowScale = 0.78f;
             [Tooltip("근접 구역 경계 (사양서 70u = 8.3m). 레버 표·선회율·근접 스텝이 바뀐다")]
             public float closeZoneDistance = 70f;
-            [Tooltip("레버 이동 벡터 거리 보정: 이 거리 안은 × leverNearScale")]
+            [Tooltip("입력 축소: 이 거리 안은 걷기·점프 속력 × leverNearScale (사양서의 레버 이동 벡터 거리 보정)")]
             public float leverNearDistance = 70f;
             [Tooltip("레버 이동 벡터 거리 보정: 이 거리부터 1.0 (사이는 선형)")]
             public float leverFarDistance = 100f;
             public float leverNearScale = 0.7f;
 
-            [Header("레버 누적값 (방향 0 앞, 1 앞좌, 2 좌, 3 뒤좌, 4 뒤, 5 뒤우, 6 우, 7 앞우)")]
-            [Tooltip("L스틱이 이 기울기 이상이면 그 8방향으로 레버를 민 것으로 본다")]
+            [Header("L스틱")]
+            [Tooltip("L스틱이 이 기울기 이상이면 그 방향으로 민 것 — 걷기·점프는 즉시 방향별 최대 속도 (V8.1)")]
             [Range(0f, 1f)] public float stickThreshold = 0.3f;
-            public int[] riseFar = { 100, 98, 98, 48, 64, 48, 98, 98 };
-            public int[] riseNear = { 100, 96, 40, 36, 26, 36, 40, 96 };
-            public int[] decay = { 90, 90, 200, 90, 90, 90, 200, 90 };
-            public int[] oppositeDecayFar = { 96, 104, 128, 104, 96, 104, 128, 104 };
-            public int[] oppositeDecayNear = { 88, 88, 78, 48, 88, 48, 78, 88 };
-            public int thresholdFar = 64;
-            public int thresholdNear = 48;
+            [Tooltip("근접 구역 서기에서 스틱 중립으로 ○를 누르면 이 프레임 동안 스틱을 기다린다 — 들어오면 근접 스텝, 안 들어오면 앞 대시 (0.25초)")]
+            public int neutralDashWaitFrames = 15;
 
             [Header("선회 (각 단위/f, 65536 = 360°)")]
             [Tooltip("R스틱 좌우 |값| 이 이하면 선회 0. 넘으면 부호 유지 제곱이 선회 계수")]
@@ -146,14 +139,6 @@ namespace MyDongari.Mech
             public bool fallDoubleIntegrate = true;
             [Tooltip("발판에서 떨어질 때 시작 vy")]
             public float ledgeFallVy = -0.5f;
-            [Tooltip("하강 중 △를 누른 지 이 프레임 ~ hoverEndFrame 사이: vy += (경과 − 시작) × hoverGain, 상한 hoverMaxVy")]
-            public int hoverStartFrame = 7;
-            public int hoverEndFrame = 14;
-            public float hoverGain = 0.1f;
-            public float hoverMaxVy = -0.01f;
-            [Tooltip("하강 중 급강하 입력 후 이 프레임 안: vy −= (경과 + 1) × gatherFallGain")]
-            public int gatherFallFrames = 15;
-            public float gatherFallGain = 0.2f;
 
             [Header("공중 대시")]
             [Tooltip("상승 중(vy > 0) 중력 배율")]
@@ -161,9 +146,7 @@ namespace MyDongari.Mech
             [Tooltip("게이지가 차서 끝나면 이 vy로 점프 하강")]
             public float airDashEndVy = -0.001f;
 
-            [Header("급강하 (u/f)")]
-            [Tooltip("공중에서 L스틱을 이 값 이하로(아래로) 당기고 ○ = 급강하 입력 (임시)")]
-            [Range(-1f, 0f)] public float diveStickY = -0.7f;
+            [Header("급강하 (u/f) — 입력: 점프 중 △ 다시 누르기 (V8.1)")]
             public float diveStartVy = -1.75f;
             public float diveAccel = 0.25f;
             [Tooltip("vy가 이 값보다 크면(덜 빠르면) 매 틱 diveAccel만큼 더 빨라진다")]
