@@ -1,7 +1,12 @@
 using UnityEngine;
+using MyDongari.Input;
 
 namespace MyDongari.Movement
 {
+    /// <summary>
+    /// 걷기 (V6a, 템진 기준 — 이름은 예전 "달리기" 그대로). L스틱 0.3 이상이면 그 방향 최대 속도(앞 22 ~ 뒤대각 17.7m/s) 즉시.
+    /// 하드락 밖은 몸 기준, 안은 상대 기준 방향이고 속도는 같다 (MechController.ApplyRunVelocity).
+    /// </summary>
     public class RunState : MechState
     {
         public RunState(MechStateMachine stateMachine) : base(stateMachine)
@@ -20,61 +25,27 @@ namespace MyDongari.Movement
                 return;
             }
 
-            if (StateMachine.MechController.BoostGauge.IsOverheated)
-            {
-                StateMachine.ChangeState(StateMachine.WalkState);
-                return;
-            }
+            if (StateMachine.CheckFall()) return;
+            if (StateMachine.TryStartJump()) return;
+            if (StateMachine.TryStartDash()) return;
 
-            if (StateMachine.InputReader.QuickTurnInput)
-            {
-                StateMachine.ChangeState(StateMachine.QuickTurnState);
-                return;
-            }
-
-            if (StateMachine.InputReader.SideStepDirection != 0)
+            InputReader input = StateMachine.InputReader;
+            if (input.SideStepDirection != 0 && !StateMachine.MechController.BoostGauge.IsExhausted)
             {
                 StateMachine.ChangeState(StateMachine.SideStepState);
                 return;
             }
 
-            if (StateMachine.InputReader.MoveInput.sqrMagnitude < 0.64f)
+            if (!input.IsMoveInputActive)
             {
                 StateMachine.ChangeState(StateMachine.IdleState);
                 return;
-            }
-
-            if (!StateMachine.InputReader.RunInput)
-            {
-                StateMachine.ChangeState(StateMachine.WalkState);
-                return;
-            }
-
-            if (StateMachine.InputReader.SprintInput)
-            {
-                StateMachine.ChangeState(StateMachine.SprintState);
             }
         }
 
         public override void FixedUpdate()
         {
-            Vector2 input = StateMachine.InputReader.MoveInput;
-            Vector3 camForward = StateMachine.MechController.CameraTransform.forward;
-            Vector3 camRight = StateMachine.MechController.CameraTransform.right;
-
-            camForward.y = 0f;
-            camRight.y = 0f;
-            camForward.Normalize();
-            camRight.Normalize();
-
-            Vector3 moveDir = (camForward * input.y + camRight * input.x).normalized;
-
-            StateMachine.MechController.ApplyMoveForce(
-                moveDir,
-                StateMachine.MechController.RunSpeed,
-                StateMachine.MechController.MaxRunSpeed);
-
-            StateMachine.MechController.RotateToCamera();
+            StateMachine.MechController.ApplyRunVelocity(StateMachine.InputReader.MoveInput);
         }
 
         public override void Exit()

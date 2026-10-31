@@ -2,6 +2,10 @@ using UnityEngine;
 
 namespace MyDongari.Movement
 {
+    /// <summary>
+    /// 정지 (V3). L스틱이 중립이면 그 자리에 바로 선다 — 가속도 시스템이 없으니 감속 미끄러짐도 없다.
+    /// 넉백·스턴·외부 제어 중엔 속도를 건드리지 않는다(MechController.StopHorizontal이 거른다).
+    /// </summary>
     public class IdleState : MechState
     {
         public IdleState(MechStateMachine stateMachine) : base(stateMachine)
@@ -14,29 +18,29 @@ namespace MyDongari.Movement
 
         public override void Update()
         {
-            if (StateMachine.InputReader.QuickTurnInput)
-            {
-                StateMachine.ChangeState(StateMachine.QuickTurnState);
-                return;
-            }
+            if (StateMachine.IsStunned) return;
 
-            if (StateMachine.InputReader.SideStepDirection != 0)
+            if (StateMachine.CheckFall()) return;
+            if (StateMachine.TryStartJump()) return;
+            if (StateMachine.TryStartDash()) return;
+
+            if (StateMachine.InputReader.SideStepDirection != 0 &&
+                !StateMachine.MechController.BoostGauge.IsExhausted)
             {
                 StateMachine.ChangeState(StateMachine.SideStepState);
                 return;
             }
 
-            if (StateMachine.InputReader.MoveInput.sqrMagnitude >= 0.64f)
+            if (StateMachine.InputReader.IsMoveInputActive)
             {
-                StateMachine.ChangeState(StateMachine.WalkState);
+                StateMachine.ChangeState(StateMachine.RunState);
             }
         }
 
         public override void FixedUpdate()
         {
-            StateMachine.MechController.RotateToCamera();
+            StateMachine.MechController.StopHorizontal();
         }
-
 
         public override void Exit()
         {

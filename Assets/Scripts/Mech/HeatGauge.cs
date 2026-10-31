@@ -5,14 +5,15 @@ namespace MyDongari.Mech
 {
     public class HeatGauge : MonoBehaviour
     {
-        [Header("히트 설정")]
-        [SerializeField] private float maxHeat = 100f;
-        [SerializeField] private float coolingRate = 20f;
-        [SerializeField] private float sprintCoolingPenalty = 0.2f;
+        private TuningRef _tuning;
+        private BernardTuning.HeatValues T => _tuning.Get(this).Heat;
 
         public float CurrentHeat { get; private set; }
+        public float MaxHeat => T.maxHeat;
+
+        // 상태 머신이 없는 기체(연습 봇)는 질주하지 않으므로 항상 평소 냉각
+        private bool IsDashing => _stateMachine != null && _stateMachine.IsDashing;
         public bool IsOverheated { get; private set; }
-        public bool IsSkillActive { get; set; }
 
         private MechStateMachine _stateMachine;
 
@@ -24,22 +25,18 @@ namespace MyDongari.Mech
 
         private void Update()
         {
-            if (_stateMachine == null) return;
-
             HandleCooling();
             CheckOverheat();
         }
 
         private void HandleCooling()
         {
-            if (IsSkillActive) return;
-
             if (IsOverheated)
             {
-                float currentCoolingRate = coolingRate;
-                if (_stateMachine.IsSprinting)
+                float currentCoolingRate = T.coolingRate;
+                if (IsDashing)
                 {
-                    currentCoolingRate *= (1f - sprintCoolingPenalty);
+                    currentCoolingRate *= (1f - T.sprintCoolingReduction);
                 }
                 CurrentHeat = Mathf.Max(CurrentHeat - currentCoolingRate * Time.deltaTime, 0f);
                 if (CurrentHeat <= 0f)
@@ -49,12 +46,12 @@ namespace MyDongari.Mech
                 return;
             }
 
-            if (CurrentHeat >= maxHeat) return;
+            if (CurrentHeat >= T.maxHeat) return;
 
-            float normalCoolingRate = coolingRate;
-            if (_stateMachine.IsSprinting)
+            float normalCoolingRate = T.coolingRate;
+            if (IsDashing)
             {
-                normalCoolingRate *= (1f - sprintCoolingPenalty);
+                normalCoolingRate *= (1f - T.sprintCoolingReduction);
             }
 
             CurrentHeat = Mathf.Max(CurrentHeat - normalCoolingRate * Time.deltaTime, 0f);
@@ -62,19 +59,39 @@ namespace MyDongari.Mech
 
         private void CheckOverheat()
         {
-            if (CurrentHeat >= maxHeat)
+            if (CurrentHeat >= T.maxHeat)
             {
-                CurrentHeat = maxHeat;
+                CurrentHeat = T.maxHeat;
                 IsOverheated = true;
             }
         }
 
         public void AddHeat(float amount)
         {
-            CurrentHeat = Mathf.Min(CurrentHeat + amount, maxHeat);
+            CurrentHeat = Mathf.Min(CurrentHeat + amount, T.maxHeat);
         }
 
 
         public bool CanFire() => !IsOverheated;
+
+        /// <summary>라운드 시작: 히트 0, 과열 해제.</summary>
+        public void ResetForRound()
+        {
+            CurrentHeat = 0f;
+            IsOverheated = false;
+        }
+
+        /// <summary>
+        /// 연습용: 히트를 최대치의 ratio(0~1)로 바로 맞춘다. 100%면 과열 상태(펀치 불가·가드하면 깨짐),
+        /// 그 밖의 값이면 과열 해제 — 90%에서 몇 번 막으면 과열되는 상황을 바로 만들 수 있다.
+        /// </summary>
+        public void SetHeatRatio(float ratio)
+        {
+            CurrentHeat = Mathf.Clamp01(ratio) * T.maxHeat;
+            IsOverheated = CurrentHeat >= T.maxHeat;
+        }
+
+        /// <summary>과열(100%) 중엔 펀치 불가. 해제는 0%까지 식었을 때.</summary>
+        public bool CanPunch() => !IsOverheated;
     }
 }
