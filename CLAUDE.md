@@ -42,6 +42,7 @@
 
 - `.unity`, `.prefab`, `.asset` 같은 직렬화 YAML 파일을 손으로 편집하지 않는다. 씬/프리팹 배선이 필요하면 (1) 런타임에 스스로 찾아 연결되게 코드로 만들거나, (2) `docs/SETUP.md`에 사용자가 에디터에서 할 단계를 정확히 적는다. 필요하면 `Assets/Editor/` 아래에 메뉴 한 번으로 세팅해 주는 에디터 스크립트를 만들어도 된다.
 - `Library/`, `Temp/`, `Logs/`, `UserSettings/`는 건드리지 않는다.
+- 빌드 뒤 `ProjectSettings/ProjectSettings.asset`에 `preloadedAssets`가 비어 있는(`[]`) 차이만 생기면 Input System 빌드 부수 효과이니 커밋하지 말고 `git checkout -- ProjectSettings/ProjectSettings.asset`으로 되돌린다 (커밋된 2개 항목이 정답).
 - `.inputactions`는 JSON이라 편집해도 되지만, 기존 바인딩을 지우지 말고 추가만 한다. 편집 후 JSON이 유효한지 확인한다.
 - 스토리·세계관 설정은 이 작업 범위가 아니다.
 
