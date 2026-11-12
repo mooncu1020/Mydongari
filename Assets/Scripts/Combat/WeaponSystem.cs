@@ -186,6 +186,7 @@ namespace MyDongari.Combat
                 if (_thrusterLunge.IsOnCooldown)
                 {
                     _discardAttackInput = true;
+                    _thrusterLunge.NotifyCooldownDenied();
                     return null;
                 }
                 return _thrusterLunge.TryLunge() ? AttackType.Lunge : (AttackType?)null;

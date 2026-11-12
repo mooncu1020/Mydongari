@@ -28,6 +28,8 @@ namespace MyDongari.Combat
         public event Action<bool> OnLungePlant;
         /// <summary>돌진 종료. 인자는 명중 결과, 빗나감(중단 포함)이면 null.</summary>
         public event Action<HitResult?> OnLungeEnded;
+        /// <summary>쿨다운 중에 런지 입력이 들어와 버려진 순간 (V9g). HUD가 쿨다운 호를 흔들어 "아직 안 됨"을 보여준다.</summary>
+        public event Action OnCooldownDenied;
 
         public bool IsLunging { get; private set; }
         /// <summary>
@@ -35,6 +37,10 @@ namespace MyDongari.Combat
         /// 쿨다운 중 공격 입력은 버리고(WeaponSystem·MeleeDummy) 버퍼에도 남기지 않는다.
         /// </summary>
         public bool IsOnCooldown => Time.time < _cooldownUntil;
+        /// <summary>쿨다운 길이(초, 튜닝값). HUD 호의 채움 비율 계산용.</summary>
+        public float CooldownDuration => T.cooldown;
+        /// <summary>쿨다운 중 런지 입력을 버렸다고 알린다 (WeaponSystem·MeleeDummy가 부른다).</summary>
+        public void NotifyCooldownDenied() => OnCooldownDenied?.Invoke();
         /// <summary>남은 쿨다운(초). 0이면 쓸 수 있다.</summary>
         public float CooldownRemaining => Mathf.Max(0f, _cooldownUntil - Time.time);
         public LungePhase Phase { get; private set; } = LungePhase.None;

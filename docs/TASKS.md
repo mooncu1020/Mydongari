@@ -303,6 +303,7 @@
 ### [x] V9d. 메뉴 입력 겹침: 메뉴가 뜬 뒤 0.5초 확인 입력 무시(✕를 누른 채 넘어오면 뗐다 다시 눌러야 확인), 공중 대시 고지대 직행은 의도된 기술로 기록
 ### [x] V9e. 선회 끊김 수정: 빠른 선회(759°/s)는 상대 쪽으로 돌 때만, 33.75°~60° 선형 보간, 가드 자동 선회도 같은 방식
 ### [x] V9f. 부스트 시스템 제거(게이지·탈진·회복·EXHAUSTED 팝업·HUD 부스트 호), 런지는 쿨다운 3초 — 쿨다운 중 입력은 버림(펀치로 안 바뀜)
+### [x] V9g. 런지 쿨다운 호(예전 부스트 호 자리): 쿨다운 동안 0에서 차오르고 다 차면 0.2초 반짝임, 쿨다운 중 런지 입력은 호를 짧게 흔듦
 ### [x] V8.1. V8 피드백: 걷기 즉시 방향별 최대 속도(누적값 모델 삭제) × 거리 감속, 스틱 중립 ○ = 앞 대시(근접 스텝 규칙 유지), 급강하 = 공중 △ 다시, 공중 대시 8방향
 ### [x] V6.1. V6 피드백: 대시 끝 단계 △ 내내·공격 0.05초 뒤부터, 차징 태클 0.8초·최대 1.6초, VERSUS 각 화면 16:9 레터박스(HUD 포함), Base FOV 52
 
@@ -422,3 +423,4 @@
 - **V9d** 완료. 바뀐 파일: `GameManager`(`menuConfirmDelay` 0.5초 — `OpenMenu` 시각부터 실제 시간으로 재고 그동안 확인만 버림, 위아래 고르기는 바로). 타이틀·매치 종료·연습 일시정지가 모두 같은 `OpenMenu`를 쓴다. 라운드 결과 화면은 입력 없이 타이머로 넘어가서 해당 없음. 위험: 타이틀에서도 0.5초 동안 확인이 안 먹는다(의도).
 - **V9e** 완료. 바뀐 파일: `MechMotor`(`ManualTurnRate`가 선회 입력 방향을 봄 — 상대 반대쪽이면 항상 '정면 안' 선회율, 상대 쪽이면 `OutsideBlend`로 33.75°~60° 선형 보간. 가드 자동 선회 132 → 360°/s도 같은 보간), `BernardTuning.V8`(`turnBlendEndAngle` 60 추가). 위험: 원본과 다른 규칙이다(원본은 방향을 안 가림). 마우스 선회는 선회율과 무관해 그대로. 근접 구역·지상 대시의 '정면 안' 값(512/549, 320)도 같은 규칙을 탄다.
 - **V9f** 완료. 바뀐 파일: `BoostGauge.cs` 삭제, `BernardTuning`(`BoostValues`·런지 `boostCost` 삭제, 런지 `cooldown` 3 추가), `ThrusterLunge`(`IsOnCooldown`·`CooldownRemaining`, 시작 순간부터 쿨다운, 라운드 리셋 때 초기화), `WeaponSystem`·`MeleeDummy`(쿨다운 중 공격 입력을 버퍼에서 지움), `CombatFeedback`(EXHAUSTED 팝업 삭제), `HUDController`(부스트 호 삭제), `MechController`·`GameManager`·`VersusSceneSetup`(참조 삭제), `PlayLogger`(CSV의 `p1_boost`·`p2_boost` 열과 `dash_exit_exhausted` 집계 삭제), `DashState`(`DashExitReason.Exhausted` 삭제), `SampleScene.unity`(batchmode로 `BoostGauge` 컴포넌트 2개·`BoostGaugeArc`와 배경 4개 삭제). 위험: 쿨다운이 화면에 안 보인다(HUD 표시 없음). CSV 열이 줄어 예전 로그와 열 위치가 다르다. `BernardTuning` 에셋 파일에는 예전 `boost` 값이 에디터에서 다시 저장될 때까지 남아 있다(읽히지 않음).
+- **V9g** 완료. 바뀐 파일: `HUDController`(`lungeCooldownArc` + 색·반짝임·흔들림 수치), `ThrusterLunge`(`CooldownDuration`, `OnCooldownDenied`·`NotifyCooldownDenied`), `WeaponSystem`(쿨다운으로 입력을 버릴 때 알림), `Assets/Editor/LungeCooldownHudSetup.cs`(메뉴 `Mydongari/Setup Lunge Cooldown Arc`), `SampleScene.unity`(batchmode로 메뉴 실행 — HUD 2개에 `LungeCooldownArc`·`LungeCooldownBG` 생성·연결). 위험: 씬에서 예전 부스트 호는 화면 가운데 **오른쪽**(x +200, 히트 호가 왼쪽 −200)이었다 — 그 자리에 그대로 넣었다(QUESTIONS V9g).
