@@ -174,8 +174,8 @@ namespace MyDongari.Mech
             [Tooltip("시선 표적 = 기준 높이(발 + 키 × cameraBaseHeightRatio) + 이 값")]
             public float cameraTargetUp = 6f;
             [Range(0f, 1f)] public float cameraBaseHeightRatio = 0.5f;
-            [Tooltip("V8.3: 카메라 방위가 매 틱 이동기의 카메라 방위(기본 모드 = 몸 방향)와의 차이를 이 비율만큼 따라감 (12%). 1이면 몸에 강체로 붙는다. 선회 리드는 이 위에 그대로 더한다")]
-            [Range(0f, 1f)] public float cameraYawFollow = 0.12f;
+            [Tooltip("V9c: 시선 표적 오프셋(지금은 높이 cameraTargetUp)이 매 틱 목표값과의 차이를 이 비율만큼 따라감 (사양서 5.3의 12%). 카메라 방위는 기체 방위에 지연 없이 붙는다")]
+            [Range(0f, 1f)] public float cameraTargetOffsetFollow = 0.12f;
             [Tooltip("V8.3: 기준점(시선 표적)이 매 틱 기체 위치와의 차이를 이 비율만큼 따라감 (35%). 작을수록 대시 때 기체가 화면에서 더 처진다")]
             [Range(0f, 1f)] public float cameraPositionFollow = 0.35f;
             [Tooltip("V8.3: 기체(시선 표적)가 화면 가로 중앙에서 벗어날 수 있는 최대 거리(화면 폭 대비). 넘으면 기준점을 그만큼 당겨 온다 (0.25 = 폭의 25%)")]

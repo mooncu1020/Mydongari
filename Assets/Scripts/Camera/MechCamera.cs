@@ -12,8 +12,8 @@ namespace MyDongari.Camera
     /// 몸 뒤 고정 백뷰 (V3 "카메라와 시점"). 시점만 따로 돌리는 조작은 없다 — 카메라는 몸의 수평 회전을 부드럽게 따라간다.
     /// 몸을 돌리는 건 R스틱(MechStateMachine)과 하드락 몸통 회전(MechController)이 맡는다.
     /// V8 이동기(사양서 5장): VoTickDriver가 틱 맨 앞에서 TickV8로 갱신(지난 틱 기체 상태 기준)하고, 그릴 때 두 틱 사이를 보간한다.
-    /// 기체 뒤 거리 = 78u(키 × 3.54), 피치 8.4° 아래, 시선 표적 = 발 + 키/2 + 6u, 기준점(위치)은 매 틱 35%, 방위는 12%씩 따라감(V8.3), 기체는 화면 가로 중앙 ±25% 안, 세로 FOV 35°.
-    /// 방위는 이동기의 카메라 방위(기본 모드 = 몸 방향)를 12%로 따라간 값 + 선회 리드. 수치는 BernardTuning → V8 이동기 → 카메라.
+    /// 기체 뒤 거리 = 78u(키 × 3.54), 피치 8.4° 아래, 시선 표적 = 발 + 키/2 + 6u, 기준점(위치)은 매 틱 35%로 따라감(V8.3), 시선 표적 오프셋만 12%(V9c), 기체는 화면 가로 중앙 ±25% 안, 세로 FOV 35°.
+    /// 방위는 이동기의 카메라 방위(기본 모드에선 몸에 강체로 붙음, 지연 없음) + 선회 리드. 수치는 BernardTuning → V8 이동기 → 카메라.
     /// 예전 이동기일 때는 V3 고정 백뷰(뒤 followDistance, 위 followHeight). V6d 화면 구도 계산은 V8에서 지웠다.
     /// </summary>
     public class MechCamera : MonoBehaviour
@@ -251,34 +251,37 @@ namespace MyDongari.Camera
         // ---- V8 카메라 (사양서 5장) ----
         private bool _v8Ready;
         private Vector3 _v8Anchor;
-        // 12%로 따라가는 카메라 방위(°). 선회 리드는 여기에 더해 쓴다
-        private float _v8Yaw;
+        // 12%로 목표값을 따라가는 시선 표적 높이 오프셋(u)
+        private float _v8TargetUp;
         private Vector3 _v8PrevPosition, _v8Position;
         private Quaternion _v8PrevRotation = Quaternion.identity, _v8Rotation = Quaternion.identity;
 
         /// <summary>
         /// V8 틱 맨 앞(VoTickDriver): 지난 틱 기체 상태로 카메라를 한 틱 갱신한다. 기준점(시선 표적)은 매 틱 차이의 35%씩 기체를 따라가고,
-        /// 방위는 이동기의 카메라 방위를 12%씩 따라간 값 + 선회 리드, 피치 8.4° 아래, 시선 표적에서 78u 뒤.
+        /// 방위는 이동기의 카메라 방위 + 선회 리드(지연 없음), 피치 8.4° 아래, 시선 표적에서 78u 뒤.
         /// </summary>
         public void TickV8(MechMotor motor)
         {
             if (motor == null) return;
             BernardTuning.V8Values v = motor.V;
+            // V9c: 사양서 5.3대로 12%는 시선 표적 오프셋(u)에만 건다. 지금은 카메라 모드가 하나라 목표값이 일정하지만,
+            // 근접·대시 카메라처럼 오프셋이 다른 모드가 생기면 이 값이 부드럽게 넘어간다
+            if (!_v8Ready) _v8TargetUp = v.cameraTargetUp;
+            else _v8TargetUp += (v.cameraTargetUp - _v8TargetUp) * v.cameraTargetOffsetFollow;
             Vector3 targetPoint = new Vector3(motor.Position.x,
-                motor.FeetY + motor.BodyHeight * v.cameraBaseHeightRatio + v.cameraTargetUp * motor.U,
+                motor.FeetY + motor.BodyHeight * v.cameraBaseHeightRatio + _v8TargetUp * motor.U,
                 motor.Position.z);
             if (!_v8Ready)
             {
                 _v8Anchor = targetPoint;
-                _v8Yaw = motor.CameraYaw;
             }
             else
             {
-                // V8.3: 위치는 빠르게(35%), 방위는 느리게(12%) 따로 따라간다 — 대시 때 기체가 화면 밖으로 처지지 않으면서 선회는 부드럽게
+                // V8.3: 기준점 위치는 매 틱 35%로 빠르게 따라간다 — 대시 때 기체가 화면 밖으로 처지지 않게
                 _v8Anchor += (targetPoint - _v8Anchor) * v.cameraPositionFollow;
-                _v8Yaw = Mathf.Repeat(_v8Yaw + Mathf.DeltaAngle(_v8Yaw, motor.CameraYaw) * v.cameraYawFollow, 360f);
             }
-            float yaw = _v8Yaw + motor.CameraLead;
+            // V9c: 방위는 원본대로 이동기의 카메라 방위(기본 모드 = 기체 방위)에 지연 없이 붙는다 + 선회 리드
+            float yaw = motor.CameraYaw + motor.CameraLead;
             float pitch = BernardTuning.AngleUnitsToDegrees(v.cameraPitch);
             Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
             float distance = v.cameraDistance * motor.U;

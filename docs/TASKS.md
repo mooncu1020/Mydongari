@@ -299,6 +299,7 @@
 ### [x] V7b. 낮 하늘과 조명: 코드 스카이박스(밝은 낮 하늘 + 갑판 아래 구름층), 해 높이 50°, 밝은 앰비언트, 바닥 반사 얼룩 확인, 버나드 렌더러 키 측정(1.93m)·MechMotor 키 기준값 맞춤
 ### [x] V9a. 버튼 재배치: 가드·패리 L2 → ✕(땅 = 가드·패리, 공중 = 급강하), 2단 점프·L스틱 아래 + △ 급강하 삭제(하강 호버 유지), L2 비움, 가드 중 자동 선회(정면 ±33.75° 안 132°/s·밖 360°/s)
 ### [x] V9b. 기체 키 1.93m 확정(키 고정 옵션 없음), 벨포레스트 발판 3.7m·고지대 8.1m로 변경해 씬에 반영, 점프 궤적 계산
+### [x] V9c. 카메라 방위는 기체 방위에 지연 없이, 12%는 시선 표적 오프셋에만 (위치 35%·가로 25% 상한 유지)
 ### [x] V8.1. V8 피드백: 걷기 즉시 방향별 최대 속도(누적값 모델 삭제) × 거리 감속, 스틱 중립 ○ = 앞 대시(근접 스텝 규칙 유지), 급강하 = 공중 △ 다시, 공중 대시 8방향
 ### [x] V6.1. V6 피드백: 대시 끝 단계 △ 내내·공격 0.05초 뒤부터, 차징 태클 0.8초·최대 1.6초, VERSUS 각 화면 16:9 레터박스(HUD 포함), Base FOV 52
 
@@ -414,3 +415,4 @@
 - **V7b** 완료. 신규: `Materials/DaySky.shader`, `Arena/Materials/M_BellSky`. 바뀐 파일: `BellforestBuilder`(`BuildSkyAndLight` — 스카이박스·해 50°/방위 35°/세기 1.3·3색 앰비언트·환경 반사 0.35·안개 끔), `SampleScene.unity`(batchmode로 다시 적용), `AppRuntime`(`IsSmokeTest`), `MechMotor`(스모크 테스트면 잰 키를 Player.log에 남김, 기본 키 1.93), `BernardTuning.V8`(`fallbackBodyHeight` 2.6 → 1.93). 반사 얼룩: 맵은 스페큘러 없는 ToonFlat이라 해 쪽을 보는 낮은 시점 미리보기(`5_low_toward_sun`)에서도 갑판에 얼룩 없음. 위험: 실제 키가 1.93m라 V8 이동은 기획서 m/s의 0.74배로 돌고 있다(QUESTIONS V7b) — 맵 높이(5m·11m)는 점프 8.4m 기준이라 다시 봐야 한다.
 - **V9a** 완료. 바뀐 파일: `.inputactions`(`Cross` 액션 추가 — 패드 ✕(buttonSouth)·마우스 오른쪽 버튼. 예전 `Guard` 액션과 L2 바인딩은 지우지 않고 남겼지만 아무도 읽지 않는다), `InputReader`(`GuardHeld`·`GuardPressedThisFrame`이 `Cross`를 읽음, `GuardPressCount` 추가), `MechMotor`(급강하 = 공중에서 ✕ 새 입력, 가드 자동 선회 — 가드 중 수동 선회 무시), `VoJumpState`(상승 중 △ 재입력 삭제), `BernardTuning.V8`(`diveStickY` 삭제, `guardTurnInside` 400·`guardTurnOutside` 1092 추가). 위험: ✕는 메뉴의 `Submit`(패드 A)과 같은 버튼이다 — 매치가 끝난 화면에서 가드를 누르고 있으면 바로 넘어갈 수 있다. 가드 자동 선회는 V8 이동기에만 있다(Legacy는 하드락 몸통 회전 그대로).
 - **V9b** 완료. 바뀐 파일: `BellforestBuilder`(`StepHeight` 5 → 3.7, `PlateauHeight` 11 → 8.1), `Arena/Generated/Bell_Plateau_*`·`Bell_Step_*`, `SampleScene.unity`(batchmode로 메뉴 재실행). 점프 궤적(QUESTIONS V9b): 일반 점프 최고점 6.12m — 땅 → 발판 +2.42m, 발판 → 고지대 +1.72m 여유, 땅 → 고지대는 1.98m 모자람. 위험: 점프 직후 공중 대시(상승 중 중력 절반)를 쓰면 최고 약 12m라 땅에서 고지대로 바로 올라간다.
+- **V9c** 완료. 바뀐 파일: `MechCamera.TickV8`(방위 = 이동기 카메라 방위 + 선회 리드, 12% 방위 추종 삭제, 시선 표적 높이 오프셋이 12%로 목표값을 따라감), `BernardTuning.V8`(`cameraYawFollow` 삭제 → `cameraTargetOffsetFollow` 0.12). 위험: 카메라 모드가 하나라 시선 표적 오프셋 목표가 일정해서 12%는 지금 화면에 보이는 효과가 없다(플레이 중 `Camera Target Up`을 바꿀 때만 보임).
