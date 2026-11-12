@@ -182,8 +182,13 @@ namespace MyDongari.Core
         private const string OptionTitle = "TITLE";
         private const string OptionContinue = "CONTINUE";
 
+        [Header("메뉴 입력 (V9d)")]
+        [Tooltip("메뉴(타이틀·매치 종료·연습 일시정지)가 뜬 뒤 이 시간(초, 실제 시간) 동안 확인 입력을 무시한다. ✕가 가드와 확인을 같이 맡아서, 싸우다 누른 ✕로 메뉴가 바로 넘어가지 않게. 위아래 고르기는 바로 된다")]
+        [SerializeField] private float menuConfirmDelay = 0.5f;
+
         private MenuKind _menu = MenuKind.None;
         private int _menuOpenedFrame;
+        private float _menuOpenedTime;
         /// <summary>지금 열린 메뉴의 선택지. 메뉴가 없으면 null.</summary>
         public string[] MenuOptions { get; private set; }
         public int MenuIndex { get; private set; }
@@ -579,6 +584,7 @@ namespace MyDongari.Core
             MenuIndex = 0;
             // 메뉴를 연 버튼 입력이 같은 프레임에 결정으로 읽히지 않게
             _menuOpenedFrame = Time.frameCount;
+            _menuOpenedTime = Time.unscaledTime;
         }
 
         private void CloseMenu()
@@ -606,7 +612,9 @@ namespace MyDongari.Core
 
             int count = MenuOptions.Length;
             if (vertical != 0) MenuIndex = ((MenuIndex - Math.Sign(vertical)) % count + count) % count;
-            if (confirm) ConfirmMenu(MenuOptions[MenuIndex]);
+            // V9d: 메뉴가 뜬 직후의 확인은 버린다. 확인은 "새로 누른 순간"만 읽으므로(MenuConfirmPressed),
+            // ✕를 누른 채 넘어왔거나 무시 구간에 눌러 버린 경우엔 한 번 뗐다가 다시 눌러야 확인된다
+            if (confirm && Time.unscaledTime - _menuOpenedTime >= menuConfirmDelay) ConfirmMenu(MenuOptions[MenuIndex]);
         }
 
         private void ConfirmMenu(string option)
