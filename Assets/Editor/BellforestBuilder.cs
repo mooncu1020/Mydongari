@@ -50,11 +50,11 @@ namespace MyDongari.EditorTools
         {
             new Vector2(-28f, -54f), new Vector2(-28f, -4f), new Vector2(-17f, -8f), new Vector2(-17f, -54f)
         };
-        private const float PlateauHeight = 11f;
+        private const float PlateauHeight = 8.1f;
         /// <summary>발판: 고지대 A 앞 2개(중심). B 쪽은 점대칭.</summary>
         private static readonly Vector2[] StepCenters = { new Vector2(-13f, -40f), new Vector2(-13f, -20f) };
         private const float StepSize = 6f;
-        private const float StepHeight = 5f;
+        private const float StepHeight = 3.7f;
         /// <summary>낮은 엄폐물(중심). 나머지 하나는 점대칭.</summary>
         private static readonly Vector2 CoverCenter = new Vector2(-12f, 26f);
         private static readonly Vector2 CoverSize = new Vector2(4f, 8f);
