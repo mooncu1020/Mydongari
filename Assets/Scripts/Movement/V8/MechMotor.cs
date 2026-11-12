@@ -312,25 +312,53 @@ namespace MyDongari.Movement.V8
         /// <summary>
         /// 수동 선회 한 틱 (사양서 2.2): 선회 계수 × 상황별 최대 선회율. 상대가 정면 ±33.75° 밖이면 759°/s, 안이면 132°/s,
         /// 근접 구역 정면 안은 2.81°/f(±22.5° 안 3.02°/f), 지상 대시 중은 2.11/1.76°/f. 돌린 각(°)을 돌려준다.
+        /// V9e(원본과 다름 — 원본은 회전 방향을 안 가린다): 빠른 '정면 밖' 선회율은 상대 쪽으로 도는 입력에만 쓰고,
+        /// 33.75°~60° 사이는 선형으로 올린다. 상대를 지나쳐 계속 돌 때 느림 ↔ 759°/s가 번갈아 끊기던 것을 없앤다.
         /// </summary>
         public float ApplyManualTurn(bool dashing)
         {
             // 가드 중엔 자동 선회가 몸을 돌린다 (V9a) — R스틱·마우스 선회는 받지 않는다
             if (_guardTurning) return 0f;
-            float rateUnits = ManualTurnRate(dashing);
+            float rateUnits = ManualTurnRate(dashing, TurnCoefficient);
             float degrees = TurnCoefficient * BernardTuning.AngleUnitsToDegrees(rateUnits) + MouseTurnDegrees;
             AddYaw(degrees);
             return degrees;
         }
 
-        private float ManualTurnRate(bool dashing)
+        private float ManualTurnRate(bool dashing, float turnInput)
         {
             BernardTuning.V8Values v = V;
-            bool inside = HasOpponent && Mathf.Abs(OpponentAngleOff) <= v.frontHalfAngle;
-            if (dashing) return inside ? v.turnDashInside : v.turnDashOutside;
-            if (!inside) return v.turnOutside;
-            if (InCloseZone) return Mathf.Abs(OpponentAngleOff) <= v.nearCenterHalfAngle ? v.turnInsideNearCenter : v.turnInsideNear;
-            return v.turnInsideFar;
+            float off = Mathf.Abs(OpponentAngleOff);
+            float insideRate, outsideRate;
+            if (dashing)
+            {
+                insideRate = v.turnDashInside;
+                outsideRate = v.turnDashOutside;
+            }
+            else
+            {
+                insideRate = !InCloseZone ? v.turnInsideFar
+                    : (HasOpponent && off <= v.nearCenterHalfAngle ? v.turnInsideNearCenter : v.turnInsideNear);
+                outsideRate = v.turnOutside;
+            }
+            // 상대가 없으면 찾을 것도 없으니 예전대로 '정면 밖' 값
+            if (!HasOpponent) return outsideRate;
+            // V9e: 상대에게서 멀어지는 쪽으로 도는 입력은 항상 '정면 안' 선회율 — 빠른 선회는 상대를 찾아 도는 동작에만
+            // (+선회 입력은 +각, OpponentAngleOff도 +면 +각 쪽에 상대가 있다)
+            bool toward = turnInput * OpponentAngleOff > 0f;
+            if (!toward) return insideRate;
+            return Mathf.Lerp(insideRate, outsideRate, OutsideBlend(off));
+        }
+
+        /// <summary>
+        /// 상대 각도(°, 절댓값)가 정면 경계(frontHalfAngle)에서 turnBlendEndAngle까지 벌어지는 정도 0~1 (V9e).
+        /// 0 = 정면 안 선회율, 1 = 정면 밖 선회율.
+        /// </summary>
+        private float OutsideBlend(float absAngleOff)
+        {
+            BernardTuning.V8Values v = V;
+            if (v.turnBlendEndAngle <= v.frontHalfAngle) return absAngleOff > v.frontHalfAngle ? 1f : 0f;
+            return Mathf.InverseLerp(v.frontHalfAngle, v.turnBlendEndAngle, absAngleOff);
         }
 
         /// <summary>점프·공중 대시의 고정율 선회 (부호만 씀). 돌린 각(°).</summary>
@@ -561,12 +589,13 @@ namespace MyDongari.Movement.V8
                 case AutoTurnMode.Default:
                 {
                     // 가드 자동 선회 (V9a): ✕를 누른 엄지로는 R스틱을 못 쓰니, 가드 중엔 몸이 상대 쪽으로 저절로 돈다.
-                    // 상대가 정면 안이면 느리게(132°/s), 밖이면 빠르게(360°/s) — 등 뒤로 돌아 들어온 상대를 가드로 따라잡되 즉시는 아니다
+                    // 상대가 정면 안이면 느리게(132°/s), 밖이면 빠르게(360°/s) — 등 뒤로 돌아 들어온 상대를 가드로 따라잡되 즉시는 아니다.
+                    // V9e: 33.75°~60° 사이는 두 값 사이를 선형으로 (경계에서 속도가 뚝 바뀌지 않게)
                     var melee = Controller.MeleeSystem;
                     if (melee != null && melee.IsGuarding && HasOpponent)
                     {
-                        bool inside = Mathf.Abs(OpponentAngleOff) <= v.frontHalfAngle;
-                        TurnToward(OpponentBearing, inside ? v.guardTurnInside : v.guardTurnOutside);
+                        float guardRate = Mathf.Lerp(v.guardTurnInside, v.guardTurnOutside, OutsideBlend(Mathf.Abs(OpponentAngleOff)));
+                        TurnToward(OpponentBearing, guardRate);
                         _guardTurning = true;
                     }
                     break;

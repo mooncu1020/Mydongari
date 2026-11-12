@@ -64,7 +64,9 @@ namespace MyDongari.Mech
             [Range(0f, 1f)] public float turnDeadzone = 0.05f;
             [Tooltip("상대가 정면 ±이 각도(°) 안이면 '정면 안' 선회율")]
             public float frontHalfAngle = 33.75f;
-            [Tooltip("원거리, 상대가 정면 밖 (2304 = 759°/s)")]
+            [Tooltip("V9e: 상대 쪽으로 돌 때, 상대 각도가 frontHalfAngle에서 이 각도(°)까지 벌어지는 동안 '정면 안' 선회율 → '정면 밖' 선회율로 선형으로 올라간다 (경계에서 훅 빨라지지 않게). frontHalfAngle과 같거나 작으면 예전처럼 경계에서 바로 바뀜. 가드 자동 선회도 같은 구간을 쓴다")]
+            public float turnBlendEndAngle = 60f;
+            [Tooltip("원거리, 상대가 정면 밖 (2304 = 759°/s). V9e: 상대 쪽으로 도는 입력일 때만 — 반대쪽으로 돌 때는 항상 '정면 안' 선회율")]
             public float turnOutside = 2304f;
             [Tooltip("원거리, 상대가 정면 안 (400 = 132°/s)")]
             public float turnInsideFar = 400f;
@@ -99,7 +101,7 @@ namespace MyDongari.Mech
             public float cameraYawFollowRate = 4096f;
             [Tooltip("가드 자동 선회 (V9a): 가드 중엔 R스틱 대신 몸이 상대 쪽으로 돈다. 상대가 정면 ±frontHalfAngle 안일 때 (400 = 132°/s)")]
             public float guardTurnInside = 400f;
-            [Tooltip("가드 자동 선회: 상대가 정면 밖일 때 (1092 = 360°/s)")]
+            [Tooltip("가드 자동 선회: 상대가 정면 밖일 때 (1092 = 360°/s). V9e: frontHalfAngle ~ turnBlendEndAngle 사이는 두 값 사이를 선형으로")]
             public float guardTurnOutside = 1092f;
             [Tooltip("정렬로 보는 각도 차(°)")]
             public float alignEpsilon = 0.5f;
