@@ -57,13 +57,27 @@ namespace MyDongari.Core
             _quitAction.Dispose();
         }
 
+        private static bool? _isSmokeTest;
+
+        /// <summary>빌드 스모크 테스트(-smokeTest 인자)로 실행됐는지. 스모크 테스트 로그에 측정값을 남기는 데도 쓴다.</summary>
+        public static bool IsSmokeTest
+        {
+            get
+            {
+                if (!_isSmokeTest.HasValue)
+                {
+                    _isSmokeTest = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-smokeTest") >= 0;
+                }
+                return _isSmokeTest.Value;
+            }
+        }
+
         private void Start()
         {
             if (Application.isEditor) return;
 
             // 빌드 스모크 테스트(Tools/Build And Smoke Test)가 창 모드로 띄울 때는 전체 화면을 강제하지 않는다
-            bool smokeTest = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-smokeTest") >= 0;
-            if (forceFullscreenOnStart && !smokeTest)
+            if (forceFullscreenOnStart && !IsSmokeTest)
             {
                 // 모니터 실제 해상도(데스크톱 해상도) 기준. 창 모드 전체 화면은 Alt+Tab이 빠르고 안전하다
                 Screen.SetResolution(Display.main.systemWidth, Display.main.systemHeight, FullScreenMode.FullScreenWindow);

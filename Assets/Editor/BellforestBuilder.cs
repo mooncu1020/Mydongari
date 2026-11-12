@@ -9,7 +9,7 @@ using MyDongari.Core;
 namespace MyDongari.EditorTools
 {
     /// <summary>
-    /// 벨포레스트 박스 맵 생성 (V7a, 기획서 "맵" 표·docs/map_bellforest.png). 메뉴 Tools/Build Bellforest Blockout —
+    /// 벨포레스트 박스 맵 생성 (V7a, 기획서 "맵" 표·docs/map_bellforest.png) + 낮 하늘·조명 (V7b). 메뉴 Tools/Build Bellforest Blockout —
     /// 다시 누르면 이전 Bellforest를 지우고 새로 만든다. 소행성 맵(AsteroidArena)과 예전 맵은 지우지 않고 끈다.
     /// 씬 파일을 손으로 고치지 않고 열린 씬에 오브젝트를 만든다(저장은 사용자). 블록마다 별도 오브젝트라 나중에 모델로 바꿔 끼울 수 있다.
     /// 판정: 블록 윗면(두께 TopSlab) = Walkable, 그 아래 몸통 = Wall, 갑판 = Walkable, 테두리 = 보이지 않는 Wall.
@@ -23,6 +23,20 @@ namespace MyDongari.EditorTools
         private const string MaterialFolder = "Assets/Arena/Materials";
         private const string ArenaConfigPath = "Assets/Arena/AsteroidArenaConfig.asset";
         private const string FlatShaderName = "MyDongari/ToonFlat";
+        private const string SkyShaderName = "MyDongari/DaySky";
+
+        // ---- 낮 하늘·조명 (V7b) ----
+        /// <summary>해 높이(°)·방위(°). 방위는 갑판 길이 방향에서 비스듬히 — 블록 그림자가 갑판 위로 떨어져 높이가 읽힌다.</summary>
+        private const float SunElevation = 50f;
+        private const float SunAzimuth = 35f;
+        private const float SunIntensity = 1.3f;
+        private static readonly Color SunColor = new Color(1f, 0.97f, 0.90f);
+        /// <summary>밝은 앰비언트 (위 / 옆 / 아래). 그늘진 기체가 검게 죽지 않게.</summary>
+        private static readonly Color AmbientSky = new Color(0.78f, 0.86f, 1f);
+        private static readonly Color AmbientEquator = new Color(0.70f, 0.76f, 0.86f);
+        private static readonly Color AmbientGround = new Color(0.58f, 0.64f, 0.76f);
+        /// <summary>환경 반사 세기. 밝은 하늘이 기체(Lit 셰이더 그래프)에 하얗게 비치지 않게 낮춘다.</summary>
+        private const float ReflectionIntensity = 0.35f;
 
         // ---- 배치 (m). X = 폭(−28 ~ 28), Z = 길이(−60 ~ 60, +Z가 뱃머리). 그림의 왼쪽 = −Z(P1), 위 = −X. 블록은 점대칭((x, z) → (−x, −z)) ----
         /// <summary>갑판 윤곽 120 × 56m. 뱃머리(+Z) 쪽 두 모서리만 깎아 좁힌다.</summary>
@@ -190,6 +204,7 @@ namespace MyDongari.EditorTools
 
             BuildBridge(root.transform, bridge);
             PlaceSpawns(report);
+            BuildSkyAndLight(report);
 
             Undo.CollapseUndoOperations(undoGroup);
             AssetDatabase.SaveAssets();
@@ -376,6 +391,67 @@ namespace MyDongari.EditorTools
             var renderer = go.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = material;
             renderer.shadowCastingMode = ShadowCastingMode.On;
+        }
+
+        /// <summary>
+        /// 낮 하늘과 조명 (V7b): 코드 셰이더 스카이박스(밝은 하늘 + 갑판 아래 구름층), 해 높이 약 50°, 밝은 3색 앰비언트, 안개 끔.
+        /// 해는 씬의 디렉셔널 라이트 하나를 그대로 쓰고(없으면 만든다) 나머지 디렉셔널은 끈다 — 소행성 맵과 같은 방식.
+        /// </summary>
+        private static void BuildSkyAndLight(StringBuilder report)
+        {
+            string skyPath = $"{MaterialFolder}/M_BellSky.mat";
+            Material sky = AssetDatabase.LoadAssetAtPath<Material>(skyPath);
+            if (sky == null)
+            {
+                Shader skyShader = Shader.Find(SkyShaderName);
+                if (skyShader == null)
+                {
+                    report.AppendLine($"셰이더 {SkyShaderName}를 못 찾음 — Assets/Materials/DaySky.shader 컴파일 오류 확인");
+                }
+                else
+                {
+                    sky = new Material(skyShader) { name = "M_BellSky" };
+                    AssetDatabase.CreateAsset(sky, skyPath);
+                }
+            }
+            if (sky != null) RenderSettings.skybox = sky;
+            RenderSettings.fog = false;
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = AmbientSky;
+            RenderSettings.ambientEquatorColor = AmbientEquator;
+            RenderSettings.ambientGroundColor = AmbientGround;
+            RenderSettings.reflectionIntensity = ReflectionIntensity;
+
+            Light sun = null;
+            int disabled = 0;
+            foreach (Light light in Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude, FindObjectsSortMode.InstanceID))
+            {
+                if (light.type != LightType.Directional) continue;
+                if (sun == null)
+                {
+                    sun = light;
+                    continue;
+                }
+                Undo.RecordObject(light, "Disable Extra Sun");
+                light.enabled = false;
+                disabled++;
+            }
+            if (sun == null)
+            {
+                var sunObject = new GameObject("Sun");
+                Undo.RegisterCreatedObjectUndo(sunObject, "Create Sun");
+                sun = sunObject.AddComponent<Light>();
+                sun.type = LightType.Directional;
+            }
+            Undo.RecordObject(sun, "Set Sun");
+            Undo.RecordObject(sun.transform, "Set Sun");
+            sun.transform.rotation = Quaternion.Euler(SunElevation, SunAzimuth, 0f);
+            sun.color = SunColor;
+            sun.intensity = SunIntensity;
+            sun.shadows = LightShadows.Soft;
+            RenderSettings.sun = sun;
+            DynamicGI.UpdateEnvironment();
+            report.AppendLine($"하늘: 낮 하늘 + 아래 구름층(M_BellSky), 해 '{sun.name}' 높이 {SunElevation:0}°·세기 {SunIntensity}, 앰비언트 3색 밝게, 반사 {ReflectionIntensity}{(disabled > 0 ? $", 다른 디렉셔널 라이트 {disabled}개 끔" : "")}");
         }
 
         private static void PlaceSpawns(StringBuilder report)

@@ -36,7 +36,7 @@ namespace MyDongari.Movement.V8
 
         // ---- 단위 ----
         /// <summary>렌더러로 잰 기체 키(m).</summary>
-        public float BodyHeight { get; private set; } = 2.6f;
+        public float BodyHeight { get; private set; } = 1.93f;
         /// <summary>1u(m).</summary>
         public float U => BodyHeight / Mathf.Max(1f, V.bodyHeightUnits);
         /// <summary>틱 길이(초).</summary>
@@ -233,7 +233,8 @@ namespace MyDongari.Movement.V8
             }
             float measured = top - feet;
             BodyHeight = measured >= 1f && measured <= 6f ? measured : V.fallbackBodyHeight;
-            if (debugLog)
+            // 스모크 테스트(빌드)에서도 남긴다 — 에디터 없이 실제 기체 키를 확인하려고 (V7b)
+            if (debugLog || AppRuntime.IsSmokeTest)
             {
                 Debug.Log($"[MechMotor] {name}: 렌더러로 잰 키 {measured:0.00}m → 사용 {BodyHeight:0.00}m, 1u = {U:0.0000}m, " +
                           $"1u/f = {SpeedScale:0.00}m/s, 발 오프셋 {_footOffset:0.00}m", this);

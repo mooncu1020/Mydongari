@@ -18,6 +18,7 @@ namespace MyDongari.Mech
         /// V8 이동기 수치. docs/REFERENCE_MOVEMENT.md의 원본 단위 그대로 둔다:
         /// 거리 u(기체 키 / 22), 속도 u/f, 가속 u/f², 시간 f(1/60초), 각도 "단위"(65536 = 360°).
         /// 기체 키를 렌더러로 재서 실행할 때 미터·초로 바꾼다. 키 2.6m면 u/f × 7.09 = m/s (V6 표와 같은 값).
+        /// V7b: 버나드의 실제 렌더러 키는 1.93m라 u/f × 5.27 = m/s — 기획서의 m/s 값보다 실제 속도·점프 높이·카메라 거리가 0.74배다.
         /// </summary>
         [Serializable]
         public class V8Values
@@ -25,8 +26,8 @@ namespace MyDongari.Mech
             [Header("단위")]
             [Tooltip("기체 키가 몇 u인지 (사양서: 22u)")]
             public float bodyHeightUnits = 22f;
-            [Tooltip("렌더러로 키를 못 재거나 1~6m 밖이면 이 키(m)를 쓴다")]
-            public float fallbackBodyHeight = 2.6f;
+            [Tooltip("렌더러로 키를 못 재거나 1~6m 밖이면 이 키(m)를 쓴다. V7b: 버나드를 실제로 잰 값 1.93m (예전 2.6은 기획서 환산 기준일 뿐 실제 모델 키가 아니었다)")]
+            public float fallbackBodyHeight = 1.93f;
             [Tooltip("고정 틱(Hz). 사양서 60")]
             public float tickRate = 60f;
 
