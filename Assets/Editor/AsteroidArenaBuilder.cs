@@ -167,7 +167,7 @@ namespace MyDongari.EditorTools
         }
 
         /// <summary>기존 스폰 포인트를 옮긴다 (높이는 지금 값 그대로 — 바닥 높이를 바꾸지 않았으면 기체가 같은 높이에서 선다).</summary>
-        private static void MoveSpawn(SerializedProperty property, Vector3 horizontal, float yaw, System.Text.StringBuilder report)
+        internal static void MoveSpawn(SerializedProperty property, Vector3 horizontal, float yaw, System.Text.StringBuilder report)
         {
             var spawn = property != null ? property.objectReferenceValue as Transform : null;
             if (spawn == null)
@@ -444,14 +444,14 @@ namespace MyDongari.EditorTools
 
         private static float Lerp(Vector2 range, System.Random random) => Mathf.Lerp(range.x, range.y, (float)random.NextDouble());
 
-        private static GameObject Child(Transform parent, string name)
+        internal static GameObject Child(Transform parent, string name)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
             return go;
         }
 
-        private static void AddRenderer(GameObject go, Mesh mesh, Material material, bool castShadows)
+        internal static void AddRenderer(GameObject go, Mesh mesh, Material material, bool castShadows)
         {
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var renderer = go.AddComponent<MeshRenderer>();
@@ -459,7 +459,7 @@ namespace MyDongari.EditorTools
             renderer.shadowCastingMode = castShadows ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
-        private static List<GameObject> FindRoots(string name)
+        internal static List<GameObject> FindRoots(string name)
         {
             var result = new List<GameObject>();
             foreach (GameObject go in EditorSceneManager.GetActiveScene().GetRootGameObjects())
@@ -470,7 +470,7 @@ namespace MyDongari.EditorTools
         }
 
         /// <summary>생성 메시를 에셋으로 (같은 이름이 있으면 덮어씀 — 다시 만들 때 쌓이지 않게).</summary>
-        private static Mesh SaveMesh(Mesh mesh, string name)
+        internal static Mesh SaveMesh(Mesh mesh, string name)
         {
             string path = $"{GeneratedFolder}/{name}.asset";
             mesh.name = name;
@@ -500,7 +500,7 @@ namespace MyDongari.EditorTools
             return config;
         }
 
-        private static void EnsureFolders()
+        internal static void EnsureFolders()
         {
             if (!AssetDatabase.IsValidFolder(ArenaFolder)) AssetDatabase.CreateFolder("Assets", "Arena");
             if (!AssetDatabase.IsValidFolder(GeneratedFolder)) AssetDatabase.CreateFolder(ArenaFolder, "Generated");

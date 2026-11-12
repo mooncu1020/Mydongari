@@ -107,7 +107,7 @@ namespace MyDongari.EditorTools
         }
 
         /// <summary>Walkable·Wall 레이어가 없으면 비어 있는 사용자 레이어(8~31)에 만든다.</summary>
-        private static bool EnsureLayers(out int walkable, out int wall)
+        internal static bool EnsureLayers(out int walkable, out int wall)
         {
             walkable = EnsureLayer(GroundLayers.WalkableLayerName);
             wall = EnsureLayer(GroundLayers.WallLayerName);
