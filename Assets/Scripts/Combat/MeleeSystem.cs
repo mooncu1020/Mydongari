@@ -202,6 +202,7 @@ namespace MyDongari.Combat
                 if (!IsGuarding)
                 {
                     IsGuarding = true;
+                    // V9a: 가드는 ✕. 공중에서 ✕(급강하)를 누른 채 착지하면 여기서 일반 가드로 이어지지만, 누른 프레임이 아니라 패리는 안 열린다.
                     // 패리 창은 "버튼을 새로 누른 순간" 올라간 가드에만 연다.
                     // 재사용 대기 중 누르고 버티다 자동으로 올라간 가드까지 패리를 주면 대기가 의미 없어진다.
                     if (_input.GuardPressedThisFrame) StartParryWindow();

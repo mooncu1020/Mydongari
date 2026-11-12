@@ -114,7 +114,7 @@ namespace MyDongari.Movement.V8
         public bool JumpHeld { get; private set; }
         /// <summary>△를 누른 채 지난 틱.</summary>
         public int JumpHeldFrames { get; private set; }
-        /// <summary>급강하 입력(V8.2: 공중에서 L스틱 아래 + △) 새 입력. 이때 △는 재점프·호버로 안 쓴다.</summary>
+        /// <summary>급강하 입력(V9a: 공중에서 ✕) 새 입력.</summary>
         public bool DiveNew { get; private set; }
         /// <summary>수동 선회 계수 (−1 ~ 1, 부호 유지 제곱). 오른쪽 +.</summary>
         public float TurnCoefficient { get; private set; }
@@ -122,6 +122,7 @@ namespace MyDongari.Movement.V8
         public float MouseTurnDegrees { get; private set; }
         private int _lastDashCount;
         private int _lastJumpCount;
+        private int _lastGuardCount;
         private float _pendingMouseTurn;
 
         // ---- 자동 선회·카메라 방위 (사양서 2.3) ----
@@ -134,6 +135,8 @@ namespace MyDongari.Movement.V8
         public float CameraLead { get; private set; }
         /// <summary>이번 틱 사격 조준이 최대 선회율에 걸렸는지 (수평 속력 × 0.1).</summary>
         private bool _attackAimSaturated;
+        /// <summary>이번 틱 가드 자동 선회가 몸을 돌렸는지 (수동 선회를 막는다).</summary>
+        private bool _guardTurning;
 
         private Collider _body;
         private CapsuleCollider _capsule;
@@ -207,6 +210,7 @@ namespace MyDongari.Movement.V8
                 {
                     _lastDashCount = Input.DashPressCount;
                     _lastJumpCount = Input.JumpPressCount;
+                    _lastGuardCount = Input.GuardPressCount;
                 }
                 VoTickDriver.Register(this);
             }
@@ -286,6 +290,7 @@ namespace MyDongari.Movement.V8
             {
                 _lastDashCount = Input.DashPressCount;
                 _lastJumpCount = Input.JumpPressCount;
+                _lastGuardCount = Input.GuardPressCount;
             }
         }
 
@@ -310,6 +315,8 @@ namespace MyDongari.Movement.V8
         /// </summary>
         public float ApplyManualTurn(bool dashing)
         {
+            // 가드 중엔 자동 선회가 몸을 돌린다 (V9a) — R스틱·마우스 선회는 받지 않는다
+            if (_guardTurning) return 0f;
             float rateUnits = ManualTurnRate(dashing);
             float degrees = TurnCoefficient * BernardTuning.AngleUnitsToDegrees(rateUnits) + MouseTurnDegrees;
             AddYaw(degrees);
@@ -462,6 +469,9 @@ namespace MyDongari.Movement.V8
             JumpNew = jumpCount != _lastJumpCount;
             _lastDashCount = dashCount;
             _lastJumpCount = jumpCount;
+            int guardCount = Input.GuardPressCount;
+            bool crossNew = guardCount != _lastGuardCount;
+            _lastGuardCount = guardCount;
             // 두 틱 사이에 눌렀다 뗀 탭도 "누름"으로 본다
             TurboHeld = Input.DashHeld || TurboNew;
             JumpHeld = Input.JumpHeld || JumpNew;
@@ -470,8 +480,8 @@ namespace MyDongari.Movement.V8
 
             Vector2 stick = Input.MoveInput;
             bool airborne = StateMachine.CurrentState is VoState s && s.IsAirState;
-            // 급강하 = 공중에서 L스틱 아래 + △ (V8.2). △ 단독은 재점프·호버(사양서)
-            DiveNew = airborne && JumpNew && stick.y <= v.diveStickY;
+            // 급강하 = 공중에서 ✕를 새로 누름 (V9a). 땅에서 ✕는 가드·패리(MeleeSystem)라 여기선 공중일 때만 본다
+            DiveNew = airborne && crossNew;
 
             // 입력 축소: 상대 8.3m 안 × 0.7, 11.8m까지 선형으로 1 (걷기·점프 속력 배율)
             float distanceScale = 1f;
@@ -545,8 +555,22 @@ namespace MyDongari.Movement.V8
             BernardTuning.V8Values v = V;
             _attackAimSaturated = false;
             _autoTurnFrames++;
+            _guardTurning = false;
             switch (AutoTurn)
             {
+                case AutoTurnMode.Default:
+                {
+                    // 가드 자동 선회 (V9a): ✕를 누른 엄지로는 R스틱을 못 쓰니, 가드 중엔 몸이 상대 쪽으로 저절로 돈다.
+                    // 상대가 정면 안이면 느리게(132°/s), 밖이면 빠르게(360°/s) — 등 뒤로 돌아 들어온 상대를 가드로 따라잡되 즉시는 아니다
+                    var melee = Controller.MeleeSystem;
+                    if (melee != null && melee.IsGuarding && HasOpponent)
+                    {
+                        bool inside = Mathf.Abs(OpponentAngleOff) <= v.frontHalfAngle;
+                        TurnToward(OpponentBearing, inside ? v.guardTurnInside : v.guardTurnOutside);
+                        _guardTurning = true;
+                    }
+                    break;
+                }
                 case AutoTurnMode.JumpAim:
                     if (!HasOpponent || TurnToward(OpponentBearing, v.jumpAimRate)) SetAutoTurn(AutoTurnMode.Default);
                     break;

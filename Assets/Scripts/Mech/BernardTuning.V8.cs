@@ -97,6 +97,10 @@ namespace MyDongari.Mech
             public float airDashReturnRate = 2560f;
             [Tooltip("점프 조준·공중 대시 중 카메라 방위가 몸을 쫓는 최대율 (4096 = 22.5°/f)")]
             public float cameraYawFollowRate = 4096f;
+            [Tooltip("가드 자동 선회 (V9a): 가드 중엔 R스틱 대신 몸이 상대 쪽으로 돈다. 상대가 정면 ±frontHalfAngle 안일 때 (400 = 132°/s)")]
+            public float guardTurnInside = 400f;
+            [Tooltip("가드 자동 선회: 상대가 정면 밖일 때 (1092 = 360°/s)")]
+            public float guardTurnOutside = 1092f;
             [Tooltip("정렬로 보는 각도 차(°)")]
             public float alignEpsilon = 0.5f;
 
@@ -140,7 +144,7 @@ namespace MyDongari.Mech
             public bool fallDoubleIntegrate = true;
             [Tooltip("발판에서 떨어질 때 시작 vy")]
             public float ledgeFallVy = -0.5f;
-            [Tooltip("하강 중 △를 누른 지 이 프레임 ~ hoverEndFrame 사이: vy += (경과 − 시작) × hoverGain, 상한 hoverMaxVy (사양서 4.6)")]
+            [Tooltip("V9a: 상승 중 △ 재입력(2단 점프)은 없다. 하강 중 △를 누른 지 이 프레임 ~ hoverEndFrame 사이: vy += (경과 − 시작) × hoverGain, 상한 hoverMaxVy (사양서 4.6)")]
             public int hoverStartFrame = 7;
             public int hoverEndFrame = 14;
             public float hoverGain = 0.1f;
@@ -152,9 +156,7 @@ namespace MyDongari.Mech
             [Tooltip("게이지가 차서 끝나면 이 vy로 점프 하강")]
             public float airDashEndVy = -0.001f;
 
-            [Header("급강하 (u/f) — 입력: 공중에서 L스틱 아래 + △ (V8.2)")]
-            [Tooltip("공중에서 L스틱을 이 값 이하로(아래로) 당기고 △ = 급강하")]
-            [Range(-1f, 0f)] public float diveStickY = -0.7f;
+            [Header("급강하 (u/f) — 입력: 공중에서 ✕ (V9a)")]
             public float diveStartVy = -1.75f;
             public float diveAccel = 0.25f;
             [Tooltip("vy가 이 값보다 크면(덜 빠르면) 매 틱 diveAccel만큼 더 빨라진다")]

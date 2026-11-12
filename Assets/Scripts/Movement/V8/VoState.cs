@@ -288,7 +288,7 @@ namespace MyDongari.Movement.V8
     }
 
     /// <summary>
-    /// 급강하 (사양서 4.8): 점프 중 급강하 입력(V8.1: △ 다시 누르기 — 상승·하강 모두) 또는 천장. vy = −1.75u/f,
+    /// 급강하 (사양서 4.8): 점프 중 급강하 입력(V9a: 공중에서 ✕ — 상승·하강 모두) 또는 천장. vy = −1.75u/f,
     /// 보조가 vy > −2.751이면 −0.25씩 + y += vy, 본 처리가 한 번 더 y += vy(2중). 수평 속력 0, 수동 선회만.
     /// </summary>
     public class VoDiveState : VoState

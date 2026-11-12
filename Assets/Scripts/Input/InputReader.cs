@@ -38,11 +38,12 @@ namespace MyDongari.Input
         /// <summary>△를 누르고 있는지 (V8 하강 호버).</summary>
         public bool JumpHeld { get; private set; }
         /// <summary>
-        /// ○·△를 지금까지 누른 횟수 (V8). 60Hz 고정 틱은 화면 프레임과 어긋나므로 "이번 프레임에 눌렀나" 대신
+        /// ○·△·✕를 지금까지 누른 횟수 (V8). 60Hz 고정 틱은 화면 프레임과 어긋나므로 "이번 프레임에 눌렀나" 대신
         /// 틱마다 이 값이 바뀌었는지로 새 입력을 본다 — 두 틱 사이 짧은 탭도 놓치지 않는다.
         /// </summary>
         public int DashPressCount { get; private set; }
         public int JumpPressCount { get; private set; }
+        public int GuardPressCount { get; private set; }
         public bool Skill1Input { get; private set; }
         public bool Skill2Input { get; private set; }
         public int SideStepDirection { get; private set; }
@@ -56,6 +57,10 @@ namespace MyDongari.Input
 
         public bool AttackHeld { get; private set; }
         public bool AttackPressedThisFrame { get; private set; }
+        /// <summary>
+        /// ✕(패드 A / 마우스 오른쪽 버튼)를 누르고 있는지·이번 프레임에 눌렀는지 (V9a). 땅에서는 가드·패리, 공중에서는 급강하.
+        /// 예전 L2(Guard 액션)는 .inputactions에 남아 있지만 읽지 않는다 — L2는 비어 있다.
+        /// </summary>
         public bool GuardHeld { get; private set; }
         public bool GuardPressedThisFrame { get; private set; }
         /// <summary>시작 버튼(패드 Start / 키보드 Enter). 입력 잠금 중에도 읽힌다 (재매치용).</summary>
@@ -136,7 +141,7 @@ namespace MyDongari.Input
             _skill1Action = _playerInput.actions["Skill1"];
             _skill2Action = _playerInput.actions["Skill2"];
             _attackAction = _playerInput.actions["Attack"];
-            _guardAction = _playerInput.actions["Guard"];
+            _guardAction = _playerInput.actions["Cross"];
             _stepLeftAction = _playerInput.actions["StepLeft"];
             _stepRightAction = _playerInput.actions["StepRight"];
             // 패드 스틱만 바인딩된 액션. 키보드 WASD가 튕기기로 오인되지 않게 제스처는 이것만 본다
@@ -245,6 +250,7 @@ namespace MyDongari.Input
             // 잠금으로 지운 뒤에 센다 (잠금 중 누른 건 안 셈)
             if (DashPressedThisFrame) DashPressCount++;
             if (JumpPressedThisFrame) JumpPressCount++;
+            if (GuardPressedThisFrame) GuardPressCount++;
 
             if (InputTrace.ShouldLog(this, "2 InputReader"))
             {
