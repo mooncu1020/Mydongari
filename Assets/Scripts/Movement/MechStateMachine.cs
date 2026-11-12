@@ -60,7 +60,7 @@ namespace MyDongari.Movement
 
         /// <summary>
         /// 외형·연출용 "대시 모션 중" (V8.2): IsDashing + 앞 대시에서 바뀐 근접 스텝. 전환할 때 호버 활주·숙임·불꽃이 끊기지 않게.
-        /// 가드·부스트·히트 같은 규칙은 IsDashing을 그대로 본다.
+        /// 가드·히트 같은 규칙은 IsDashing을 그대로 본다.
         /// </summary>
         public bool IsDashMotion => IsDashing || (_currentState is VoCloseStepState c && c.FromDash);
         /// <summary>대시 모션 중 진로 (외형이 몸을 트는 방향, 출발 분사 방향).</summary>
@@ -331,7 +331,7 @@ namespace MyDongari.Movement
             _currentState?.Exit();
             _currentState = newState;
             _currentState.Enter();
-            // Enter 안에서 부스트 부족 등으로 다른 상태로 넘어갔으면 그쪽 호출이 이미 알렸다
+            // Enter 안에서 다른 상태로 넘어갔으면 그쪽 호출이 이미 알렸다
             if (_currentState == newState) OnStateChanged?.Invoke(newState);
         }
 

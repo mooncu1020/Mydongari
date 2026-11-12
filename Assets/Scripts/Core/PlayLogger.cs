@@ -57,8 +57,8 @@ namespace MyDongari.Core
             // 입력 버퍼로(누른 프레임보다 뒤에) 발동한 공격 수. 종류별은 buffered_punch 등으로 따로
             "buffered_attack",
             // ○ 대시(V3.1): 진입 수와 끝난 이유별 수 (나머지 이유는 0이 아닐 때만 추가로 나온다)
-            "dash_enter", "dash_exit_canceled", "dash_exit_exhausted", "dash_exit_bump", "dash_exit_wall", "dash_exit_timeout",
-            // 점프(V5): 점프 수, 공중 대시 수, 착지 경직 수 (짧게·부스트 0% 길게)
+            "dash_enter", "dash_exit_canceled", "dash_exit_bump", "dash_exit_wall", "dash_exit_timeout",
+            // 점프(V5): 점프 수, 공중 대시 수, 착지 경직 수 (긴 경직은 V7c부터 항상 0)
             "jump", "air_dash", "landing_lag", "landing_lag_long"
         };
         private static readonly string[] BandNames = { "near", "mid", "far" };
@@ -100,7 +100,7 @@ namespace MyDongari.Core
             _summaryFilePath = Path.Combine(folder, summaryFileName + "_" + timestamp + ".csv");
 
             _sb = new StringBuilder();
-            _sb.AppendLine("time,round,p1_hp,p1_boost,p1_heat,p1_state,p1_posX,p1_posZ,p1_moveX,p1_moveY,p2_hp,p2_boost,p2_heat,p2_state,p2_posX,p2_posZ,p2_moveX,p2_moveY,distance,dist_band");
+            _sb.AppendLine("time,round,p1_hp,p1_heat,p1_state,p1_posX,p1_posZ,p1_moveX,p1_moveY,p2_hp,p2_heat,p2_state,p2_posX,p2_posZ,p2_moveX,p2_moveY,distance,dist_band");
             _eventSb = new StringBuilder();
             _eventSb.AppendLine("time,round,player,event,distance,detail");
             _summarySb = new StringBuilder();
@@ -418,7 +418,6 @@ namespace MyDongari.Core
                 case DashExitReason.Canceled: return "canceled";
                 case DashExitReason.Wall: return "wall";
                 case DashExitReason.Landed: return "landed";
-                case DashExitReason.Exhausted: return "exhausted";
                 case DashExitReason.Stun: return "stun";
                 case DashExitReason.Tackle: return "tackle";
                 case DashExitReason.Bump: return "bump";
@@ -522,35 +521,33 @@ namespace MyDongari.Core
             GameManager gm = GameManager.Instance;
             int round = gm != null ? gm.RoundNumber : 0;
 
-            ReadMech(player1, out float p1Hp, out float p1Boost, out float p1Heat, out string p1State,
+            ReadMech(player1, out float p1Hp, out float p1Heat, out string p1State,
                 out float p1PosX, out float p1PosZ, out float p1MoveX, out float p1MoveY);
-            ReadMech(player2, out float p2Hp, out float p2Boost, out float p2Heat, out string p2State,
+            ReadMech(player2, out float p2Hp, out float p2Heat, out string p2State,
                 out float p2PosX, out float p2PosZ, out float p2MoveX, out float p2MoveY);
 
             float distance = CurrentDistance();
             string band = player1 != null && player2 != null ? BandNames[DistanceBand(distance)] : "none";
 
-            _sb.AppendLine(string.Format("{0:F2},{1},{2:F1},{3:F1},{4:F1},{5},{6:F2},{7:F2},{8:F2},{9:F2},{10:F1},{11:F1},{12:F1},{13},{14:F2},{15:F2},{16:F2},{17:F2},{18:F2},{19}",
-                time, round, p1Hp, p1Boost, p1Heat, p1State, p1PosX, p1PosZ, p1MoveX, p1MoveY,
-                p2Hp, p2Boost, p2Heat, p2State, p2PosX, p2PosZ, p2MoveX, p2MoveY, distance, band));
+            _sb.AppendLine(string.Format("{0:F2},{1},{2:F1},{3:F1},{4},{5:F2},{6:F2},{7:F2},{8:F2},{9:F1},{10:F1},{11},{12:F2},{13:F2},{14:F2},{15:F2},{16:F2},{17}",
+                time, round, p1Hp, p1Heat, p1State, p1PosX, p1PosZ, p1MoveX, p1MoveY,
+                p2Hp, p2Heat, p2State, p2PosX, p2PosZ, p2MoveX, p2MoveY, distance, band));
             _dirty = true;
         }
 
-        private static void ReadMech(GameObject mech, out float hp, out float boost, out float heat, out string state,
+        private static void ReadMech(GameObject mech, out float hp, out float heat, out string state,
             out float posX, out float posZ, out float moveX, out float moveY)
         {
-            hp = 0f; boost = 0f; heat = 0f; state = "none";
+            hp = 0f; heat = 0f; state = "none";
             posX = 0f; posZ = 0f; moveX = 0f; moveY = 0f;
             if (mech == null) return;
 
             Health h = mech.GetComponent<Health>();
-            BoostGauge bg = mech.GetComponent<BoostGauge>();
             HeatGauge hg = mech.GetComponent<HeatGauge>();
             MechStateMachine sm = mech.GetComponent<MechStateMachine>();
             InputReader ir = mech.GetComponent<InputReader>();
 
             if (h != null) hp = h.CurrentHealth;
-            if (bg != null) boost = bg.CurrentBoost;
             if (hg != null) heat = hg.CurrentHeat;
             if (sm != null) state = sm.CurrentStateName;
             if (ir != null)

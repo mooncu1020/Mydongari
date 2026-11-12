@@ -83,6 +83,8 @@ namespace MyDongari.Combat
         public event Action<AttackType> OnBufferedAttack;
 
         private readonly AttackInputBuffer _attackBuffer = new AttackInputBuffer();
+        // 이번 프레임의 공격 입력을 버퍼에서 지울지 (런지 쿨다운 중 입력, V9f)
+        private bool _discardAttackInput;
 
         private Transform _player;
         private MechIdentity _identity;
@@ -121,7 +123,6 @@ namespace MyDongari.Combat
             _botInput = GetComponent<BotInput>();
             if (_botInput == null) _botInput = gameObject.AddComponent<BotInput>();
             if (GetComponent<HeatGauge>() == null) gameObject.AddComponent<HeatGauge>();
-            if (GetComponent<BoostGauge>() == null) gameObject.AddComponent<BoostGauge>();
             _lunge = GetComponent<ThrusterLunge>();
             if (_lunge == null) _lunge = gameObject.AddComponent<ThrusterLunge>();
 
@@ -242,7 +243,11 @@ namespace MyDongari.Combat
         {
             if (_botInput.AttackPressedThisFrame) _attackBuffer.Press();
             float bufferTime = _tuning.Get(this).Startup.inputBuffer;
-            if (_attackBuffer.Tick(bufferTime, TryStartAttack, out AttackType started, out bool fromBuffer) && fromBuffer)
+            _discardAttackInput = false;
+            bool startedAttack = _attackBuffer.Tick(bufferTime, TryStartAttack, out AttackType started, out bool fromBuffer);
+            // V9f: 플레이어와 같게 — 런지 쿨다운 중에 누른 공격은 버린다 (나중에 펀치로 바뀌어 나가지 않게)
+            if (_discardAttackInput) _attackBuffer.Clear();
+            if (startedAttack && fromBuffer)
             {
                 OnBufferedAttack?.Invoke(started);
             }
@@ -261,6 +266,11 @@ namespace MyDongari.Combat
             if (dist <= _tuning.Get(this).LockOn.meleeSwitchRange)
             {
                 return _meleeSystem != null && _meleeSystem.TryMeleeAttack() ? AttackType.Punch : (AttackType?)null;
+            }
+            if (_lunge != null && _lunge.IsOnCooldown)
+            {
+                _discardAttackInput = true;
+                return null;
             }
             return _lunge != null && _lunge.TryLunge() ? AttackType.Lunge : (AttackType?)null;
         }
@@ -337,10 +347,12 @@ namespace MyDongari.Combat
         {
             if (_lunge == null || _lunge.IsLunging) return;
             if (Time.time < _nextLungeTime) return;
+            // V9f: 봇도 플레이어와 같은 런지 쿨다운(3초)을 탄다 — 쿨다운 중엔 누르지 않고 끝나길 기다린다
+            if (_lunge.IsOnCooldown) return;
             if (dist < lungerMinDistance || dist > lungerMaxDistance) return;
             if (!IsAimed(lungeAimAngle)) return;
 
-            // 런지 거리(하드 락온 밖)라 버튼을 누르면 런지가 나간다. 부스트 부족 등으로 안 나가면 버퍼가 잠깐 다시 시도
+            // 런지 거리(하드 락온 밖)라 버튼을 누르면 런지가 나간다. 스턴 등으로 안 나가면 버퍼가 잠깐 다시 시도
             _botInput.PressAttack();
             _nextLungeTime = Time.time + Random.Range(lungeIntervalMin, lungeIntervalMax);
         }

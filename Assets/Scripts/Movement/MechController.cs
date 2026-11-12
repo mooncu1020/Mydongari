@@ -30,9 +30,6 @@ namespace MyDongari.Movement
         [SerializeField] private bool forceInterpolation = true;
 
         [Header("카메라")]
-        [SerializeField] private BoostGauge boostGauge;
-        public BoostGauge BoostGauge => boostGauge;
-
         [SerializeField] private MeleeSystem meleeSystem;
         public MeleeSystem MeleeSystem => meleeSystem;
 

@@ -11,7 +11,7 @@ namespace MyDongari.Movement
     /// 최고점 약 8.4m(0.73초). 내려올 땐 maxFallSpeed(7.5m/s)로 상한이 걸려 천천히 내려온다.
     /// 공중 수평 이동은 방향별 airMoveSpeed(옆이 제일 빠름). 공중 대시는 상승 중에만(CanAirDash).
     /// 뛰는 순간 거리와 상관없이 몸(과 몸을 따라오는 카메라)을 jumpTurnTime(0.2초)에 걸쳐 상대 쪽으로 돌린다(점프 락온).
-    /// 공중에선 가드·패리·앵커 클로·공격 불가, 부스트 회복 멈춤. 공중 ○ = 공중 대시(DashState). 착지하면 LandingState.
+    /// 공중에선 가드·패리·앵커 클로·공격 불가. 공중 ○ = 공중 대시(DashState). 착지하면 LandingState.
     /// </summary>
     public class AirState : MechState
     {
@@ -119,7 +119,7 @@ namespace MyDongari.Movement
             if (IsTakingOff) return;
             _elapsed += Time.deltaTime;
 
-            // 공중 ○ = 공중 대시 (상승 중에만, 스턴·탈진이면 안 나감 — MechStateMachine.TryStartDash)
+            // 공중 ○ = 공중 대시 (상승 중에만, 스턴이면 안 나감 — MechStateMachine.TryStartDash)
             if (StateMachine.TryStartDash()) return;
 
             if (CanLand()) StateMachine.Land(_needsLandingLag);

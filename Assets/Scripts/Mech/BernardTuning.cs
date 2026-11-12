@@ -158,18 +158,6 @@ namespace MyDongari.Mech
         }
 
         [Serializable]
-        public class BoostValues
-        {
-            public float maxBoost = 100f;
-            [Tooltip("땅에서 달리기·근접 이동·정지로 바뀐 뒤 회복이 시작되기까지(초)")]
-            public float recoveryDelay = 0.5f;
-            [Tooltip("초당 회복량")]
-            public float recoveryRate = 25f;
-            [Tooltip("탈진(0%) 후 회복해 최대치의 이 비율에 도달하면 탈진 해제. V7c: 부스트는 런지에만 쓰고(소모량은 런지 쪽 값), 탈진이면 런지만 막힌다")]
-            [Range(0f, 1f)] public float exhaustRecoverRatio = 0.5f;
-        }
-
-        [Serializable]
         public class HeatValues
         {
             public float maxHeat = 100f;
@@ -349,8 +337,8 @@ namespace MyDongari.Mech
             [Range(0f, 1f)] public float endSpeedRatio = 0.2f;
             [Tooltip("벽 등에 막혀 거리를 못 채울 때를 대비한 최대 돌진 시간 = (거리/속도) × 이 배수")]
             public float timeoutMultiplier = 1.5f;
-            [Tooltip("발동 시 소모하는 부스트. 탈진이면 발동 안 함")]
-            public float boostCost = 15f;
+            [Tooltip("런지 쿨다운(초, V9f): 런지를 시작한 순간부터 이 시간 동안 다시 못 쓴다. 쿨다운 중 공격 입력은 버린다(펀치로도 안 바뀜)")]
+            public float cooldown = 3f;
 
             [Header("명중")]
             [Tooltip("명중 피해 (펀치보다 약간 낮게)")]
@@ -1069,8 +1057,6 @@ namespace MyDongari.Mech
 
         [Header("이동")]
         [SerializeField] private MovementValues movement = new MovementValues();
-        [Header("부스트")]
-        [SerializeField] private BoostValues boost = new BoostValues();
         [Header("히트")]
         [SerializeField] private HeatValues heat = new HeatValues();
         [Header("펀치 / 맞딜")]
@@ -1109,7 +1095,6 @@ namespace MyDongari.Mech
         [SerializeField] private MotionValues motion = new MotionValues();
 
         public MovementValues Movement => movement;
-        public BoostValues Boost => boost;
         public HeatValues Heat => heat;
         public PunchValues Punch => punch;
         public AttackStartupValues Startup => startup;

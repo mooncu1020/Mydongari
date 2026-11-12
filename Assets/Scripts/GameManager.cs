@@ -552,7 +552,7 @@ namespace MyDongari.Core
         }
 
         /// <summary>
-        /// 연습 모드 즉시 리셋: 두 기체 체력·부스트·히트·위치·상태를 라운드 시작과 같은 방식으로 되돌린다.
+        /// 연습 모드 즉시 리셋: 두 기체 체력·히트·위치·상태를 라운드 시작과 같은 방식으로 되돌린다.
         /// 카운트다운 없이 바로 이어서 움직일 수 있다. 리셋 단축키를 누른 프레임의 다른 게임 입력은 비워 둔다
         /// (리셋 직후 같은 프레임 입력이 새 위치에서 나가지 않게).
         /// </summary>
@@ -720,9 +720,6 @@ namespace MyDongari.Core
 
             Health health = mech.GetComponent<Health>();
             if (health != null) health.ResetHealth();
-
-            BoostGauge boost = mech.GetComponent<BoostGauge>();
-            if (boost != null) boost.ResetForRound();
 
             HeatGauge heat = mech.GetComponent<HeatGauge>();
             if (heat != null) heat.ResetForRound();

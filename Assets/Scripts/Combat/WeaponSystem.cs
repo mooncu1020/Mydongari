@@ -38,6 +38,8 @@ namespace MyDongari.Combat
         private MechStateMachine _stateMachine;
         private float _fireTimer = 0f;
         private readonly AttackInputBuffer _attackBuffer = new AttackInputBuffer();
+        // 이번 프레임의 공격 입력을 버퍼에서 지울지 (런지 쿨다운 중 입력, V9f)
+        private bool _discardAttackInput;
         private TuningRef _tuning;
 
         /// <summary>입력 버퍼로(누른 프레임보다 뒤에) 발동한 공격. 로그용.</summary>
@@ -123,7 +125,11 @@ namespace MyDongari.Combat
             }
 
             float bufferTime = _tuning.Get(this).Startup.inputBuffer;
-            if (_attackBuffer.Tick(bufferTime, TryStartAttack, out AttackType started, out bool fromBuffer))
+            _discardAttackInput = false;
+            bool startedAttack = _attackBuffer.Tick(bufferTime, TryStartAttack, out AttackType started, out bool fromBuffer);
+            // V9f: 런지 쿨다운 중에 누른 공격은 버린다 — 버퍼에 남겨 두면 그 사이 상대가 6m 안에 들어왔을 때 펀치로 바뀌어 나간다
+            if (_discardAttackInput) _attackBuffer.Clear();
+            if (startedAttack)
             {
                 if (fromBuffer) OnBufferedAttack?.Invoke(started);
                 // V8: 공격을 쓰면 "사격 조준" — 15f 동안 몸을 상대 쪽으로 돌린다 (대시 중 공격은 대시가 지속 조준)
@@ -176,6 +182,12 @@ namespace MyDongari.Combat
 
             if (rangedMode == RangedMode.Lunge && _thrusterLunge != null)
             {
+                // V9f: 쿨다운 중 런지 입력은 무시 (버퍼에도 안 남김)
+                if (_thrusterLunge.IsOnCooldown)
+                {
+                    _discardAttackInput = true;
+                    return null;
+                }
                 return _thrusterLunge.TryLunge() ? AttackType.Lunge : (AttackType?)null;
             }
             return null;

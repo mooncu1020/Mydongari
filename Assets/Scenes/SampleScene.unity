@@ -7549,7 +7549,6 @@ GameObject:
   - component: {fileID: 775153497}
   - component: {fileID: 775153496}
   - component: {fileID: 775153506}
-  - component: {fileID: 775153505}
   - component: {fileID: 775153507}
   - component: {fileID: 775153508}
   - component: {fileID: 775153509}
@@ -7609,7 +7608,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Movement.MechController
   forceInterpolation: 1
-  boostGauge: {fileID: 775153505}
   meleeSystem: {fileID: 775153509}
   cameraTransform: {fileID: 405262798}
   mechCamera: {fileID: 405262802}
@@ -7774,18 +7772,6 @@ Transform:
   - {fileID: 1964382553}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: -0.003, y: 360.549, z: 359.787}
---- !u!114 &775153505
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 775153495}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 27f2629b9c2d7db4eba942cd18aac605, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Mech.BoostGauge
 --- !u!114 &775153506
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8102,79 +8088,6 @@ Transform:
   - {fileID: 405262798}
   m_Father: {fileID: 775153504}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &796723130
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 796723131}
-  - component: {fileID: 796723133}
-  - component: {fileID: 796723132}
-  m_Layer: 5
-  m_Name: ' BoosttGaugeBG'
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &796723131
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 796723130}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1558416256}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &796723132
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 796723130}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2f654057fc1d8294892f3aafc0ad2b1c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.UI.ArcGauge
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  fillAmount: 1
-  startAngle: 120
-  endAngle: 240
-  thickness: 12
-  segments: 64
-  isBackground: 1
-  reverseDirection: 0
-  backgroundColor: {r: 1, g: 1, b: 1, a: 0.15}
---- !u!222 &796723133
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 796723130}
-  m_CullTransparentMesh: 1
 --- !u!1 &829728014
 GameObject:
   m_ObjectHideFlags: 0
@@ -10555,7 +10468,6 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1423522561}
-  - {fileID: 1558416256}
   - {fileID: 1912239605}
   - {fileID: 126048545}
   - {fileID: 1142991836}
@@ -10580,13 +10492,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.UI.HUDController
   heatGaugeArc: {fileID: 1423522564}
-  boostGaugeArc: {fileID: 1558416259}
   hpBarFill: {fileID: 1604249581}
   opponentHpBarFill: {fileID: 1900143270}
   tackleBarFill: {fileID: 1707581530}
   lockOnMarker: {fileID: 1912239605}
   heatGauge: {fileID: 775153506}
-  boostGauge: {fileID: 775153505}
   playerHealth: {fileID: 775153510}
   lockOnSystem: {fileID: 775153507}
   mechStateMachine: {fileID: 775153498}
@@ -14561,6 +14471,7 @@ MonoBehaviour:
   player2SpawnPoint: {fileID: 766054330}
   player1: {fileID: 775153495}
   player2: {fileID: 1437728180}
+  menuConfirmDelay: 0.5
 --- !u!4 &1342267389
 Transform:
   m_ObjectHideFlags: 0
@@ -14626,8 +14537,6 @@ MonoBehaviour:
   stunColor: {r: 1, g: 0.9, b: 0.2, a: 1}
   overheatLabel: OVERHEAT
   overheatColor: {r: 1, g: 0.25, b: 0.15, a: 1}
-  exhaustedLabel: EXHAUSTED
-  exhaustedColor: {r: 0.6, g: 0.7, b: 0.85, a: 1}
   landingLabel: LANDING
   landingColor: {r: 1, g: 0.75, b: 0.3, a: 1}
   landingLabelScale: 0.8
@@ -15785,7 +15694,6 @@ GameObject:
   - component: {fileID: 1437728195}
   - component: {fileID: 1437728194}
   - component: {fileID: 1437728186}
-  - component: {fileID: 1437728185}
   - component: {fileID: 1437728183}
   - component: {fileID: 1437728193}
   - component: {fileID: 1437728192}
@@ -15858,18 +15766,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Combat.Health
   maxHealth: 100
---- !u!114 &1437728185
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1437728180}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 27f2629b9c2d7db4eba942cd18aac605, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Mech.BoostGauge
 --- !u!114 &1437728186
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -16082,7 +15978,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Movement.MechController
   forceInterpolation: 1
-  boostGauge: {fileID: 1437728185}
   meleeSystem: {fileID: 1437728192}
   cameraTransform: {fileID: 1760294304}
   mechCamera: {fileID: 1760294302}
@@ -16322,80 +16217,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 6.322455, y: 30, z: 2}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!1 &1494209180
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1494209181}
-  - component: {fileID: 1494209183}
-  - component: {fileID: 1494209182}
-  m_Layer: 5
-  m_Name: BoostGaugeArc
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &1494209181
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1494209180}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: -1.5, y: 1.5, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1709398599}
-  m_Father: {fileID: 1921866316}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 200, y: 0}
-  m_SizeDelta: {x: 200, y: 250}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1494209182
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1494209180}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2f654057fc1d8294892f3aafc0ad2b1c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.UI.ArcGauge
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  fillAmount: 1
-  startAngle: 120
-  endAngle: 240
-  thickness: 12
-  segments: 64
-  isBackground: 0
-  reverseDirection: 1
-  backgroundColor: {r: 1, g: 1, b: 1, a: 0.15}
---- !u!222 &1494209183
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1494209180}
-  m_CullTransparentMesh: 1
 --- !u!1 &1498358756
 GameObject:
   m_ObjectHideFlags: 0
@@ -17119,80 +16940,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1544454514}
   m_Mesh: {fileID: -1434941652212940874, guid: fc973a8d258fe3a4a88cb9bf5bc7757d, type: 3}
---- !u!1 &1558416255
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1558416256}
-  - component: {fileID: 1558416258}
-  - component: {fileID: 1558416259}
-  m_Layer: 5
-  m_Name: BoostGaugeArc
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &1558416256
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1558416255}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: -1.5, y: 1.5, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 796723131}
-  m_Father: {fileID: 1067613110}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 200, y: 0}
-  m_SizeDelta: {x: 200, y: 250}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!222 &1558416258
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1558416255}
-  m_CullTransparentMesh: 1
---- !u!114 &1558416259
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1558416255}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2f654057fc1d8294892f3aafc0ad2b1c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.UI.ArcGauge
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  fillAmount: 1
-  startAngle: 120
-  endAngle: 240
-  thickness: 12
-  segments: 64
-  isBackground: 0
-  reverseDirection: 1
-  backgroundColor: {r: 1, g: 1, b: 1, a: 0.15}
 --- !u!1 &1563931233
 GameObject:
   m_ObjectHideFlags: 0
@@ -18340,79 +18087,6 @@ CanvasRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1707581528}
-  m_CullTransparentMesh: 1
---- !u!1 &1709398598
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1709398599}
-  - component: {fileID: 1709398601}
-  - component: {fileID: 1709398600}
-  m_Layer: 5
-  m_Name: ' BoosttGaugeBG'
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &1709398599
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1709398598}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1494209181}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1709398600
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1709398598}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2f654057fc1d8294892f3aafc0ad2b1c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.UI.ArcGauge
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  fillAmount: 1
-  startAngle: 120
-  endAngle: 240
-  thickness: 12
-  segments: 64
-  isBackground: 1
-  reverseDirection: 0
-  backgroundColor: {r: 1, g: 1, b: 1, a: 0.15}
---- !u!222 &1709398601
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1709398598}
   m_CullTransparentMesh: 1
 --- !u!1 &1709673175
 GameObject:
@@ -20566,7 +20240,6 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 222499024}
-  - {fileID: 1494209181}
   - {fileID: 1357220931}
   - {fileID: 1715374984}
   - {fileID: 1350879234}
@@ -20591,13 +20264,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.UI.HUDController
   heatGaugeArc: {fileID: 222499025}
-  boostGaugeArc: {fileID: 1494209182}
   hpBarFill: {fileID: 1289038247}
   opponentHpBarFill: {fileID: 1529305637}
   tackleBarFill: {fileID: 831748692}
   lockOnMarker: {fileID: 1357220931}
   heatGauge: {fileID: 1437728186}
-  boostGauge: {fileID: 1437728185}
   playerHealth: {fileID: 1437728184}
   lockOnSystem: {fileID: 1437728183}
   mechStateMachine: {fileID: 1437728182}

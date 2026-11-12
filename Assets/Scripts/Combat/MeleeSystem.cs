@@ -198,7 +198,7 @@ namespace MyDongari.Combat
 
             if (guardHeld && !sprinting && (IsGuarding || _reraiseTimer <= 0f))
             {
-                // 가드는 부스트를 쓰지 않는다. 탈진이어도 가드 가능.
+                // 가드는 자원을 쓰지 않는다 (대가는 막을 때 쌓이는 히트).
                 if (!IsGuarding)
                 {
                     IsGuarding = true;

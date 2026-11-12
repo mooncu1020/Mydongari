@@ -183,7 +183,6 @@ namespace MyDongari.EditorTools
         {
             SerializedObject so = new SerializedObject(hud);
             so.FindProperty("heatGauge").objectReferenceValue = mech.GetComponent<MyDongari.Mech.HeatGauge>();
-            so.FindProperty("boostGauge").objectReferenceValue = mech.GetComponent<MyDongari.Mech.BoostGauge>();
             so.FindProperty("playerHealth").objectReferenceValue = mech.GetComponent<MyDongari.Combat.Health>();
             so.FindProperty("lockOnSystem").objectReferenceValue = mech.GetComponent<MyDongari.Combat.LockOnSystem>();
             so.FindProperty("mechStateMachine").objectReferenceValue = mech.GetComponent<MyDongari.Movement.MechStateMachine>();

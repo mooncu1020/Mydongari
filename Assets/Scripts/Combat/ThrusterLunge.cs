@@ -30,11 +30,17 @@ namespace MyDongari.Combat
         public event Action<HitResult?> OnLungeEnded;
 
         public bool IsLunging { get; private set; }
+        /// <summary>
+        /// 런지 쿨다운 중인지 (V9f): 런지를 시작한 순간부터 cooldown초. 부스트 대신 이것이 런지 연타를 막는다.
+        /// 쿨다운 중 공격 입력은 버리고(WeaponSystem·MeleeDummy) 버퍼에도 남기지 않는다.
+        /// </summary>
+        public bool IsOnCooldown => Time.time < _cooldownUntil;
+        /// <summary>남은 쿨다운(초). 0이면 쓸 수 있다.</summary>
+        public float CooldownRemaining => Mathf.Max(0f, _cooldownUntil - Time.time);
         public LungePhase Phase { get; private set; } = LungePhase.None;
 
         private MechStateMachine _stateMachine;
         private MechController _controller;
-        private BoostGauge _boostGauge;
         private LockOnSystem _lockOn;
         private MechIdentity _identity;
         private Rigidbody _rb;
@@ -42,6 +48,9 @@ namespace MyDongari.Combat
         private ExternalControlLock _controlLock;
         // 상태 머신이 없는 기체(연습 봇)는 LungeState 대신 이 컴포넌트가 FixedUpdate에서 돌진을 진행한다
         private bool _selfDriven;
+
+        // 게임 시간(scaled) 기준 — 히트스톱·일시정지 동안은 쿨다운도 같이 멈춘다
+        private float _cooldownUntil = -1f;
 
         private Vector3 _direction;
         private Vector3 _startPosition;
@@ -53,7 +62,6 @@ namespace MyDongari.Combat
         {
             _stateMachine = GetComponent<MechStateMachine>();
             _controller = GetComponent<MechController>();
-            _boostGauge = GetComponent<BoostGauge>();
             _lockOn = GetComponent<LockOnSystem>();
             _identity = MechIdentity.GetOrAdd(gameObject);
             _rb = GetComponent<Rigidbody>();
@@ -74,7 +82,7 @@ namespace MyDongari.Combat
         }
 
         /// <summary>
-        /// 조건이 맞으면 부스트를 쓰고 돌진을 시작한다. 플레이어 기체는 LungeState로 전환,
+        /// 조건이 맞으면(쿨다운이 끝났으면) 돌진을 시작하고 쿨다운을 건다 (V9f: 부스트 없음). 플레이어 기체는 LungeState로 전환,
         /// 상태 머신이 없는 기체(연습 봇)는 같은 BeginDash/TickDash를 이 컴포넌트가 직접 돌린다.
         /// </summary>
         public bool TryLunge()
@@ -84,8 +92,8 @@ namespace MyDongari.Combat
             if (_melee != null && _melee.IsKnockedDown) return false;
             if (IsExternallyControlled) return false;
             if (_stateMachine != null && !_stateMachine.CanStartLunge) return false;
-            // TryConsume은 탈진이면 false
-            if (_boostGauge != null && !_boostGauge.TryConsume(T.boostCost)) return false;
+            if (IsOnCooldown) return false;
+            _cooldownUntil = Time.time + T.cooldown;
 
             if (_stateMachine != null)
             {
@@ -276,6 +284,7 @@ namespace MyDongari.Combat
             IsLunging = false;
             Phase = LungePhase.None;
             _selfDriven = false;
+            _cooldownUntil = -1f;
             if (_lockOn != null) _lockOn.SetHardLockSuppressed(false);
         }
 

@@ -11,9 +11,9 @@ using MyDongari.Visual;
 namespace MyDongari.Feedback
 {
     /// <summary>
-    /// 상태 피드백: 머리 위 팝업(PARRY / GUARD BREAK / CLASH / STUN / OVERHEAT / EXHAUSTED), 기체 색 틴트, 효과음.
+    /// 상태 피드백: 머리 위 팝업(PARRY / GUARD BREAK / CLASH / STUN / OVERHEAT), 기체 색 틴트, 효과음.
     /// 전투 코드는 이 컴포넌트를 모른다. 기존 이벤트(OnHitResolved, OnLungeStarted, OnGrabbed)를 구독하고,
-    /// 이벤트가 없는 상태(과열·탈진·가드, 틴트용 스턴)는 공개 프로퍼티를 매 프레임 읽어 변화만 감지한다.
+    /// 이벤트가 없는 상태(과열·가드, 틴트용 스턴)는 공개 프로퍼티를 매 프레임 읽어 변화만 감지한다.
     /// STUN 팝업은 상대에게 맞아서 생긴 스턴만 (태클 후 자기 경직은 표시 안 함 — C4 결정).
     /// GameManager 오브젝트에 하나 (없으면 GameManager가 자동 부착).
     /// </summary>
@@ -36,8 +36,6 @@ namespace MyDongari.Feedback
         [SerializeField] private Color stunColor = new Color(1f, 0.9f, 0.2f);
         [SerializeField] private string overheatLabel = "OVERHEAT";
         [SerializeField] private Color overheatColor = new Color(1f, 0.25f, 0.15f);
-        [SerializeField] private string exhaustedLabel = "EXHAUSTED";
-        [SerializeField] private Color exhaustedColor = new Color(0.6f, 0.7f, 0.85f);
 
         [Header("착지 경직 표시 (V5, 발밑 — 상대 화면에도 보인다)")]
         [SerializeField] private string landingLabel = "LANDING";
@@ -109,12 +107,10 @@ namespace MyDongari.Feedback
             public GameObject Mech;
             public MeleeSystem Melee;
             public HeatGauge Heat;
-            public BoostGauge Boost;
             public MechTint Tint;
             // 처음 팝업을 띄울 때 잰다 (모드에 따라 시작할 때 꺼져 있는 기체는 렌더러 크기를 못 잰다)
             public float HeadHeight = -1f;
             public bool WasOverheated;
-            public bool WasExhausted;
             // 흰색 번쩍임이 끝나는 실제 시각 (N1, 히트스톱 중에도 보이게 실제 시간)
             public float FlashUntil = -1f;
             public Color FlashColor = Color.white;
@@ -162,7 +158,6 @@ namespace MyDongari.Feedback
                 Mech = mech,
                 Melee = mech.GetComponent<MeleeSystem>(),
                 Heat = mech.GetComponent<HeatGauge>(),
-                Boost = mech.GetComponent<BoostGauge>(),
                 Tint = new MechTint(mech),
                 StateMachine = mech.GetComponent<MechStateMachine>(),
                 Rig = mech.GetComponent<MechVisualRig>()
@@ -471,14 +466,11 @@ namespace MyDongari.Feedback
 
                 bool stunned = active && fb.Melee != null && fb.Melee.IsStunned;
                 bool overheated = active && fb.Heat != null && fb.Heat.IsOverheated;
-                bool exhausted = active && fb.Boost != null && fb.Boost.IsExhausted;
                 bool guarding = active && fb.Melee != null && fb.Melee.IsGuarding;
 
                 // 막 그렇게 된 순간만 팝업 (STUN은 피격 이벤트 쪽에서)
                 if (overheated && !fb.WasOverheated) Popup(fb, overheatLabel, overheatColor);
-                if (exhausted && !fb.WasExhausted) Popup(fb, exhaustedLabel, exhaustedColor);
                 fb.WasOverheated = overheated;
-                fb.WasExhausted = exhausted;
 
                 UpdateTint(fb, stunned, overheated, guarding);
                 UpdateHoverLoop(fb, active && fb.StateMachine != null && fb.StateMachine.IsDashMotion);

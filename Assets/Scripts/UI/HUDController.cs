@@ -12,7 +12,6 @@ namespace MyDongari.UI
     {
         [Header("게이지")]
         [SerializeField] private ArcGauge heatGaugeArc;
-        [SerializeField] private ArcGauge boostGaugeArc;
 
         [Header("HP")]
         [SerializeField] private LinearGauge hpBarFill;
@@ -27,7 +26,6 @@ namespace MyDongari.UI
 
         [Header("참조")]
         [SerializeField] private HeatGauge heatGauge;
-        [SerializeField] private BoostGauge boostGauge;
         [SerializeField] private Health playerHealth;
         [SerializeField] private LockOnSystem lockOnSystem;
         [SerializeField] private MechStateMachine mechStateMachine;
@@ -50,7 +48,6 @@ namespace MyDongari.UI
         private void Update()
         {
             UpdateHeat();
-            UpdateBoost();
             UpdateHP();
             UpdateOpponentHP();
             UpdateTackleCharge();
@@ -64,15 +61,6 @@ namespace MyDongari.UI
             heatGaugeArc.SetColor(heatGauge.IsOverheated
                 ? Color.red
                 : new Color(1f, 0.6f, 0f));
-        }
-
-        private void UpdateBoost()
-        {
-            if (boostGaugeArc == null || boostGauge == null) return;
-            boostGaugeArc.SetFill(boostGauge.CurrentBoost / boostGauge.MaxBoost);
-            boostGaugeArc.SetColor(boostGauge.IsExhausted
-                ? Color.red
-                : new Color(0.3f, 0.7f, 1f));
         }
 
         private void UpdateHP()
