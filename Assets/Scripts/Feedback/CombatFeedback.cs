@@ -41,8 +41,6 @@ namespace MyDongari.Feedback
 
         [Header("착지 경직 표시 (V5, 발밑 — 상대 화면에도 보인다)")]
         [SerializeField] private string landingLabel = "LANDING";
-        [Tooltip("부스트 0%로 착지(긴 경직)했을 때 문구. 색은 EXHAUSTED 색")]
-        [SerializeField] private string landingExhaustedLabel = "HARD LANDING";
         [SerializeField] private Color landingColor = new Color(1f, 0.75f, 0.3f);
         [Tooltip("머리 위 팝업 글자 크기 대비 배율")]
         [SerializeField] private float landingLabelScale = 0.8f;
@@ -187,7 +185,7 @@ namespace MyDongari.Feedback
                 _unsubscribers.Add(() => dash.OnDashStarted -= onDash);
 
                 LandingState landing = fb.StateMachine.LandingState;
-                Action<float, bool> onLand = (lag, exhausted) => ErrorLog.Run(() => OnLanded(fb, lag, exhausted), "CombatFeedback.onLand");
+                Action<float> onLand = lag => ErrorLog.Run(() => OnLanded(fb, lag), "CombatFeedback.onLand");
                 landing.OnLanded += onLand;
                 _unsubscribers.Add(() => landing.OnLanded -= onLand);
             }
@@ -546,7 +544,7 @@ namespace MyDongari.Feedback
         /// <summary>
         /// 착지 (V5): 발밑 먼지 + 내 화면 흔들림. 착지 경직이 있으면 발밑에 경직 표시(월드 글자라 상대 화면에도 보인다).
         /// </summary>
-        private void OnLanded(MechFeedback fb, float lag, bool exhausted)
+        private void OnLanded(MechFeedback fb, float lag)
         {
             if (fb.Mech == null) return;
             BernardTuning.HitFeelValues feel = TuningOf(fb.Mech).HitFeel;
@@ -572,8 +570,8 @@ namespace MyDongari.Feedback
             };
             // 기체 루트 기준 발밑 높이 (+ 조금 위)
             float footOffset = foot.y - fb.Mech.transform.position.y + landingLabelHeight;
-            StatusPopup.Spawn(fb.Mech.transform, footOffset, exhausted ? landingExhaustedLabel : landingLabel,
-                exhausted ? exhaustedColor : landingColor, style);
+            StatusPopup.Spawn(fb.Mech.transform, footOffset, landingLabel,
+                landingColor, style);
         }
 
         /// <summary>대시 중 발밑에서 진행 반대쪽·위로 튀는 긁힘 불꽃 (V3.1). 히트스톱 중엔 멈춘다(게임 시간).</summary>

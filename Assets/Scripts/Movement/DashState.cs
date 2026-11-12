@@ -32,7 +32,7 @@ namespace MyDongari.Movement
     /// ○ 재입력은 어느 단계든 그 자리에서 끝 단계로(정지). 부스트 0%·벽 충돌도 끝 단계로, 상대 몸 충돌은 반동(MechController).
     /// 몸 정면(조준·카메라 기준)은 돌리지 않는다 — 외형 모델만 대시 방향으로 튼다(MechVisualRig). 0.8초 이상 계속이면 태클 차징.
     /// 대시 중 공격 (V4, V6.1 시간): 0.8초 미만 = 유도 대시 어택, 0.8초 이상 = 차징 태클(직선, 1.6초에 최대 위력). 대시 어택이 끝나면 방향별 경직(dashAttackRecovery).
-    /// 대시 중엔 가드 불가(MeleeSystem), 부스트 회복 멈춤·초당 소모(BoostGauge).
+    /// 대시 중엔 가드 불가(MeleeSystem), 부스트 회복 멈춤(BoostGauge). V7c: 부스트 소모·탈진 종료 없음.
     /// 공중 대시 (V6c): 점프 상승 중에만 공중 ○ — 같은 시간표, 공중 대시 속도표. 세로 속도는 그대로 두고 상승 중이면 중력 × airDashRisingGravityScale(0.5).
     /// 공중 대시 중 공격은 무시(6단계 전), 끝 단계도 공중에서 미끄러지고(DashStopState) 그 뒤 떨어지며, 착지하면 착지 경직.
     /// </summary>
@@ -195,12 +195,6 @@ namespace MyDongari.Movement
 
             // 공격 중(발생 시간 + 판정 구간)은 어깨를 내민 채 그대로 돌진한다 (취소·탈진으로 끊지 않음)
             if (IsAttacking) return;
-
-            if (StateMachine.MechController.BoostGauge.IsExhausted)
-            {
-                Leave(DashExitReason.Exhausted, StateMachine.DashStopState);
-                return;
-            }
 
             // V6b: ○ 재입력은 시작 단계든 지속 단계든 그 자리에서 끝 단계(선형 감속)로 — V3.1의 1초 취소 불가는 없어졌다
             if (StateMachine.InputReader.DashPressedThisFrame)

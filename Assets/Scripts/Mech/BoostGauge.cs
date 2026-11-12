@@ -27,11 +27,7 @@ namespace MyDongari.Mech
 
         private void Update()
         {
-            if (_stateMachine != null && _stateMachine.IsDashing)
-            {
-                Drain(T.dashDrainRate * Time.deltaTime);
-            }
-
+            // V7c: 부스트는 런지에만 쓴다 (대시·공중 대시·점프·급강하는 소모 없음). 탈진(0%)이면 런지만 막힌다.
             // V3: 땅에서 달리기·근접 이동(둘 다 Run 상태)·정지 중에 회복. 가드를 올리고 있으면 멈춘다 (가드 유지에 대가)
             // 대시·대시 끝 미끄러짐·사이드스텝·런지·넉다운·공중·착지 경직 중엔 회복 안 함 (V5: 부스트는 땅에서만 찬다)
             bool guarding = _meleeSystem != null && _meleeSystem.IsGuarding;
@@ -78,11 +74,6 @@ namespace MyDongari.Mech
             }
         }
 
-        private void Drain(float amount)
-        {
-            CurrentBoost = Mathf.Max(CurrentBoost - amount, 0f);
-        }
-
         public bool TryConsume(float amount)
         {
             if (IsExhausted) return false;
@@ -99,8 +90,5 @@ namespace MyDongari.Mech
             _recoveryDelayTimer = 0f;
             _isRecovering = false;
         }
-
-        public float GetSideStepCost() => T.sideStepCost;
-        public float GetJumpCost() => T.jumpCost;
     }
 }

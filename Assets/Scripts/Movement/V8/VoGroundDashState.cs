@@ -9,7 +9,7 @@ namespace MyDongari.Movement.V8
     /// 보조: 시작·지속 중 ○ 새 입력 = 대시 정지(본 처리 전에), 지속·공격 중 몸 선회(대시 선회율 — 진로는 그대로), 게이지 +206/f,
     /// 발판 끝을 지나 공중이면 vy −0.081/f(하한 −1.801)로 떨어지다 착지.
     /// 지속: 공격 = 대시 어택·차징 태클(DashAttackRunner), △ = 점프. 종료: △ 언제든, 공격 3f째부터.
-    /// 우리 규칙: 부스트 초당 소모(BoostGauge)·0%면 종료 단계로, 상대 몸 충돌 반동(MechMotor).
+    /// 우리 규칙: 상대 몸 충돌 반동(MechMotor). V7c: 부스트 소모·탈진 종료 없음 — 길이는 대시 게이지(지속 최대 약 1.4초)만.
     /// V8.2: 근접 구역 서기의 스틱 중립 ○로 시작한 앞 대시는 시작 후 closeStepFromDashFrames(15f) 안에 스틱이 들어오면
     /// 그 순간 근접 스텝으로 바뀐다(방향은 그 순간 상대 기준으로 고정).
     /// </summary>
@@ -155,10 +155,9 @@ namespace MyDongari.Movement.V8
                     break;
 
                 case Phase.Sustain:
-                    // 우리 부스트가 0%면 종료 단계로 (예전 규칙)
-                    if (Motor.DashGauge >= V.gaugeMax || BoostExhausted)
+                    if (Motor.DashGauge >= V.gaugeMax)
                     {
-                        _exitReason = BoostExhausted ? DashExitReason.Exhausted : DashExitReason.Timeout;
+                        _exitReason = DashExitReason.Timeout;
                         _phase = Phase.End;
                         _frame = 0;
                         break;

@@ -145,8 +145,6 @@ namespace MyDongari.Mech
             [Header("착지 (V5)")]
             [Tooltip("점프·공중 대시·공중 피격 뒤 착지 경직(초). 이동·공격·대시·점프·가드 불가")]
             public float landingLag = 0.2f;
-            [Tooltip("부스트 0%로 착지했을 때 경직(초)")]
-            public float exhaustedLandingLag = 0.8f;
 
             [Header("접지 판정 (V5: Walkable 레이어 + 위를 향한 면)")]
             [Tooltip("이 값 이상 위를 향한 면(법선 y)만 땅. 경사가 이보다 가파르면 벽")]
@@ -167,15 +165,8 @@ namespace MyDongari.Mech
             public float recoveryDelay = 0.5f;
             [Tooltip("초당 회복량")]
             public float recoveryRate = 25f;
-            [Tooltip("○ 대시 초당 소모량 (100이면 약 4초)")]
-            public float dashDrainRate = 25f;
-            [Tooltip("탈진(0%) 후 회복해 최대치의 이 비율에 도달하면 탈진 해제")]
+            [Tooltip("탈진(0%) 후 회복해 최대치의 이 비율에 도달하면 탈진 해제. V7c: 부스트는 런지에만 쓰고(소모량은 런지 쪽 값), 탈진이면 런지만 막힌다")]
             [Range(0f, 1f)] public float exhaustRecoverRatio = 0.5f;
-
-            [Header("소모량")]
-            public float sideStepCost = 10f;
-            [Tooltip("점프 한 번 소모량 (V5). 탈진(0%) 중엔 점프 불가")]
-            public float jumpCost = 15f;
         }
 
         [Serializable]

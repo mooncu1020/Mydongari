@@ -30,7 +30,7 @@ namespace MyDongari.Movement
             if (StateMachine.TryStartDash()) return;
 
             InputReader input = StateMachine.InputReader;
-            if (input.SideStepDirection != 0 && !StateMachine.MechController.BoostGauge.IsExhausted)
+            if (input.SideStepDirection != 0)
             {
                 StateMachine.ChangeState(StateMachine.SideStepState);
                 return;

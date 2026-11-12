@@ -55,15 +55,14 @@ namespace MyDongari.Movement.V8
         }
 
         protected bool IsStunned => StateMachine.IsStunned;
-        protected bool BoostExhausted => StateMachine.MechController.BoostGauge != null && StateMachine.MechController.BoostGauge.IsExhausted;
 
-        /// <summary>대시 조건 (사양서 4장): 방향 잠금 + ○ 유지 + 게이지 허가 + 스턴·탈진 아님.</summary>
+        /// <summary>대시 조건 (사양서 4장): 방향 잠금 + ○ 유지 + 게이지 허가 + 스턴 아님 (V7c: 부스트와 무관).</summary>
         protected bool DashCondition()
         {
-            return Motor.LockedDirection >= 0 && Motor.TurboHeld && Motor.DashAllowed && !IsStunned && !BoostExhausted;
+            return Motor.LockedDirection >= 0 && Motor.TurboHeld && Motor.DashAllowed && !IsStunned;
         }
 
-        /// <summary>점프 조건: △ 새 입력 + 스턴 아님 + 부스트(jumpCost) — 예전 규칙대로 부스트를 쓴다.</summary>
+        /// <summary>점프 조건: △ 새 입력 + 스턴 아님 (V7c: 부스트를 쓰지 않는다).</summary>
         protected bool TryJump()
         {
             if (!Motor.JumpNew || IsStunned) return false;
@@ -143,7 +142,7 @@ namespace MyDongari.Movement.V8
 
             if (TryJump()) return;
             // 걷기에서는 잠금만 보면 된다 (잠금이 ○ 입력 때만 일어남). 지속 단계부터 — 뒤 계열은 시작 모션부터
-            if (Motor.LockedDirection >= 0 && Motor.DashAllowed && !BoostExhausted)
+            if (Motor.LockedDirection >= 0 && Motor.DashAllowed)
             {
                 StateMachine.V8GroundDash(Motor.LockedDirection, true, false);
                 return;
@@ -203,7 +202,7 @@ namespace MyDongari.Movement.V8
                 return;
             }
             if (TryJump()) return;
-            if (_frame >= V.closeStepStartFrames && Motor.TurboNew && Motor.LockedDirection >= 0 && Motor.DashAllowed && !BoostExhausted)
+            if (_frame >= V.closeStepStartFrames && Motor.TurboNew && Motor.LockedDirection >= 0 && Motor.DashAllowed)
             {
                 StateMachine.V8GroundDash(Motor.LockedDirection, true, false);
                 return;

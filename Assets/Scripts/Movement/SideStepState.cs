@@ -16,13 +16,7 @@ namespace MyDongari.Movement
 
         public override void Enter()
         {
-            if (!StateMachine.MechController.BoostGauge.TryConsume(
-                StateMachine.MechController.BoostGauge.GetSideStepCost()))
-            {
-                StateMachine.ChangeState(StateMachine.RunState);
-                return;
-            }
-
+            // V7c: 사이드스텝도 부스트를 쓰지 않는다 (부스트는 런지에만)
             _sideStepTimer = 0f;
 
             _stepDirection = StateMachine.InputReader.SideStepDirection == 1

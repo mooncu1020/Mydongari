@@ -24,8 +24,7 @@ namespace MyDongari.Movement
             if (StateMachine.TryStartJump()) return;
             if (StateMachine.TryStartDash()) return;
 
-            if (StateMachine.InputReader.SideStepDirection != 0 &&
-                !StateMachine.MechController.BoostGauge.IsExhausted)
+            if (StateMachine.InputReader.SideStepDirection != 0)
             {
                 StateMachine.ChangeState(StateMachine.SideStepState);
                 return;

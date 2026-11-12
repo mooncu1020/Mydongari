@@ -136,7 +136,7 @@ namespace MyDongari.Movement.V8
                             Motor.Vy = V.jumpVy;
                             _pendingFall = false;
                         }
-                        else if (Motor.LockedDirection >= 0 && Motor.DashAllowed && !_airActionUsed && !BoostExhausted)
+                        else if (Motor.LockedDirection >= 0 && Motor.DashAllowed && !_airActionUsed)
                         {
                             _airActionUsed = true;
                             StateMachine.V8AirDash(Motor.LockedDirection);
@@ -246,9 +246,9 @@ namespace MyDongari.Movement.V8
                 Fall(DashExitReason.Canceled, Motor.Vy);
                 return;
             }
-            if (Motor.DashGauge >= V.gaugeMax || BoostExhausted)
+            if (Motor.DashGauge >= V.gaugeMax)
             {
-                Fall(BoostExhausted ? DashExitReason.Exhausted : DashExitReason.Timeout, V.airDashEndVy);
+                Fall(DashExitReason.Timeout, V.airDashEndVy);
                 return;
             }
             float turned = Motor.ApplyFixedTurn(V.turnAirDash);

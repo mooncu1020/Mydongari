@@ -255,9 +255,9 @@ namespace MyDongari.Core
                 // 점프·착지 경직 (V5)
                 Action onJump = () => ErrorLog.Run(() => Count(index, "jump"), "PlayLogger.onJump");
                 sm.AirState.OnJumped += onJump;
-                Action<float, bool> onLand = (lag, exhausted) => ErrorLog.Run(() =>
+                Action<float> onLand = lag => ErrorLog.Run(() =>
                 {
-                    if (lag > 0f) Count(index, exhausted ? "landing_lag_long" : "landing_lag", lag.ToString("F2", CultureInfo.InvariantCulture));
+                    if (lag > 0f) Count(index, "landing_lag", lag.ToString("F2", CultureInfo.InvariantCulture));
                 }, "PlayLogger.onLand");
                 sm.LandingState.OnLanded += onLand;
                 _unsubscribers.Add(() =>

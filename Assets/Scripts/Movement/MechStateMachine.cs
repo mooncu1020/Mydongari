@@ -208,12 +208,12 @@ namespace MyDongari.Movement
 
         /// <summary>
         /// ○를 이번 프레임에 눌렀으면 대시로 넘어간다(방향은 DashState가 누른 순간 L스틱으로 정함 — 뒤 대시가 예전 백대시를 대신한다).
-        /// Idle·Run이 부른다. 넘어갔으면 true. 탈진(0%)·스턴이면 안 나간다.
+        /// Idle·Run이 부른다. 넘어갔으면 true. 스턴이면 안 나간다 (V7c: 부스트와 무관).
         /// </summary>
         public bool TryStartDash()
         {
             if (InputReader == null || !InputReader.DashPressedThisFrame) return false;
-            if (IsStunned || MechController.BoostGauge.IsExhausted) return false;
+            if (IsStunned) return false;
             // 공중에서 누르면 공중 대시 (V6c: 점프 상승 중에만. 같은 시간표, 상승 중 중력 절반)
             bool airborne = _currentState is AirState;
             if (airborne && !AirState.CanAirDash) return false;
@@ -223,13 +223,12 @@ namespace MyDongari.Movement
         }
 
         /// <summary>
-        /// △를 이번 프레임에 눌렀으면 점프 (V5). Idle·Run·대시 지속 단계·대시 끝 단계(땅)가 부른다. 부스트 jumpCost(15)를 한 번 쓰고, 탈진·스턴·부족이면 안 나간다.
+        /// △를 이번 프레임에 눌렀으면 점프 (V5). Idle·Run·대시 지속 단계·대시 끝 단계(땅)가 부른다. 스턴이면 안 나간다 (V7c: 부스트를 쓰지 않는다).
         /// </summary>
         public bool TryStartJump()
         {
             if (InputReader == null || !InputReader.JumpPressedThisFrame) return false;
-            BoostGauge boost = MechController.BoostGauge;
-            if (IsStunned || boost.IsExhausted || !boost.TryConsume(boost.GetJumpCost())) return false;
+            if (IsStunned) return false;
             AirState.PrepareJump();
             ChangeState(AirState);
             return true;
@@ -245,16 +244,14 @@ namespace MyDongari.Movement
         }
 
         /// <summary>
-        /// 착지: 경직이 필요하면(점프·공중 대시·공중 피격) landingLag, 부스트 0%면 exhaustedLandingLag 동안 LandingState.
+        /// 착지: 경직이 필요하면(점프·공중 대시·공중 피격) landingLag(0.2초) 동안 LandingState. V7c: 부스트 0% 착지의 긴 경직은 없앴다.
         /// 그냥 떨어진 착지는 경직 없이 바로 달리기·정지 (먼지·흔들림은 둘 다).
         /// </summary>
         public void Land(bool needsLag)
         {
             BernardTuning.MovementValues m = MechController.Tuning.Movement;
-            BoostGauge boost = MechController.BoostGauge;
-            bool exhausted = boost != null && (boost.CurrentBoost <= 0.01f || boost.IsExhausted);
-            float duration = needsLag ? (exhausted ? m.exhaustedLandingLag : m.landingLag) : 0f;
-            LandingState.Prepare(duration, exhausted && needsLag);
+            float duration = needsLag ? m.landingLag : 0f;
+            LandingState.Prepare(duration);
             if (duration > 0f) ChangeState(LandingState);
             else ChangeState(InputReader != null && InputReader.IsMoveInputActive ? (MechState)RunState : IdleState);
         }
@@ -282,11 +279,10 @@ namespace MyDongari.Movement
             return state;
         }
 
-        /// <summary>V8 점프 시작 (△). 부스트 jumpCost를 쓰고, 탈진·부족이면 false.</summary>
+        /// <summary>V8 점프 시작 (△). 스턴이면 false (V7c: 부스트를 쓰지 않는다).</summary>
         public bool TryStartJumpV8()
         {
-            BoostGauge boost = MechController.BoostGauge;
-            if (IsStunned || (boost != null && (boost.IsExhausted || !boost.TryConsume(boost.GetJumpCost())))) return false;
+            if (IsStunned) return false;
             VoJump.PrepareJump();
             ChangeState(VoJump);
             return true;
