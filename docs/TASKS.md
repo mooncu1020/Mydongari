@@ -310,7 +310,7 @@
 ## Phase CL — 구조 정리: "버추얼온 코어 + 우리 게임 레이어" (계획 `docs/PLAN_CLEANUP.md`, 동작 변화 없음)
 
 ### [x] CL1. 참조 0인 급강하 튜닝 값 삭제, 대시·점프 이벤트와 `DashExitReason`을 레거시 상태 밖(`MechStateMachine`)으로 이동
-### [ ] CL2. 중립 복귀를 `ToStand`/`ToStandOrWalk`로, `RedirectForV8` 제거, `ActiveDash` null 대비
+### [x] CL2. 중립 복귀를 `ToStand`/`ToStandOrWalk`로, `RedirectForV8` 제거, `ActiveDash` null 대비
 ### [ ] CL3. 레거시 이동 상태 6개·스틱 튕기기 판정·이동기 선택 스위치·`IsV8` 분기·예전 카메라 백뷰·죽은 이동 수치 삭제
 ### [ ] CL4. 코어가 게임을 직접 부르던 곳을 `IVoHost`(+ 입력·호스트 어댑터)로 치환
 ### [ ] CL5. `VoSpec`(원본값 고정) + `StyleOverrides`(우리 값) 분리, 코드에 박힌 변형을 스위치로
@@ -435,3 +435,4 @@
 - **V9f** 완료. 바뀐 파일: `BoostGauge.cs` 삭제, `BernardTuning`(`BoostValues`·런지 `boostCost` 삭제, 런지 `cooldown` 3 추가), `ThrusterLunge`(`IsOnCooldown`·`CooldownRemaining`, 시작 순간부터 쿨다운, 라운드 리셋 때 초기화), `WeaponSystem`·`MeleeDummy`(쿨다운 중 공격 입력을 버퍼에서 지움), `CombatFeedback`(EXHAUSTED 팝업 삭제), `HUDController`(부스트 호 삭제), `MechController`·`GameManager`·`VersusSceneSetup`(참조 삭제), `PlayLogger`(CSV의 `p1_boost`·`p2_boost` 열과 `dash_exit_exhausted` 집계 삭제), `DashState`(`DashExitReason.Exhausted` 삭제), `SampleScene.unity`(batchmode로 `BoostGauge` 컴포넌트 2개·`BoostGaugeArc`와 배경 4개 삭제). 위험: 쿨다운이 화면에 안 보인다(HUD 표시 없음). CSV 열이 줄어 예전 로그와 열 위치가 다르다. `BernardTuning` 에셋 파일에는 예전 `boost` 값이 에디터에서 다시 저장될 때까지 남아 있다(읽히지 않음).
 - **V9g** 완료. 바뀐 파일: `HUDController`(`lungeCooldownArc` + 색·반짝임·흔들림 수치), `ThrusterLunge`(`CooldownDuration`, `OnCooldownDenied`·`NotifyCooldownDenied`), `WeaponSystem`(쿨다운으로 입력을 버릴 때 알림), `Assets/Editor/LungeCooldownHudSetup.cs`(메뉴 `Mydongari/Setup Lunge Cooldown Arc`), `SampleScene.unity`(batchmode로 메뉴 실행 — HUD 2개에 `LungeCooldownArc`·`LungeCooldownBG` 생성·연결). 위험: 씬에서 예전 부스트 호는 화면 가운데 **오른쪽**(x +200, 히트 호가 왼쪽 −200)이었다 — 그 자리에 그대로 넣었다(QUESTIONS V9g).
 - **CL1** 완료. 바뀐 파일: `BernardTuning`(`MovementValues`의 `diveStartSpeed`·`diveAccel`·`diveMaxSpeed` 삭제 — 참조 0), 신규 `Movement/DashExitReason.cs`(enum만 옮김), `MechStateMachine`(`OnDashStarted`·`OnDashEnded`·`OnJumped` + `Notify*`), `DashState`·`AirState`·`VoGroundDashState`·`VoJumpState`(상태 머신 이벤트로 알림), `PlayLogger`·`CombatFeedback`(구독처 변경). 스모크 테스트: 빌드 성공, Exception 0·Error 0·NaN 0. 위험: 낮음(이벤트 발생 시점·순서는 그대로).
+- **CL2** 완료. 바뀐 파일: `MechStateMachine`(`ToStand`·`ToStandOrWalk` 추가, `RedirectForV8`와 `ChangeState`의 상태 바꿔치기 삭제, `DashMotionHeading` null 대비), `Health`·`LungeState`·`KnockdownState`·`LandingState`(`ChangeState(IdleState/RunState)` → `ToStand`/`ToStandOrWalk`), `CombatFeedback`·`HUDController`(`ActiveDash` null 대비). 스모크 테스트: 빌드 성공, Exception 0·Error 0·NaN 0. 위험: 낮음 — V8에서 가는 상태는 예전 `RedirectForV8`과 같다(Idle → 서기, Run → 걷기).

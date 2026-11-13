@@ -574,6 +574,9 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (CL1) 대시를 시작하면 출발 분사 섬광·발밑 불꽃이 예전처럼 나옴 (이벤트 구독처를 `MechStateMachine`으로 옮김)
 - [ ] (CL1) 매치 뒤 PlayLog summary CSV에 `dash_enter`·`dash_exit_*`·`jump`·`landing_lag` 카운트가 0이 아님
 
+- [ ] (CL2) 런지가 끝난 뒤·넉다운에서 일어난 뒤·KO 뒤 다음 라운드 시작 때 기체가 서기 상태로 돌아와 바로 움직일 수 있음. 점프 착지 경직(0.2초) 뒤 스틱을 밀고 있으면 바로 걷고, 놓고 있으면 섬
+- [ ] (CL2) 대시하지 않을 때 HUD 태클 차징 바가 꺼져 있고, 대시 0.8초 뒤 차오름. 근접 구역 중립 ○ 앞 대시 → 스틱으로 근접 스텝이 될 때 외형이 진행 방향으로 틀어진 채 이어짐
+
 ## 도구
 
 - [ ] (U1) `Tools/Build And Smoke Test` → 씬이 저장되고 빌드가 진행됨 → 콘솔 `[SmokeTest] 빌드 성공 …` → 1280×720 창으로 게임이 뜸(전체 화면 아님) → 약 10초 뒤 창이 닫힘 → 콘솔에 `[SmokeTest] … Exception N줄, Error N줄, NaN N줄`과 해당 줄 목록. `Builds/날짜_시간/`에 exe·Player.log·SmokeTestSummary.txt. 기다리는 동안 에디터 조작 가능

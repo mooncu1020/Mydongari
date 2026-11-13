@@ -515,6 +515,8 @@ namespace MyDongari.Feedback
         private void DashBurst(MechFeedback fb)
         {
             if (fb.Mech == null || fb.StateMachine == null) return;
+            IDashMove dash = fb.StateMachine.ActiveDash;
+            if (dash == null) return;
             BernardTuning.HitFeelValues feel = TuningOf(fb.Mech).HitFeel;
             Collider body = fb.Mech.GetComponent<Collider>();
             Vector3 center = body != null ? body.bounds.center : fb.Mech.transform.position;
@@ -530,7 +532,7 @@ namespace MyDongari.Feedback
                 FlashSize = feel.dashBurstSize / scale,
                 FlashTime = feel.dashBurstTime
             };
-            HitSparkFx.SpawnHit(center, -fb.StateMachine.ActiveDash.Heading, scale, style);
+            HitSparkFx.SpawnHit(center, -dash.Heading, scale, style);
         }
 
         /// <summary>

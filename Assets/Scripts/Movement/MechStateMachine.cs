@@ -12,7 +12,7 @@ namespace MyDongari.Movement
     /// 걷기·제동·슬라이딩·초신지선회·트윈스틱 전력질주는 V3에서 삭제됐다.
     /// V8: BernardTuning 이동기 선택이 VirtualOn이면 위 이동 상태 대신 V8 상태(서기·걷기·근접 스텝·지상 대시·대시 정지·점프·공중 대시·급강하)를 쓰고,
     /// 상태는 Update/FixedUpdate가 아니라 MechMotor의 60Hz 틱에서 돈다. 런지·넉다운·착지 경직은 두 이동기가 같이 쓴다.
-    /// 예전 상태로 가라는 요청(ChangeState(IdleState) 등)은 V8이면 대응하는 V8 상태로 바꿔 넣는다.
+    /// 런지·넉다운·착지 경직에서 돌아올 때는 ToStand / ToStandOrWalk로 그 이동기의 중립 상태로 간다.
     /// </summary>
     public class MechStateMachine : MonoBehaviour
     {
@@ -76,7 +76,15 @@ namespace MyDongari.Movement
         /// </summary>
         public bool IsDashMotion => IsDashing || (_currentState is VoCloseStepState c && c.FromDash);
         /// <summary>대시 모션 중 진로 (외형이 몸을 트는 방향, 출발 분사 방향).</summary>
-        public Vector3 DashMotionHeading => _currentState is VoCloseStepState c ? c.Heading : ActiveDash.Heading;
+        public Vector3 DashMotionHeading
+        {
+            get
+            {
+                if (_currentState is VoCloseStepState c) return c.Heading;
+                IDashMove dash = ActiveDash;
+                return dash != null ? dash.Heading : transform.forward;
+            }
+        }
 
         /// <summary>지금 대시(V8 지상·공중 대시 중이면 그것, 아니면 예전 DashState). IsDashing과 같이 본다.</summary>
         public IDashMove ActiveDash => _currentState as IDashMove ?? DashState;
@@ -177,7 +185,7 @@ namespace MyDongari.Movement
 
         private void Start()
         {
-            ChangeState(IdleState);
+            ToStand();
             // 공중에서 맞으면 그 자리에서 떨어져 착지 경직 (V5). 넉백은 수평만 지운다
             if (MechController.MeleeSystem != null) MechController.MeleeSystem.OnHitResolved += OnHitResolved;
         }
@@ -215,7 +223,7 @@ namespace MyDongari.Movement
         {
             enabled = true;
             _pendingTurn = 0f;
-            ChangeState(IdleState);
+            ToStand();
         }
 
         /// <summary>
@@ -265,7 +273,23 @@ namespace MyDongari.Movement
             float duration = needsLag ? m.landingLag : 0f;
             LandingState.Prepare(duration);
             if (duration > 0f) ChangeState(LandingState);
-            else ChangeState(InputReader != null && InputReader.IsMoveInputActive ? (MechState)RunState : IdleState);
+            else ToStandOrWalk();
+        }
+
+        // ---- 중립 상태로 돌아가기 ----
+
+        /// <summary>서기로 (런지·넉다운·사망·라운드 리셋에서 돌아올 때).</summary>
+        public void ToStand()
+        {
+            ChangeState(IsV8 ? (MechState)VoStand : IdleState);
+        }
+
+        /// <summary>이동 입력이 있으면 걷기, 없으면 서기로 (착지 뒤).</summary>
+        public void ToStandOrWalk()
+        {
+            bool moving = InputReader != null && InputReader.IsMoveInputActive;
+            if (IsV8) ChangeState(moving ? (MechState)VoWalk : VoStand);
+            else ChangeState(moving ? (MechState)RunState : IdleState);
         }
 
         // ---- V8 전환 도우미 ----
@@ -276,19 +300,6 @@ namespace MyDongari.Movement
             _pendingTurn = 0f;
             if (_currentState == null) return;
             ChangeState(IsV8 ? (MechState)VoStand : IdleState);
-        }
-
-        /// <summary>V8이면 예전 이동 상태 요청을 대응하는 V8 상태로 바꾼다 (런지·넉다운·사망·착지 경직에서 돌아올 때 등).</summary>
-        private MechState RedirectForV8(MechState state)
-        {
-            if (state == IdleState || state == SideStepState || state == DashState || state == DashStopState) return VoStand;
-            if (state == RunState) return VoWalk;
-            if (state == AirState)
-            {
-                VoJump.PrepareFall(Motor != null ? Motor.Vy : 0f, AirState.NeedsLandingLag);
-                return VoJump;
-            }
-            return state;
         }
 
         /// <summary>V8 점프 시작 (△). 스턴이면 false (V7c: 부스트를 쓰지 않는다).</summary>
@@ -338,8 +349,6 @@ namespace MyDongari.Movement
 
         public void ChangeState(MechState newState)
         {
-            if (IsV8) newState = RedirectForV8(newState);
-            else if (newState is VoState) newState = IdleState;
             _currentState?.Exit();
             _currentState = newState;
             _currentState.Enter();

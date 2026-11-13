@@ -41,9 +41,7 @@ namespace MyDongari.Movement
             _timer += Time.deltaTime;
             if (_timer >= _duration)
             {
-                StateMachine.ChangeState(StateMachine.InputReader.IsMoveInputActive
-                    ? (MechState)StateMachine.RunState
-                    : StateMachine.IdleState);
+                StateMachine.ToStandOrWalk();
             }
         }
 

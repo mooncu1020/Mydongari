@@ -18,7 +18,7 @@ namespace MyDongari.Movement
             _lunge = StateMachine.GetComponent<ThrusterLunge>();
             if (_lunge == null)
             {
-                StateMachine.ChangeState(StateMachine.IdleState);
+                StateMachine.ToStand();
                 return;
             }
             _lunge.BeginDash();
@@ -28,7 +28,7 @@ namespace MyDongari.Movement
         {
             if (StateMachine.IsStunned)
             {
-                StateMachine.ChangeState(StateMachine.IdleState);
+                StateMachine.ToStand();
             }
         }
 
@@ -36,7 +36,7 @@ namespace MyDongari.Movement
         {
             if (_lunge == null || _lunge.TickDash())
             {
-                StateMachine.ChangeState(StateMachine.IdleState);
+                StateMachine.ToStand();
             }
         }
 

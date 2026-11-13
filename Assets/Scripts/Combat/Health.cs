@@ -34,7 +34,7 @@ namespace MyDongari.Combat
         {
             if (_stateMachine != null)
             {
-                _stateMachine.ChangeState(_stateMachine.IdleState);
+                _stateMachine.ToStand();
                 _stateMachine.enabled = false;
             }
         }
@@ -47,7 +47,7 @@ namespace MyDongari.Combat
             if (_stateMachine != null)
             {
                 _stateMachine.enabled = true;
-                _stateMachine.ChangeState(_stateMachine.IdleState);
+                _stateMachine.ToStand();
             }
         }
     }
