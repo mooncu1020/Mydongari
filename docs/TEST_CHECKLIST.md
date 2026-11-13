@@ -588,6 +588,12 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (CL4) 기체끼리 겹치지 않음(걸어서 밀어도 통과하지 않음). 카메라: 대시 때 기체가 화면 가로 중앙 ±25% 안, 선회하면 화면이 선회 방향으로 살짝 앞서 돎, 히트 때 흔들림·바위 뒤에서 카메라가 당겨짐
 - [ ] (CL4) 키보드·마우스 예비 조작: 마우스 좌우로 몸이 돎(감도 그대로)
 
+- [ ] (CL5) `BernardTuning` 인스펙터에 `V8 이동기` 묶음이 없음(정상 — 이동기 원본값은 코드 `VoSpec`에 고정). 우리 값은 `StyleOverrides` 에셋(`Assets/Resources/StyleOverrides.asset`, CL7에서 생성)에서만 고침
+- [ ] (CL5) 플레이 중 `StyleOverrides → 카메라 → Camera Position Follow`의 `Enabled`를 끄면 대시 때 기체가 화면에서 처지지 않고 딱 붙음(원본: 지연 없음), 다시 켜면 35%로 돌아옴
+- [ ] (CL5) `StyleOverrides → 선회 → Fast Turn Only Toward Opponent`의 `Enabled`를 끄면 상대 반대쪽으로 돌 때도 759°/s로 빨리 돎(원본), 켜면 느려짐(우리 값). `Turn Blend End Angle`을 끄면 33.75° 경계에서 선회 속도가 훅 바뀜
+- [ ] (CL5) `StyleOverrides → 조작`: `Rising Rejump`의 `Value`를 켜면 상승 중 △ 한 번 더로 2단 점프(원본), 끄면 안 됨(우리 값). `Dive Allowed While Falling`을 끄면 내려오는 중 ✕ 급강하가 안 나감(원본)
+- [ ] (CL5) 값을 안 건드린 상태에서 걷기·대시·점프·선회·카메라가 정리 전과 같음 (스모크 로그의 `[VoSpec] … 원본과 다른 칸` 9줄: fallbackBodyHeight 1.93, neutralTurboDashesForward, closeStepFromDashFrames 15, turnBlendEndAngle 60, fastTurnOnlyTowardOpponent, risingRejump 끔, diveAllowedWhileFalling, cameraPositionFollow 0.35, cameraMaxScreenOffset 0.25)
+
 ## 도구
 
 - [ ] (U1) `Tools/Build And Smoke Test` → 씬이 저장되고 빌드가 진행됨 → 콘솔 `[SmokeTest] 빌드 성공 …` → 1280×720 창으로 게임이 뜸(전체 화면 아님) → 약 10초 뒤 창이 닫힘 → 콘솔에 `[SmokeTest] … Exception N줄, Error N줄, NaN N줄`과 해당 줄 목록. `Builds/날짜_시간/`에 exe·Player.log·SmokeTestSummary.txt. 기다리는 동안 에디터 조작 가능

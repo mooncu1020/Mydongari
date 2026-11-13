@@ -1,5 +1,4 @@
 using UnityEngine;
-using MyDongari.Mech;
 
 namespace MyDongari.Movement.V8
 {
@@ -17,7 +16,7 @@ namespace MyDongari.Movement.V8
         }
 
         protected MechMotor Motor => StateMachine.Motor;
-        protected BernardTuning.V8Values V => Motor.V;
+        protected VoSpec V => Motor.V;
         protected float Dt => Motor.Dt;
 
         /// <summary>지상 상태(이동 적분이 y를 지면으로 덮어씀, 5u 넘게 뜨면 낙하).</summary>
@@ -76,7 +75,7 @@ namespace MyDongari.Movement.V8
         /// 걷기·점프 수평 (V8.1): 스틱 0.3 이상이면 즉시 그 방향의 최대 속도(곡선) × 입력 축소(상대 8.3~11.8m에서 0.7~1),
         /// 방향 = 스틱 방향을 몸 정면으로 돌린 것(기체 기준). 23.6m 안 × 0.78은 이동 적분이 모든 이동에 곱한다.
         /// </summary>
-        protected void SetLeverMove(BernardTuning.DirectionalValues curve)
+        protected void SetLeverMove(VoDirectional curve)
         {
             Vector2 stick = Motor.Lever.Stick;
             if (stick.sqrMagnitude < 0.000001f) return;
@@ -291,7 +290,7 @@ namespace MyDongari.Movement.V8
     }
 
     /// <summary>
-    /// 급강하 (사양서 4.8): 점프 중 급강하 입력(V9a: 공중에서 ✕ — 상승·하강 모두) 또는 천장. vy = −1.75u/f,
+    /// 급강하 (사양서 4.8): 점프 상승 중 급강하 입력(스위치 diveAllowedWhileFalling이면 하강 중에도, V9a) 또는 천장. vy = −1.75u/f,
     /// 보조가 vy > −2.751이면 −0.25씩 + y += vy, 본 처리가 한 번 더 y += vy(2중). 수평 속력 0, 수동 선회만.
     /// </summary>
     public class VoDiveState : VoState

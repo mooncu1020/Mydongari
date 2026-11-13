@@ -1,5 +1,4 @@
 using UnityEngine;
-using MyDongari.Mech;
 
 namespace MyDongari.Movement.V8
 {
@@ -26,11 +25,11 @@ namespace MyDongari.Movement.V8
             _ready = false;
         }
 
-        /// <summary>한 틱. aspect = 카메라 가로세로 비 (가로 상한 계산용).</summary>
-        public void Tick(MechMotor motor, float aspect)
+        /// <summary>한 틱. aspect = 카메라 가로세로 비, fovDegrees = 세로 화각 (둘 다 가로 상한 계산용 — 화각은 사양서에 없어 호스트가 정한다).</summary>
+        public void Tick(MechMotor motor, float aspect, float fovDegrees)
         {
             if (motor == null) return;
-            BernardTuning.V8Values v = motor.V;
+            VoSpec v = motor.V;
             // V9c: 사양서 5.3대로 12%는 시선 표적 오프셋(u)에만 건다. 지금은 카메라 모드가 하나라 목표값이 일정하지만,
             // 근접·대시 카메라처럼 오프셋이 다른 모드가 생기면 이 값이 부드럽게 넘어간다
             if (!_ready) _targetUp = v.cameraTargetUp;
@@ -49,7 +48,7 @@ namespace MyDongari.Movement.V8
             }
             // V9c: 방위는 원본대로 이동기의 카메라 방위(기본 모드 = 기체 방위)에 지연 없이 붙는다 + 선회 리드
             float yaw = motor.CameraYaw + motor.CameraLead;
-            float pitch = BernardTuning.AngleUnitsToDegrees(v.cameraPitch);
+            float pitch = VoUnits.AngleUnitsToDegrees(v.cameraPitch);
             Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
             float distance = v.cameraDistance * motor.U;
 
@@ -60,7 +59,7 @@ namespace MyDongari.Movement.V8
             float depth = Vector3.Dot(toTarget, rotation * Vector3.forward);
             if (depth > 0.01f)
             {
-                float halfWidth = Mathf.Tan(v.cameraFov * 0.5f * Mathf.Deg2Rad) * aspect * depth;
+                float halfWidth = Mathf.Tan(fovDegrees * 0.5f * Mathf.Deg2Rad) * aspect * depth;
                 float maxLateral = v.cameraMaxScreenOffset * 2f * halfWidth;
                 float lateral = Vector3.Dot(toTarget, right);
                 if (Mathf.Abs(lateral) > maxLateral) _anchor += right * (lateral - Mathf.Sign(lateral) * maxLateral);

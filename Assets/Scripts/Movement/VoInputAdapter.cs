@@ -42,8 +42,8 @@ namespace MyDongari.Movement
             }
         }
 
-        /// <summary>한 틱의 입력.</summary>
-        public VoInputFrame Read()
+        /// <summary>한 틱의 입력. stickThreshold = L스틱이 이 기울기 이상이면 그 방향으로 민 것(미만은 중립으로 보낸다).</summary>
+        public VoInputFrame Read(float stickThreshold)
         {
             var frame = new VoInputFrame();
             int dashCount = _input.DashPressCount;
@@ -59,7 +59,8 @@ namespace MyDongari.Movement
             frame.TurboHeld = _input.DashHeld || frame.TurboNew;
             frame.JumpHeld = _input.JumpHeld || frame.JumpNew;
 
-            frame.LeverStick = _input.MoveInput;
+            UnityEngine.Vector2 stick = _input.MoveInput;
+            frame.LeverStick = stick.magnitude < stickThreshold ? UnityEngine.Vector2.zero : stick;
             // R스틱 좌우 = 수동 선회 (사양서의 레버 차동 대신). 마우스일 땐 선회 축 0, 모아 둔 이동량을 그대로 더한다
             frame.TurnAxis = _input.IsLookFromGamepad ? _input.LookInput.x : 0f;
             frame.ExtraTurnDegrees = _pendingMouseTurn;

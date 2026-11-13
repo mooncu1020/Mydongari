@@ -12,7 +12,7 @@ namespace MyDongari.Camera
     /// 기체 뒤 카메라. 시점만 따로 돌리는 조작은 없다 — 방위는 이동기의 카메라 방위(기본 모드에선 몸에 강체로 붙음, 지연 없음) + 선회 리드.
     /// 사양서 5장: VoTickDriver가 틱 맨 앞에서 TickV8로 갱신(지난 틱 기체 상태 기준)하고, 그릴 때 두 틱 사이를 보간한다.
     /// 기체 뒤 거리 = 78u(키 × 3.54), 피치 8.4° 아래, 시선 표적 = 발 + 키/2 + 6u, 기준점(위치)은 매 틱 35%로 따라감(V8.3), 시선 표적 오프셋만 12%(V9c), 기체는 화면 가로 중앙 ±25% 안, 세로 FOV 35°.
-    /// 수치는 BernardTuning → V8 이동기 → 카메라. 여기 남은 수치는 우리 연출(흔들림·지형 충돌·화면 밖 화살표)뿐이다.
+    /// 수치는 VoSpec(원본) + StyleOverrides(위치 추종 35%·가로 상한 25%·FOV 35°는 우리 값). 여기 남은 수치는 우리 연출(흔들림·지형 충돌·화면 밖 화살표)뿐이다.
     /// (V3 고정 백뷰·속도 FOV는 CL3에서 지웠다.)
     /// </summary>
     public class MechCamera : MonoBehaviour
@@ -130,7 +130,7 @@ namespace MyDongari.Camera
 
         private void ApplyFov()
         {
-            if (_camera != null && _mechController != null) _camera.fieldOfView = _mechController.Tuning.V8.cameraFov;
+            if (_camera != null) _camera.fieldOfView = StyleOverrides.Current.cameraFov;
         }
 
         private void Start()
@@ -189,7 +189,7 @@ namespace MyDongari.Camera
         public void TickV8(MechMotor motor)
         {
             float aspect = _camera != null && _camera.aspect > 0.01f ? _camera.aspect : 16f / 9f;
-            _voRig.Tick(motor, aspect);
+            _voRig.Tick(motor, aspect, StyleOverrides.Current.cameraFov);
         }
 
         /// <summary>두 틱 사이를 보간해 그린다 (리지드바디 보간과 같은 비율). 그 위에 우리 흔들림·지형 충돌.</summary>
@@ -201,7 +201,7 @@ namespace MyDongari.Camera
             transform.position = position;
             transform.rotation = rotation;
             ApplyShakeAndCollision();
-            if (_camera != null) _camera.fieldOfView = _mechController.Tuning.V8.cameraFov;
+            if (_camera != null) _camera.fieldOfView = StyleOverrides.Current.cameraFov;
         }
     }
 }

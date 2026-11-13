@@ -1,11 +1,11 @@
 using UnityEngine;
-using MyDongari.Mech;
 
 namespace MyDongari.Movement.V8
 {
     /// <summary>
-    /// 레버 해석 (V8.1). L스틱이 stickThreshold(0.3) 이상이면 그 방향으로 민 것 — 걷기·점프는 즉시 그 방향의 최대 속도(디지털에 가깝게).
-    /// V8의 누적값 모델(8.5초에 걸쳐 빨라짐)은 잘못된 해석이라 V8.1에서 뺐다.
+    /// 레버 해석. 호스트가 준 레버가 중립이 아니면 그 방향으로 민 것 — 걷기·점프는 즉시 그 방향의 최대 속도(디지털에 가깝게, V8.1).
+    /// 얼마나 기울여야 "민 것"인지(우리 스틱 0.3)는 호스트의 입력 어댑터가 정해서, 여기엔 중립(0) 아니면 민 방향이 온다.
+    /// 원본의 누적값 모델(방향별 0~1536, 속력 × 0.8~1.2 — 사양서 2.1)은 쓰지 않는다: 레버 크기는 항상 1.
     /// 사양서의 "레버 이동 벡터 × 0.7~1.0(상대 8.3~11.8m)"은 걷기·점프 속력 배율(DistanceScale)로 읽는다.
     /// 방향 코드(대시 방향 잠금용): 0 앞, 1 앞좌, 2 좌, 3 뒤좌, 4 뒤, 5 뒤우, 6 우, 7 앞우 (-1 = 중립).
     /// </summary>
@@ -40,10 +40,13 @@ namespace MyDongari.Movement.V8
             DistanceScale = 1f;
         }
 
-        /// <summary>한 틱.</summary>
-        public void Tick(Vector2 stick, BernardTuning.V8Values v, float distanceScale)
+        // 이보다 작으면 중립 (호스트가 기울기 문턱 아래를 0으로 보내 준다)
+        private const float NeutralEpsilon = 0.0001f;
+
+        /// <summary>한 틱. stick = 호스트가 준 레버(문턱 아래는 0).</summary>
+        public void Tick(Vector2 stick, float distanceScale)
         {
-            Direction = Code(stick, v.stickThreshold);
+            Direction = Code(stick, NeutralEpsilon);
             Stick = Direction >= 0 ? stick.normalized : Vector2.zero;
             DistanceScale = distanceScale;
         }

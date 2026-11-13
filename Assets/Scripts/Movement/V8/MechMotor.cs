@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 using MyDongari.Core;
-using MyDongari.Mech;
 
 namespace MyDongari.Movement.V8
 {
@@ -9,7 +8,7 @@ namespace MyDongari.Movement.V8
     /// V8 버추얼온식 이동기 본체 (docs/REFERENCE_MOVEMENT.md, 계획 docs/PLAN_V8.md). 기체마다 하나, MechController가 붙인다.
     /// 60Hz 고정 틱(VoTickDriver)에서 한 틱: 입력 → 상태 보조 → 상대 관계 → 자동 선회 → 수평 속력 0 → 상태 메인 → 이동 적분.
     /// 위치는 "위치 += 속도"로 직접 옮기고 리지드바디는 키네마틱(MovePosition, 보간 켬) — 충돌은 캐스트·겹침 판정에만 쓴다.
-    /// 거리·속도 수치는 원본 단위(u, u/f)로 받고 1u = 기체 키 / 22(렌더러로 잼)로 바꾼다.
+    /// 거리·속도 수치는 원본 단위(u, u/f)로 받고 1u = 기체 키 / 22(렌더러로 잼)로 바꾼다. 수치 = VoSpec(원본값) + StyleOverrides(우리 값).
     /// 전투가 미는 것(넉백·넉다운·런지·앵커 클로·몸 충돌)은 외부 속도(MotionBridge)로 들어와, 그동안은 상태 대신 그 속도로 움직인다.
     /// 우리 게임과는 IVoHost(수치·입력·스턴·콤보 감속·가드 자동 선회·상대·카메라)와 IVoMachine(상태 전환)으로만 이어진다 — Bind로 받는다.
     /// 입력·상태 머신이 없는 기체(연습 봇)에서는 켜지지 않는다 — 그 기체는 다이내믹 리지드바디로 남고 MotionBridge가 리지드바디로 보낸다.
@@ -30,7 +29,8 @@ namespace MyDongari.Movement.V8
         /// <summary>상태 머신.</summary>
         public IVoMachine StateMachine { get; private set; }
         public Rigidbody Rb { get; private set; }
-        public BernardTuning.V8Values V => Host.Spec;
+        /// <summary>이동기 수치 (원본값 + 호스트가 덮어쓴 우리 스타일).</summary>
+        public VoSpec V => Host.Spec;
 
         /// <summary>호스트·상태 머신을 받는다 (MechController가 붙인 직후 한 번).</summary>
         public void Bind(IVoHost host, IVoMachine stateMachine)
@@ -44,7 +44,7 @@ namespace MyDongari.Movement.V8
 
         // ---- 단위 ----
         /// <summary>렌더러로 잰 기체 키(m).</summary>
-        public float BodyHeight { get; private set; } = 1.93f;
+        public float BodyHeight { get; private set; } = 2.6f;
         /// <summary>1u(m).</summary>
         public float U => BodyHeight / Mathf.Max(1f, V.bodyHeightUnits);
         /// <summary>틱 길이(초).</summary>
@@ -219,6 +219,9 @@ namespace MyDongari.Movement.V8
             {
                 Debug.Log($"[MechMotor] {name}: 렌더러로 잰 키 {measured:0.00}m → 사용 {BodyHeight:0.00}m, 1u = {U:0.0000}m, " +
                           $"1u/f = {SpeedScale:0.00}m/s, 발 오프셋 {_footOffset:0.00}m", this);
+                // 정리 뒤에도 수치가 그대로인지 비교하려고 유효값 전부와 원본과 다른 칸을 남긴다
+                Debug.Log($"[VoSpec] {name} 유효값:\n{V.Dump()}", this);
+                Debug.Log($"[VoSpec] {name} 원본과 다른 칸:\n{V.DescribeDifferences()}", this);
             }
         }
 
@@ -290,22 +293,22 @@ namespace MyDongari.Movement.V8
         /// <summary>
         /// 수동 선회 한 틱 (사양서 2.2): 선회 계수 × 상황별 최대 선회율. 상대가 정면 ±33.75° 밖이면 759°/s, 안이면 132°/s,
         /// 근접 구역 정면 안은 2.81°/f(±22.5° 안 3.02°/f), 지상 대시 중은 2.11/1.76°/f. 돌린 각(°)을 돌려준다.
-        /// V9e(원본과 다름 — 원본은 회전 방향을 안 가린다): 빠른 '정면 밖' 선회율은 상대 쪽으로 도는 입력에만 쓰고,
-        /// 33.75°~60° 사이는 선형으로 올린다. 상대를 지나쳐 계속 돌 때 느림 ↔ 759°/s가 번갈아 끊기던 것을 없앤다.
+        /// 스위치(원본은 꺼짐, 우리 스타일 V9e가 켠다): fastTurnOnlyTowardOpponent면 빠른 '정면 밖' 선회율은 상대 쪽으로 도는 입력에만 쓰고,
+        /// turnBlendEndAngle이 정면 경계보다 크면 그 사이는 선형으로 올린다. 상대를 지나쳐 계속 돌 때 느림 ↔ 759°/s가 번갈아 끊기던 것을 없앤다.
         /// </summary>
         public float ApplyManualTurn(bool dashing)
         {
             // 호스트가 요청한 자동 선회(가드 중, V9a)가 몸을 돌리는 틱엔 R스틱·마우스 선회를 받지 않는다
             if (_guardTurning) return 0f;
             float rateUnits = ManualTurnRate(dashing, TurnCoefficient);
-            float degrees = TurnCoefficient * BernardTuning.AngleUnitsToDegrees(rateUnits) + MouseTurnDegrees;
+            float degrees = TurnCoefficient * VoUnits.AngleUnitsToDegrees(rateUnits) + MouseTurnDegrees;
             AddYaw(degrees);
             return degrees;
         }
 
         private float ManualTurnRate(bool dashing, float turnInput)
         {
-            BernardTuning.V8Values v = V;
+            VoSpec v = V;
             float off = Mathf.Abs(OpponentAngleOff);
             float insideRate, outsideRate;
             if (dashing)
@@ -321,10 +324,10 @@ namespace MyDongari.Movement.V8
             }
             // 상대가 없으면 찾을 것도 없으니 예전대로 '정면 밖' 값
             if (!HasOpponent) return outsideRate;
-            // V9e: 상대에게서 멀어지는 쪽으로 도는 입력은 항상 '정면 안' 선회율 — 빠른 선회는 상대를 찾아 도는 동작에만
-            // (+선회 입력은 +각, OpponentAngleOff도 +면 +각 쪽에 상대가 있다)
+            // 스위치(V9e): 상대에게서 멀어지는 쪽으로 도는 입력은 항상 '정면 안' 선회율 — 빠른 선회는 상대를 찾아 도는 동작에만
+            // (+선회 입력은 +각, OpponentAngleOff도 +면 +각 쪽에 상대가 있다). 원본은 방향을 가리지 않는다
             bool toward = turnInput * OpponentAngleOff > 0f;
-            if (!toward) return insideRate;
+            if (v.fastTurnOnlyTowardOpponent && !toward) return insideRate;
             return Mathf.Lerp(insideRate, outsideRate, OutsideBlend(off));
         }
 
@@ -334,7 +337,7 @@ namespace MyDongari.Movement.V8
         /// </summary>
         private float OutsideBlend(float absAngleOff)
         {
-            BernardTuning.V8Values v = V;
+            VoSpec v = V;
             if (v.turnBlendEndAngle <= v.frontHalfAngle) return absAngleOff > v.frontHalfAngle ? 1f : 0f;
             return Mathf.InverseLerp(v.frontHalfAngle, v.turnBlendEndAngle, absAngleOff);
         }
@@ -343,7 +346,7 @@ namespace MyDongari.Movement.V8
         public float ApplyFixedTurn(float rateUnits)
         {
             float sign = Mathf.Abs(TurnCoefficient) > 0f ? Mathf.Sign(TurnCoefficient) : 0f;
-            float degrees = sign * BernardTuning.AngleUnitsToDegrees(rateUnits) + MouseTurnDegrees;
+            float degrees = sign * VoUnits.AngleUnitsToDegrees(rateUnits) + MouseTurnDegrees;
             AddYaw(degrees);
             return degrees;
         }
@@ -354,13 +357,20 @@ namespace MyDongari.Movement.V8
             _autoTurnFrames = 0;
         }
 
-        /// <summary>공격을 시작했을 때 (WeaponSystem). 사격 조준 모드 — 15f 동안 몸을 상대 쪽으로. 대시 중 공격은 대시가 지속 조준을 건다.</summary>
-        public void NotifyAttackStarted()
+        /// <summary>
+        /// 공격(무기)을 시작했을 때. 사격 조준 모드 — attackAimFrames 동안 몸을 상대 쪽으로 최대 aimRateUnits(각 단위/f)로.
+        /// 선회율은 원본에서 무기별 값이라 호스트가 준다. 대시 중 공격은 대시가 지속 조준을 건다.
+        /// </summary>
+        public void NotifyAttackStarted(float aimRateUnits)
         {
             if (!IsActive || (StateMachine != null && StateMachine.IsDashing)) return;
             if (AutoTurn == AutoTurnMode.JumpAim) return;
+            _attackAimRate = aimRateUnits;
             SetAutoTurn(AutoTurnMode.AttackAim);
         }
+
+        // 이번 사격 조준의 최대 선회율(각 단위/f)
+        private float _attackAimRate;
 
         /// <summary>정지 맞춤: 카메라 방위를 몸에 바로 맞추고 기본 모드로.</summary>
         public void AlignCamera()
@@ -466,7 +476,7 @@ namespace MyDongari.Movement.V8
 
         private void ReadInput()
         {
-            BernardTuning.V8Values v = V;
+            VoSpec v = V;
             VoInputFrame frame = Host.ReadInput();
             TurboNew = frame.TurboNew;
             JumpNew = frame.JumpNew;
@@ -488,16 +498,17 @@ namespace MyDongari.Movement.V8
                     ? v.leverNearScale
                     : Mathf.Lerp(v.leverNearScale, 1f, Mathf.InverseLerp(v.leverNearDistance, v.leverFarDistance, OpponentDistanceU));
             }
-            Lever.Tick(stick, v, distanceScale);
+            Lever.Tick(stick, distanceScale);
 
             // 선회 축 = 수동 선회 (사양서의 레버 차동). |s| ≤ 0.05 무시, 부호 유지 제곱
             float x = Mathf.Clamp(frame.TurnAxis, -1f, 1f);
             TurnCoefficient = Mathf.Abs(x) <= v.turnDeadzone ? 0f : Mathf.Sign(x) * x * x;
             MouseTurnDegrees = frame.ExtraTurnDegrees;
 
-            // 대시 방향 잠금 (사양서 2.1 + V8.1·V8.2): ① ○를 새로 누른 틱에 스틱 방향(서기·걷기·지상 대시·점프·근접 스텝), 중립이면 앞(0).
-            // 근접 구역 서기의 중립 ○는 바로 앞 대시 + 0.25초 안 스틱이면 근접 스텝으로 바뀌게 표시(LockedNeutralClose).
-            // ② 서기·걷기에서 ○를 누른 뒤 15f 안(누르고 있는 중)에 스틱이 들어옴 → "나중에 잠김"(근접 스텝 조건)
+            // 대시 방향 잠금 (사양서 2.1): ① 터보를 새로 누른 틱의 레버 방향(서기·걷기·지상 대시·점프·근접 스텝).
+            // 스위치(V8.1, 원본은 중립이면 잠금 없음): neutralTurboDashesForward면 중립은 앞(0) —
+            // 근접 구역 서기의 중립 터보는 바로 앞 대시 + closeStepFromDashFrames 안 레버면 근접 스텝으로 바뀌게 표시(LockedNeutralClose, V8.2).
+            // ② 서기·걷기에서 터보를 누른 뒤 15f 안(누르고 있는 중)에 레버가 들어옴 → "나중에 잠김"(근접 스텝 조건)
             LockedDirection = -1;
             LockedAfterPress = false;
             LockedNeutralClose = false;
@@ -505,8 +516,15 @@ namespace MyDongari.Movement.V8
             if (current == null) return;
             if (TurboNew && current.LocksOnTurboPress)
             {
-                LockedDirection = Lever.Direction >= 0 ? Lever.Direction : 0;
-                LockedNeutralClose = Lever.Direction < 0 && current is VoStandState && InCloseZone;
+                if (Lever.Direction >= 0)
+                {
+                    LockedDirection = Lever.Direction;
+                }
+                else if (v.neutralTurboDashesForward)
+                {
+                    LockedDirection = 0;
+                    LockedNeutralClose = current is VoStandState && InCloseZone;
+                }
             }
             else if (!TurboNew && TurboHeld && TurboFrames <= v.dashLockWindow && current.LocksWithinWindow && Lever.Direction >= 0)
             {
@@ -548,7 +566,7 @@ namespace MyDongari.Movement.V8
         /// <summary>자동 선회 (사양서 2.3). 상태 메인보다 먼저.</summary>
         private void UpdateAutoTurn()
         {
-            BernardTuning.V8Values v = V;
+            VoSpec v = V;
             _attackAimSaturated = false;
             _autoTurnFrames++;
             _guardTurning = false;
@@ -576,8 +594,8 @@ namespace MyDongari.Movement.V8
                     if (HasOpponent)
                     {
                         float before = Mathf.Abs(Mathf.DeltaAngle(_yaw, OpponentBearing));
-                        TurnToward(OpponentBearing, v.attackAimRate);
-                        _attackAimSaturated = before > BernardTuning.AngleUnitsToDegrees(v.attackAimRate);
+                        TurnToward(OpponentBearing, _attackAimRate);
+                        _attackAimSaturated = before > VoUnits.AngleUnitsToDegrees(_attackAimRate);
                     }
                     if (!HasOpponent || _autoTurnFrames > v.attackAimFrames || InCloseZone) SetAutoTurn(AutoTurnMode.Default);
                     break;
@@ -591,7 +609,7 @@ namespace MyDongari.Movement.V8
         private bool TurnToward(float bearing, float rateUnits)
         {
             float diff = Mathf.DeltaAngle(_yaw, bearing);
-            float max = BernardTuning.AngleUnitsToDegrees(rateUnits);
+            float max = VoUnits.AngleUnitsToDegrees(rateUnits);
             AddYaw(Mathf.Clamp(diff, -max, max));
             return Mathf.Abs(Mathf.DeltaAngle(_yaw, bearing)) <= V.alignEpsilon;
         }
@@ -602,14 +620,14 @@ namespace MyDongari.Movement.V8
         /// </summary>
         private void UpdateCameraYaw()
         {
-            BernardTuning.V8Values v = V;
+            VoSpec v = V;
             switch (AutoTurn)
             {
                 case AutoTurnMode.AirDashReturn:
                     break;
                 case AutoTurnMode.JumpAim:
                 {
-                    float max = BernardTuning.AngleUnitsToDegrees(v.cameraYawFollowRate);
+                    float max = VoUnits.AngleUnitsToDegrees(v.cameraYawFollowRate);
                     CameraYaw = Mathf.Repeat(CameraYaw + Mathf.Clamp(Mathf.DeltaAngle(CameraYaw, _yaw), -max, max), 360f);
                     break;
                 }
@@ -617,8 +635,8 @@ namespace MyDongari.Movement.V8
                     CameraYaw = _yaw;
                     break;
             }
-            float step = BernardTuning.AngleUnitsToDegrees(v.cameraLeadStep);
-            float maxLead = BernardTuning.AngleUnitsToDegrees(v.cameraLeadMax);
+            float step = VoUnits.AngleUnitsToDegrees(v.cameraLeadStep);
+            float maxLead = VoUnits.AngleUnitsToDegrees(v.cameraLeadMax);
             float target = TurnCoefficient > 0f ? maxLead : TurnCoefficient < 0f ? -maxLead : 0f;
             if (Host.IsStunned) target = 0f;
             CameraLead = Mathf.MoveTowards(CameraLead, target, step);
@@ -628,7 +646,7 @@ namespace MyDongari.Movement.V8
 
         private void IntegrateLocomotion(VoState state)
         {
-            BernardTuning.V8Values v = V;
+            VoSpec v = V;
             float speed = HorizontalSpeed;
             // 근접 감속: 상대 200u 안이면 × 0.78
             if (HasOpponent && OpponentDistanceU < v.closeSlowDistance) speed *= v.closeSlowScale;
@@ -662,7 +680,7 @@ namespace MyDongari.Movement.V8
         /// <summary>외부 속도로 한 틱 (넉백·넉다운·런지·앵커 클로). 중력(리지드바디 useGravity일 때)·감속·벽·지면 포함.</summary>
         private void IntegrateExternal()
         {
-            BernardTuning.V8Values v = V;
+            VoSpec v = V;
             float dt = Dt;
             Vector3 vel = _external;
             float gravity = v.gravity * U / (dt * dt);

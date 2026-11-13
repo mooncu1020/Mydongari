@@ -1,82 +1,29 @@
 using System;
 using UnityEngine;
 using MyDongari.Combat;
+using MyDongari.Movement.V8;
 
 namespace MyDongari.Mech
 {
     /// <summary>
-    /// 버나드 표준형의 조정 가능한 전투·이동 수치 전부. 두 기체가 같은 에셋을 참조한다(미러전).
+    /// 버나드 표준형의 조정 가능한 전투·외형 수치 (이동기 수치는 VoSpec + StyleOverrides). 두 기체가 같은 에셋을 참조한다(미러전).
     /// 컴포넌트들은 값을 캐시하지 않고 쓸 때마다 여기서 읽으므로, 플레이 중 에셋을 고치면 바로 반영된다.
     /// 주의: 플레이 중 고친 에셋 값은 플레이를 멈춰도 그대로 남는다(컴포넌트 값과 다름).
     /// </summary>
     [CreateAssetMenu(menuName = "Mydongari/Bernard Tuning", fileName = "BernardTuning")]
-    public partial class BernardTuning : ScriptableObject
+    public class BernardTuning : ScriptableObject
     {
         /// <summary>Resources 폴더 기준 기본 에셋 이름. 기체에 연결이 안 돼 있으면 이걸 찾는다.</summary>
         public const string ResourcesName = "BernardTuning";
-
-        /// <summary>
-        /// 방향별 값 5점 (V6): 앞(0°) / 앞대각(45°) / 옆(90°) / 뒤대각(135°) / 뒤(180°). 사이 각도는 선형 보간, 좌우 대칭.
-        /// 템진 원본이 방향마다 속도가 다르다 — 앞이 제일 빠르고 뒤 대시는 크게 느리다.
-        /// </summary>
-        [Serializable]
-        public struct DirectionalValues
-        {
-            public float front;
-            public float frontDiagonal;
-            public float side;
-            public float backDiagonal;
-            public float back;
-
-            public DirectionalValues(float front, float frontDiagonal, float side, float backDiagonal, float back)
-            {
-                this.front = front;
-                this.frontDiagonal = frontDiagonal;
-                this.side = side;
-                this.backDiagonal = backDiagonal;
-                this.back = back;
-            }
-
-            /// <summary>기준 정면에서 잰 각도(°, 부호·범위 무관)의 값.</summary>
-            public float Evaluate(float angleDegrees)
-            {
-                float a = Mathf.Abs(Mathf.DeltaAngle(0f, angleDegrees));
-                float segment = a / 45f;
-                int i = Mathf.Clamp(Mathf.FloorToInt(segment), 0, 3);
-                return Mathf.Lerp(Point(i), Point(i + 1), segment - i);
-            }
-
-            /// <summary>L스틱 방향(위 = 앞)의 값. 스틱이 중립이면 앞.</summary>
-            public float Evaluate(Vector2 stick)
-            {
-                if (stick.sqrMagnitude < 0.000001f) return front;
-                return Evaluate(Mathf.Atan2(stick.x, stick.y) * Mathf.Rad2Deg);
-            }
-
-            private float Point(int index)
-            {
-                switch (index)
-                {
-                    case 0: return front;
-                    case 1: return frontDiagonal;
-                    case 2: return side;
-                    case 3: return backDiagonal;
-                    default: return back;
-                }
-            }
-
-            /// <summary>다섯 값 중 가장 큰 값 (FOV 등 "최고 속도" 기준용).</summary>
-            public float Max => Mathf.Max(front, Mathf.Max(frontDiagonal, Mathf.Max(side, Mathf.Max(backDiagonal, back))));
-        }
 
         [Serializable]
         public class MovementValues
         {
             [Header("기준 속도 (m/s, 기체 키 2.6m 환산표) — 실제 이동은 V8 이동기 수치(u/f)가 정한다")]
             [Tooltip("방향별 걷기 속도(m/s): 앞 / 앞대각 45° / 옆 / 뒤대각 135° / 뒤. 지금은 외형 걸음 모션 안내(MechVisualRig)만 읽는다. 실제 속도(키 1.93m → 앞 16.3m/s)와 맞추는 것은 CL8")]
-            public DirectionalValues walkSpeed = new DirectionalValues(22.0f, 19.5f, 19.2f, 17.7f, 19.9f);
+            public VoDirectional walkSpeed = new VoDirectional(22.0f, 19.5f, 19.2f, 17.7f, 19.9f);
             [Tooltip("방향별 대시 속도(m/s): 앞 / 앞대각 / 옆 / 뒤대각 / 뒤. 지금은 연습 봇이 상대 대시가 닿을 시간을 어림할 때만 읽는다. 실제 속도(앞 17.9m/s)와 맞추는 것은 CL8")]
-            public DirectionalValues dashSpeed = new DirectionalValues(24.1f, 22.7f, 22.3f, 21.3f, 14.2f);
+            public VoDirectional dashSpeed = new VoDirectional(24.1f, 22.7f, 22.3f, 21.3f, 14.2f);
 
             [Header("넉백·몸 충돌")]
             [Tooltip("넉백을 받은 뒤 이 시간(초) 동안은 이동 상태가 속도를 덮어쓰지 않는다 (넉백이 지워지지 않게)")]
@@ -86,7 +33,7 @@ namespace MyDongari.Mech
 
             [Header("대시 어택")]
             [Tooltip("대시 공격을 쓰고 끝난 뒤 경직(초), 대시 방향별: 앞 / 앞대각 / 옆 / 뒤대각 / 뒤. 차징 태클은 Tackle.recoveryStun")]
-            public DirectionalValues dashAttackRecovery = new DirectionalValues(0.2f, 0.22f, 0.23f, 0.27f, 0.3f);
+            public VoDirectional dashAttackRecovery = new VoDirectional(0.2f, 0.22f, 0.23f, 0.27f, 0.3f);
 
             [Header("조작")]
             [Tooltip("마우스 좌우 이동량 1당 몸 회전(°). 키보드·마우스 예비 조작용")]

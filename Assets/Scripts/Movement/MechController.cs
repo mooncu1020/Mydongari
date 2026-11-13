@@ -72,7 +72,7 @@ namespace MyDongari.Movement
         /// <summary>공격을 시작했을 때 (WeaponSystem). 이동기의 "사격 조준" — 15f 동안 몸을 상대 쪽으로.</summary>
         public void NotifyAttackStarted()
         {
-            if (Motor != null) Motor.NotifyAttackStarted();
+            if (Motor != null) Motor.NotifyAttackStarted(StyleOverrides.Current.attackAimRate);
         }
 
         /// <summary>이동기.</summary>

@@ -1,5 +1,4 @@
 using UnityEngine;
-using MyDongari.Mech;
 
 namespace MyDongari.Movement.V8
 {
@@ -32,8 +31,8 @@ namespace MyDongari.Movement.V8
     public interface IVoHost
     {
         // ---- 수치 ----
-        /// <summary>이동기 수치 (원본 단위).</summary>
-        BernardTuning.V8Values Spec { get; }
+        /// <summary>이동기 수치 (원본 단위). 원본값(VoSpec) 위에 호스트가 우리 스타일을 덮어쓴 결과.</summary>
+        VoSpec Spec { get; }
         /// <summary>이 값 이상 위를 향한 면(법선 y)만 땅, 그보다 가파르면 벽.</summary>
         float GroundMinNormalY { get; }
 

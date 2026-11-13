@@ -31,13 +31,14 @@ namespace MyDongari.Movement
         private MechIdentity Identity => _controller.Identity;
 
         // ---- 수치 ----
-        public BernardTuning.V8Values Spec => _controller.Tuning.V8;
+        /// <summary>원본값 + StyleOverrides에서 켜진 칸.</summary>
+        public VoSpec Spec => StyleOverrides.Current.Effective;
         public float GroundMinNormalY => _controller.Tuning.Movement.groundMinNormalY;
 
         // ---- 입력 ----
         public bool HasInput => _input.HasInput;
         public void ResetInput() => _input.Reset();
-        public VoInputFrame ReadInput() => _input.Read();
+        public VoInputFrame ReadInput() => _input.Read(StyleOverrides.Current.stickThreshold);
 
         /// <summary>화면 프레임마다 (MechController.Update): 마우스 이동량을 모은다.</summary>
         public void FrameUpdate()
@@ -66,9 +67,9 @@ namespace MyDongari.Movement
         /// </summary>
         public bool TryGetAutoTurnToOpponent(out float insideRateUnits, out float outsideRateUnits)
         {
-            BernardTuning.V8Values v = Spec;
-            insideRateUnits = v.guardTurnInside;
-            outsideRateUnits = v.guardTurnOutside;
+            StyleOverrides style = StyleOverrides.Current;
+            insideRateUnits = style.guardTurnInside;
+            outsideRateUnits = style.guardTurnOutside;
             return Melee != null && Melee.IsGuarding;
         }
 
