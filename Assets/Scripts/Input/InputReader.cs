@@ -5,15 +5,9 @@ namespace MyDongari.Input
 {
     public class InputReader : MonoBehaviour, ICombatInputSource
     {
-        [Header("사이드스텝 (키보드 A/D 더블탭)")]
-        [Tooltip("같은 방향키를 두 번 누르는 간격이 이 시간(초) 안이면 사이드스텝")]
-        [SerializeField] private float doubleTapWindow = 0.3f;
-
         [Header("패드 왼쪽 스틱")]
         [Tooltip("이동 입력 크기가 이 값 이상이면 달리기 시작. 속도는 이 값 ~ 끝을 0 ~ 최대로 다시 맞춘다 (키보드는 항상 1)")]
         [SerializeField] private float moveDeadzone = 0.3f;
-        [Tooltip("튕기기(←→ 사이드스텝) 판정 수치")]
-        [SerializeField] private StickGestureSettings gesture = new StickGestureSettings();
 
         [Header("액션 맵")]
         [Tooltip("게임 조작용 액션 맵 이름. 시작할 때와 패드 배정 때마다 PlayerInput의 현재 맵을 이걸로 맞추고 켠다")]
@@ -46,9 +40,6 @@ namespace MyDongari.Input
         public int GuardPressCount { get; private set; }
         public bool Skill1Input { get; private set; }
         public bool Skill2Input { get; private set; }
-        public int SideStepDirection { get; private set; }
-        /// <summary>패드 왼쪽 스틱 원래 값 (키보드 WASD 제외). 튕기기 판정용.</summary>
-        public Vector2 MoveStickRaw { get; private set; }
 
         /// <summary>이동 입력이 달리기를 시작할 만큼 있는지. 상태들의 이동 시작/정지 판정은 이걸 쓴다.</summary>
         public bool IsMoveInputActive => MoveInput.magnitude >= moveDeadzone;
@@ -106,9 +97,6 @@ namespace MyDongari.Input
         private InputAction _skill2Action;
         private InputAction _attackAction;
         private InputAction _guardAction;
-        private InputAction _stepLeftAction;
-        private InputAction _stepRightAction;
-        private InputAction _moveStickAction;
         private InputAction _startAction;
         private InputAction _submitAction;
         private InputAction _menuNavigateAction;
@@ -121,11 +109,6 @@ namespace MyDongari.Input
         private bool _selectHoldFired;
         // 라운드 카운트다운·라운드 사이에 GameManager가 건다. 잠긴 동안 게임플레이 입력은 전부 0
         private bool _inputLocked = false;
-
-        private readonly StickGestureDetector _gesture = new StickGestureDetector();
-
-        private float _lastLeftTapTime = 0f;
-        private float _lastRightTapTime = 0f;
 
         private bool _skill1Pending = false;
         private bool _skill2Pending = false;
@@ -142,10 +125,6 @@ namespace MyDongari.Input
             _skill2Action = _playerInput.actions["Skill2"];
             _attackAction = _playerInput.actions["Attack"];
             _guardAction = _playerInput.actions["Cross"];
-            _stepLeftAction = _playerInput.actions["StepLeft"];
-            _stepRightAction = _playerInput.actions["StepRight"];
-            // 패드 스틱만 바인딩된 액션. 키보드 WASD가 튕기기로 오인되지 않게 제스처는 이것만 본다
-            _moveStickAction = _playerInput.actions["MoveStick"];
             _startAction = _playerInput.actions["Start"];
             _submitAction = _playerInput.actions["Submit"];
             _menuNavigateAction = _playerInput.actions["MenuNavigate"];
@@ -219,11 +198,6 @@ namespace MyDongari.Input
             }
             AnyInputThisFrame = DetectAnyInput();
 
-            // 히트스톱(timeScale 0) 중에도 입력 타이밍은 실제 시간으로 잰다
-            Vector2 stick = _moveStickAction.ReadValue<Vector2>();
-            _gesture.Tick(stick, Time.unscaledTime, gesture);
-            MoveStickRaw = stick;
-
             DashHeld = _dashAction.IsPressed();
             DashPressedThisFrame = _dashAction.WasPressedThisFrame();
             JumpPressedThisFrame = _jumpAction.WasPressedThisFrame();
@@ -239,9 +213,6 @@ namespace MyDongari.Input
 
             Skill2Input = _skill2Pending;
             _skill2Pending = false;
-
-            SideStepDirection = _gesture.FlickSide;
-            DetectSideStep();
 
             StartPressed = _startAction.WasPressedThisFrame();
             UpdateMenuInput();
@@ -337,50 +308,12 @@ namespace MyDongari.Input
             DashPressedThisFrame = false;
             JumpPressedThisFrame = false;
             JumpHeld = false;
-            MoveStickRaw = Vector2.zero;
             Skill1Input = false;
             Skill2Input = false;
-            SideStepDirection = 0;
             AttackHeld = false;
             AttackPressedThisFrame = false;
             GuardHeld = false;
             GuardPressedThisFrame = false;
-            // 잠금 중 스틱 조작이 풀린 직후 제스처로 튀어나오지 않게 판정기도 비운다
-            _gesture.Reset();
-        }
-
-        private void DetectSideStep()
-        {
-            // 키보드 A/D 더블탭. 장치를 직접 읽지 않고 액션을 거쳐야
-            // 2인 플레이에서 각 PlayerInput에 페어링된 장치 입력만 들어온다.
-            bool leftPressed = _stepLeftAction.WasPressedThisFrame();
-            bool rightPressed = _stepRightAction.WasPressedThisFrame();
-
-            if (leftPressed)
-            {
-                if (Time.unscaledTime - _lastLeftTapTime < doubleTapWindow)
-                {
-                    SideStepDirection = -1;
-                    _lastLeftTapTime = 0f;
-                }
-                else
-                {
-                    _lastLeftTapTime = Time.unscaledTime;
-                }
-            }
-
-            if (rightPressed)
-            {
-                if (Time.unscaledTime - _lastRightTapTime < doubleTapWindow)
-                {
-                    SideStepDirection = 1;
-                    _lastRightTapTime = 0f;
-                }
-                else
-                {
-                    _lastRightTapTime = Time.unscaledTime;
-                }
-            }
         }
     }
 }

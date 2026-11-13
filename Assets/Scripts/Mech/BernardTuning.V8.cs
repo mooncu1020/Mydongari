@@ -3,15 +3,6 @@ using UnityEngine;
 
 namespace MyDongari.Mech
 {
-    /// <summary>이동기 선택 (V8). 문제가 생기면 Legacy로 돌리면 V6.1 이동이 그대로 돈다.</summary>
-    public enum MovementModel
-    {
-        /// <summary>V6.1까지의 이동 (다이내믹 리지드바디, Idle/Run/Dash/Air 상태).</summary>
-        Legacy,
-        /// <summary>V8 버추얼온식 이동기 (60Hz 고정 틱, 위치 += 속도, 키네마틱 리지드바디).</summary>
-        VirtualOn
-    }
-
     public partial class BernardTuning
     {
         /// <summary>
@@ -189,13 +180,9 @@ namespace MyDongari.Mech
             public float cameraLeadStep = 256f;
         }
 
-        [Header("이동기 선택 (V8)")]
-        [Tooltip("VirtualOn = V8 버추얼온식 이동기, Legacy = V6.1 이동. 플레이 중 바꿔도 다음 틱에 전환된다")]
-        [SerializeField] private MovementModel movementModel = MovementModel.VirtualOn;
         [Header("V8 이동기 (원본 단위: u·u/f·f·각 단위)")]
         [SerializeField] private V8Values v8 = new V8Values();
 
-        public MovementModel Model => movementModel;
         public V8Values V8 => v8;
 
         /// <summary>각 단위(65536 = 360°) → 도.</summary>

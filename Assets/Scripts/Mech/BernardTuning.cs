@@ -72,67 +72,25 @@ namespace MyDongari.Mech
         [Serializable]
         public class MovementValues
         {
-            [Header("걷기 (V6a: 템진 기준, 가속도 없이 즉시)")]
-            [Tooltip("방향별 걷기 최대 속도(m/s): 앞 / 앞대각 45° / 옆 / 뒤대각 135° / 뒤. 사이 각도는 선형 보간. 하드락 안팎 같은 값(안은 상대 기준 방향)")]
+            [Header("기준 속도 (m/s, 기체 키 2.6m 환산표) — 실제 이동은 V8 이동기 수치(u/f)가 정한다")]
+            [Tooltip("방향별 걷기 속도(m/s): 앞 / 앞대각 45° / 옆 / 뒤대각 135° / 뒤. 지금은 외형 걸음 모션 안내(MechVisualRig)만 읽는다. 실제 속도(키 1.93m → 앞 16.3m/s)와 맞추는 것은 CL8")]
             public DirectionalValues walkSpeed = new DirectionalValues(22.0f, 19.5f, 19.2f, 17.7f, 19.9f);
-            [Tooltip("L스틱 기울기가 이 값 이상이면 그 방향 최대 속도(디지털에 가깝게), 미만이면 정지")]
-            [Range(0f, 1f)] public float walkStickThreshold = 0.3f;
-            [Tooltip("넉백을 받은 뒤 이 시간(초) 동안은 달리기·정지가 속도를 덮어쓰지 않는다 (넉백이 지워지지 않게)")]
-            public float knockbackMoveHold = 0.35f;
-
-            [Header("회전")]
-            [Tooltip("하드 락온 중 몸통이 상대 쪽으로 자동으로 도는 속도 (수평 회전만)")]
-            public float hardLockTurnSpeed = 10f;
-            [Tooltip("V3: R스틱을 끝까지 밀었을 때 제자리 몸 회전 속도(°/초). 느릴수록 상대를 놓쳤을 때 빈틈이 크다")]
-            public float bodyTurnSpeed = 120f;
-            [Tooltip("V3: 마우스 좌우 이동량 1당 몸 회전(°). 키보드·마우스 예비 조작용 (예전 카메라 마우스 감도와 같은 값)")]
-            public float mouseTurnSensitivity = 2f;
-
-            [Header("사이드스텝")]
-            public float sideStepDuration = 0.3f;
-            public float sideStepSpeed = 20f;
-
-            [Header("○ 대시 (V6b: 템진 기준 시간표 — 시작 → 지속 → 끝)")]
-            [Tooltip("방향별 대시 속도(m/s): 앞 / 앞대각 / 옆 / 뒤대각 / 뒤. 누른 프레임부터 이 속도(가속 없음), 방향은 누른 순간 8방향 고정")]
+            [Tooltip("방향별 대시 속도(m/s): 앞 / 앞대각 / 옆 / 뒤대각 / 뒤. 지금은 연습 봇이 상대 대시가 닿을 시간을 어림할 때만 읽는다. 실제 속도(앞 17.9m/s)와 맞추는 것은 CL8")]
             public DirectionalValues dashSpeed = new DirectionalValues(24.1f, 22.7f, 22.3f, 21.3f, 14.2f);
-            [Tooltip("시작 단계(초). 공격·점프 불가, ○ 재입력은 정지(끝 단계로)")]
-            public float dashStartupTime = 0.27f;
-            [Tooltip("지속 단계 최대(초). 공격·점프·○ 재입력(정지) 가능. 다 지나면 끝 단계로")]
-            public float dashSustainTime = 1.4f;
-            [Tooltip("끝 단계(초). 속도를 0까지 선형으로 줄이며 미끄러진다(스틱 무시). 대시 불가, △ 점프는 내내 가능, 끝난 뒤 경직 없음")]
-            public float dashStopDuration = 0.27f;
-            [Tooltip("끝 단계에 들어가고 이 시간(초) 뒤부터 공격 입력을 받는다 (V6.1 원본 분석: 0.05초)")]
-            public float dashStopAttackDelay = 0.05f;
-            [Tooltip("대시 공격을 쓰고 끝난 뒤 경직(초), 대시 방향별: 앞 / 앞대각 / 옆 / 뒤대각 / 뒤. 차징 태클은 Tackle.recoveryStun")]
-            public DirectionalValues dashAttackRecovery = new DirectionalValues(0.2f, 0.22f, 0.23f, 0.27f, 0.3f);
+
+            [Header("넉백·몸 충돌")]
+            [Tooltip("넉백을 받은 뒤 이 시간(초) 동안은 이동 상태가 속도를 덮어쓰지 않는다 (넉백이 지워지지 않게)")]
+            public float knockbackMoveHold = 0.35f;
             [Tooltip("공격 없이 대시로 상대 몸에 부딪혔을 때 둘이 서로 밀려나는 속도(m/s). 피해 없음")]
             public float bumpSpeed = 4f;
-            [Tooltip("벽 판정: 닿은 면 법선의 위아래 성분이 이 값 이하(옆면)여야 벽 — 바닥·경사는 무시")]
-            [Range(0f, 1f)] public float dashWallMaxNormalY = 0.5f;
-            [Tooltip("벽 판정: 면이 진행 방향을 이만큼 이상 정면으로 막아야(법선·진행 방향 내적 ≤ -값) 대시가 끝남. 비스듬히 스치면 계속")]
-            [Range(0f, 1f)] public float dashWallFacingDot = 0.5f;
 
-            [Header("점프 (V6c: 템진 기준)")]
-            [Tooltip("이륙 준비(초). △를 누른 뒤 이 시간 뒤에 뜬다 (60fps 2프레임 ≈ 0.033초)")]
-            public float jumpTakeoffTime = 0.033f;
-            [Tooltip("이륙 순간 상승 속도(m/s). 최고 높이 = 속도² / (2 × 중력) ≈ 8.4m, 최고점까지 = 속도 / 중력 ≈ 0.73초")]
-            public float jumpRiseSpeed = 23.0f;
-            [Tooltip("공중 중력(m/s²). 오를 때·내려올 때 같은 값")]
-            public float jumpGravity = 31.5f;
-            [Tooltip("하강 속도 상한(m/s). 원본 판독이 3.7인지 7.5인지 미확정 — 둘 다 시험해 볼 것")]
-            public float maxFallSpeed = 7.5f;
-            [Tooltip("점프 락온: 뛰는 순간 몸(과 카메라)을 상대 쪽으로 돌리는 시간(초). 거리 무관")]
-            public float jumpTurnTime = 0.2f;
-            [Tooltip("공중에서 L스틱으로 움직이는 방향별 최대 수평 속도(m/s, 몸 기준): 앞 / 앞대각 / 옆 / 뒤대각 / 뒤")]
-            public DirectionalValues airMoveSpeed = new DirectionalValues(11.4f, 13.8f, 14.2f, 13.8f, 11.4f);
-            [Tooltip("공중 수평 속도가 스틱 목표 쪽으로 바뀌는 가속도(m/s²). 작을수록 뛰기 전 속도가 오래 남는다")]
-            public float airAccel = 15f;
+            [Header("대시 어택")]
+            [Tooltip("대시 공격을 쓰고 끝난 뒤 경직(초), 대시 방향별: 앞 / 앞대각 / 옆 / 뒤대각 / 뒤. 차징 태클은 Tackle.recoveryStun")]
+            public DirectionalValues dashAttackRecovery = new DirectionalValues(0.2f, 0.22f, 0.23f, 0.27f, 0.3f);
 
-            [Header("공중 대시 (V6c: 상승 중에만, 대시와 같은 시간표)")]
-            [Tooltip("방향별 공중 대시 속도(m/s): 앞 / 앞대각 / 옆 / 뒤대각 / 뒤")]
-            public DirectionalValues airDashSpeed = new DirectionalValues(24.8f, 22.7f, 22.7f, 22.7f, 14.2f);
-            [Tooltip("공중 대시 중 상승하는 동안의 중력 배율 (jumpGravity 기준). 내려오기 시작하면 1배")]
-            [Range(0f, 1f)] public float airDashRisingGravityScale = 0.5f;
+            [Header("조작")]
+            [Tooltip("마우스 좌우 이동량 1당 몸 회전(°). 키보드·마우스 예비 조작용")]
+            public float mouseTurnSensitivity = 2f;
 
             [Header("착지 (V5)")]
             [Tooltip("점프·공중 대시·공중 피격 뒤 착지 경직(초). 이동·공격·대시·점프·가드 불가")]
@@ -141,12 +99,6 @@ namespace MyDongari.Mech
             [Header("접지 판정 (V5: Walkable 레이어 + 위를 향한 면)")]
             [Tooltip("이 값 이상 위를 향한 면(법선 y)만 땅. 경사가 이보다 가파르면 벽")]
             [Range(0f, 1f)] public float groundMinNormalY = 0.7f;
-            [Tooltip("콜라이더 바닥 아래로 이만큼(m)까지 땅을 찾는다")]
-            public float groundProbeSkin = 0.15f;
-            [Tooltip("땅에서 이 시간(초)보다 오래 떨어져 있어야 낙하로 본다 (울퉁불퉁한 바닥에서 깜빡이지 않게)")]
-            public float coyoteTime = 0.1f;
-            [Tooltip("뛴 뒤 이 시간(초) 동안은 착지 판정을 안 한다 (뛴 직후 아직 바닥 검사에 걸리므로)")]
-            public float jumpGroundIgnoreTime = 0.15f;
         }
 
         [Serializable]

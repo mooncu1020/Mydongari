@@ -243,9 +243,8 @@ namespace MyDongari.Core
             {
                 Action<MechState> onState = state => ErrorLog.Run(() =>
                 {
-                    if (state is SideStepState) Count(index, "sidestep");
-                    else if (state is DashState && sm.IsAirborne) Count(index, "air_dash");
-                    else if (state is MyDongari.Movement.V8.VoAirDashState) Count(index, "air_dash");
+                    // "sidestep" 집계는 사이드스텝이 없어져 항상 0 (CSV 열은 형식 유지로 남김)
+                    if (state is MyDongari.Movement.V8.VoAirDashState) Count(index, "air_dash");
                     else if (state is MyDongari.Movement.V8.VoCloseStepState) Count(index, "close_step");
                     else if (state is MyDongari.Movement.V8.VoDiveState) Count(index, "dive");
                 }, "PlayLogger.onState");

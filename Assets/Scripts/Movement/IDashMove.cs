@@ -3,7 +3,7 @@ using UnityEngine;
 namespace MyDongari.Movement
 {
     /// <summary>
-    /// 대시 상태가 전투·연출에 보여 주는 것 (V8). 예전 DashState와 V8 지상·공중 대시가 같이 구현한다.
+    /// 대시 상태가 전투·연출에 보여 주는 것 (V8). 지상·공중 대시가 구현한다.
     /// 다른 코드는 MechStateMachine.ActiveDash로 지금 대시를 받아 쓴다.
     /// </summary>
     public interface IDashMove
@@ -30,7 +30,6 @@ namespace MyDongari.Movement
         void EndByKnockback();
         /// <summary>몸끼리 부딪혀 끝남.</summary>
         void EndByBump();
-        /// <summary>벽에 막혀 끝남.</summary>
-        void EndByWall();
+        // 벽에 막혀도 대시는 끝나지 않는다 (사양서 6.2: 미끄러짐·멈춤만) — EndByWall은 예전 이동기용이라 지웠다
     }
 }

@@ -12,7 +12,7 @@ namespace MyDongari.Movement.V8
     /// 위치는 "위치 += 속도"로 직접 옮기고 리지드바디는 키네마틱(MovePosition, 보간 켬) — 충돌은 캐스트·겹침 판정에만 쓴다.
     /// 거리·속도 수치는 원본 단위(u, u/f)로 받고 1u = 기체 키 / 22(렌더러로 잼)로 바꾼다.
     /// 전투가 미는 것(넉백·넉다운·런지·앵커 클로·몸 충돌)은 외부 속도(MotionBridge)로 들어와, 그동안은 상태 대신 그 속도로 움직인다.
-    /// BernardTuning의 이동기 선택이 Legacy면 꺼져 있고 리지드바디는 예전처럼 다이내믹이다.
+    /// 입력(InputReader)·상태 머신이 없는 기체(연습 봇)에서는 켜지지 않는다 — 그 기체는 다이내믹 리지드바디로 남고 MotionBridge가 리지드바디로 보낸다.
     /// </summary>
     [DisallowMultipleComponent]
     public class MechMotor : MonoBehaviour
@@ -171,13 +171,11 @@ namespace MyDongari.Movement.V8
 
         private void Start()
         {
-            RefreshModel();
+            Activate();
         }
 
         private void Update()
         {
-            // 이동기 선택이 바뀌면(플레이 중 에셋을 고쳐도) 바로 전환
-            RefreshModel();
             // 마우스 이동량은 프레임마다 오므로 모아 두고 틱에서 쓴다
             if (IsActive && Input != null && !Input.IsLookFromGamepad)
             {
@@ -185,41 +183,30 @@ namespace MyDongari.Movement.V8
             }
         }
 
-        /// <summary>BernardTuning의 이동기 선택에 맞춰 켜거나 끈다.</summary>
-        public void RefreshModel()
+        /// <summary>
+        /// 입력·상태 머신이 있는 기체면 이동기를 켠다 (리지드바디 키네마틱, 틱 드라이버 등록). 시작할 때 한 번.
+        /// 없으면 꺼진 채로 둔다 — 그 기체는 다이내믹 리지드바디로 남는다.
+        /// </summary>
+        private void Activate()
         {
-            if (Controller == null || Rb == null) return;
-            bool want = Controller.Tuning.Model == MovementModel.VirtualOn && Input != null && StateMachine != null;
-            if (want == IsActive) return;
-            IsActive = want;
-            if (want)
-            {
-                MeasureBody();
-                Rb.isKinematic = true;
-                Rb.interpolation = RigidbodyInterpolation.Interpolate;
-                _position = Rb.position;
-                _lastCommitted = _position;
-                _yaw = Rb.rotation.eulerAngles.y;
-                _lastCommittedYaw = _yaw;
-                CameraYaw = _yaw;
-                CameraLead = 0f;
-                Vy = 0f;
-                _external = Vector3.zero;
-                Lever.Reset();
-                if (Input != null)
-                {
-                    _lastDashCount = Input.DashPressCount;
-                    _lastJumpCount = Input.JumpPressCount;
-                    _lastGuardCount = Input.GuardPressCount;
-                }
-                VoTickDriver.Register(this);
-            }
-            else
-            {
-                VoTickDriver.Unregister(this);
-                Rb.isKinematic = false;
-            }
-            if (StateMachine != null) StateMachine.OnMovementModelChanged();
+            if (IsActive || Controller == null || Rb == null || Input == null || StateMachine == null) return;
+            IsActive = true;
+            MeasureBody();
+            Rb.isKinematic = true;
+            Rb.interpolation = RigidbodyInterpolation.Interpolate;
+            _position = Rb.position;
+            _lastCommitted = _position;
+            _yaw = Rb.rotation.eulerAngles.y;
+            _lastCommittedYaw = _yaw;
+            CameraYaw = _yaw;
+            CameraLead = 0f;
+            Vy = 0f;
+            _external = Vector3.zero;
+            Lever.Reset();
+            _lastDashCount = Input.DashPressCount;
+            _lastJumpCount = Input.JumpPressCount;
+            _lastGuardCount = Input.GuardPressCount;
+            VoTickDriver.Register(this);
         }
 
         /// <summary>기체 키를 렌더러 경계로 잰다 (선 자세). 파티클·트레일·라인은 뺀다. 1~6m 밖이면 기본값.</summary>
@@ -433,7 +420,7 @@ namespace MyDongari.Movement.V8
                 }
                 else if (state != null)
                 {
-                    // 예전 상태(런지·넉다운·착지 경직)는 그대로 돌린다 — 프레임·물리 스텝 일을 틱에서 한 번씩
+                    // 게임 상태(런지·넉다운·착지 경직)는 그대로 돌린다 — 프레임·물리 스텝 일을 틱에서 한 번씩
                     state.Update();
                     if (StateMachine.CurrentState == state) state.FixedUpdate();
                 }

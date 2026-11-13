@@ -238,10 +238,5 @@ namespace MyDongari.Movement.V8
         {
             Leave(DashExitReason.Bump, StateMachine.VoStand);
         }
-
-        public void EndByWall()
-        {
-            // 사양서: 벽은 미끄러짐·멈춤만, 대시는 끝나지 않는다
-        }
     }
 }

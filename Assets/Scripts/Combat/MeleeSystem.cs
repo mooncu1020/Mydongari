@@ -444,7 +444,7 @@ namespace MyDongari.Combat
 
         /// <summary>
         /// 어깨 태클 시작(버튼을 누른 순간): 쿨다운을 쓰고 OnAttackStarted를 알린다. 쿨다운 중이면 false.
-        /// 판정은 발생 시간 뒤 판정 구간 동안 닿으면 ResolveTackle (DashState가 진행).
+        /// 판정은 발생 시간 뒤 판정 구간 동안 닿으면 ResolveTackle (DashAttackRunner가 진행).
         /// </summary>
         public bool BeginTackle(AttackType type)
         {
@@ -469,7 +469,7 @@ namespace MyDongari.Combat
 
         /// <summary>
         /// 어깨 태클 판정(판정하는 순간의 위치·방향 기준). type은 DashAttack(질주 1.5초 미만, 가드에 막힘) 또는 Tackle(차징, 관통 + 스턴).
-        /// 범위 안에 상대가 없으면 null. 공격자 경직은 호출 쪽(DashState)이 결과를 보고 건다 — 패리당했으면 경직 없음.
+        /// 범위 안에 상대가 없으면 null. 공격자 경직은 호출 쪽(DashAttackRunner)이 결과를 보고 건다 — 패리당했으면 경직 없음.
         /// </summary>
         public HitResult? ResolveTackle(float chargePower, AttackType type)
         {

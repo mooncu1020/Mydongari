@@ -30,7 +30,7 @@ namespace MyDongari.Movement.V8
             Motors.Remove(motor);
             if (Motors.Count == 0 && _originalFixedDeltaTime > 0f)
             {
-                // 다 꺼지면(예전 이동기로 돌림) 원래 물리 주기로
+                // 이동기가 하나도 안 남으면(씬 종료 등) 원래 물리 주기로
                 Time.fixedDeltaTime = _originalFixedDeltaTime;
                 _originalFixedDeltaTime = -1f;
             }

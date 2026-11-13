@@ -266,8 +266,5 @@ namespace MyDongari.Movement.V8
         public void EndByClash() => Fall(DashExitReason.Tackle, Motor.Vy);
         public void EndByKnockback() => Fall(DashExitReason.Other, Motor.Vy);
         public void EndByBump() => Fall(DashExitReason.Bump, Motor.Vy);
-        public void EndByWall()
-        {
-        }
     }
 }

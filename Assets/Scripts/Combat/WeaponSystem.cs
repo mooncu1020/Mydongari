@@ -134,7 +134,7 @@ namespace MyDongari.Combat
                 if (fromBuffer) OnBufferedAttack?.Invoke(started);
                 // V8: 공격을 쓰면 "사격 조준" — 15f 동안 몸을 상대 쪽으로 돌린다 (대시 중 공격은 대시가 지속 조준)
                 MechController controller = _stateMachine != null ? _stateMachine.MechController : null;
-                if (controller != null && controller.IsV8) controller.Motor.NotifyAttackStarted();
+                if (controller != null && controller.Motor != null) controller.Motor.NotifyAttackStarted();
             }
         }
 
