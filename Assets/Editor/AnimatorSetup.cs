@@ -2,7 +2,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using MyDongari.Visual;
+using MyDongari.Game.Visual;
 
 namespace MyDongari.EditorTools
 {

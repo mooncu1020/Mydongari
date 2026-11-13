@@ -594,6 +594,11 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (CL5) `StyleOverrides → 조작`: `Rising Rejump`의 `Value`를 켜면 상승 중 △ 한 번 더로 2단 점프(원본), 끄면 안 됨(우리 값). `Dive Allowed While Falling`을 끄면 내려오는 중 ✕ 급강하가 안 나감(원본)
 - [ ] (CL5) 값을 안 건드린 상태에서 걷기·대시·점프·선회·카메라가 정리 전과 같음 (스모크 로그의 `[VoSpec] … 원본과 다른 칸` 9줄: fallbackBodyHeight 1.93, neutralTurboDashesForward, closeStepFromDashFrames 15, turnBlendEndAngle 60, fastTurnOnlyTowardOpponent, risingRejump 끔, diveAllowedWhileFalling, cameraPositionFollow 0.35, cameraMaxScreenOffset 0.25)
 
+- [ ] (CL6) 에디터에서 프로젝트를 열면 컴파일 오류·"The referenced script is missing" 없음. `Assets/Scripts`가 `Core`(+`Core/VirtualOn`)·`Bridge`·`Game` 세 폴더뿐이고, 씬의 P1·P2·더미·카메라·HUD·GameManager 인스펙터에 Missing 없음
+- [ ] (CL6) 플레이 중 기체에 `VoMotor`(예전 `MechMotor`)가 붙어 있고 `VoTickDriver` 오브젝트가 생김. `VoMotor → Debug Log`를 켜면 상태 전환과 유효 수치가 찍힘
+- [ ] (CL6) `Mydongari`·`Tools` 메뉴(Setup Versus Scene, Add Missing Mech Components, Build Bellforest Blockout, Build And Smoke Test 등)가 그대로 있고 실행됨
+- [ ] (CL6) VERSUS 한 판(3판 2선승)과 PRACTICE 봇 모드 순환을 끝까지 돌려 콘솔에 빨간 오류 없음. PlayLog CSV 세 종류가 생기고 `dash_enter`·`jump`·`air_dash`·`close_step`·`dive` 카운트가 찍힘(`sidestep`은 항상 0)
+
 ## 도구
 
 - [ ] (U1) `Tools/Build And Smoke Test` → 씬이 저장되고 빌드가 진행됨 → 콘솔 `[SmokeTest] 빌드 성공 …` → 1280×720 창으로 게임이 뜸(전체 화면 아님) → 약 10초 뒤 창이 닫힘 → 콘솔에 `[SmokeTest] … Exception N줄, Error N줄, NaN N줄`과 해당 줄 목록. `Builds/날짜_시간/`에 exe·Player.log·SmokeTestSummary.txt. 기다리는 동안 에디터 조작 가능

@@ -1,7 +1,7 @@
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using MyDongari.UI;
+using MyDongari.Game.UI;
 
 namespace MyDongari.EditorTools
 {

@@ -2,9 +2,11 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using MyDongari.Combat;
 using MyDongari.Core;
-using MyDongari.Feedback;
+using MyDongari.Game.Combat;
+using MyDongari.Game.Feedback;
+using MyDongari.Game.Flow;
+using MyDongari.Game.Tuning;
 
 namespace MyDongari.EditorTools
 {
@@ -23,7 +25,7 @@ namespace MyDongari.EditorTools
             int undoGroup = Undo.GetCurrentGroup();
 
             int added = 0;
-            MyDongari.Mech.BernardTuning tuning = TuningSetup.EnsureAsset(out _);
+            BernardTuning tuning = TuningSetup.EnsureAsset(out _);
             foreach (PlayerInput playerInput in Object.FindObjectsByType<PlayerInput>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 GameObject mech = playerInput.gameObject;
@@ -33,7 +35,7 @@ namespace MyDongari.EditorTools
                     Undo.AddComponent<ThrusterLunge>(mech);
                     added++;
                 }
-                if (mech.GetComponent<MyDongari.Mech.MechTuning>() == null) added++;
+                if (mech.GetComponent<MechTuning>() == null) added++;
                 TuningSetup.AssignTo(mech, tuning);
                 EditorSceneManager.MarkSceneDirty(mech.scene);
             }

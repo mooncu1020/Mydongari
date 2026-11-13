@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-using MyDongari.Visual;
+using MyDongari.Game.Visual;
 
 namespace MyDongari.EditorTools
 {

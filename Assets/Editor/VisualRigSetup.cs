@@ -1,8 +1,8 @@
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using MyDongari.Combat;
-using MyDongari.Visual;
+using MyDongari.Game.Combat;
+using MyDongari.Game.Visual;
 
 namespace MyDongari.EditorTools
 {

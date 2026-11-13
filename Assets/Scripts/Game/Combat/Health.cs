@@ -1,0 +1,54 @@
+using UnityEngine;
+using MyDongari.Bridge;
+
+namespace MyDongari.Game.Combat
+{
+    public class Health : MonoBehaviour
+    {
+        [SerializeField] private float maxHealth = 100f;
+        public float CurrentHealth { get; private set; }
+        public float MaxHealth => maxHealth;
+        public bool IsDead { get; private set; }
+
+        private MechStateMachine _stateMachine;
+
+        private void Awake()
+        {
+            CurrentHealth = maxHealth;
+            _stateMachine = GetComponent<MechStateMachine>();
+        }
+
+        public void TakeDamage(float amount)
+        {
+            if (IsDead) return;
+            CurrentHealth = Mathf.Max(CurrentHealth - amount, 0f);
+
+            if (CurrentHealth <= 0f)
+            {
+                IsDead = true;
+                OnDeath();
+            }
+        }
+
+        private void OnDeath()
+        {
+            if (_stateMachine != null)
+            {
+                _stateMachine.ToStand();
+                _stateMachine.enabled = false;
+            }
+        }
+
+        public void ResetHealth()
+        {
+            CurrentHealth = maxHealth;
+            IsDead = false;
+            gameObject.SetActive(true);
+            if (_stateMachine != null)
+            {
+                _stateMachine.enabled = true;
+                _stateMachine.ToStand();
+            }
+        }
+    }
+}

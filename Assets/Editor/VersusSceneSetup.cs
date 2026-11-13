@@ -2,9 +2,14 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using MyDongari.Core;
-using MyDongari.Input;
-using MyDongari.UI;
+using MyDongari.Bridge;
+using MyDongari.Game.Combat;
+using MyDongari.Game.Feedback;
+using MyDongari.Game.Flow;
+using MyDongari.Game.Heat;
+using MyDongari.Game.Input;
+using MyDongari.Game.Tuning;
+using MyDongari.Game.UI;
 using UnityCamera = UnityEngine.Camera;
 
 namespace MyDongari.EditorTools
@@ -51,12 +56,12 @@ namespace MyDongari.EditorTools
             int undoGroup = Undo.GetCurrentGroup();
 
             // 0) 복제 전에 P1에 빠진 기체 컴포넌트를 붙여 둔다 (P2가 같은 구성을 갖게)
-            if (p1.GetComponent<MyDongari.Combat.ThrusterLunge>() == null)
+            if (p1.GetComponent<ThrusterLunge>() == null)
             {
-                Undo.AddComponent<MyDongari.Combat.ThrusterLunge>(p1);
+                Undo.AddComponent<ThrusterLunge>(p1);
             }
             // 0-1) 수치 에셋: P1(·더미)에 연결해 두면 복제된 P2도 같은 에셋을 물려받는다 (미러전)
-            MyDongari.Mech.BernardTuning tuning = TuningSetup.EnsureAsset(out _);
+            BernardTuning tuning = TuningSetup.EnsureAsset(out _);
             TuningSetup.AssignTo(p1, tuning);
             if (dummy != null) TuningSetup.AssignTo(dummy, tuning);
 
@@ -130,9 +135,9 @@ namespace MyDongari.EditorTools
             // 5-1) 히트스톱 (없으면 런타임에 자동으로 붙지만, 수치 조정을 저장하려면 씬에 있어야 한다)
             if (gameManager.GetComponent<HitStop>() == null) Undo.AddComponent<HitStop>(gameManager.gameObject);
             // 5-2) 상태 피드백 (같은 이유: 효과음 클립을 넣어 저장하려면 씬에 있어야 한다)
-            if (gameManager.GetComponent<MyDongari.Feedback.CombatFeedback>() == null)
+            if (gameManager.GetComponent<CombatFeedback>() == null)
             {
-                Undo.AddComponent<MyDongari.Feedback.CombatFeedback>(gameManager.gameObject);
+                Undo.AddComponent<CombatFeedback>(gameManager.gameObject);
             }
 
             // 6) 로거
@@ -182,10 +187,10 @@ namespace MyDongari.EditorTools
         private static void WireHud(HUDController hud, GameObject mech, UnityCamera cam)
         {
             SerializedObject so = new SerializedObject(hud);
-            so.FindProperty("heatGauge").objectReferenceValue = mech.GetComponent<MyDongari.Mech.HeatGauge>();
-            so.FindProperty("playerHealth").objectReferenceValue = mech.GetComponent<MyDongari.Combat.Health>();
-            so.FindProperty("lockOnSystem").objectReferenceValue = mech.GetComponent<MyDongari.Combat.LockOnSystem>();
-            so.FindProperty("mechStateMachine").objectReferenceValue = mech.GetComponent<MyDongari.Movement.MechStateMachine>();
+            so.FindProperty("heatGauge").objectReferenceValue = mech.GetComponent<HeatGauge>();
+            so.FindProperty("playerHealth").objectReferenceValue = mech.GetComponent<Health>();
+            so.FindProperty("lockOnSystem").objectReferenceValue = mech.GetComponent<LockOnSystem>();
+            so.FindProperty("mechStateMachine").objectReferenceValue = mech.GetComponent<MechStateMachine>();
             so.FindProperty("viewCamera").objectReferenceValue = cam;
 
             LinearGauge opponentFill = CreateOpponentBar(hud);
