@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07bb2a1070449c34ea87025c1a05017c, type: 3}
+  m_Name: StyleOverrides
+  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Bridge.StyleOverrides
+  fastTurnOnlyTowardOpponent:
+    enabled: 1
+    value: 1
+  turnBlendEndAngle:
+    enabled: 1
+    value: 60
+  neutralTurboDashesForward:
+    enabled: 1
+    value: 1
+  closeStepFromDashFrames:
+    enabled: 1
+    value: 15
+  diveAllowedWhileFalling:
+    enabled: 1
+    value: 1
+  risingRejump:
+    enabled: 1
+    value: 0
+  stickThreshold: 0.3
+  cameraPositionFollow:
+    enabled: 1
+    value: 0.35
+  cameraMaxScreenOffset:
+    enabled: 1
+    value: 0.25
+  cameraBaseHeightRatio:
+    enabled: 1
+    value: 0.5
+  cameraFov: 35
+  closeStepStartFill:
+    enabled: 1
+    frontDiagonal: 2.85
+    backDiagonal: 2.85
+    back: 1.5
+  closeStepEndFill:
+    enabled: 1
+    frontDiagonal: 2.55
+    backDiagonal: 2.55
+    back: 2.9
+  fallbackBodyHeight:
+    enabled: 1
+    value: 1.93
+  guardTurnInside: 400
+  guardTurnOutside: 1092
+  attackAimRate: 2560

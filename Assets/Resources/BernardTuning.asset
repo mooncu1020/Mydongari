@@ -13,43 +13,56 @@ MonoBehaviour:
   m_Name: BernardTuning
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Mech.BernardTuning
   movement:
-    walkSpeed: 10
-    runSpeed: 20
-    sprintSpeed: 30
-    maxWalkSpeed: 10
-    maxRunSpeed: 20
-    maxSprintSpeed: 30
-    rotationSpeed: 30
-    hardLockTurnSpeed: 10
-    turnResistance: 0.6
-    spinUpTime: 0.25
-    sideStepDuration: 0.3
-    sideStepSpeed: 20
-    slideDuration: 0.8
-    slideSpeed: 25
-    quickTurnDuration: 0.15
-    brakeDuration: 1
-    brakeSlideWindow: 0.5
-  boost:
-    maxBoost: 100
-    recoveryDelay: 0.5
-    recoveryRate: 25
-    sprintDrainRate: 5
-    exhaustRecoverRatio: 0.5
-    sideStepCost: 7
-    quickTurnCost: 10
-    slideCost: 10
+    walkSpeed:
+      front: 22
+      frontDiagonal: 19.5
+      side: 19.2
+      backDiagonal: 17.7
+      back: 19.9
+    dashSpeed:
+      front: 24.1
+      frontDiagonal: 22.7
+      side: 22.3
+      backDiagonal: 21.3
+      back: 14.2
+    knockbackMoveHold: 0.35
+    bumpSpeed: 4
+    dashAttackRecovery:
+      front: 0.2
+      frontDiagonal: 0.22
+      side: 0.23
+      backDiagonal: 0.27
+      back: 0.3
+    mouseTurnSensitivity: 2
+    landingLag: 0.2
+    groundMinNormalY: 0.7
   heat:
     maxHeat: 100
     coolingRate: 20
     sprintCoolingReduction: 0.7
   punch:
     range: 3
+    heightTolerance: 2
     halfAngle: 45
     damage: 10
     cooldown: 0.5
     heatPerPunch: 6
     clashKnockback: 10
+  combo:
+    enabled: 1
+    window: 0.4
+    interval: 0.3
+    thirdDamageMultiplier: 1.5
+    thirdKnockback: 8
+    thirdRecovery: 0.8
+    moveSpeedScale: 0.6
+    thirdRecoveryMoveSpeedScale: 0.4
+  startup:
+    punch: 0.1
+    dashAttack: 0.12
+    chargedTackle: 0.1
+    clashWindow: 0.1
+    inputBuffer: 0.15
   guard:
     meleeReduction: 0.5
     projectileReduction: 0.7
@@ -70,19 +83,31 @@ MonoBehaviour:
     cooldown: 1
     victimStun: 1.7
     recoveryStun: 0.5
-    chargeStartTime: 1.5
-    fullChargeTime: 3
+    dashChargeStartTime: 0.8
+    dashFullChargeTime: 1.6
     contactRadius: 2
+    activeTime: 0.4
+    hitDistance: 3
   dashAttack:
     damage: 20
     knockback: 6
     stun: 0
+    homingRange: 25
+    homingTurnRate: 120
+    activeTime: 0.6
+    hitDistance: 3
   lunge:
+    judgeMode: 0
+    strikeDistance: 2.5
+    strikeHalfAngle: 45
+    plantTime: 0.08
+    strikeExtendTime: 0.1
+    strikeStopDamping: 10
     distance: 8
     speed: 30
     endSpeedRatio: 0.2
     timeoutMultiplier: 1.5
-    boostCost: 15
+    cooldown: 3
     damage: 15
     hitStun: 0.5
     hitKnockback: 0
@@ -94,11 +119,45 @@ MonoBehaviour:
     pullDuration: 1.5
     pullStopDistance: 3
     cooldown: 5
+    windupTime: 0.2
+    projectileSpeed: 40
+    range: 12
+    hitRadius: 0.5
+    retractSpeed: 40
+    launchOffset: {x: -0.55, y: 0.6, z: 0.5}
+    wireWidth: 0.06
+    wireColor: {r: 0.75, g: 0.75, b: 0.8, a: 1}
+    clawHeadSize: 0.3
+    glowSize: 0.45
+    glowColor: {r: 1, g: 0.85, b: 0.3, a: 1}
     hookImpactSpeed: 32
     hookEaseTime: 0.2
     hookImpactStun: 0.25
     pileDriverDamage: 50
     pileDriverRange: 4
+    terrainFloorNormalY: 0.7
+  knockdown:
+    flightDistance: 8
+    slideDistance: 2
+    flightHeight: 1.5
+    flightTime: 0.5
+    slideTime: 0.45
+    getUpTime: 0.8
+    invulnerableTime: 0.8
+    launchMargin: 0.03
+    wallCheckRadiusScale: 0.9
+    wallCheckSkin: 0.05
+    wallShake: 0.15
+    wallShakeTime: 0.4
+    landShake: 0.08
+    landShakeTime: 0.25
+    flightPoseTime: 0.12
+    flightLimbFollow: 0.25
+    flightLimbKick: 400
+    landPoseTime: 0.1
+    getUpKneelAt: 0.35
+    getUpRiseAt: 0.7
+    slideDustInterval: 0.08
   impactSlam:
     range: 8
     angle: 90
@@ -109,13 +168,272 @@ MonoBehaviour:
   lockOn:
     softRange: 50
     softAngle: 30
-    hardEnterRange: 6
-    hardExitRange: 7
-    hardMaxAngle: 120
-    hardTrackSpeed: 10
+    hardLockEnterRange: 10
+    hardLockExitRange: 12
+    meleeSwitchRange: 6
   hitStop:
     enabled: 1
     punch: 0.05
     lungeTackle: 0.08
     clash: 0.12
     other: 0
+    pileDriver: 0.2
+  hitFeel:
+    light:
+      hitStop: 0.05
+      victimShake: 0.04
+      attackerShake: 0.015
+      shakeTime: 0.12
+      reactLean: 6
+      reactKnee: 6
+      reactPush: 0.05
+      reactTime: 0.25
+      effectScale: 0.6
+    medium:
+      hitStop: 0.07
+      victimShake: 0.07
+      attackerShake: 0.025
+      shakeTime: 0.18
+      reactLean: 11
+      reactKnee: 12
+      reactPush: 0.1
+      reactTime: 0.35
+      effectScale: 1
+    heavy:
+      hitStop: 0.1
+      victimShake: 0.12
+      attackerShake: 0.04
+      shakeTime: 0.28
+      reactLean: 18
+      reactKnee: 20
+      reactPush: 0.18
+      reactTime: 0.5
+      effectScale: 1.6
+    gradeHitStop: 1
+    guardedScale: 0.5
+    flashTime: 0.05
+    flashColor: {r: 1, g: 1, b: 1, a: 1}
+    flashStrength: 0.85
+    flashEmission: 1
+    directionalShakeFrequency: 18
+    reactOutTime: 0.04
+    hitHeight: 1.3
+    sparkColor: {r: 1, g: 0.8, b: 0.35, a: 1}
+    guardSparkColor: {r: 0.5, g: 0.8, b: 1, a: 1}
+    flashFxColor: {r: 1, g: 1, b: 0.9, a: 0.9}
+    sparkSize: 0.06
+    sparkCount: 18
+    sparkSpeed: 9
+    flashFxSize: 0.8
+    flashFxTime: 0.06
+    dashBurstColor: {r: 1, g: 0.7, b: 0.35, a: 0.95}
+    dashBurstSize: 4.5
+    dashBurstTime: 0.03
+    dashBurstSparkScale: 2
+    dashScrapeInterval: 0.05
+    dashScrapeScale: 0.35
+    landDustStrength: 0.8
+    landShake: 0.15
+    landShakeTime: 0.2
+    dustColor: {r: 0.55, g: 0.5, b: 0.42, a: 0.8}
+    dustSize: 0.18
+    dustCount: 24
+    dustSpeed: 4.5
+    dustLifetime: 1.4
+    dustGravity: 1
+    dustConeAngle: 55
+    dustCollision: 1
+  visual:
+    springFrequency: 8
+    springDamping: 0.6
+    anticipationTime: 0.033
+    anticipationPullback: 25
+    punchExtendTime: 0.12
+    punchHoldTime: 0.06
+    punchArmAngle: -70
+    punchElbowAngle: 75
+    punchBodyTwist: 15
+    comboWindow: 0.8
+    guardArmAngle: -60
+    guardElbowAngle: -40
+    guardInward: 20
+    parryKick: 600
+    lungeLean: 25
+    lungeArmBack: 60
+    tackleTwist: -35
+    tackleLean: 15
+    tackleTime: 0.35
+    clawArmAngle: -85
+    clawHoldTime: 0.6
+    smashRaiseAngle: -160
+    smashDownAngle: -40
+    smashRaiseTime: 0.1
+    smashDownTime: 0.25
+    smashLean: 20
+    stunShakeAngle: 6
+    stunShakeFrequency: 9
+    guardBreakFling: 700
+    leanPerSpeed: 1.2
+    maxLean: 18
+    strideAngle: 30
+    stepsPerMeter: 0.6
+    bobHeight: 0.06
+    walkReferenceSpeed: 5
+    idleShoulderSpread: 8
+    idleElbowBend: 25
+    idleArmForward: 10
+    idleLean: 5
+    idleKneeBend: 12
+    idleLegSpread: 6
+    idleFootStagger: 0.15
+    ankleLevelWeight: 1
+    breathHeight: 0.03
+    breathPeriod: 2.5
+    breathChestAngle: 1.5
+    breathArmAngle: 2
+    breathArmLag: 0.3
+    breathKneeAngle: 1.5
+    breathFadeTime: 0.2
+    breathStopSpeed: 0.5
+    pelvisTurnSpeed: 180
+    pelvisMoveMinSpeed: 0.5
+    pelvisBackpedalAngle: 110
+    upperBodyTurnSpeed: 720
+    twistLimit: 100
+    headLookLimit: 30
+    headLookLag: 0.2
+    facingSnapDistance: 3
+    walkStepLength: 1.6
+    runStepLength: 2.4
+    sprintStepLength: 3
+    gaitMinSpeed: 0.3
+    gaitFadeInTime: 0.15
+    stopBlendTime: 0.3
+    maxHipSwing: 45
+    swingLiftPeak: 0.7
+    swingKneeAngle: 55
+    landPelvisDrop: 0.05
+    landDropTime: 0.18
+    landBodyLag: 0.1
+    landPelvisTilt: 4
+    footstepShake: 0.02
+    footstepShakeTime: 0.12
+    armSwingRatio: 0.3
+    elbowSwingAngle: 8
+    elbowSwingLag: 0.25
+    accelLeanPerMs2: 0.8
+    maxAccelLean: 12
+    accelSmoothTime: 0.1
+    turnStepTrigger: 60
+    turnStepMaxAngle: 45
+    turnStepTime: 0.25
+    turnStepKnee: 35
+    turnStepHipLift: 10
+    turnStepIntensity: 0.5
+    skirtFollow: 0.8
+    skirtSpringFrequency: 4
+    skirtSpringDamping: 0.35
+    groundingEnabled: 1
+    groundingSmoothTime: 0.05
+    groundingMaxOffset: 0.5
+    groundLogInterval: 1
+  gait:
+    cadenceGait: 1
+    strideStartSpeed: 3
+    leapStartSpeed: 12
+    speedBlendHalfWidth: 1.5
+    modeBlendTime: 0.15
+    walkStride: 1
+    maxStrideAngle: 45
+    walkKneeBend: 10
+    walkSwingKnee: 55
+    walkPelvisTwist: 6
+    walkShoulderTwist: 8
+    armShoulderSwing: 10
+    walkSideShift: 0.04
+    walkSideTilt: 3
+    walkLandDrop: 0.04
+    walkBounceTime: 0.25
+    bounceCompressRatio: 0.45
+    bouncePushRatio: 0.6
+    walkStepIntensity: 0.7
+    headStabilize: 0.9
+    strideMaxCadence: 2.5
+    stridePlantFraction: 0.3
+    strideKneeBend: 16
+    strideSwingKnee: 70
+    strideBodyScale: 1.3
+    strideLandDrop: 0.06
+    strideLandShake: 0.015
+    strideBurstCount: 12
+    strideSparkRate: 90
+    strideDustStrength: 0.5
+    leapRate: 1.6
+    leapContact: 0.22
+    leapHeight: 0.25
+    leapLandShake: 0.05
+    leapLandShakeTime: 0.18
+    leapBurstCount: 40
+    hoverSwayShift: 0.06
+    hoverSwayTilt: 5
+    hoverSwayFrequency: 0.4
+    thrusterOffset: {x: 0, y: 0.25, z: -0.4}
+    thrusterColor: {r: 0.45, g: 0.75, b: 1, a: 0.9}
+    thrusterSize: 0.3
+    thrusterSpeed: 7
+    thrusterLifetime: 0.25
+    runThrusterRate: 15
+    sprintThrusterRate: 140
+    footSparkRate: 60
+    footSparkColor: {r: 1, g: 0.7, b: 0.3, a: 1}
+    footSparkSize: 0.05
+    footSparkSpeed: 4
+  motion:
+    enabled: 1
+    springBypass: 1
+    sprintStanceBlendTime: 0.2
+    sprintArmSwingScale: 0.3
+    dashLeanAngle: 35
+    punchWindupRatio: 0.4
+    punchChainDelay: 0.018
+    punchFollowTime: 0.06
+    punchFollowHold: 0.04
+    jabChainScale: 0.5
+    hookChainScale: 1.3
+    motionCarryTime: 0.06
+    lungeCrouchTime: 0.05
+    lungeLaunchTime: 0.07
+    lungeStrikeHold: 0.06
+    lungeRecoverTime: 0.35
+    lungePlantShake: 0.05
+    lungePlantShakeTime: 0.15
+    guardRaiseTime: 0.06
+    guardLowerTime: 0.12
+    blockPushTime: 0.05
+    blockRecoverTime: 0.22
+    blockSlideDistance: 0.12
+    parryTime: 0.25
+    guardBreakFlingTime: 0.08
+    guardBreakRecoverTime: 0.3
+    guardBreakWobbleAngle: 6
+    guardBreakWobbleFrequency: 2.5
+    clawThrowTime: 0.05
+    clawReturnTime: 0.25
+    clawYankTime: 0.1
+    clawYankHold: 0.12
+    clawReelBlendTime: 0.2
+    clawReelHold: 1
+    clawReleaseTime: 0.3
+    uppercutRiseTime: 0.08
+    uppercutHold: 0.15
+    uppercutRecoverTime: 0.45
+    pistonDistance: 0.18
+    pistonOutTime: 0.03
+    pistonBackTime: 0.15
+    pileDriverShake: 0.14
+    pileDriverShakeTime: 0.4
+    tackleHold: 0.1
+    slamRaiseTime: 0.08
+    slamDownTime: 0.08
+    slamHold: 0.15
+    slamRecoverTime: 0.4

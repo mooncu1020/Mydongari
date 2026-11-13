@@ -6,31 +6,36 @@
 ## 프로젝트 한눈에
 
 - Unity 6 (6000.3.14f1), URP 17, Input System 1.19, Cinemachine 3 (현재 미사용, 자체 MechCamera 사용)
-- 장르: 지면 밀착형 1대1 메카 격투. 리지드바디 물리(AddForce, 관성, 질량) 기반. 애니메이션 주도 이동은 쓰지 않는다.
+- 장르: 1대1 메카 격투. 이동은 버추얼온식 이동기(60Hz 고정 틱, 위치 += 속도, 키네마틱 리지드바디 — `docs/REFERENCE_MOVEMENT.md`). 애니메이션 주도 이동은 쓰지 않는다.
 - 목표: 약 3주 뒤 로케테스트. **한 PC, 패드 2개, 화면 분할, 버나드 표준형 미러전, 3판 2선승.**
 - 씬: `Assets/Scenes/SampleScene.unity` 하나. 지금은 플레이어 기체 1대(Mech) + 더미(DummyTarget) 구성이다.
 
 ## 폴더와 주요 스크립트
 
+구조는 "버추얼온 코어 + 우리 게임 레이어"다 (계획·근거 `docs/PLAN_CLEANUP.md`). 의존 방향: `Game → Bridge → Core/VirtualOn`. **`Core/` 아래 코드는 `MyDongari.Bridge`·`MyDongari.Game.*`을 using하지 않는다.**
+
 | 경로 | 역할 |
 | --- | --- |
-| `Assets/Scripts/Movement/` | `MechController`(힘·감속·속도 제한), `MechStateMachine`과 상태들(Idle/Walk/Run/Sprint/Brake/Slide/SideStep/QuickTurn) |
-| `Assets/Scripts/Mech/` | `BoostGauge`, `HeatGauge` |
-| `Assets/Scripts/Combat/` | `MeleeSystem`(펀치·가드·패리·태클·스턴), `WeaponSystem`(공격 버튼 분기, 현재 사격 포함), `LockOnSystem`, `Health`, `Projectile`, `MeleeDummy` |
-| `Assets/Scripts/Combat/Skills/` | `AnchorClaw`(끌어오기 + 파일드라이버), `ImpactSlam` |
-| `Assets/Scripts/Camera/MechCamera.cs` | 3인칭 카메라, 하드 락온 추적, FOV |
-| `Assets/Scripts/Input/InputReader.cs` | 입력 읽기 (PlayerInput 기반 + 일부 키보드 직접 읽기) |
-| `Assets/Scripts/UI/` | `HUDController`, `ArcGauge`, `LinearGauge` |
-| `Assets/Scripts/GameManager.cs` | 라운드/매치 (`MyDongari.Core`) |
-| `Assets/Scripts/Core/PlayLogger.cs` | 0.1초 간격 CSV 로그 |
-| `Assets/Scripts/ExternalControllock.cs` | `ExternalControlLock` — 외부(앵커 클로 등)가 리지드바디를 잡을 때 이동 로직을 잠그는 카운터 락 |
+| `Assets/Scripts/Core/VirtualOn/` | 버추얼온식 이동기 — 원본 사양(`docs/REFERENCE_MOVEMENT.md`) 그대로. `VoSpec`(수치, 기본값 = 원본), `VoTickDriver`(60Hz: 카메라 → 1P → 2P), `VoMotor`(한 틱: 입력 → 보조 → 자동 선회 → 메인 → 이동 적분, `VoMotor.Collision`은 지면·벽), `VoLever`, `VoCameraRig`, `States/`(서기·걷기·근접 스텝·지상 대시·대시 정지·점프·공중 대시·급강하), 바깥과의 접점 `IVoHost`·`IVoMachine`·`IVoDashAttack`·`IDashMove` |
+| `Assets/Scripts/Core/` | 공용 유틸: `ErrorLog`, `GroundLayers`, `AppRuntime`, `MechFacing`, `AsteroidArenaConfig` |
+| `Assets/Scripts/Bridge/` | 코어와 게임의 연결. `MotionBridge`(전투 → 외부 속도), `VoHostAdapter`·`VoInputAdapter`(`IVoHost` 구현: 입력·스턴·콤보 감속·가드 자동 선회·기체끼리 분리), `MechStateMachine`(`IVoMachine` 구현 + 게임 상태 호스팅), `MechController`(참조 모음·넉백 유지·감속 요청·몸 충돌 반동), `DashAttackRunner`, `MechCamera`, `StyleOverrides`(우리 스타일 수치), `MechIdentity`, `ExternalControlLock`, `GameState` |
+| `Assets/Scripts/Game/Combat/` | `MeleeSystem`(펀치·가드·패리·태클·스턴), `WeaponSystem`(공격 버튼 분기), `LockOnSystem`, `Health`, `ThrusterLunge`, `Projectile`, `Skills/`(`AnchorClaw`, `ImpactSlam`) |
+| `Assets/Scripts/Game/States/`, `Game/Knockdown/` | 이동 상태 위에 얹는 게임 상태: `LandingState`, `LungeState`, `KnockdownState` + `KnockdownController` |
+| `Assets/Scripts/Game/Heat/`, `Game/Tuning/` | `HeatGauge` / `BernardTuning`(전투·외형 수치), `MechTuning` |
+| `Assets/Scripts/Game/Bot/` | 연습 봇 `MeleeDummy`, `BotInput` — 이동기 없이 다이내믹 리지드바디로 움직인다 |
+| `Assets/Scripts/Game/Input/` | `InputReader` (PlayerInput 기반), `VersusInputPairing` |
+| `Assets/Scripts/Game/UI/`, `Feedback/`, `Visual/` | `HUDController`·게이지·메뉴 / `CombatFeedback`·팝업·이펙트 / `MechVisualRig`(절차적 포즈) |
+| `Assets/Scripts/Game/Flow/` | `GameManager`(라운드/매치), `PlayLogger`(CSV 로그), `HitStop`, `PracticeHotkeys`, `SplitScreenLetterbox` |
 
 ## 코드 규칙
 
-- 네임스페이스는 `MyDongari.<폴더>`를 따른다 (`MyDongari.Combat`, `MyDongari.Movement` …).
+- 네임스페이스는 `MyDongari.<폴더>`를 따른다 (`MyDongari.Core.VirtualOn`, `MyDongari.Bridge`, `MyDongari.Game.Combat` …).
+- **이동기 수치: `Core/VirtualOn/VoSpec`의 기본값은 `docs/REFERENCE_MOVEMENT.md` 원본값으로 고정한다(고치지 않는다).** 우리 스타일로 바꾸는 값은 `Bridge/StyleOverrides`(에셋 `Assets/Resources/StyleOverrides.asset`)에 칸을 만들어 거기서만 덮어쓴다. 원본과 다른 동작이 필요하면 코어에 "기본값이 원본 동작인 스위치"를 두고 StyleOverrides가 켠다. 새로 다르게 한 것은 `docs/PLAN_CLEANUP.md` 3절·7절 표에 추가한다.
+- 코어(`Core/VirtualOn`)가 게임에 물어야 할 것이 생기면 `IVoHost`/`IVoMachine`에 멤버를 추가하고 `Bridge`에서 구현한다. 코어에서 전투·입력 컴포넌트를 직접 부르지 않는다.
 - 조정할 수치는 전부 `[SerializeField] private` + `[Header("…")]`, 필요하면 `[Tooltip("…")]`. 매직 넘버를 코드에 박지 않는다. 기존 스타일대로 Header/Tooltip은 한국어로 쓴다.
 - Unity 6 API를 쓴다: `Rigidbody.linearVelocity`, `linearDamping` (`velocity`, `drag` 금지).
 - 리지드바디 감속은 `MechController.RequestDamping(value, priority)` / `SetBaselineDamping()`을 거친다. 직접 `linearDamping`을 쓰지 않는다.
+- 전투 코드가 기체를 밀 때는 `MotionBridge`(SetVelocity·AddImpulse·Teleport)를 거친다. 기체 리지드바디는 키네마틱이라 `linearVelocity`·`AddForce`를 직접 쓰면 안 움직인다 (연습 봇만 다이내믹 — MotionBridge가 알아서 나눈다).
 - 외부에서 상대 기체를 움직일 땐 `ExternalControlLock.Acquire()/Release()` 짝을 반드시 맞춘다.
 - **입력은 반드시 `InputReader`를 거친다.** `Mouse.current`, `Keyboard.current`, `Gamepad.current`를 게임 로직에서 직접 읽지 않는다 (2인 플레이가 깨진다).
 - **상대는 태그(`"Enemy"`, `"Player"`)로 찾지 않는다.** 각 기체가 가진 상대 참조를 쓴다 (TASKS A0에서 도입).

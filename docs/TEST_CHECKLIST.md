@@ -599,6 +599,11 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (CL6) `Mydongari`·`Tools` 메뉴(Setup Versus Scene, Add Missing Mech Components, Build Bellforest Blockout, Build And Smoke Test 등)가 그대로 있고 실행됨
 - [ ] (CL6) VERSUS 한 판(3판 2선승)과 PRACTICE 봇 모드 순환을 끝까지 돌려 콘솔에 빨간 오류 없음. PlayLog CSV 세 종류가 생기고 `dash_enter`·`jump`·`air_dash`·`close_step`·`dive` 카운트가 찍힘(`sidestep`은 항상 0)
 
+- [ ] (CL7) `Assets/Resources/StyleOverrides.asset`을 고르면 인스펙터에 선회·조작·카메라·근접 스텝·단위·우리 규칙의 선회율 묶음이 보이고 값이 지금 우리 값(위치 추종 0.35, 가로 상한 0.25, FOV 35, 보간 60, 가드 400/1092 …)임. 값을 바꾸고 Ctrl+S 하면 `git diff`에 그 칸만 나옴
+- [ ] (CL7) `Assets/Resources/BernardTuning.asset` 인스펙터의 값이 정리 전과 같음(기존 칸은 그대로, 콤보·발생 시간·넉다운·타격감·외형·걸음·모션 칸이 이제 파일에 들어 있음). 값을 바꾸고 저장하면 디스크에 남음
+- [ ] (CL7) 메뉴 `Mydongari/Tuning/Create Style Overrides Asset` → "이미 있습니다". `Mydongari/Tuning/Save Tuning Assets To Disk` → 저장 안내가 뜨고 값을 안 바꿨으면 `git diff`가 비어 있음
+- [ ] (CL7) 최종 확인: VERSUS에서 정리 전 빌드(`Builds/20261114_000312`)와 나란히 놓고 걷기·대시·점프·선회·카메라·전투가 같은 느낌인지 한 판
+
 ## 도구
 
 - [ ] (U1) `Tools/Build And Smoke Test` → 씬이 저장되고 빌드가 진행됨 → 콘솔 `[SmokeTest] 빌드 성공 …` → 1280×720 창으로 게임이 뜸(전체 화면 아님) → 약 10초 뒤 창이 닫힘 → 콘솔에 `[SmokeTest] … Exception N줄, Error N줄, NaN N줄`과 해당 줄 목록. `Builds/날짜_시간/`에 exe·Player.log·SmokeTestSummary.txt. 기다리는 동안 에디터 조작 가능

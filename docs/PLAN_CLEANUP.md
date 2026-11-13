@@ -1,6 +1,6 @@
 # PLAN CLEANUP — "버추얼온 코어 + 우리 게임 레이어" 구조 정리
 
-상태: **계획만 작성. 사용자 확인 전에는 코드를 건드리지 않는다.**
+상태: **승인됨 — CL1~CL7 진행 완료.** 계획과 다르게 된 것·값이 실제로 놓인 곳·CL8 후보는 7절.
 원칙: 기능을 새로 만들지 않는다. 동작(수치·판정·타이밍)은 그대로 두고 파일 위치·의존 방향·수치의 소속만 바꾼다. push 없음.
 기준 커밋: `5b4bcac` (브랜치 `v3`).
 
@@ -285,3 +285,66 @@ Core/VirtualOn ──✕──→ Bridge, Game     (using MyDongari.Bridge / MyD
 | Q5 | `.asmdef`로 의존 방향을 컴파일러가 강제하게 할지 | 이번엔 안 함(grep 검사), 에디터 확인 가능한 뒤 별도 태스크 |
 | Q6 | PlayLogger CSV의 `sidestep` 열 | 남기고 항상 0 (형식 유지) |
 | Q7 | 미구현 원본 기능(21·29·30·32)은 이번에 **목록만** 남기고 만들지 않는다 — 맞는지 | 목록만 |
+
+---
+
+## 7. 결과 (CL1~CL7 진행 뒤 추가)
+
+사용자 답: Q1 StyleOverrides / Q2 우리 값(근거를 주석·문서에) / Q3 이번엔 그대로, CL8로 따로 / Q4 `Scripts/Bridge/` / Q5 asmdef 안 함(grep 검사) / Q6 `sidestep` 열 남기고 0 / Q7 목록만.
+
+### 7-1. 계획과 다르게 된 것
+
+| 계획 | 실제 | 이유 |
+|---|---|---|
+| `VoCollision.cs`를 별도 클래스로 | `VoMotor.Collision.cs` (`partial class VoMotor`) | 코드를 한 줄도 안 바꾸고 파일만 나누려고 |
+| 상태를 파일 하나씩 | `States/VoState.cs`(서기·걷기·근접 스텝·대시 정지·급강하)·`VoGroundDashState.cs`·`VoJumpState.cs`(점프·공중 대시) 그대로 | 이동만 하는 커밋에 내용 변경을 섞지 않으려고 |
+| `IDashMove`·`DashExitReason`은 Bridge | `Core/VirtualOn` | 코어의 대시 상태가 구현하고 `IVoMachine`이 쓰는 타입이라 Bridge에 두면 코어가 Bridge를 참조하게 된다 |
+| `MechIdentity`·`HitStop`은 Core 그대로 | `MechIdentity` → Bridge, `HitStop` → `Game/Flow` | 둘 다 Bridge/Game 타입을 참조해 "Core는 Bridge/Game을 모른다"를 깨고 있었다 |
+| 가드 자동 선회·사격 조준 선회율은 `BernardTuning` | `StyleOverrides`의 "우리 규칙의 선회율" 묶음 | 이동기에 얹는 우리 값을 한 에셋에 모으려고. `BernardTuning.asset`의 기존 블록을 건드리지 않아도 됨 |
+| 원본과 다른 값은 전부 켬/끔 칸 | `stickThreshold`·`cameraFov`·가드/사격 선회율은 값만(끌 수 없음) | 원본에 대응하는 값이 없어 "끄면 원본"이 성립하지 않는다 |
+| 게임 → 코어는 Bridge를 거쳐서만 | `PlayLogger`가 코어 상태 타입(`VoAirDashState` 등)을 로그 집계용으로 직접 본다 | 읽기 전용 타입 검사. 규칙은 "코어가 Bridge/Game을 모른다"만 강제한다 |
+
+### 7-2. 원본과 다른 값이 실제로 놓인 곳
+
+| 3절 번호 | 항목 | 놓인 곳 |
+|---|---|---|
+| 1 | 가드 자동 선회 400 / 1092 | `StyleOverrides.guardTurnInside/Outside` → `VoHostAdapter.TryGetAutoTurnToOpponent` |
+| 2 | 빠른 선회 방향 제한 | 코어 스위치 `VoSpec.fastTurnOnlyTowardOpponent`(원본 false) ← `StyleOverrides`(켬) |
+| 3 | 선회율 보간 60° | `VoSpec.turnBlendEndAngle`(원본 33.75) ← `StyleOverrides`(60) |
+| 4 | 카메라 위치 추종 35% | `VoSpec.cameraPositionFollow`(원본 1) ← `StyleOverrides`(0.35) |
+| 5 | 카메라 가로 상한 25% | `VoSpec.cameraMaxScreenOffset`(원본 0.5 = 꺼짐) ← `StyleOverrides`(0.25) |
+| 6 | 사격 조준 선회율 2560 | `StyleOverrides.attackAimRate` → `VoMotor.NotifyAttackStarted(rate)`. 15f·×0.1은 `VoSpec` |
+| 7 | 근접 스텝 대각·뒤 속력 | `StyleOverrides.closeStepStartFill/EndFill`. `VoSpec`엔 앞·옆 원본 + 중립 채움 |
+| 8 | 기체 키 1.93m | `VoSpec.fallbackBodyHeight`(원본 2.6) ← `StyleOverrides`(1.93). 실제 키는 `VoMotor`가 렌더러로 잼 |
+| 9 | 충돌 캡슐 | 씬의 캡슐 콜라이더 (`VoMotor.Collision.cs`가 읽음) |
+| 10 | 카메라 FOV 35° | `StyleOverrides.cameraFov` — **사양서에 없는 우리 값.** 원본 카메라 거리 9.2m(78u, 기체 키 2.6m 기준)에서 기체가 화면 높이의 45%가 되도록 역산: 2 × atan((2.6 ÷ 0.45) ÷ (2 × 9.2)) ≈ 34.9° → 35° |
+| 11 | 카메라 기준 높이 0.5 | `VoSpec.cameraBaseHeightRatio`(미상, 중립 0.5) ← `StyleOverrides`(0.5) |
+| 12 | 대시 정지 공격 3f | 값은 `VoSpec.dashEndAttackFrame`, 적용 판단은 `MechStateMachine.DashEndAllowsAttack` |
+| 13 | 정렬 오차 0.5° | `VoSpec.alignEpsilon` (미상 표시) |
+| 14 | 스틱 문턱 0.3 | `StyleOverrides.stickThreshold` → `VoInputAdapter`. 마우스 감도는 `BernardTuning.Movement` |
+| 15·18 | 중립 ○ 앞 대시, 15f 안 근접 스텝 | `VoSpec.neutralTurboDashesForward`(원본 false)·`closeStepFromDashFrames`(원본 0) ← `StyleOverrides` |
+| 16·34 | 조작 체계, 마우스 선회 | `Bridge/VoInputAdapter` |
+| 19 | 하강 중 급강하 | `VoSpec.diveAllowedWhileFalling`(원본 false) ← `StyleOverrides`(켬) |
+| 20 | 상승 중 재점프 삭제 | `VoSpec.risingRejump`(원본 true — V8.2 코드를 스위치 뒤에 되살림) ← `StyleOverrides`(끔) |
+| 22·23 | 착지 경직, 공중 피격 낙하 | `Game/States/LandingState`, `MechStateMachine.OnHitResolved` |
+| 24 | 기체끼리 분리·몸 충돌 반동 | `VoHostAdapter.AfterIntegrate`, 수치 `BernardTuning.Movement.bumpSpeed` |
+| 25 | 외부 속도 모드 | 적분은 `VoMotor.IntegrateExternal`, 판단은 `VoHostAdapter.IsExternalMode` |
+| 26·27 | 콤보 감속, 스턴 | `IVoHost.MoveSpeedScale`·`IsStunned` |
+| 28 | 대시 어택·태클 | `Bridge/DashAttackRunner` (`IVoDashAttack`) |
+| 31 | 카메라 흔들림·지형 충돌 | `Bridge/MechCamera` |
+| 21·29·30·32 | 미구현 원본 기능 | 만들지 않음 — 이 문서 3절 (나)에 목록만 |
+
+정리 전 `V8Values` 기본값 77개와 정리 뒤 유효값이 같다는 것은 CL5 스모크 로그의 `[VoSpec] … 유효값`을 스크립트로 대조해 확인했다.
+
+### 7-3. CL8 후보 (Q3 — 이번엔 손대지 않음)
+
+기획서의 m/s 표(기체 키 2.6m 환산)를 아직 읽는 곳. 실제 속도는 키 1.93m 기준 0.74배다.
+
+| 곳 | 읽는 값 | 실제 값 | 실제 값으로 바꾸면 달라지는 것 |
+|---|---|---|---|
+| `Game/Bot/MeleeDummy`(상대 대시가 닿을 시간 어림) | `BernardTuning.Movement.dashSpeed.front` 24.1m/s | 17.9m/s | Parrier 봇이 대시 어택·태클에 가드를 올리는 시점이 늦어짐(더 정확해짐) |
+| `Game/Visual/MechVisualRig.Gait`(걸음 설정 안내 글) | `BernardTuning.Movement.walkSpeed.front` 22.0m/s | 16.3m/s | 디버그 글의 숫자만 |
+| `BernardTuning.Gait`의 속도 경계(`strideStartSpeed` 3·`leapStartSpeed` 12m/s) | 실제 속도와 비교 | 걷기 최고 16.3m/s | 값은 그대로 두고 경계를 다시 잡을지 결정 필요 |
+| `docs/TEST_CHECKLIST.md`·`GAME_SPEC_V3.md`의 m/s 숫자 | 키 2.6m 환산 | 0.74배 | 문서만 |
+
+방법 후보: `VoHostAdapter`가 `VoSpec`(u/f) × `VoMotor.SpeedScale`로 실제 m/s를 내주고, `BernardTuning.Movement.walkSpeed`·`dashSpeed`는 삭제.

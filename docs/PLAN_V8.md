@@ -1,5 +1,7 @@
 # PLAN V8 — 버추얼온식 이동기
 
+> **PLAN_CLEANUP(CL1~CL7) 뒤 달라진 것:** 예전 이동기(V6.1)와 이동기 선택 스위치는 삭제됐고, 이 문서의 `Movement/V8/*`는 `Core/VirtualOn/*`(`MechMotor` → `VoMotor`)로, 수치는 `BernardTuning → V8 이동기`에서 `VoSpec`(원본) + `StyleOverrides`(우리 값)로 옮겨졌다. 아래는 V8 도입 당시 기록이다.
+
 근거: `docs/REFERENCE_MOVEMENT.md`(이하 "사양서"). 지금 이동(V6.1, `MechStateMachine`의 Idle/Run/Dash/DashStop/Air/Landing + 다이내믹 리지드바디)은 지우지 않고 `BernardTuning → 이동기 선택`으로 끈다.
 
 ## 1. 단위
