@@ -30,12 +30,6 @@ namespace MyDongari.Movement
         private Quaternion _turnFrom;
         private Quaternion _turnTo;
 
-        /// <summary>점프했을 때 (로그·연출용).</summary>
-        public event Action OnJumped;
-
-        /// <summary>V8 점프도 같은 이벤트로 알린다.</summary>
-        public void RaiseJumped() => OnJumped?.Invoke();
-
         /// <summary>점프 락온으로 몸을 상대 쪽으로 돌리는 중 (카메라가 몸에 바로 붙어 따라온다).</summary>
         public bool IsJumpTurning => _turning;
         /// <summary>착지하면 경직을 받는지.</summary>
@@ -84,7 +78,7 @@ namespace MyDongari.Movement
                 // 이륙 준비 2프레임: 그 자리 속도 그대로 웅크렸다가 뜬다 (준비가 0이면 바로)
                 _takeoffTimer = Move.jumpTakeoffTime;
                 BeginJumpTurn(controller);
-                OnJumped?.Invoke();
+                StateMachine.NotifyJumped();
                 if (_takeoffTimer <= 0f) Launch(controller);
             }
         }

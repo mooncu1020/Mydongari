@@ -254,7 +254,7 @@ namespace MyDongari.Core
 
                 // 점프·착지 경직 (V5)
                 Action onJump = () => ErrorLog.Run(() => Count(index, "jump"), "PlayLogger.onJump");
-                sm.AirState.OnJumped += onJump;
+                sm.OnJumped += onJump;
                 Action<float> onLand = lag => ErrorLog.Run(() =>
                 {
                     if (lag > 0f) Count(index, "landing_lag", lag.ToString("F2", CultureInfo.InvariantCulture));
@@ -262,23 +262,21 @@ namespace MyDongari.Core
                 sm.LandingState.OnLanded += onLand;
                 _unsubscribers.Add(() =>
                 {
-                    sm.AirState.OnJumped -= onJump;
+                    sm.OnJumped -= onJump;
                     sm.LandingState.OnLanded -= onLand;
                 });
 
-                DashState dash = sm.DashState;
-                if (dash != null)
                 {
                     Action onDashStart = () => ErrorLog.Run(
                         () => Count(index, "dash_enter"), "PlayLogger.onDashStart");
                     Action<DashExitReason> onDashEnd = reason => ErrorLog.Run(
                         () => Count(index, "dash_exit_" + DashExitKey(reason)), "PlayLogger.onDashEnd");
-                    dash.OnDashStarted += onDashStart;
-                    dash.OnDashEnded += onDashEnd;
+                    sm.OnDashStarted += onDashStart;
+                    sm.OnDashEnded += onDashEnd;
                     _unsubscribers.Add(() =>
                     {
-                        dash.OnDashStarted -= onDashStart;
-                        dash.OnDashEnded -= onDashEnd;
+                        sm.OnDashStarted -= onDashStart;
+                        sm.OnDashEnded -= onDashEnd;
                     });
                 }
             }

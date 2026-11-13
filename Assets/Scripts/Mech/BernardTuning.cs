@@ -134,14 +134,6 @@ namespace MyDongari.Mech
             [Tooltip("공중 대시 중 상승하는 동안의 중력 배율 (jumpGravity 기준). 내려오기 시작하면 1배")]
             [Range(0f, 1f)] public float airDashRisingGravityScale = 0.5f;
 
-            [Header("급강하 (V6c: 튜닝 값만 — 입력은 아직 없음)")]
-            [Tooltip("급강하 시작 하강 속도(m/s)")]
-            public float diveStartSpeed = 12.4f;
-            [Tooltip("급강하 가속도(m/s²)")]
-            public float diveAccel = 106f;
-            [Tooltip("급강하 하강 속도 상한(m/s)")]
-            public float diveMaxSpeed = 21.3f;
-
             [Header("착지 (V5)")]
             [Tooltip("점프·공중 대시·공중 피격 뒤 착지 경직(초). 이동·공격·대시·점프·가드 불가")]
             public float landingLag = 0.2f;

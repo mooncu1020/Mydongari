@@ -6,24 +6,6 @@ using MyDongari.Mech;
 
 namespace MyDongari.Movement
 {
-    /// <summary>대시가 끝난 이유 (로그용).</summary>
-    public enum DashExitReason
-    {
-        Other,
-        Canceled,
-        Stun,
-        Tackle,
-        Bump,
-        Wall,
-        Landed,
-        /// <summary>지속 단계(1.4초)를 다 써서 끝 단계로.</summary>
-        Timeout,
-        /// <summary>지속 단계에서 △ 점프로 이어짐.</summary>
-        Jump,
-        /// <summary>V8.2: 근접 구역 중립 ○ 앞 대시가 0.25초 안 스틱으로 근접 스텝이 됨.</summary>
-        CloseStep
-    }
-
     /// <summary>
     /// ○ 대시 (V6b, 템진 기준). ○를 누른 프레임에 L스틱 방향(8방향 스냅, 중립이면 앞)으로 방향을 고정하고 바로 그 방향의 대시 속도로
     /// 일직선 출발한다(가속 없음, 토글). 방향 기준은 하드락 밖이면 몸 정면, 안이면 그 순간 상대 쪽. 속도는 방향별 5점(앞이 빠르고 뒤가 느림).
@@ -81,14 +63,6 @@ namespace MyDongari.Movement
         private DashExitReason _exitReason;
         private bool _exitReported;
 
-        /// <summary>대시가 실제로 시작됐을 때. 로그용.</summary>
-        public event Action OnDashStarted;
-        /// <summary>대시가 끝났을 때 (이유). 로그용.</summary>
-        public event Action<DashExitReason> OnDashEnded;
-
-        /// <summary>V8 지상·공중 대시가 같은 이벤트로 알린다 (로그·출발 분사 연출이 그대로 듣도록).</summary>
-        public void RaiseStarted() => OnDashStarted?.Invoke();
-        public void RaiseEnded(DashExitReason reason) => OnDashEnded?.Invoke(reason);
         // 차징 상태로 이 거리(m) 안에 상대가 닿으면 자동 태클 (기존 동작 유지)
         private float ContactRadius => Tackle.contactRadius;
         public bool IsTackleCharged => _tackleChargeTimer >= Tackle.dashChargeStartTime;
@@ -126,7 +100,7 @@ namespace MyDongari.Movement
             _speed = (_airborne ? Move.airDashSpeed : Move.dashSpeed).Evaluate(_snappedAngle);
             // 입력 지연 없음: 누른 프레임에 바로 그 방향 속도 (물리 스텝을 기다리지 않는다)
             controller.SetMoveVelocity(_heading, _speed);
-            OnDashStarted?.Invoke();
+            StateMachine.NotifyDashStarted();
         }
 
         /// <summary>
@@ -168,7 +142,7 @@ namespace MyDongari.Movement
         {
             if (_exitReported) return;
             _exitReported = true;
-            OnDashEnded?.Invoke(reason);
+            StateMachine.NotifyDashEnded(reason);
         }
 
 

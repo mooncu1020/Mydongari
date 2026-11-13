@@ -567,6 +567,13 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (V4) PRACTICE 봇 패리 모드: 대시 어택·태클을 멀리서 써도 봇이 닿는 순간에 맞춰 패리를 시도(예전처럼 누른 직후에 미리 올리지 않음)
 - [ ] (V2) PRACTICE: 봇이 예전처럼 다가와 6m 안에서 펀치, 밖에서 런지. 봇 모드 순환(SHARE 짧게)·리셋(길게) 정상
 
+## Phase CL (구조 정리 — 동작은 정리 전과 같아야 한다)
+
+단계마다 batchmode `Tools/Build And Smoke Test`를 돌렸다(결과는 TASKS 작업 메모). 아래는 에디터에서 직접 볼 항목이다.
+
+- [ ] (CL1) 대시를 시작하면 출발 분사 섬광·발밑 불꽃이 예전처럼 나옴 (이벤트 구독처를 `MechStateMachine`으로 옮김)
+- [ ] (CL1) 매치 뒤 PlayLog summary CSV에 `dash_enter`·`dash_exit_*`·`jump`·`landing_lag` 카운트가 0이 아님
+
 ## 도구
 
 - [ ] (U1) `Tools/Build And Smoke Test` → 씬이 저장되고 빌드가 진행됨 → 콘솔 `[SmokeTest] 빌드 성공 …` → 1280×720 창으로 게임이 뜸(전체 화면 아님) → 약 10초 뒤 창이 닫힘 → 콘솔에 `[SmokeTest] … Exception N줄, Error N줄, NaN N줄`과 해당 줄 목록. `Builds/날짜_시간/`에 exe·Player.log·SmokeTestSummary.txt. 기다리는 동안 에디터 조작 가능

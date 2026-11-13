@@ -73,14 +73,14 @@ namespace MyDongari.Movement.V8
             _exitReason = DashExitReason.Other;
             _attack.Reset();
             Motor.SetAutoTurn(MechMotor.AutoTurnMode.Default);
-            StateMachine.DashState.RaiseStarted();
+            StateMachine.NotifyDashStarted();
         }
 
         public override void Exit()
         {
             _attack.CancelIfAttacking();
             if (Motor.AutoTurn == MechMotor.AutoTurnMode.SustainAim) Motor.SetAutoTurn(MechMotor.AutoTurnMode.Default);
-            StateMachine.DashState.RaiseEnded(_exitReason);
+            StateMachine.NotifyDashEnded(_exitReason);
         }
 
         public override void OnLostGround()

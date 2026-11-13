@@ -174,10 +174,10 @@ namespace MyDongari.Feedback
 
             if (fb.StateMachine != null)
             {
-                DashState dash = fb.StateMachine.DashState;
+                MechStateMachine dashSource = fb.StateMachine;
                 Action onDash = () => ErrorLog.Run(() => DashBurst(fb), "CombatFeedback.onDash");
-                dash.OnDashStarted += onDash;
-                _unsubscribers.Add(() => dash.OnDashStarted -= onDash);
+                dashSource.OnDashStarted += onDash;
+                _unsubscribers.Add(() => dashSource.OnDashStarted -= onDash);
 
                 LandingState landing = fb.StateMachine.LandingState;
                 Action<float> onLand = lag => ErrorLog.Run(() => OnLanded(fb, lag), "CombatFeedback.onLand");

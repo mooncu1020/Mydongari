@@ -24,6 +24,18 @@ namespace MyDongari.Movement
         /// <summary>상태가 실제로 바뀌었을 때(Enter에서 곧바로 다른 상태로 튕겨 나간 경우는 제외). 로그용.</summary>
         public event Action<MechState> OnStateChanged;
 
+        /// <summary>대시(지상·공중)가 실제로 시작됐을 때. 로그·출발 분사 연출용.</summary>
+        public event Action OnDashStarted;
+        /// <summary>대시가 끝났을 때 (이유). 로그용.</summary>
+        public event Action<DashExitReason> OnDashEnded;
+        /// <summary>점프했을 때 (로그·연출용).</summary>
+        public event Action OnJumped;
+
+        /// <summary>대시·점프 상태가 부른다.</summary>
+        public void NotifyDashStarted() => OnDashStarted?.Invoke();
+        public void NotifyDashEnded(DashExitReason reason) => OnDashEnded?.Invoke(reason);
+        public void NotifyJumped() => OnJumped?.Invoke();
+
         public IdleState IdleState { get; private set; }
         public RunState RunState { get; private set; }
         public DashState DashState { get; private set; }

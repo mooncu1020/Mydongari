@@ -63,7 +63,7 @@ namespace MyDongari.Movement.V8
                 _phase = Phase.Takeoff;
                 Motor.Vy = 0f;
                 _needsLandingLag = true;
-                StateMachine.AirState.RaiseJumped();
+                StateMachine.NotifyJumped();
             }
             else
             {
@@ -204,13 +204,13 @@ namespace MyDongari.Movement.V8
             _speed = V.airDashSpeed.Evaluate(_offset);
             _exitReason = DashExitReason.Other;
             Motor.SetAutoTurn(MechMotor.AutoTurnMode.AirDashReturn);
-            StateMachine.DashState.RaiseStarted();
+            StateMachine.NotifyDashStarted();
         }
 
         public override void Exit()
         {
             if (Motor.AutoTurn == MechMotor.AutoTurnMode.AirDashReturn) Motor.SetAutoTurn(MechMotor.AutoTurnMode.Default);
-            StateMachine.DashState.RaiseEnded(_exitReason);
+            StateMachine.NotifyDashEnded(_exitReason);
         }
 
         public override void Aux()
