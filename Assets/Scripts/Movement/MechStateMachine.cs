@@ -13,7 +13,7 @@ namespace MyDongari.Movement
     /// 전투·외형·HUD가 묻는 것(IsDashing·IsAirborne …)도 여기서 답한다.
     /// (V6.1까지의 Idle/Run/Dash/Air/SideStep 상태와 이동기 선택 스위치는 CL3에서 지웠다.)
     /// </summary>
-    public class MechStateMachine : MonoBehaviour
+    public class MechStateMachine : MonoBehaviour, IVoMachine
     {
         public InputReader InputReader { get; private set; }
         public MechController MechController { get; private set; }
@@ -61,6 +61,10 @@ namespace MyDongari.Movement
         public VoDiveState VoDive { get; private set; }
         /// <summary>지금 상태.</summary>
         public MechState CurrentState => _currentState;
+        /// <summary>상태가 돌고 있는지 (사망하면 꺼진다). 이동기가 본다.</summary>
+        public bool StatesEnabled => enabled;
+        /// <summary>지상 대시가 쓸 대시 공격 진행기 (우리 대시 어택·차징 태클).</summary>
+        public IVoDashAttack CreateDashAttack() => new DashAttackRunner(this);
 
         /// <summary>
         /// 외형·연출용 "대시 모션 중" (V8.2): IsDashing + 앞 대시에서 바뀐 근접 스텝. 전환할 때 호버 활주·숙임·불꽃이 끊기지 않게.

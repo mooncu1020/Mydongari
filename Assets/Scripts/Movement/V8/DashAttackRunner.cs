@@ -10,10 +10,8 @@ namespace MyDongari.Movement.V8
     /// 대시 경과 0.8초 미만 공격 = 유도 대시 어택(25m 안이면 초당 120°까지 꺾어 따라감), 이상 = 차징 태클(직선, 1.6초 최대).
     /// 발생 시간 뒤 activeTime 동안 돌진하며 닿으면 판정, 끝까지 못 닿으면 빗나감. 끝나면 경직(대시 어택은 방향별 0.2~0.3초).
     /// </summary>
-    public class DashAttackRunner
+    public class DashAttackRunner : IVoDashAttack
     {
-        public enum Result { None, Running, Finished }
-
         private readonly MechStateMachine _sm;
         private float _chargeTimer;
         private bool _requested;
@@ -70,7 +68,7 @@ namespace MyDongari.Movement.V8
         /// 한 틱. 요청·차징 접촉이면 시작, 공격 중이면 진행. heading은 유도가 바꾼다. stop = 이번 틱 멈춤(닿아서 판정·빗나감).
         /// Finished면 경직까지 넣었고 대시를 끝내야 한다.
         /// </summary>
-        public Result Tick(float dt, ref Vector3 heading, float speedMps, float snappedAngle, out bool stop)
+        public VoDashAttackResult Tick(float dt, ref Vector3 heading, float speedMps, float snappedAngle, out bool stop)
         {
             stop = false;
             MeleeSystem melee = Controller.MeleeSystem;
@@ -78,25 +76,25 @@ namespace MyDongari.Movement.V8
             {
                 bool requested = _requested;
                 _requested = false;
-                if (!requested && !(IsTackleCharged && IsOpponentInContact(heading))) return Result.None;
-                if (melee == null || !melee.CanTackle) return Result.None;
+                if (!requested && !(IsTackleCharged && IsOpponentInContact(heading))) return VoDashAttackResult.None;
+                if (melee == null || !melee.CanTackle) return VoDashAttackResult.None;
                 AttackType type = IsTackleCharged ? AttackType.Tackle : AttackType.DashAttack;
-                if (!melee.BeginTackle(type)) return Result.None;
+                if (!melee.BeginTackle(type)) return VoDashAttackResult.None;
                 _attackElapsed = 0f;
                 _type = type;
                 _power = TackleChargePower;
                 _homing = type == AttackType.DashAttack && IsOpponentWithin(DashAttack.homingRange);
                 // 대시 중 공격: 몸을 상대 쪽으로 계속 (지속 조준)
                 if (_sm.Motor != null) _sm.Motor.SetAutoTurn(MechMotor.AutoTurnMode.SustainAim);
-                return Result.Running;
+                return VoDashAttackResult.Running;
             }
 
             _attackElapsed += dt;
             if (_homing) UpdateHoming(ref heading, dt);
-            if (melee == null) return Result.Running;
+            if (melee == null) return VoDashAttackResult.Running;
 
             float startup = melee.TackleStartup(_type);
-            if (_attackElapsed < startup) return Result.Running;
+            if (_attackElapsed < startup) return VoDashAttackResult.Running;
             bool expired = _attackElapsed >= startup + ActiveTime(_type);
 
             if (IsOpponentWithin(HitDistance(_type)))
@@ -109,7 +107,7 @@ namespace MyDongari.Movement.V8
                 {
                     stop = true;
                     Finish(melee, result, snappedAngle);
-                    return Result.Finished;
+                    return VoDashAttackResult.Finished;
                 }
                 _attackElapsed = elapsed;
             }
@@ -118,9 +116,9 @@ namespace MyDongari.Movement.V8
             {
                 stop = true;
                 Finish(melee, null, snappedAngle);
-                return Result.Finished;
+                return VoDashAttackResult.Finished;
             }
-            return Result.Running;
+            return VoDashAttackResult.Running;
         }
 
         private void Finish(MeleeSystem melee, HitResult? result, float snappedAngle)
@@ -185,7 +183,7 @@ namespace MyDongari.Movement.V8
             MechIdentity opponent = Controller.Identity != null ? Controller.Identity.Opponent : null;
             if (opponent == null || !opponent.gameObject.activeInHierarchy) return false;
             Vector3 self = _sm.Motor != null ? _sm.Motor.Position : Controller.Rb.position;
-            Vector3 offset = MechMotor.OpponentPosition(opponent) - self;
+            Vector3 offset = MechMotor.OpponentPosition(opponent.transform) - self;
             distance = offset.magnitude;
             offset.y = 0f;
             if (offset.sqrMagnitude < 0.0001f) return false;

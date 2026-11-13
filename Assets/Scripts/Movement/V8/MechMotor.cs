@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 using MyDongari.Core;
-using MyDongari.Input;
 using MyDongari.Mech;
 
 namespace MyDongari.Movement.V8
@@ -12,7 +11,8 @@ namespace MyDongari.Movement.V8
     /// 위치는 "위치 += 속도"로 직접 옮기고 리지드바디는 키네마틱(MovePosition, 보간 켬) — 충돌은 캐스트·겹침 판정에만 쓴다.
     /// 거리·속도 수치는 원본 단위(u, u/f)로 받고 1u = 기체 키 / 22(렌더러로 잼)로 바꾼다.
     /// 전투가 미는 것(넉백·넉다운·런지·앵커 클로·몸 충돌)은 외부 속도(MotionBridge)로 들어와, 그동안은 상태 대신 그 속도로 움직인다.
-    /// 입력(InputReader)·상태 머신이 없는 기체(연습 봇)에서는 켜지지 않는다 — 그 기체는 다이내믹 리지드바디로 남고 MotionBridge가 리지드바디로 보낸다.
+    /// 우리 게임과는 IVoHost(수치·입력·스턴·콤보 감속·가드 자동 선회·상대·카메라)와 IVoMachine(상태 전환)으로만 이어진다 — Bind로 받는다.
+    /// 입력·상태 머신이 없는 기체(연습 봇)에서는 켜지지 않는다 — 그 기체는 다이내믹 리지드바디로 남고 MotionBridge가 리지드바디로 보낸다.
     /// </summary>
     [DisallowMultipleComponent]
     public class MechMotor : MonoBehaviour
@@ -25,11 +25,19 @@ namespace MyDongari.Movement.V8
         /// <summary>리지드바디의 이동기 (없으면 null).</summary>
         public static MechMotor Of(Rigidbody rb) => rb != null && ByBody.TryGetValue(rb, out MechMotor m) ? m : null;
 
-        public MechController Controller { get; private set; }
-        public MechStateMachine StateMachine { get; private set; }
+        /// <summary>우리 게임 쪽 연결 (수치·입력·스턴 등).</summary>
+        public IVoHost Host { get; private set; }
+        /// <summary>상태 머신.</summary>
+        public IVoMachine StateMachine { get; private set; }
         public Rigidbody Rb { get; private set; }
-        public InputReader Input { get; private set; }
-        public BernardTuning.V8Values V => Controller.Tuning.V8;
+        public BernardTuning.V8Values V => Host.Spec;
+
+        /// <summary>호스트·상태 머신을 받는다 (MechController가 붙인 직후 한 번).</summary>
+        public void Bind(IVoHost host, IVoMachine stateMachine)
+        {
+            Host = host;
+            StateMachine = stateMachine;
+        }
 
         /// <summary>V8 이동기가 지금 이 기체를 움직이는지.</summary>
         public bool IsActive { get; private set; }
@@ -120,10 +128,6 @@ namespace MyDongari.Movement.V8
         public float TurnCoefficient { get; private set; }
         /// <summary>마우스로 모은 선회(°, 키보드·마우스 예비 조작).</summary>
         public float MouseTurnDegrees { get; private set; }
-        private int _lastDashCount;
-        private int _lastJumpCount;
-        private int _lastGuardCount;
-        private float _pendingMouseTurn;
 
         // ---- 자동 선회·카메라 방위 (사양서 2.3) ----
         public enum AutoTurnMode { Default, JumpAim, SustainAim, AttackAim, AirDashReturn }
@@ -144,10 +148,7 @@ namespace MyDongari.Movement.V8
 
         private void Awake()
         {
-            Controller = GetComponent<MechController>();
-            StateMachine = GetComponent<MechStateMachine>();
             Rb = GetComponent<Rigidbody>();
-            Input = GetComponent<InputReader>();
             _body = GetComponent<Collider>();
             _capsule = _body as CapsuleCollider;
             if (Rb != null) ByBody[Rb] = this;
@@ -174,22 +175,13 @@ namespace MyDongari.Movement.V8
             Activate();
         }
 
-        private void Update()
-        {
-            // 마우스 이동량은 프레임마다 오므로 모아 두고 틱에서 쓴다
-            if (IsActive && Input != null && !Input.IsLookFromGamepad)
-            {
-                _pendingMouseTurn += Input.LookInput.x * Controller.Tuning.Movement.mouseTurnSensitivity;
-            }
-        }
-
         /// <summary>
         /// 입력·상태 머신이 있는 기체면 이동기를 켠다 (리지드바디 키네마틱, 틱 드라이버 등록). 시작할 때 한 번.
         /// 없으면 꺼진 채로 둔다 — 그 기체는 다이내믹 리지드바디로 남는다.
         /// </summary>
         private void Activate()
         {
-            if (IsActive || Controller == null || Rb == null || Input == null || StateMachine == null) return;
+            if (IsActive || Host == null || Rb == null || !Host.HasInput || StateMachine == null) return;
             IsActive = true;
             MeasureBody();
             Rb.isKinematic = true;
@@ -203,9 +195,7 @@ namespace MyDongari.Movement.V8
             Vy = 0f;
             _external = Vector3.zero;
             Lever.Reset();
-            _lastDashCount = Input.DashPressCount;
-            _lastJumpCount = Input.JumpPressCount;
-            _lastGuardCount = Input.GuardPressCount;
+            Host.ResetInput();
             VoTickDriver.Register(this);
         }
 
@@ -273,12 +263,13 @@ namespace MyDongari.Movement.V8
             AutoTurn = AutoTurnMode.Default;
             IsGrounded = true;
             TurboFrames = 9999;
-            if (Input != null)
-            {
-                _lastDashCount = Input.DashPressCount;
-                _lastJumpCount = Input.JumpPressCount;
-                _lastGuardCount = Input.GuardPressCount;
-            }
+            Host.ResetInput();
+        }
+
+        /// <summary>호스트가 이동 적분 뒤 위치를 고칠 때 (기체끼리 분리).</summary>
+        public void Nudge(Vector3 delta)
+        {
+            _position += delta;
         }
 
         // ---- 선회 ----
@@ -304,7 +295,7 @@ namespace MyDongari.Movement.V8
         /// </summary>
         public float ApplyManualTurn(bool dashing)
         {
-            // 가드 중엔 자동 선회가 몸을 돌린다 (V9a) — R스틱·마우스 선회는 받지 않는다
+            // 호스트가 요청한 자동 선회(가드 중, V9a)가 몸을 돌리는 틱엔 R스틱·마우스 선회를 받지 않는다
             if (_guardTurning) return 0f;
             float rateUnits = ManualTurnRate(dashing, TurnCoefficient);
             float degrees = TurnCoefficient * BernardTuning.AngleUnitsToDegrees(rateUnits) + MouseTurnDegrees;
@@ -392,9 +383,8 @@ namespace MyDongari.Movement.V8
 
             MechState state = StateMachine.CurrentState;
             VoState vo = state as VoState;
-            bool machineOn = StateMachine.enabled;
-            _externalMode = Controller.IsMoveHeld || Controller.IsExternallyControlled ||
-                            state is LungeState || state is KnockdownState;
+            bool machineOn = StateMachine.StatesEnabled;
+            _externalMode = Host.IsExternalMode;
 
             // 상태 보조 (중력·일부 y 적분·대시 게이지 가산·대시 정지 입력)
             if (machineOn && !_externalMode && vo != null) vo.Aux();
@@ -426,8 +416,7 @@ namespace MyDongari.Movement.V8
                 }
             }
             // 외부 상태가 이번 틱에 시작·끝났을 수 있다
-            bool external = Controller.IsMoveHeld || Controller.IsExternallyControlled ||
-                            StateMachine.CurrentState is LungeState || StateMachine.CurrentState is KnockdownState;
+            bool external = Host.IsExternalMode;
             if (_externalMode && !external) LeaveExternal();
             _externalMode = external;
 
@@ -478,25 +467,18 @@ namespace MyDongari.Movement.V8
         private void ReadInput()
         {
             BernardTuning.V8Values v = V;
-            int dashCount = Input.DashPressCount;
-            int jumpCount = Input.JumpPressCount;
-            TurboNew = dashCount != _lastDashCount;
-            JumpNew = jumpCount != _lastJumpCount;
-            _lastDashCount = dashCount;
-            _lastJumpCount = jumpCount;
-            int guardCount = Input.GuardPressCount;
-            bool crossNew = guardCount != _lastGuardCount;
-            _lastGuardCount = guardCount;
-            // 두 틱 사이에 눌렀다 뗀 탭도 "누름"으로 본다
-            TurboHeld = Input.DashHeld || TurboNew;
-            JumpHeld = Input.JumpHeld || JumpNew;
+            VoInputFrame frame = Host.ReadInput();
+            TurboNew = frame.TurboNew;
+            JumpNew = frame.JumpNew;
+            TurboHeld = frame.TurboHeld;
+            JumpHeld = frame.JumpHeld;
             TurboFrames = TurboNew ? 0 : (TurboHeld ? Mathf.Min(TurboFrames + 1, 9999) : 9999);
             JumpHeldFrames = JumpHeld ? (JumpNew ? 0 : JumpHeldFrames + 1) : 0;
 
-            Vector2 stick = Input.MoveInput;
+            Vector2 stick = frame.LeverStick;
             bool airborne = StateMachine.CurrentState is VoState s && s.IsAirState;
-            // 급강하 = 공중에서 ✕를 새로 누름 (V9a). 땅에서 ✕는 가드·패리(MeleeSystem)라 여기선 공중일 때만 본다
-            DiveNew = airborne && crossNew;
+            // 급강하 입력은 공중일 때만 받는다 (우리 조작에선 같은 버튼이 땅에서 가드·패리라서, V9a)
+            DiveNew = airborne && frame.DiveNew;
 
             // 입력 축소: 상대 8.3m 안 × 0.7, 11.8m까지 선형으로 1 (걷기·점프 속력 배율)
             float distanceScale = 1f;
@@ -508,11 +490,10 @@ namespace MyDongari.Movement.V8
             }
             Lever.Tick(stick, v, distanceScale);
 
-            // R스틱 좌우 = 수동 선회 (사양서의 레버 차동 대신). |s| ≤ 0.05 무시, 부호 유지 제곱
-            float x = Input.IsLookFromGamepad ? Mathf.Clamp(Input.LookInput.x, -1f, 1f) : 0f;
+            // 선회 축 = 수동 선회 (사양서의 레버 차동). |s| ≤ 0.05 무시, 부호 유지 제곱
+            float x = Mathf.Clamp(frame.TurnAxis, -1f, 1f);
             TurnCoefficient = Mathf.Abs(x) <= v.turnDeadzone ? 0f : Mathf.Sign(x) * x * x;
-            MouseTurnDegrees = _pendingMouseTurn;
-            _pendingMouseTurn = 0f;
+            MouseTurnDegrees = frame.ExtraTurnDegrees;
 
             // 대시 방향 잠금 (사양서 2.1 + V8.1·V8.2): ① ○를 새로 누른 틱에 스틱 방향(서기·걷기·지상 대시·점프·근접 스텝), 중립이면 앞(0).
             // 근접 구역 서기의 중립 ○는 바로 앞 대시 + 0.25초 안 스틱이면 근접 스텝으로 바뀌게 표시(LockedNeutralClose).
@@ -536,7 +517,7 @@ namespace MyDongari.Movement.V8
 
         private void UpdateOpponentRelation()
         {
-            MechIdentity opponent = Controller.Identity != null ? Controller.Identity.Opponent : null;
+            Transform opponent = Host.Opponent;
             HasOpponent = opponent != null && opponent.gameObject.activeInHierarchy;
             if (!HasOpponent)
             {
@@ -556,12 +537,12 @@ namespace MyDongari.Movement.V8
         /// <summary>
         /// 상대 위치: 상대도 V8이면 그 이동기의 값(1P는 2P의 지난 틱, 2P는 1P의 이번 틱 — 사양서 1.1 비대칭), 아니면 리지드바디.
         /// </summary>
-        public static Vector3 OpponentPosition(MechIdentity opponent)
+        public static Vector3 OpponentPosition(Transform opponent)
         {
             Rigidbody rb = opponent.GetComponent<Rigidbody>();
             MechMotor m = Of(rb);
             if (m != null && m.IsActive) return m.Position;
-            return rb != null ? rb.position : opponent.transform.position;
+            return rb != null ? rb.position : opponent.position;
         }
 
         /// <summary>자동 선회 (사양서 2.3). 상태 메인보다 먼저.</summary>
@@ -575,13 +556,11 @@ namespace MyDongari.Movement.V8
             {
                 case AutoTurnMode.Default:
                 {
-                    // 가드 자동 선회 (V9a): ✕를 누른 엄지로는 R스틱을 못 쓰니, 가드 중엔 몸이 상대 쪽으로 저절로 돈다.
-                    // 상대가 정면 안이면 느리게(132°/s), 밖이면 빠르게(360°/s) — 등 뒤로 돌아 들어온 상대를 가드로 따라잡되 즉시는 아니다.
-                    // V9e: 33.75°~60° 사이는 두 값 사이를 선형으로 (경계에서 속도가 뚝 바뀌지 않게)
-                    var melee = Controller.MeleeSystem;
-                    if (melee != null && melee.IsGuarding && HasOpponent)
+                    // 호스트가 요청한 상대 쪽 자동 선회 (원본엔 없다 — 우리 가드 자동 선회, V9a).
+                    // V9e: 정면 경계 ~ 보간 끝 각도 사이는 두 선회율 사이를 선형으로 (경계에서 속도가 뚝 바뀌지 않게)
+                    if (Host.TryGetAutoTurnToOpponent(out float insideRate, out float outsideRate) && HasOpponent)
                     {
-                        float guardRate = Mathf.Lerp(v.guardTurnInside, v.guardTurnOutside, OutsideBlend(Mathf.Abs(OpponentAngleOff)));
+                        float guardRate = Mathf.Lerp(insideRate, outsideRate, OutsideBlend(Mathf.Abs(OpponentAngleOff)));
                         TurnToward(OpponentBearing, guardRate);
                         _guardTurning = true;
                     }
@@ -641,7 +620,7 @@ namespace MyDongari.Movement.V8
             float step = BernardTuning.AngleUnitsToDegrees(v.cameraLeadStep);
             float maxLead = BernardTuning.AngleUnitsToDegrees(v.cameraLeadMax);
             float target = TurnCoefficient > 0f ? maxLead : TurnCoefficient < 0f ? -maxLead : 0f;
-            if (Controller.MeleeSystem != null && Controller.MeleeSystem.IsStunned) target = 0f;
+            if (Host.IsStunned) target = 0f;
             CameraLead = Mathf.MoveTowards(CameraLead, target, step);
         }
 
@@ -674,10 +653,10 @@ namespace MyDongari.Movement.V8
                 else
                 {
                     IsGrounded = false;
-                    if (state != null && StateMachine.enabled) StateMachine.V8Fall(v.ledgeFallVy, false);
+                    if (state != null && StateMachine.StatesEnabled) StateMachine.V8Fall(v.ledgeFallVy, false);
                 }
             }
-            SeparateFromOpponent();
+            Host.AfterIntegrate(this);
         }
 
         /// <summary>외부 속도로 한 틱 (넉백·넉다운·런지·앵커 클로). 중력(리지드바디 useGravity일 때)·감속·벽·지면 포함.</summary>
@@ -725,7 +704,7 @@ namespace MyDongari.Movement.V8
                 }
             }
             _external = vel;
-            SeparateFromOpponent();
+            Host.AfterIntegrate(this);
         }
 
         /// <summary>
@@ -788,7 +767,7 @@ namespace MyDongari.Movement.V8
                 // 시작부터 겹친 것은 밀어내기(Depenetrate)가 맡는다
                 if (hit.distance <= 0f) continue;
                 // 위를 향한 면(바닥·완만한 경사)은 벽이 아니다 — Wall 레이어는 면 방향과 상관없이 벽
-                if (!GroundLayers.IsWallLayer(hit.collider) && hit.normal.y >= Controller.Tuning.Movement.groundMinNormalY) continue;
+                if (!GroundLayers.IsWallLayer(hit.collider) && hit.normal.y >= Host.GroundMinNormalY) continue;
                 if (hit.distance < best)
                 {
                     best = hit.distance;
@@ -822,7 +801,7 @@ namespace MyDongari.Movement.V8
         private bool IsStaticObstacle(Collider c)
         {
             if (c == null || c.isTrigger || c.attachedRigidbody != null) return false;
-            if (Controller.Identity != null && Controller.Identity.IsOwnCollider(c)) return false;
+            if (Host.IsOwnCollider(c)) return false;
             return true;
         }
 
@@ -839,8 +818,8 @@ namespace MyDongari.Movement.V8
             {
                 RaycastHit hit = Hits[i];
                 if (hit.collider == null || hit.collider.attachedRigidbody != null) continue;
-                if (Controller.Identity != null && Controller.Identity.IsOwnCollider(hit.collider)) continue;
-                if (!GroundLayers.IsGround(hit.collider, hit.normal, Controller.Tuning.Movement.groundMinNormalY)) continue;
+                if (Host.IsOwnCollider(hit.collider)) continue;
+                if (!GroundLayers.IsGround(hit.collider, hit.normal, Host.GroundMinNormalY)) continue;
                 if (hit.point.y > groundY)
                 {
                     groundY = hit.point.y;
@@ -884,37 +863,6 @@ namespace MyDongari.Movement.V8
                 return true;
             }
             return false;
-        }
-
-        /// <summary>
-        /// 기체끼리: 사양서엔 밀어내기가 없지만 키네마틱끼리는 서로 통과하므로 캡슐 반경 합만큼만 떨어뜨린다(내 쪽만 — 상대는 자기 틱에).
-        /// 지상 대시가 공격 없이 닿으면 몸 충돌 반동(V3)으로 넘긴다.
-        /// </summary>
-        private void SeparateFromOpponent()
-        {
-            MechIdentity opponent = Controller.Identity != null ? Controller.Identity.Opponent : null;
-            if (opponent == null || !opponent.gameObject.activeInHierarchy) return;
-            Vector3 other = OpponentPosition(opponent);
-            Collider otherCollider = opponent.GetComponent<Collider>();
-            float otherRadius = otherCollider is CapsuleCollider cc ? cc.radius : (otherCollider != null ? Mathf.Min(otherCollider.bounds.extents.x, otherCollider.bounds.extents.z) : 0.5f);
-            float myRadius = _capsule != null ? _capsule.radius : 0.5f;
-            float minDistance = myRadius + otherRadius;
-            Vector3 offset = _position - other;
-            float heightOverlap = otherCollider != null ? otherCollider.bounds.extents.y + (_body != null ? _body.bounds.extents.y : 1f) : 2f;
-            if (Mathf.Abs(offset.y) >= heightOverlap) return;
-            offset.y = 0f;
-            float distance = offset.magnitude;
-            if (distance >= minDistance) return;
-            Vector3 apart = distance > 0.0001f ? offset / distance : -Forward;
-            _position += apart * (minDistance - distance);
-
-            if (StateMachine.IsDashing && StateMachine.ActiveDash != null && !StateMachine.ActiveDash.IsAttacking && !StateMachine.IsAirborne)
-            {
-                if (StateMachine.ActiveDash.IsTackleCharged && StateMachine.ActiveDash.RequestTackle()) return;
-                Controller.ApplyBump(apart);
-                MechController otherController = opponent.GetComponent<MechController>();
-                if (otherController != null) otherController.ApplyBump(-apart);
-            }
         }
     }
 }

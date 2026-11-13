@@ -5,7 +5,7 @@ namespace MyDongari.Movement
     /// <summary>
     /// 스러스터 런지 돌진 중. 이동 입력은 무시하고 ThrusterLunge가 정한 방향으로만 나간다.
     /// </summary>
-    public class LungeState : MechState
+    public class LungeState : GameState
     {
         private ThrusterLunge _lunge;
 

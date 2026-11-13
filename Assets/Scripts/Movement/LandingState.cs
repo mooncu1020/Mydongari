@@ -7,7 +7,7 @@ namespace MyDongari.Movement
     /// 착지 경직 (V5): 점프·공중 대시·공중 피격 뒤 착지하면 landingLag(0.2초). V7c: 부스트 0% 착지의 긴 경직은 없앴다.
     /// 그동안 이동·공격·대시·점프·가드 불가 — 상대가 노릴 틈이다. 발밑 표시는 CombatFeedback이 OnLanded로 띄운다.
     /// </summary>
-    public class LandingState : MechState
+    public class LandingState : GameState
     {
         private float _timer;
         private float _duration;

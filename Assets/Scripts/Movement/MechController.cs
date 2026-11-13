@@ -54,9 +54,25 @@ namespace MyDongari.Movement
 
             _defaultDamping = Rb.linearDamping;
 
-            // 이동기: 항상 붙여 둔다 (입력·상태 머신이 있는 기체에서 켜진다)
+            // 이동기: 항상 붙여 둔다 (입력·상태 머신이 있는 기체에서 켜진다). 우리 게임 쪽 연결은 VoHostAdapter가 맡는다
             Motor = GetComponent<MechMotor>();
             if (Motor == null) Motor = gameObject.AddComponent<MechMotor>();
+            _host = new VoHostAdapter(this);
+            Motor.Bind(_host, StateMachine);
+        }
+
+        private VoHostAdapter _host;
+
+        private void Update()
+        {
+            // 마우스 이동량은 프레임마다 오므로 모아 두고 이동기 틱에서 쓴다
+            _host.FrameUpdate();
+        }
+
+        /// <summary>공격을 시작했을 때 (WeaponSystem). 이동기의 "사격 조준" — 15f 동안 몸을 상대 쪽으로.</summary>
+        public void NotifyAttackStarted()
+        {
+            if (Motor != null) Motor.NotifyAttackStarted();
         }
 
         /// <summary>이동기.</summary>

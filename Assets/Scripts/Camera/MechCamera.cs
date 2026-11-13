@@ -124,7 +124,7 @@ namespace MyDongari.Camera
         {
             _shakeTimer = 0f;
             _kickTimer = 0f;
-            _v8Ready = false;
+            _voRig.Reset();
             ApplyFov();
         }
 
@@ -182,76 +182,26 @@ namespace MyDongari.Camera
             if (collideWithWorld) transform.position = ResolveCollision(target.position + Vector3.up * lookHeight, transform.position);
         }
 
-        // ---- V8 카메라 (사양서 5장) ----
-        private bool _v8Ready;
-        private Vector3 _v8Anchor;
-        // 12%로 목표값을 따라가는 시선 표적 높이 오프셋(u)
-        private float _v8TargetUp;
-        private Vector3 _v8PrevPosition, _v8Position;
-        private Quaternion _v8PrevRotation = Quaternion.identity, _v8Rotation = Quaternion.identity;
+        // ---- 이동기 카메라 (사양서 5장 계산은 VoCameraRig) ----
+        private readonly VoCameraRig _voRig = new VoCameraRig();
 
-        /// <summary>
-        /// V8 틱 맨 앞(VoTickDriver): 지난 틱 기체 상태로 카메라를 한 틱 갱신한다. 기준점(시선 표적)은 매 틱 차이의 35%씩 기체를 따라가고,
-        /// 방위는 이동기의 카메라 방위 + 선회 리드(지연 없음), 피치 8.4° 아래, 시선 표적에서 78u 뒤.
-        /// </summary>
+        /// <summary>틱 맨 앞(VoTickDriver → 호스트): 지난 틱 기체 상태로 카메라를 한 틱 갱신한다.</summary>
         public void TickV8(MechMotor motor)
         {
-            if (motor == null) return;
-            BernardTuning.V8Values v = motor.V;
-            // V9c: 사양서 5.3대로 12%는 시선 표적 오프셋(u)에만 건다. 지금은 카메라 모드가 하나라 목표값이 일정하지만,
-            // 근접·대시 카메라처럼 오프셋이 다른 모드가 생기면 이 값이 부드럽게 넘어간다
-            if (!_v8Ready) _v8TargetUp = v.cameraTargetUp;
-            else _v8TargetUp += (v.cameraTargetUp - _v8TargetUp) * v.cameraTargetOffsetFollow;
-            Vector3 targetPoint = new Vector3(motor.Position.x,
-                motor.FeetY + motor.BodyHeight * v.cameraBaseHeightRatio + _v8TargetUp * motor.U,
-                motor.Position.z);
-            if (!_v8Ready)
-            {
-                _v8Anchor = targetPoint;
-            }
-            else
-            {
-                // V8.3: 기준점 위치는 매 틱 35%로 빠르게 따라간다 — 대시 때 기체가 화면 밖으로 처지지 않게
-                _v8Anchor += (targetPoint - _v8Anchor) * v.cameraPositionFollow;
-            }
-            // V9c: 방위는 원본대로 이동기의 카메라 방위(기본 모드 = 기체 방위)에 지연 없이 붙는다 + 선회 리드
-            float yaw = motor.CameraYaw + motor.CameraLead;
-            float pitch = BernardTuning.AngleUnitsToDegrees(v.cameraPitch);
-            Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
-            float distance = v.cameraDistance * motor.U;
-
-            // V8.3 가로 상한: 기체가 화면 가로 중앙에서 폭의 cameraMaxScreenOffset 넘게 벗어나면 기준점을 카메라 오른쪽 축으로 그만큼 당긴다.
-            // 화면 가로 위치(폭 대비) = (옆 거리 / 깊이) / (2 · tan(가로 화각 / 2)). 기준점을 옆으로 옮기면 카메라도 같이 옮겨져 깊이는 그대로다
-            Vector3 right = rotation * Vector3.right;
-            Vector3 toTarget = targetPoint - (_v8Anchor - rotation * (Vector3.forward * distance));
-            float depth = Vector3.Dot(toTarget, rotation * Vector3.forward);
-            if (depth > 0.01f)
-            {
-                float aspect = _camera != null && _camera.aspect > 0.01f ? _camera.aspect : 16f / 9f;
-                float halfWidth = Mathf.Tan(v.cameraFov * 0.5f * Mathf.Deg2Rad) * aspect * depth;
-                float maxLateral = v.cameraMaxScreenOffset * 2f * halfWidth;
-                float lateral = Vector3.Dot(toTarget, right);
-                if (Mathf.Abs(lateral) > maxLateral) _v8Anchor += right * (lateral - Mathf.Sign(lateral) * maxLateral);
-            }
-            Vector3 position = _v8Anchor - rotation * (Vector3.forward * distance);
-
-            _v8PrevPosition = _v8Ready ? _v8Position : position;
-            _v8PrevRotation = _v8Ready ? _v8Rotation : rotation;
-            _v8Position = position;
-            _v8Rotation = rotation;
-            _v8Ready = true;
+            float aspect = _camera != null && _camera.aspect > 0.01f ? _camera.aspect : 16f / 9f;
+            _voRig.Tick(motor, aspect);
         }
 
-        /// <summary>두 틱 사이를 보간해 그린다 (리지드바디 보간과 같은 비율).</summary>
+        /// <summary>두 틱 사이를 보간해 그린다 (리지드바디 보간과 같은 비율). 그 위에 우리 흔들림·지형 충돌.</summary>
         private void LateUpdateV8()
         {
-            if (!_v8Ready) return;
+            if (!_voRig.IsReady) return;
             float alpha = Time.fixedDeltaTime > 0f ? Mathf.Clamp01((Time.time - Time.fixedTime) / Time.fixedDeltaTime) : 1f;
-            transform.position = Vector3.Lerp(_v8PrevPosition, _v8Position, alpha);
-            transform.rotation = Quaternion.Slerp(_v8PrevRotation, _v8Rotation, alpha);
+            _voRig.Evaluate(alpha, out Vector3 position, out Quaternion rotation);
+            transform.position = position;
+            transform.rotation = rotation;
             ApplyShakeAndCollision();
             if (_camera != null) _camera.fieldOfView = _mechController.Tuning.V8.cameraFov;
         }
-
     }
 }

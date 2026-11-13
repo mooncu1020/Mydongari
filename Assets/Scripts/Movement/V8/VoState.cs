@@ -9,8 +9,11 @@ namespace MyDongari.Movement.V8
     /// </summary>
     public abstract class VoState : MechState
     {
-        protected VoState(MechStateMachine stateMachine) : base(stateMachine)
+        protected readonly IVoMachine StateMachine;
+
+        protected VoState(IVoMachine stateMachine)
         {
+            StateMachine = stateMachine;
         }
 
         protected MechMotor Motor => StateMachine.Motor;
@@ -54,7 +57,7 @@ namespace MyDongari.Movement.V8
         {
         }
 
-        protected bool IsStunned => StateMachine.IsStunned;
+        protected bool IsStunned => Motor.Host.IsStunned;
 
         /// <summary>대시 조건 (사양서 4장): 방향 잠금 + ○ 유지 + 게이지 허가 + 스턴 아님 (V7c: 부스트와 무관).</summary>
         protected bool DashCondition()
@@ -78,7 +81,7 @@ namespace MyDongari.Movement.V8
             Vector2 stick = Motor.Lever.Stick;
             if (stick.sqrMagnitude < 0.000001f) return;
             float speed = curve.Evaluate(Motor.Lever.Angle) * Motor.Lever.DistanceScale;
-            float combo = StateMachine.MechController.MeleeSystem != null ? StateMachine.MechController.MeleeSystem.MoveSpeedScale : 1f;
+            float combo = Motor.Host.MoveSpeedScale;
             Vector3 dir = Quaternion.Euler(0f, Motor.Yaw, 0f) * new Vector3(stick.x, 0f, stick.y);
             Motor.MoveDirection = dir.normalized;
             Motor.HorizontalSpeed = speed * combo;
@@ -94,7 +97,7 @@ namespace MyDongari.Movement.V8
     /// <summary>서기 (사양서 4.1).</summary>
     public class VoStandState : VoState
     {
-        public VoStandState(MechStateMachine sm) : base(sm)
+        public VoStandState(IVoMachine sm) : base(sm)
         {
         }
 
@@ -123,7 +126,7 @@ namespace MyDongari.Movement.V8
     /// <summary>걷기 (사양서 4.2).</summary>
     public class VoWalkState : VoState
     {
-        public VoWalkState(MechStateMachine sm) : base(sm)
+        public VoWalkState(IVoMachine sm) : base(sm)
         {
         }
 
@@ -170,7 +173,7 @@ namespace MyDongari.Movement.V8
         private int _frame;
         private bool _fromDash;
 
-        public VoCloseStepState(MechStateMachine sm) : base(sm)
+        public VoCloseStepState(IVoMachine sm) : base(sm)
         {
         }
 
@@ -232,7 +235,7 @@ namespace MyDongari.Movement.V8
         private int _frame;
         private bool _airborne;
 
-        public VoDashStopState(MechStateMachine sm) : base(sm)
+        public VoDashStopState(IVoMachine sm) : base(sm)
         {
         }
 
@@ -293,7 +296,7 @@ namespace MyDongari.Movement.V8
     /// </summary>
     public class VoDiveState : VoState
     {
-        public VoDiveState(MechStateMachine sm) : base(sm)
+        public VoDiveState(IVoMachine sm) : base(sm)
         {
         }
 

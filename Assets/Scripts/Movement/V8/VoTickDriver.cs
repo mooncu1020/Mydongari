@@ -56,8 +56,8 @@ namespace MyDongari.Movement.V8
 
         private static int PlayerOrder(MechMotor motor)
         {
-            MechIdentity id = motor.Controller != null ? motor.Controller.Identity : null;
-            return id != null && id.PlayerIndex > 0 ? id.PlayerIndex : 99;
+            int index = motor.Host != null ? motor.Host.PlayerIndex : 0;
+            return index > 0 ? index : 99;
         }
 
         private void FixedUpdate()
@@ -70,12 +70,7 @@ namespace MyDongari.Movement.V8
             foreach (MechMotor motor in Motors)
             {
                 if (!motor.isActiveAndEnabled || !motor.IsActive) continue;
-                ErrorLog.Run(() =>
-                {
-                    MyDongari.Camera.MechCamera cam = motor.Controller.MechCamera;
-                    if (cam == null && motor.Controller.Identity != null) cam = motor.Controller.Identity.MechCamera;
-                    if (cam != null) cam.TickV8(motor);
-                }, "VoTickDriver.camera");
+                ErrorLog.Run(() => motor.Host.TickCamera(motor), "VoTickDriver.camera");
             }
             // 2) 1P 전체 → 2P 전체
             foreach (MechMotor motor in Motors)

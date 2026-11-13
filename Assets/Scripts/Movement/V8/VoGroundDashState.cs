@@ -8,8 +8,8 @@ namespace MyDongari.Movement.V8
     /// 걷기에서 들어오면 시작을 건너뛴다(뒤 계열은 시작부터).
     /// 보조: 시작·지속 중 ○ 새 입력 = 대시 정지(본 처리 전에), 지속·공격 중 몸 선회(대시 선회율 — 진로는 그대로), 게이지 +206/f,
     /// 발판 끝을 지나 공중이면 vy −0.081/f(하한 −1.801)로 떨어지다 착지.
-    /// 지속: 공격 = 대시 어택·차징 태클(DashAttackRunner), △ = 점프. 종료: △ 언제든, 공격 3f째부터.
-    /// 우리 규칙: 상대 몸 충돌 반동(MechMotor). V7c: 부스트 소모·탈진 종료 없음 — 길이는 대시 게이지(지속 최대 약 1.4초)만.
+    /// 지속: 공격 = 대시 공격(IVoDashAttack — 우리 대시 어택·차징 태클), △ = 점프. 종료: △ 언제든, 공격 3f째부터.
+    /// 우리 규칙: 상대 몸 충돌 반동(호스트). V7c: 부스트 소모·탈진 종료 없음 — 길이는 대시 게이지(지속 최대 약 1.4초)만.
     /// V8.2: 근접 구역 서기의 스틱 중립 ○로 시작한 앞 대시는 시작 후 closeStepFromDashFrames(15f) 안에 스틱이 들어오면
     /// 그 순간 근접 스텝으로 바뀐다(방향은 그 순간 상대 기준으로 고정).
     /// </summary>
@@ -29,11 +29,11 @@ namespace MyDongari.Movement.V8
         private Vector3 _heading;
         private bool _airborne;
         private DashExitReason _exitReason;
-        private readonly DashAttackRunner _attack;
+        private readonly IVoDashAttack _attack;
 
-        public VoGroundDashState(MechStateMachine sm) : base(sm)
+        public VoGroundDashState(IVoMachine sm) : base(sm)
         {
-            _attack = new DashAttackRunner(sm);
+            _attack = sm.CreateDashAttack();
         }
 
         // ---- 다른 코드가 보는 것 ----
@@ -129,13 +129,13 @@ namespace MyDongari.Movement.V8
 
             if (_attack.IsAttacking)
             {
-                DashAttackRunner.Result r = _attack.Tick(Dt, ref _heading, _speed * Motor.SpeedScale, _offset, out bool stop);
-                if (r == DashAttackRunner.Result.Finished)
+                VoDashAttackResult r = _attack.Tick(Dt, ref _heading, _speed * Motor.SpeedScale, _offset, out bool stop);
+                if (r == VoDashAttackResult.Finished)
                 {
                     Leave(DashExitReason.Tackle, StateMachine.VoStand);
                     return;
                 }
-                if (r != DashAttackRunner.Result.None)
+                if (r != VoDashAttackResult.None)
                 {
                     Motor.MoveDirection = _heading;
                     Motor.HorizontalSpeed = stop ? 0f : _speed;
@@ -170,8 +170,8 @@ namespace MyDongari.Movement.V8
                     }
                     _attack.TickCharge(Dt);
                     // 공격 버튼(WeaponSystem → RequestTackle) 또는 차징 접촉 → 이번 틱에 시작
-                    DashAttackRunner.Result started = _attack.Tick(Dt, ref _heading, _speed * Motor.SpeedScale, _offset, out _);
-                    if (started == DashAttackRunner.Result.Running)
+                    VoDashAttackResult started = _attack.Tick(Dt, ref _heading, _speed * Motor.SpeedScale, _offset, out _);
+                    if (started == VoDashAttackResult.Running)
                     {
                         Motor.MoveDirection = _heading;
                         Motor.HorizontalSpeed = _speed;

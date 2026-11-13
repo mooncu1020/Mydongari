@@ -24,7 +24,7 @@ namespace MyDongari.Movement.V8
         private float _prepareVy;
         private bool _prepareLag;
 
-        public VoJumpState(MechStateMachine sm) : base(sm)
+        public VoJumpState(IVoMachine sm) : base(sm)
         {
         }
 
@@ -183,7 +183,7 @@ namespace MyDongari.Movement.V8
         private Vector3 _heading;
         private DashExitReason _exitReason;
 
-        public VoAirDashState(MechStateMachine sm) : base(sm)
+        public VoAirDashState(IVoMachine sm) : base(sm)
         {
         }
 
