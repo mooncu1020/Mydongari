@@ -213,8 +213,8 @@ namespace MyDongari.Game.Visual
             {
                 BernardTuning.LungeValues lunge = _tuning.Get(this).Lunge;
                 float tp = _clock - _lungePlant;
-                float plant = lunge.plantTime;
-                float strike = plant + lunge.strikeExtendTime;
+                float plant = CombatTime.Seconds(lunge.plantFrames);
+                float strike = plant + CombatTime.Seconds(lunge.strikeExtendFrames);
                 float hold = strike + m.lungeStrikeHold;
                 float end = hold + m.lungeRecoverTime;
                 if (tp >= end)
@@ -300,7 +300,7 @@ namespace MyDongari.Game.Visual
                 case HitResult.GuardBroken:
                     _breakStart = _clock;
                     // MeleeSystem과 같은 길이: 가드 브레이크 스턴과 공격 스턴 중 긴 쪽
-                    _breakLength = Mathf.Max(_tuning.Get(this).Guard.breakStun, info.StunDuration);
+                    _breakLength = Mathf.Max(_tuning.Get(this).Guard.breakStun, CombatTime.Seconds(info.StunFrames));
                     _guardWeight = 0f;
                     break;
             }
@@ -426,7 +426,7 @@ namespace MyDongari.Game.Visual
             {
                 BeginMotion();
                 Key(0f, null);
-                Key(_tuning.Get(this).AnchorClaw.windupTime, PoseNames.ClawWindup, MechPoseLibrary.EaseSmooth);
+                Key(CombatTime.Seconds(_tuning.Get(this).AnchorClaw.windupFrames), PoseNames.ClawWindup, MechPoseLibrary.EaseSmooth);
                 PlayMotion(tp, 1f, false);
             }
             else if (phase == AnchorClaw.ClawPhase.Flying)
@@ -580,7 +580,7 @@ namespace MyDongari.Game.Visual
         private float TackleVisualLength(BernardTuning.VisualValues v)
         {
             if (!UseMotions) return TackleWindup + v.tackleTime;
-            return TackleWindup + Mathf.Max(M.tackleHold + 0.01f, _tuning.Get(this).Tackle.recoveryStun);
+            return TackleWindup + Mathf.Max(M.tackleHold + 0.01f, CombatTime.Seconds(_tuning.Get(this).Tackle.recoveryFrames));
         }
 
         /// <summary>

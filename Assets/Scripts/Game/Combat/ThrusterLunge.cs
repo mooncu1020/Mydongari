@@ -37,13 +37,13 @@ namespace MyDongari.Game.Combat
         /// 런지 쿨다운 중인지 (V9f): 런지를 시작한 순간부터 cooldown초. 부스트 대신 이것이 런지 연타를 막는다.
         /// 쿨다운 중 공격 입력은 버리고(WeaponSystem·MeleeDummy) 버퍼에도 남기지 않는다.
         /// </summary>
-        public bool IsOnCooldown => Time.time < _cooldownUntil;
-        /// <summary>쿨다운 길이(초, 튜닝값). HUD 호의 채움 비율 계산용.</summary>
-        public float CooldownDuration => T.cooldown;
+        public bool IsOnCooldown => _cooldownFrames > 0;
+        /// <summary>쿨다운 길이(초 — 표시용, 값은 틱). HUD 호의 채움 비율 계산용.</summary>
+        public float CooldownDuration => CombatTime.Seconds(T.cooldownFrames);
         /// <summary>쿨다운 중 런지 입력을 버렸다고 알린다 (WeaponSystem·MeleeDummy가 부른다).</summary>
         public void NotifyCooldownDenied() => OnCooldownDenied?.Invoke();
         /// <summary>남은 쿨다운(초). 0이면 쓸 수 있다.</summary>
-        public float CooldownRemaining => Mathf.Max(0f, _cooldownUntil - Time.time);
+        public float CooldownRemaining => CombatTime.Seconds(_cooldownFrames);
         public LungePhase Phase { get; private set; } = LungePhase.None;
 
         private MechStateMachine _stateMachine;
@@ -56,14 +56,19 @@ namespace MyDongari.Game.Combat
         // 상태 머신이 없는 기체(연습 봇)는 LungeState 대신 이 컴포넌트가 FixedUpdate에서 돌진을 진행한다
         private bool _selfDriven;
 
-        // 게임 시간(scaled) 기준 — 히트스톱·일시정지 동안은 쿨다운도 같이 멈춘다
-        private float _cooldownUntil = -1f;
+        // 남은 쿨다운(틱). 전투 틱마다 준다
+        private int _cooldownFrames;
+        // 이번 틱 끝(CollectHits)에 명중 판정을 할지
+        private bool _strikeCheck;
+        // 명중을 상대 기록에 쌓고 결과(막힘·패리 등)를 기다리는 중
+        private bool _awaitingResult;
 
         private Vector3 _direction;
         private Vector3 _startPosition;
-        private float _elapsed;
-        // 박기·뻗기 단계 경과(초, 물리 스텝)
-        private float _phaseTime;
+        // 돌진 경과(틱)
+        private int _elapsed;
+        // 박기·뻗기 단계 경과(틱)
+        private int _phaseTime;
 
         private void Awake()
         {
@@ -73,6 +78,20 @@ namespace MyDongari.Game.Combat
             _identity = MechIdentity.GetOrAdd(gameObject);
             _rb = GetComponent<Rigidbody>();
             _melee = GetComponent<MeleeSystem>();
+            if (_melee != null) _melee.OnAttackResolved += OnAttackResolved;
+        }
+
+        private void OnDestroy()
+        {
+            if (_melee != null) _melee.OnAttackResolved -= OnAttackResolved;
+        }
+
+        /// <summary>내 런지의 결과가 상대 쪽에서 정해졌다 (다음 틱 정산). 그때 돌진 종료를 알린다.</summary>
+        private void OnAttackResolved(HitInfo info, HitResult result)
+        {
+            if (info.Type != AttackType.Lunge || !_awaitingResult) return;
+            _awaitingResult = false;
+            OnLungeEnded?.Invoke(result);
         }
 
         private bool IsStunned => _stateMachine != null ? _stateMachine.IsStunned : _melee != null && _melee.IsStunned;
@@ -100,7 +119,7 @@ namespace MyDongari.Game.Combat
             if (IsExternallyControlled) return false;
             if (_stateMachine != null && !_stateMachine.CanStartLunge) return false;
             if (IsOnCooldown) return false;
-            _cooldownUntil = Time.time + T.cooldown;
+            _cooldownFrames = T.cooldownFrames;
 
             if (_stateMachine != null)
             {
@@ -113,8 +132,10 @@ namespace MyDongari.Game.Combat
             return true;
         }
 
-        private void FixedUpdate()
+        /// <summary>전투 틱마다 (MeleeSystem이 부른다): 쿨다운을 줄이고, 상태 머신이 없는 기체는 돌진도 진행한다.</summary>
+        public void CombatTick()
         {
+            if (_cooldownFrames > 0) _cooldownFrames--;
             if (!_selfDriven) return;
             // LungeState.Update와 같은 규칙: 스턴이면 돌진을 끊는다(빗나감)
             if (IsStunned)
@@ -132,8 +153,9 @@ namespace MyDongari.Game.Combat
             _direction = MechFacing.AttackForward(transform);
 
             _startPosition = _rb.position;
-            _elapsed = 0f;
-            _phaseTime = 0f;
+            _elapsed = 0;
+            _phaseTime = 0;
+            _strikeCheck = false;
             IsLunging = true;
             Phase = LungePhase.Dash;
 
@@ -145,7 +167,7 @@ namespace MyDongari.Game.Combat
             OnLungeStarted?.Invoke();
         }
 
-        /// <summary>물리 스텝마다 호출. 돌진이 끝났으면 true.</summary>
+        /// <summary>틱마다 호출 (이동·단계 진행). 명중 판정은 틱 끝 CollectHits에서 한다. 돌진이 끝났으면 true.</summary>
         public bool TickDash()
         {
             if (!IsLunging) return true;
@@ -158,7 +180,8 @@ namespace MyDongari.Game.Combat
             }
 
             BernardTuning.LungeValues t = T;
-            _elapsed += Time.fixedDeltaTime;
+            _elapsed++;
+            _strikeCheck = false;
 
             // 새 판정 방식의 박기·뻗기 단계 (M4)
             if (Phase == LungePhase.Plant || Phase == LungePhase.Strike) return TickStrike(t);
@@ -175,20 +198,8 @@ namespace MyDongari.Game.Combat
                 return false;
             }
 
-            MechIdentity opponent = _identity.Opponent;
-            if (opponent != null && opponent.gameObject.activeInHierarchy)
-            {
-                Vector3 center = _rb.position + _direction * t.hitForwardOffset;
-                foreach (Collider hit in Physics.OverlapSphere(center, t.hitRadius))
-                {
-                    if (!_identity.IsOpponentCollider(hit)) continue;
-
-                    // 속도를 먼저 줄여 둔다: 패리 반사 넉백이 이 뒤에 들어와야 덮어쓰이지 않는다
-                    SetDashVelocity(t.speed * t.endSpeedRatio);
-                    Finish(DeliverLungeHit(opponent, t));
-                    return true;
-                }
-            }
+            // 예전 방식: 돌진 중 판정 구에 닿으면 명중 (판정은 틱 끝)
+            _strikeCheck = true;
 
             if (IsDashOver(t))
             {
@@ -199,18 +210,32 @@ namespace MyDongari.Game.Combat
             return false;
         }
 
-        private HitResult DeliverLungeHit(MechIdentity opponent, BernardTuning.LungeValues t)
+        /// <summary>
+        /// 틱 끝 (모든 기체가 움직인 뒤): 판정 구가 상대에 닿았으면 상대 기록에 쌓고 돌진을 끝낸다. 결과는 다음 틱 정산에서 온다.
+        /// </summary>
+        public void CollectHits()
         {
-            HitInfo info = new HitInfo
+            if (!IsLunging || !_strikeCheck) return;
+            _strikeCheck = false;
+            MechIdentity opponent = _identity.Opponent;
+            if (opponent == null || !opponent.gameObject.activeInHierarchy) return;
+            BernardTuning.LungeValues t = T;
+            Vector3 center = _rb.position + _direction * t.hitForwardOffset;
+            foreach (Collider hit in Physics.OverlapSphere(center, t.hitRadius))
             {
-                Type = AttackType.Lunge,
-                Damage = t.damage,
-                Attacker = gameObject,
-                KnockbackDirection = _direction,
-                KnockbackForce = t.hitKnockback,
-                StunDuration = t.hitStun
-            };
-            return MeleeSystem.DeliverHit(opponent.gameObject, info);
+                if (!_identity.IsOpponentCollider(hit)) continue;
+                // 속도를 먼저 줄여 둔다: 패리 반사 넉백이 이 뒤에 들어와야 덮어쓰이지 않는다
+                SetDashVelocity(Phase == LungePhase.Dash ? t.speed * t.endSpeedRatio : 0f);
+                HitInfo info = _melee != null
+                    ? _melee.NewHit(AttackType.Lunge, HitKind.Strong, t.damage, opponent.gameObject)
+                    : new HitInfo { Type = AttackType.Lunge, Kind = HitKind.Strong, Damage = t.damage, Attacker = gameObject };
+                info.Direction = _direction;
+                info.KnockbackForce = t.hitKnockback;
+                info.StunFrames = CombatTime.Frames(t.hitStun);
+                MeleeSystem.QueueHit(opponent.gameObject, info);
+                FinishHit();
+                return;
+            }
         }
 
         /// <summary>돌진 거리를 다 갔거나(벽 등으로 막혀) 최대 시간이 지났는지.</summary>
@@ -218,7 +243,7 @@ namespace MyDongari.Game.Combat
         {
             Vector3 travelled = _rb.position - _startPosition;
             travelled.y = 0f;
-            float timeout = t.speed > 0f ? t.distance / t.speed * t.timeoutMultiplier : 0f;
+            int timeout = t.speed > 0f ? CombatTime.Frames(t.distance / t.speed * t.timeoutMultiplier) : 0;
             return travelled.magnitude >= t.distance || _elapsed >= timeout;
         }
 
@@ -238,44 +263,32 @@ namespace MyDongari.Game.Combat
         {
             SetDashVelocity(t.speed * t.endSpeedRatio);
             Phase = LungePhase.Plant;
-            _phaseTime = 0f;
+            _phaseTime = 0;
             OnLungePlant?.Invoke(inRange);
         }
 
         /// <summary>박기 → 뻗기. 판정은 뻗는 구간에만 (명중 판정 구는 예전과 같은 수치). 뻗기가 끝날 때까지 못 맞히면 빗나감.</summary>
         private bool TickStrike(BernardTuning.LungeValues t)
         {
-            _phaseTime += Time.fixedDeltaTime;
-            // 돌진 끝 속도에서 그 자리에 멈춰 선다 (박기·뻗기 중엔 Slide/SideStep과 같은 우선순위로 감속)
+            _phaseTime++;
+            // 돌진 끝 속도에서 그 자리에 멈춰 선다 (박기·뻗기 중엔 감속 요청)
             if (_controller != null) _controller.RequestDamping(t.strikeStopDamping, priority: 5);
 
             if (Phase == LungePhase.Plant)
             {
-                if (_phaseTime < t.plantTime) return false;
-                _phaseTime -= t.plantTime;
+                if (_phaseTime < t.plantFrames) return false;
+                _phaseTime -= t.plantFrames;
                 Phase = LungePhase.Strike;
             }
 
-            MechIdentity opponent = _identity.Opponent;
-            if (opponent != null && opponent.gameObject.activeInHierarchy)
-            {
-                Vector3 center = _rb.position + _direction * t.hitForwardOffset;
-                foreach (Collider hit in Physics.OverlapSphere(center, t.hitRadius))
-                {
-                    if (!_identity.IsOpponentCollider(hit)) continue;
-                    // 패리 반사 넉백이 감속에 지워지지 않게 속도를 먼저 줄여 둔다
-                    SetDashVelocity(0f);
-                    Finish(DeliverLungeHit(opponent, t));
-                    return true;
-                }
-            }
-
-            if (_phaseTime >= t.strikeExtendTime)
+            if (_phaseTime > t.strikeExtendFrames)
             {
                 // 헛펀치: 그 뒤는 예전과 같은 빗나감 처리(하드 락온 금지 딜레이)
                 Finish(null);
                 return true;
             }
+            // 뻗는 구간: 틱 끝에 판정
+            _strikeCheck = true;
             return false;
         }
 
@@ -291,14 +304,28 @@ namespace MyDongari.Game.Combat
             IsLunging = false;
             Phase = LungePhase.None;
             _selfDriven = false;
-            _cooldownUntil = -1f;
+            _cooldownFrames = 0;
+            _strikeCheck = false;
+            _awaitingResult = false;
             if (_lockOn != null) _lockOn.SetHardLockSuppressed(false);
+        }
+
+        /// <summary>명중을 상대 기록에 쌓았다: 돌진은 여기서 끝나고, 종료 알림(OnLungeEnded)은 결과가 정해질 때 한다.</summary>
+        private void FinishHit()
+        {
+            IsLunging = false;
+            Phase = LungePhase.None;
+            _selfDriven = false;
+            if (_lockOn != null) _lockOn.SetHardLockSuppressed(false);
+            if (_melee != null) _awaitingResult = true;
+            else OnLungeEnded?.Invoke(HitResult.Hit);
         }
 
         private void Finish(HitResult? result)
         {
             IsLunging = false;
             Phase = LungePhase.None;
+            _strikeCheck = false;
             if (_lockOn != null)
             {
                 _lockOn.SetHardLockSuppressed(false);

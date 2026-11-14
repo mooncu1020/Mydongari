@@ -29,14 +29,18 @@ namespace MyDongari.Game.Combat.Skills
         private ExternalControlLock _targetLock;
         private Rigidbody _selfRb;
         private ExternalControlLock _selfLock;
-        private float _cooldownTimer = 0f;
-        private float _pullTimer = 0f;
+        // 전부 전투 틱 수
+        private int _cooldownTimer;
+        private int _pullTimer;
+        // 이번 틱 끝에 파일 드라이버 판정을 상대 기록에 쌓을지
+        private bool _pilePending;
+        private Transform _pileTarget;
         private bool _pileDriverReady = false;
         public bool IsPileDriverReady => _pileDriverReady;
 
         private ClawPhase _phase = ClawPhase.Ready;
         public ClawPhase Phase => _phase;
-        private float _windupTimer;
+        private int _windupTimer;
         private Vector3 _headPosition;
         private Vector3 _flightDirection;
         private float _flownDistance;
@@ -68,6 +72,7 @@ namespace MyDongari.Game.Combat.Skills
         {
             _lockOnSystem = GetComponent<LockOnSystem>();
             _melee = GetComponent<MeleeSystem>();
+            _cooldownTimer = T.cooldownFrames;
             _identity = MechIdentity.GetOrAdd(gameObject);
             _rig = GetComponent<MechVisualRig>();
             _selfRb = GetComponent<Rigidbody>();
@@ -75,16 +80,20 @@ namespace MyDongari.Game.Combat.Skills
             if (_selfLock == null) _selfLock = gameObject.AddComponent<ExternalControlLock>();
         }
 
-        private void Update()
+        /// <summary>전투 틱마다 (MeleeSystem이 부른다): 쿨다운, 예비 동작, 클로 비행·회수, 끌어오기.</summary>
+        public void CombatTick()
         {
-            _cooldownTimer += Time.deltaTime;
+            if (_cooldownTimer < T.cooldownFrames) _cooldownTimer++;
 
             switch (_phase)
             {
                 case ClawPhase.Windup: UpdateWindup(); break;
                 case ClawPhase.Flying: UpdateFlight(); break;
                 case ClawPhase.Retracting: UpdateRetract(); break;
-                case ClawPhase.Pulling: _pullTimer += Time.deltaTime; break;
+                case ClawPhase.Pulling:
+                    _pullTimer++;
+                    UpdatePull();
+                    break;
             }
         }
 
@@ -100,7 +109,7 @@ namespace MyDongari.Game.Combat.Skills
         public void TryActivate()
         {
             if (_phase != ClawPhase.Ready) return;
-            if (_cooldownTimer < T.cooldown) return;
+            if (_cooldownTimer < T.cooldownFrames) return;
             if (_lockOnSystem == null || _lockOnSystem.Target == null) return;
             if (_melee != null && _melee.IsStunned) return;
             // V5: 공중에서는 쏠 수 없다 (땅에서 쏘면 공중의 상대도 잡아 끌어내린다 — 끌기는 3차원)
@@ -110,7 +119,7 @@ namespace MyDongari.Game.Combat.Skills
             _target = _lockOnSystem.Target;
             _targetRb = _target.GetComponent<Rigidbody>();
             _phase = ClawPhase.Windup;
-            _windupTimer = 0f;
+            _windupTimer = 0;
             OnWindupStarted?.Invoke();
         }
 
@@ -125,8 +134,8 @@ namespace MyDongari.Game.Combat.Skills
                 return;
             }
 
-            _windupTimer += Time.deltaTime;
-            if (_windupTimer >= T.windupTime) Fire();
+            _windupTimer++;
+            if (_windupTimer >= T.windupFrames) Fire();
         }
 
         private void Fire()
@@ -140,16 +149,16 @@ namespace MyDongari.Game.Combat.Skills
             _flightDirection = direction.sqrMagnitude > 0.0001f ? direction.normalized : attackForward;
             _flownDistance = 0f;
             _phase = ClawPhase.Flying;
-            _cooldownTimer = 0f;
+            _cooldownTimer = 0;
             OnFired?.Invoke();
         }
 
         private void UpdateFlight()
         {
             BernardTuning.AnchorClawValues t = T;
-            float step = Mathf.Min(t.projectileSpeed * Time.deltaTime, Mathf.Max(0f, t.range - _flownDistance));
+            float step = Mathf.Min(CombatTime.Seconds(t.projectileSpeed), Mathf.Max(0f, t.range - _flownDistance));
 
-            // 이번 프레임에 지나간 길을 클로 굵기로 훑는다 (빠른 투사체가 상대를 건너뛰지 않게)
+            // 이번 틱에 지나간 길을 클로 굵기로 훑는다 (빠른 투사체가 상대를 건너뛰지 않게)
             if (step > 0f)
             {
                 RaycastHit[] hits = Physics.SphereCastAll(_headPosition, t.hitRadius, _flightDirection, step,
@@ -219,7 +228,7 @@ namespace MyDongari.Game.Combat.Skills
         private void UpdateRetract()
         {
             Vector3 hand = LaunchPoint();
-            _headPosition = Vector3.MoveTowards(_headPosition, hand, T.retractSpeed * Time.deltaTime);
+            _headPosition = Vector3.MoveTowards(_headPosition, hand, CombatTime.Seconds(T.retractSpeed));
             if ((_headPosition - hand).sqrMagnitude < 0.0001f)
             {
                 _phase = ClawPhase.Ready;
@@ -237,7 +246,7 @@ namespace MyDongari.Game.Combat.Skills
             }
             _targetRb = _target.GetComponent<Rigidbody>();
             _phase = ClawPhase.Pulling;
-            _pullTimer = 0f;
+            _pullTimer = 0;
             _pileDriverReady = true;
 
             // 당기는 동안 상대의 이동 로직(플레이어 State머신 / AI)이 동시에
@@ -248,7 +257,7 @@ namespace MyDongari.Game.Combat.Skills
 
             // 그랩이 박히는 순간: 저항 못 하게 짧은 경직을 걸어서 "훅 하고 걸렸다"는 걸 확실히 함
             MeleeSystem targetMelee = _target.GetComponent<MeleeSystem>();
-            if (targetMelee != null) targetMelee.ApplyStun(T.hookImpactStun);
+            if (targetMelee != null) targetMelee.ApplyStun(T.hookImpactStunFrames);
 
             // 나(공격자) 쪽도 같이 잠근다. 안 그러면 이동 입력을 계속 누르고 있을 때
             // 내가 타겟 쪽으로 걸어 들어가는 게 "내가 당겨지는" 것처럼 보인다.
@@ -262,9 +271,9 @@ namespace MyDongari.Game.Combat.Skills
             OnGrabbed?.Invoke(_target.gameObject);
         }
 
-        private void FixedUpdate()
+        /// <summary>끌어오기 한 틱.</summary>
+        private void UpdatePull()
         {
-            if (_phase != ClawPhase.Pulling) return;
 
             if (_target == null || _targetRb == null)
             {
@@ -276,13 +285,13 @@ namespace MyDongari.Game.Combat.Skills
 
             // 박히는 순간엔 확 끌려오다가(hookImpactSpeed) hookEaseTime에 걸쳐 pullSpeed로 잦아듦
             BernardTuning.AnchorClawValues t = T;
-            float easeT = t.hookEaseTime > 0f ? Mathf.Clamp01(_pullTimer / t.hookEaseTime) : 1f;
+            float easeT = t.hookEaseFrames > 0 ? Mathf.Clamp01(_pullTimer / (float)t.hookEaseFrames) : 1f;
             float currentSpeed = Mathf.Lerp(t.hookImpactSpeed, t.pullSpeed, easeT);
 
             MotionBridge.SetVelocity(_targetRb, dirToMe * currentSpeed);
 
             float dist = Vector3.Distance(transform.position, _target.position);
-            if (dist < t.pullStopDistance || _pullTimer >= t.pullDuration)
+            if (dist < t.pullStopDistance || _pullTimer >= t.pullFrames)
             {
                 MotionBridge.SetVelocity(_targetRb, Vector3.zero);
                 EndPull();
@@ -313,11 +322,13 @@ namespace MyDongari.Game.Combat.Skills
                 _selfLock.Release();
             }
             _phase = ClawPhase.Ready;
-            _pullTimer = 0f;
+            _pullTimer = 0;
             _pileDriverReady = false;
+            _pilePending = false;
+            _pileTarget = null;
             _target = null;
             _targetRb = null;
-            _cooldownTimer = T.cooldown;
+            _cooldownTimer = T.cooldownFrames;
             UpdateFx();
         }
 
@@ -333,27 +344,34 @@ namespace MyDongari.Game.Combat.Skills
             _pileDriverReady = false;
             OnPileDriverStarted?.Invoke();
 
-            // 잡기 후속타라 가드·패리를 모두 무시한다 (HitInfo.PiercesGuard / IgnoresParry)
-            HitInfo info = new HitInfo
-            {
-                Type = AttackType.PileDriver,
-                Damage = T.pileDriverDamage,
-                Attacker = gameObject
-            };
-            HitResult result = MeleeSystem.DeliverHit(_target.gameObject, info);
-
-            // 넉다운 (R1): 히트스톱이 끝난 뒤 공격자 상체 방향으로 날린다. 전신 모션 기체는 히트스톱이
-            // 외형 어퍼컷이 닿는 순간(uppercutRiseTime 뒤)에 걸리므로 그만큼 기다린 뒤 + 여유
-            if (result == HitResult.Hit)
-            {
-                KnockdownController knockdown = KnockdownController.GetOrAdd(_target.gameObject);
-                BernardTuning tuning = _tuning.Get(this);
-                float delay = (MechVisualRig.HandlesPileDriverImpactOf(gameObject) ? tuning.Motion.uppercutRiseTime : 0f) + tuning.Knockdown.launchMargin;
-                knockdown.Begin(MechFacing.AttackForward(transform), delay);
-            }
-
+            // 판정은 이 틱의 끝에 상대 기록에 쌓는다 (반응은 다음 틱 상대의 정산)
+            _pilePending = true;
+            _pileTarget = _target;
             _target = null;
             return true;
+        }
+
+        /// <summary>
+        /// 틱 끝: 파일 드라이버를 상대 기록에 쌓는다. 잡기 후속타라 가드·패리를 모두 무시하고, 맞으면 공격자 상체 방향으로 넉다운(R1).
+        /// 전신 모션 기체는 외형 어퍼컷이 닿는 순간(uppercutRiseTime 뒤)에 날아가도록 그만큼 기다린다.
+        /// </summary>
+        public void CollectHits()
+        {
+            if (!_pilePending) return;
+            _pilePending = false;
+            Transform target = _pileTarget;
+            _pileTarget = null;
+            if (target == null) return;
+
+            BernardTuning tuning = _tuning.Get(this);
+            HitInfo info = _melee != null
+                ? _melee.NewHit(AttackType.PileDriver, HitKind.Strong, T.pileDriverDamage, target.gameObject)
+                : new HitInfo { Type = AttackType.PileDriver, Kind = HitKind.Strong, Damage = T.pileDriverDamage, Attacker = gameObject };
+            info.Direction = MechFacing.AttackForward(transform);
+            info.IgnoresGuard = true;
+            info.IgnoresParry = true;
+            info.LaunchDelayFrames = CombatTime.Frames((MechVisualRig.HandlesPileDriverImpactOf(gameObject) ? tuning.Motion.uppercutRiseTime : 0f) + tuning.Knockdown.launchMargin);
+            MeleeSystem.QueueHit(target.gameObject, info);
         }
 
         // ---------------- 표시 (와이어·클로 머리·손끝 발광) ----------------
@@ -385,7 +403,7 @@ namespace MyDongari.Game.Combat.Skills
                 if (_phase == ClawPhase.Windup)
                 {
                     // 손끝 발광: 예비 동작 동안 0 → glowSize로 커진다
-                    float grow = t.windupTime > 0f ? Mathf.Clamp01(_windupTimer / t.windupTime) : 1f;
+                    float grow = t.windupFrames > 0 ? Mathf.Clamp01(_windupTimer / (float)t.windupFrames) : 1f;
                     _head.localScale = Vector3.one * Mathf.Max(0.01f, t.glowSize * grow);
                     _headMaterial.color = t.glowColor;
                 }

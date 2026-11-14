@@ -59,6 +59,17 @@ namespace MyDongari.Core.VirtualOn
         /// </summary>
         bool TryGetAutoTurnToOpponent(out float insideRateUnits, out float outsideRateUnits);
 
+        // ---- 전투 (전투 사양서 4.2) ----
+        /// <summary>
+        /// 기체 한 대 갱신의 "피격 정산" 자리: 상대 관계·자동 선회 뒤, 상태 본 처리 전에 한 번.
+        /// 호스트가 여기서 피격을 적용하고(반응 상태로 바꿀 수 있다) 전투 입력을 처리한다.
+        /// </summary>
+        void SettleHits(VoMotor motor);
+        /// <summary>히트스톱 중인지. 그 틱은 상태 보조·본 처리와 이동 적분을 건너뛴다(모션·수평 이동·중력 정지). 입력 카운터는 계속 돈다.</summary>
+        bool IsHitStopped { get; }
+        /// <summary>틱 끝 (이동 적분 뒤): 히트스톱 카운트 등.</summary>
+        void EndTick(VoMotor motor);
+
         // ---- 상대·충돌 ----
         /// <summary>상대 기체 (없으면 null).</summary>
         Transform Opponent { get; }

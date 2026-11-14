@@ -74,6 +74,20 @@ namespace MyDongari.Bridge
             return Melee != null && Melee.IsGuarding;
         }
 
+        // ---- 전투 ----
+        /// <summary>이동기 틱 안의 "피격 정산" 자리: 전투 허브의 한 틱 (피격 적용 → 가드·패리 → 스킬·공격 입력 → 공격 진행).</summary>
+        public void SettleHits(VoMotor motor)
+        {
+            if (Melee != null && Melee.isActiveAndEnabled) Melee.CombatTick();
+        }
+
+        public bool IsHitStopped => Melee != null && Melee.IsHitStopped;
+
+        public void EndTick(VoMotor motor)
+        {
+            if (Melee != null && Melee.isActiveAndEnabled) Melee.EndTick();
+        }
+
         // ---- 상대·충돌 ----
         public Transform Opponent
         {

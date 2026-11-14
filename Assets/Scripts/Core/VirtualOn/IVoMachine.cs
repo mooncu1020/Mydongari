@@ -23,17 +23,16 @@ namespace MyDongari.Core.VirtualOn
         bool IsTackleCharged { get; }
         float TackleChargePower { get; }
         void Reset();
-        /// <summary>공격 중이 아니면 차징 시간을 센다 (대시 경과).</summary>
-        void TickCharge(float dt);
+        /// <summary>공격 중이 아니면 차징 시간을 센다 (대시 경과 틱).</summary>
+        void TickCharge();
         /// <summary>공격 요청. 받아들이면 true.</summary>
         bool Request();
         /// <summary>한 틱. heading은 유도가 바꿀 수 있다. stop = 이번 틱 멈춤.</summary>
-        VoDashAttackResult Tick(float dt, ref Vector3 heading, float speedMps, float snappedAngle, out bool stop);
+        VoDashAttackResult Tick(ref Vector3 heading, float speedMps, float snappedAngle, out bool stop);
         /// <summary>대시가 공격 도중에 끝났으면 판정 없이 취소.</summary>
         void CancelIfAttacking();
         /// <summary>맞딜로 소진.</summary>
         void ConsumeByClash();
-        bool WouldHitWithin(float seconds, Vector3 heading, float speedMps);
     }
 
     /// <summary>

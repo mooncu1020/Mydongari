@@ -118,17 +118,17 @@ namespace MyDongari.Game.Knockdown
             if (IsKnockedDown && _controller != null) _controller.RequestDamping(0f, priority: 100);
         }
 
-        private void FixedUpdate()
+        /// <summary>전투 틱마다 (MeleeSystem이 부른다). 틱 길이는 1/60초 고정.</summary>
+        public void CombatTick()
         {
             if (!IsKnockedDown || _rb == null) return;
             BernardTuning.KnockdownValues k = K;
-            float dt = Time.fixedDeltaTime;
+            const float dt = 1f / 60f;
             if (_controller == null) OverrideDamping();
 
             switch (Phase)
             {
                 case KnockPhase.Pending:
-                    // 히트스톱(timeScale 0) 동안은 이 함수가 아예 안 불리니 대기가 히트스톱 뒤로 밀린다
                     SetHorizontalVelocity(Vector3.zero);
                     _phaseTime += dt;
                     if (_phaseTime >= _launchDelay - PhaseEpsilon) Launch(k);

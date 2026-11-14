@@ -68,7 +68,13 @@ namespace MyDongari.Bridge
         /// <summary>상태가 돌고 있는지 (사망하면 꺼진다). 이동기가 본다.</summary>
         public bool StatesEnabled => enabled;
         /// <summary>지상 대시가 쓸 대시 공격 진행기 (우리 대시 어택·차징 태클).</summary>
-        public IVoDashAttack CreateDashAttack() => new DashAttackRunner(this);
+        public IVoDashAttack CreateDashAttack()
+        {
+            DashAttack = new DashAttackRunner(this);
+            return DashAttack;
+        }
+        /// <summary>지상 대시의 대시 공격 진행기 (전투 허브가 틱 끝 판정을 부른다).</summary>
+        public DashAttackRunner DashAttack { get; private set; }
 
         /// <summary>
         /// 외형·연출용 "대시 모션 중" (V8.2): IsDashing + 앞 대시에서 바뀐 근접 스텝. 전환할 때 호버 활주·숙임·불꽃이 끊기지 않게.
@@ -176,15 +182,14 @@ namespace MyDongari.Bridge
         }
 
         /// <summary>
-        /// 착지: 경직이 필요하면(점프·공중 대시·공중 피격) landingLag(0.2초) 동안 LandingState.
+        /// 착지: 경직이 필요하면(점프·공중 대시·공중 피격) 착지 단계(VoSpec.landingFrames, 12f) 동안 LandingState.
         /// 그냥 떨어진 착지는 경직 없이 바로 걷기·서기 (먼지·흔들림은 둘 다).
         /// </summary>
         public void Land(bool needsLag)
         {
-            BernardTuning.MovementValues m = MechController.Tuning.Movement;
-            float duration = needsLag ? m.landingLag : 0f;
+            int duration = needsLag ? Motor.V.landingFrames : 0;
             LandingState.Prepare(duration);
-            if (duration > 0f) ChangeState(LandingState);
+            if (duration > 0) ChangeState(LandingState);
             else ToStandOrWalk();
         }
 
@@ -259,11 +264,12 @@ namespace MyDongari.Bridge
             if (_currentState == newState) OnStateChanged?.Invoke(newState);
         }
 
-        private void Update()
+        /// <summary>
+        /// 넉다운이 시작되면 어느 상태에서든 넉다운 상태로 (입력 무시, 속도는 KnockdownController가). 전투 틱의 정산 단계에서 부른다.
+        /// </summary>
+        public void SyncKnockdownState()
         {
-            // 넉다운이 시작되면 어느 상태에서든 넉다운 상태로 (입력 무시, 속도는 KnockdownController가).
-            // 상태 자체는 MechMotor의 60Hz 틱에서 돈다
-            if (IsKnockedDown && !(_currentState is KnockdownState)) ChangeState(KnockdownState);
+            if (enabled && IsKnockedDown && !(_currentState is KnockdownState)) ChangeState(KnockdownState);
         }
     }
 }

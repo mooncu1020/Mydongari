@@ -208,6 +208,9 @@ namespace MyDongari.Core.VirtualOn
         public float hoverGain = 0.1f;
         public float hoverMaxVy = -0.01f;
 
+        /// <summary>착지 단계 길이 [4.6]. 끝나면 서기.</summary>
+        public int landingFrames = 12;
+
         // ---- 공중 대시 [4.7] ----
         /// <summary>상승 중(vy > 0) 중력 배율.</summary>
         public float airDashRisingGravityScale = 0.5f;

@@ -169,7 +169,7 @@ namespace MyDongari.Game.Visual
         {
             get
             {
-                float startup = _tackleType == AttackType.Tackle ? Startup.chargedTackle : Startup.dashAttack;
+                float startup = CombatTime.Seconds(_tackleType == AttackType.Tackle ? Startup.chargedTackleFrames : Startup.dashAttackFrames);
                 return startup > 0f ? startup : V.anticipationTime;
             }
         }

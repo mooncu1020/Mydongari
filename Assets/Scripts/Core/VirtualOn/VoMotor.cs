@@ -6,7 +6,8 @@ namespace MyDongari.Core.VirtualOn
 {
     /// <summary>
     /// V8 버추얼온식 이동기 본체 (docs/REFERENCE_MOVEMENT.md, 계획 docs/PLAN_V8.md). 기체마다 하나, MechController가 붙인다.
-    /// 60Hz 고정 틱(VoTickDriver)에서 한 틱: 입력 → 상태 보조 → 상대 관계 → 자동 선회 → 수평 속력 0 → 상태 메인 → 이동 적분.
+    /// 60Hz 고정 틱(VoTickDriver)에서 한 틱 (전투 사양서 4.2): 입력 → 상태 보조 → 상대 관계 → 자동 선회 → 피격 정산(호스트)
+    /// → 수평 속력 0 → 상태 메인 → 이동 적분 → 틱 끝(호스트: 히트스톱 카운트). 히트스톱 중인 틱은 상태·이동을 건너뛴다.
     /// 위치는 "위치 += 속도"로 직접 옮기고 리지드바디는 키네마틱(MovePosition, 보간 켬) — 충돌은 캐스트·겹침 판정에만 쓴다.
     /// 거리·속도 수치는 원본 단위(u, u/f)로 받고 1u = 기체 키 / 22(렌더러로 잼)로 바꾼다. 수치 = VoSpec(원본값) + StyleOverrides(우리 값).
     /// 전투가 미는 것(넉백·넉다운·런지·앵커 클로·몸 충돌)은 외부 속도(MotionBridge)로 들어와, 그동안은 상태 대신 그 속도로 움직인다.
@@ -398,15 +399,24 @@ namespace MyDongari.Core.VirtualOn
             bool machineOn = StateMachine.StatesEnabled;
             _externalMode = Host.IsExternalMode;
 
+            // 히트스톱 중: 모션·수평 이동·중력이 멈춘다 (전투 사양서 2.4). 입력 카운터·무적은 계속 돈다
+            bool frozen = Host.IsHitStopped;
+
             // 상태 보조 (중력·일부 y 적분·대시 게이지 가산·대시 정지 입력)
-            if (machineOn && !_externalMode && vo != null) vo.Aux();
+            if (machineOn && !_externalMode && vo != null && !frozen) vo.Aux();
 
             UpdateOpponentRelation();
             // 공용: 대시 게이지 −200/f
             DashGauge = Mathf.Max(0f, DashGauge - V.gaugeDecay);
 
-            if (!_externalMode) UpdateAutoTurn();
+            if (!_externalMode && !frozen) UpdateAutoTurn();
             UpdateCameraYaw();
+
+            // 피격 정산 (전투 사양서 4.2-②-4): 호스트가 피격을 적용하고 전투 입력을 처리한다. 여기서 상태가 바뀔 수 있다
+            Host.SettleHits(this);
+            // 이번 틱에 맞아 히트스톱이 걸렸으면 이 틱부터 멈춘다
+            frozen = Host.IsHitStopped;
+            machineOn = StateMachine.StatesEnabled;
 
             HorizontalSpeed = 0f;
             MoveDirection = Forward;
@@ -414,7 +424,7 @@ namespace MyDongari.Core.VirtualOn
             // 상태가 Aux에서 바뀌었을 수 있다
             state = StateMachine.CurrentState;
             vo = state as VoState;
-            if (machineOn)
+            if (machineOn && !frozen)
             {
                 if (vo != null)
                 {
@@ -432,11 +442,15 @@ namespace MyDongari.Core.VirtualOn
             if (_externalMode && !external) LeaveExternal();
             _externalMode = external;
 
-            if (_externalMode) IntegrateExternal();
-            else IntegrateLocomotion(StateMachine.CurrentState as VoState);
+            if (!frozen)
+            {
+                if (_externalMode) IntegrateExternal();
+                else IntegrateLocomotion(StateMachine.CurrentState as VoState);
+            }
 
             Velocity = (_position - start) / Dt;
             Commit();
+            Host.EndTick(this);
 
             if (debugLog && StateMachine.CurrentState is VoState now && now != _lastLoggedState)
             {

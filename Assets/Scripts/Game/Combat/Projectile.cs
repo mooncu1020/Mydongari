@@ -91,10 +91,11 @@ namespace MyDongari.Game.Combat
                 HitInfo info = new HitInfo
                 {
                     Type = AttackType.Projectile,
+                    Kind = HitKind.Shot,
                     Damage = damage,
                     Attacker = _owner.gameObject
                 };
-                MeleeSystem.DeliverHit(victim, info);
+                MeleeSystem.QueueHit(victim, info);
                 Destroy(gameObject);
             }
         }

@@ -65,16 +65,33 @@ namespace MyDongari.Game.Combat
             }
         }
 
-        private void Update()
+        private int _lastAttackPressCount;
+        private int _lastSkill1PressCount;
+        private int _lastSkill2PressCount;
+
+        /// <summary>버튼을 지난 틱 뒤에 새로 눌렀는지 (누름 횟수로 — 틱과 화면 프레임이 어긋나도 놓치지 않는다).</summary>
+        private static bool ConsumePress(int count, ref int last)
         {
-            if (GameManager.Instance != null && !GameManager.Instance.IsRoundActive)
+            bool pressed = count != last;
+            last = count;
+            return pressed;
+        }
+
+        /// <summary>전투 틱마다 (MeleeSystem이 부른다): 스킬·공격 버튼의 새 입력을 읽고 공격을 고른다.</summary>
+        public void CombatTick(bool roundActive)
+        {
+            bool attackPressed = ConsumePress(_inputReader.AttackPressCount, ref _lastAttackPressCount);
+            bool skill1Pressed = ConsumePress(_inputReader.Skill1PressCount, ref _lastSkill1PressCount);
+            bool skill2Pressed = ConsumePress(_inputReader.Skill2PressCount, ref _lastSkill2PressCount);
+
+            if (!roundActive)
             {
                 // 카운트다운·메뉴 중에 눌러 둔 입력이 FIGHT 순간 튀어나가지 않게
                 _attackBuffer.Clear();
                 return;
             }
 
-            _fireTimer += Time.deltaTime;
+            _fireTimer += 1f / CombatTime.TickRate;
 
             // 넉다운 중엔 공격·스킬 입력을 무시한다 (버퍼에도 안 남김)
             if (_meleeSystem != null && _meleeSystem.IsKnockedDown)
@@ -83,30 +100,17 @@ namespace MyDongari.Game.Combat
                 return;
             }
 
-            // V5: 공중·착지 경직 중엔 공격·스킬 입력 무시 (공중 공격은 6단계). 버퍼에도 안 남긴다
+            // V5: 공중·착지 경직 중엔 공격·스킬 입력 무시. 버퍼에도 안 남긴다
             if (_stateMachine != null && (_stateMachine.IsAirborne || _stateMachine.IsLanding))
             {
                 _attackBuffer.Clear();
                 return;
             }
 
-            if (_inputReader.Skill1Input)
-            {
-                if (_anchorClaw != null)
-                {
-                    _anchorClaw.TryActivate();
-                }
-            }
+            if (skill1Pressed && _anchorClaw != null) _anchorClaw.TryActivate();
+            if (skill2Pressed && _impactSlam != null) _impactSlam.TryActivate();
 
-            if (_inputReader.Skill2Input)
-            {
-                if (_impactSlam != null)
-                {
-                    _impactSlam.TryActivate();
-                }
-            }
-
-            HandleAttackButton();
+            HandleAttackButton(attackPressed);
         }
 
         /// <summary>
@@ -115,9 +119,9 @@ namespace MyDongari.Game.Combat
         /// 무엇을 낼지는 그 프레임 상황으로 다시 정한다.
         /// 예외: 사격 기체(Projectile 모드)의 원거리 사격만 누르고 있으면 연사 (버나드 로케 범위 밖).
         /// </summary>
-        private void HandleAttackButton()
+        private void HandleAttackButton(bool attackPressed)
         {
-            if (_inputReader.AttackPressedThisFrame) _attackBuffer.Press();
+            if (attackPressed) _attackBuffer.Press();
 
             if (rangedMode == RangedMode.Projectile && IsRangedContext())
             {
@@ -126,7 +130,7 @@ namespace MyDongari.Game.Combat
                 return;
             }
 
-            float bufferTime = _tuning.Get(this).Startup.inputBuffer;
+            int bufferTime = CombatTime.Frames(_tuning.Get(this).Startup.inputBuffer);
             _discardAttackInput = false;
             bool startedAttack = _attackBuffer.Tick(bufferTime, TryStartAttack, out AttackType started, out bool fromBuffer);
             // V9f: 런지 쿨다운 중에 누른 공격은 버린다 — 버퍼에 남겨 두면 그 사이 상대가 6m 안에 들어왔을 때 펀치로 바뀌어 나간다

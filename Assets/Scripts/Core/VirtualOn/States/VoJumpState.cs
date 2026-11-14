@@ -280,7 +280,6 @@ namespace MyDongari.Core.VirtualOn.States
         public bool IsInStartup => false;
         public bool IsAirborne => true;
         public bool RequestTackle() => false;
-        public bool WouldHitWithin(float seconds) => false;
         public void EndByClash() => Fall(DashExitReason.Tackle, Motor.Vy);
         public void EndByKnockback() => Fall(DashExitReason.Other, Motor.Vy);
         public void EndByBump() => Fall(DashExitReason.Bump, Motor.Vy);

@@ -22,8 +22,6 @@ namespace MyDongari.Core.VirtualOn
         bool IsAirborne { get; }
         /// <summary>공격 버튼으로 대시 어택·태클 요청. 받아들이면 true.</summary>
         bool RequestTackle();
-        /// <summary>맞딜 판정용: seconds 안에 상대를 맞힐 상황인지.</summary>
-        bool WouldHitWithin(float seconds);
         /// <summary>대시 공격끼리 맞딜로 끝남.</summary>
         void EndByClash();
         /// <summary>넉백을 받아 끝남.</summary>

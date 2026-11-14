@@ -189,6 +189,22 @@ namespace MyDongari.Game.Bot
 
         // ---------------- 매 프레임 ----------------
 
+        private int _lastAttackPressCount;
+
+        /// <summary>전투 틱마다 (MeleeSystem이 부른다): 봇이 누른 공격 버튼을 플레이어와 같은 입력 버퍼·같은 틱으로 처리한다.</summary>
+        public void CombatTick()
+        {
+            int count = _botInput.AttackPressCount;
+            bool pressed = count != _lastAttackPressCount;
+            _lastAttackPressCount = count;
+            if (!CanAct())
+            {
+                _attackBuffer.Clear();
+                return;
+            }
+            UpdateAttackInput(pressed);
+        }
+
         private void Update()
         {
             // 상대는 GameManager가 Awake 이후·모드 전환 때 연결하니 매 프레임 참조를 갱신
@@ -238,15 +254,13 @@ namespace MyDongari.Game.Bot
                     UpdateParrier();
                     break;
             }
-
-            UpdateAttackInput();
         }
 
-        /// <summary>이번 프레임 누른 공격 버튼 + 버퍼에 남은 입력을 플레이어와 같은 규칙으로 처리.</summary>
-        private void UpdateAttackInput()
+        /// <summary>이번 틱에 누른 공격 버튼 + 버퍼에 남은 입력을 플레이어와 같은 규칙으로 처리.</summary>
+        private void UpdateAttackInput(bool pressed)
         {
-            if (_botInput.AttackPressedThisFrame) _attackBuffer.Press();
-            float bufferTime = _tuning.Get(this).Startup.inputBuffer;
+            if (pressed) _attackBuffer.Press();
+            int bufferTime = CombatTime.Frames(_tuning.Get(this).Startup.inputBuffer);
             _discardAttackInput = false;
             bool startedAttack = _attackBuffer.Tick(bufferTime, TryStartAttack, out AttackType started, out bool fromBuffer);
             // V9f: 플레이어와 같게 — 런지 쿨다운 중에 누른 공격은 버린다 (나중에 펀치로 바뀌어 나가지 않게)
@@ -422,7 +436,7 @@ namespace MyDongari.Game.Bot
             BernardTuning opponentTuning = TuningOf(_watchedOpponent);
             BernardTuning.AttackStartupValues startup = opponentTuning.Startup;
             float hitIn = type == AttackType.Punch ? startup.punch
-                : type == AttackType.Tackle ? startup.chargedTackle : startup.dashAttack;
+                : CombatTime.Seconds(type == AttackType.Tackle ? startup.chargedTackleFrames : startup.dashAttackFrames);
             // V4: 대시 어택·태클은 발생 시간 뒤 돌진해서 닿을 때 맞는다 — 남은 거리를 대시 속도로 나눈 만큼 늦다
             if (type != AttackType.Punch && _player != null)
             {
@@ -430,7 +444,7 @@ namespace MyDongari.Game.Bot
                 float distance = Vector3.Distance(transform.position, _player.position);
                 hitIn += Mathf.Max(0f, distance - reach) / Mathf.Max(0.1f, opponentTuning.Movement.dashSpeed.front);
             }
-            float window = _tuning.Get(this).Parry.window;
+            float window = CombatTime.Seconds(_tuning.Get(this).Parry.windowFrames);
             _pendingGuardTime = Time.time + Mathf.Max(reactionTime, hitIn - window * 0.5f);
         }
 
@@ -461,7 +475,7 @@ namespace MyDongari.Game.Bot
             if (lunge.judgeMode == BernardTuning.LungeJudgeMode.StrikeAtRange)
             {
                 // 새 방식(M4): 타격 거리까지 돌진 → 앞발 박기 → 뻗는 첫 순간에 맞는다
-                eta = Mathf.Max(0f, distance - lunge.strikeDistance) / speed + lunge.plantTime;
+                eta = Mathf.Max(0f, distance - lunge.strikeDistance) / speed + CombatTime.Seconds(lunge.plantFrames);
             }
             else
             {
@@ -469,7 +483,7 @@ namespace MyDongari.Game.Bot
                 float reach = lunge.hitForwardOffset + lunge.hitRadius;
                 eta = Mathf.Max(0f, distance - reach) / speed;
             }
-            float window = _tuning.Get(this).Parry.window;
+            float window = CombatTime.Seconds(_tuning.Get(this).Parry.windowFrames);
             _pendingGuardTime = Time.time + Mathf.Max(reactionTime, eta - window * 0.5f);
         }
 

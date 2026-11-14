@@ -28,22 +28,18 @@ namespace MyDongari.Game.Tuning
             public VoDirectional dashSpeed = new VoDirectional(24.1f, 22.7f, 22.3f, 21.3f, 14.2f);
 
             [Header("넉백·몸 충돌")]
-            [Tooltip("넉백을 받은 뒤 이 시간(초) 동안은 이동 상태가 속도를 덮어쓰지 않는다 (넉백이 지워지지 않게)")]
-            public float knockbackMoveHold = 0.35f;
+            [Tooltip("넉백(맞딜·패리 반사·몸 충돌)을 받은 뒤 이 틱 동안은 이동 상태가 속도를 덮어쓰지 않는다 (넉백이 지워지지 않게). 21f = 0.35초")]
+            public int knockbackMoveHoldFrames = 21;
             [Tooltip("공격 없이 대시로 상대 몸에 부딪혔을 때 둘이 서로 밀려나는 속도(m/s). 피해 없음")]
             public float bumpSpeed = 4f;
 
             [Header("대시 어택")]
-            [Tooltip("대시 공격을 쓰고 끝난 뒤 경직(초), 대시 방향별: 앞 / 앞대각 / 옆 / 뒤대각 / 뒤. 차징 태클은 Tackle.recoveryStun")]
-            public VoDirectional dashAttackRecovery = new VoDirectional(0.2f, 0.22f, 0.23f, 0.27f, 0.3f);
+            [Tooltip("대시 공격을 쓰고 끝난 뒤 경직(틱), 대시 방향별: 앞 / 앞대각 / 옆 / 뒤대각 / 뒤. 차징 태클은 Tackle.recoveryFrames")]
+            public VoDirectional dashAttackRecoveryFrames = new VoDirectional(12f, 13f, 14f, 16f, 18f);
 
             [Header("조작")]
             [Tooltip("마우스 좌우 이동량 1당 몸 회전(°). 키보드·마우스 예비 조작용")]
             public float mouseTurnSensitivity = 2f;
-
-            [Header("착지 (V5)")]
-            [Tooltip("점프·공중 대시·공중 피격 뒤 착지 경직(초). 이동·공격·대시·점프·가드 불가")]
-            public float landingLag = 0.2f;
 
             [Header("접지 판정 (V5: Walkable 레이어 + 위를 향한 면)")]
             [Tooltip("이 값 이상 위를 향한 면(법선 y)만 땅. 경사가 이보다 가파르면 벽")]
@@ -103,12 +99,10 @@ namespace MyDongari.Game.Tuning
         {
             [Tooltip("버튼을 누른 뒤 펀치 판정까지(초). 이 동안 예비 동작이 보인다. 0이면 누른 프레임에 즉시 판정")]
             public float punch = 0.1f;
-            [Tooltip("대시 어택(대시 0.8초 미만 어깨 태클) 발생 시간(초). 0이면 즉시")]
-            public float dashAttack = 0.12f;
-            [Tooltip("차징 태클(대시 0.8초 이상) 발생 시간(초). 0이면 즉시")]
-            public float chargedTackle = 0.1f;
-            [Tooltip("양쪽 펀치의 판정 시점이 이 시간(초) 이내면 맞딜")]
-            public float clashWindow = 0.1f;
+            [Tooltip("대시 어택(대시 48f 미만) 발생 시간(틱). 0이면 즉시")]
+            public int dashAttackFrames = 7;
+            [Tooltip("차징 태클(대시 48f 이상) 발생 시간(틱). 0이면 즉시")]
+            public int chargedTackleFrames = 6;
             [Tooltip("공격 버튼 입력 버퍼(초). 쿨다운·발생 시간·런지·스턴 등으로 지금 못 나가는 공격은 이 시간 동안 기억했다가 가능해지는 순간 발동")]
             public float inputBuffer = 0.15f;
         }
@@ -124,8 +118,8 @@ namespace MyDongari.Game.Tuning
             public float heatPerBlock = 10f;
             [Tooltip("과열 상태에서 가드로 받으면 가드가 깨지고 이 시간(초) 동안 스턴")]
             public float breakStun = 0.9f;
-            [Tooltip("가드를 내린 뒤 다시 올릴 수 있을 때까지 대기(초). 패리 성공 직후엔 면제")]
-            public float reraiseDelay = 0.4f;
+            [Tooltip("가드를 내린 뒤 다시 올릴 수 있을 때까지 대기(틱). 패리 성공 직후엔 면제")]
+            public int reraiseDelayFrames = 24;
             [Tooltip("가드 중 리지드바디 감속. 방어 자세로 버티는 느낌")]
             public float damping = 8f;
             [Tooltip("가드를 내렸을 때 돌아갈 일반 이동 감속")]
@@ -135,8 +129,8 @@ namespace MyDongari.Game.Tuning
         [Serializable]
         public class ParryValues
         {
-            [Tooltip("가드를 올린 순간부터 이 시간(초) 안에 맞으면 패리")]
-            public float window = 0.15f;
+            [Tooltip("가드를 새로 누른 틱부터 이 틱 수 안에 맞으면 패리 (9f = 0.15초)")]
+            public int windowFrames = 9;
             [Tooltip("런지·태클·대시 어택을 패리하면 공격자가 그 공격 피해의 이 비율만큼 받는다")]
             public float reflectRatio = 1f;
             [Tooltip("반사 넉백 힘. 공격 자체에 넉백 값이 있으면 그 값을 쓰고, 없을 때만 이 값")]
@@ -154,24 +148,24 @@ namespace MyDongari.Game.Tuning
             public float range = 5f;
             [Tooltip("태클 판정 부채꼴 반각(°). 대시 어택·자동 접촉 태클 공통")]
             public float halfAngle = 45f;
-            [Tooltip("태클·대시 어택 재사용 대기(초)")]
-            public float cooldown = 1f;
+            [Tooltip("태클·대시 어택 재사용 대기(틱)")]
+            public int cooldownFrames = 60;
             [Tooltip("차징 태클을 그대로 맞은 상대의 스턴(초)")]
             public float victimStun = 1.7f;
-            [Tooltip("태클을 부딪친 뒤(또는 헛친 뒤) 공격자 자신의 경직(초). 패리당했을 땐 적용 안 함")]
-            public float recoveryStun = 0.5f;
+            [Tooltip("태클을 부딪친 뒤(또는 헛친 뒤) 공격자 자신의 경직(틱). 패리당했을 땐 풀린다")]
+            public int recoveryFrames = 30;
 
             [Header("차징 (V6.1: 대시 시간표에 맞춤)")]
-            [Tooltip("대시 경과가 이 시간(초) 이상일 때 공격하면 차징 태클 (미만은 유도 대시 어택). V6.1에서 1.5 → 0.8 (이름을 바꿔 예전 에셋 값 1.5를 안 읽음)")]
-            public float dashChargeStartTime = 0.8f;
-            [Tooltip("대시 경과가 이 시간(초)이면 차징 최대 (피해·넉백 2배). V6.1에서 3 → 1.6")]
-            public float dashFullChargeTime = 1.6f;
+            [Tooltip("대시 경과가 이 틱 이상일 때 공격하면 차징 태클 (미만은 유도 대시 어택). 48f = 0.8초")]
+            public int dashChargeStartFrames = 48;
+            [Tooltip("대시 경과가 이 틱이면 차징 최대 (피해 2배). 96f = 1.6초")]
+            public int dashFullChargeFrames = 96;
             [Tooltip("차징 상태로 이 거리(m) 안에 상대가 정면으로 닿으면 자동 태클")]
             public float contactRadius = 2f;
 
             [Header("돌진 판정 (V4: 직선)")]
-            [Tooltip("발생 시간 뒤 이 시간(초) 동안 직선으로 돌진하며 닿으면 판정. 못 닿으면 빗나감(recoveryStun 경직)")]
-            public float activeTime = 0.4f;
+            [Tooltip("발생 시간 뒤 이 틱 동안 직선으로 돌진하며 닿으면 판정. 못 닿으면 빗나감(recoveryFrames 경직)")]
+            public int activeFrames = 24;
             [Tooltip("두 기체 중심 거리가 이 값(m) 안이면 닿은 것으로 보고 판정(정면 ±halfAngle도 만족해야 함)")]
             public float hitDistance = 3f;
         }
@@ -190,8 +184,8 @@ namespace MyDongari.Game.Tuning
             public float homingRange = 25f;
             [Tooltip("따라갈 때 꺾는 최대 속도(°/초). 클수록 잘 따라가고, 작을수록 사이드스텝으로 피하기 쉽다")]
             public float homingTurnRate = 120f;
-            [Tooltip("발생 시간 뒤 이 시간(초) 동안 돌진하며 닿으면 판정, 못 닿으면 빗나감 경직. V3.1: 최대 0.6초로 제한 (30m/s × 0.6초 = 18m)")]
-            [Range(0.05f, 0.6f)] public float activeTime = 0.6f;
+            [Tooltip("발생 시간 뒤 이 틱 동안 돌진하며 닿으면 판정, 못 닿으면 빗나감 경직 (36f = 0.6초)")]
+            public int activeFrames = 36;
             [Tooltip("두 기체 중심 거리가 이 값(m) 안이면 닿은 것으로 보고 판정")]
             public float hitDistance = 3f;
         }
@@ -214,10 +208,10 @@ namespace MyDongari.Game.Tuning
             public float strikeDistance = 2.5f;
             [Tooltip("새 방식: 돌진 방향 기준 이 각도(°, 반각) 안에 있어야 정면으로 본다")]
             public float strikeHalfAngle = 45f;
-            [Tooltip("새 방식: 앞발 박기 시간(초). 이 동안은 판정 없음")]
-            public float plantTime = 0.08f;
-            [Tooltip("새 방식: 주먹이 뻗는 시간(초). 판정은 이 구간에만 (명중 판정 구는 아래 '명중' 수치 그대로)")]
-            public float strikeExtendTime = 0.1f;
+            [Tooltip("새 방식: 앞발 박기(틱). 이 동안은 판정 없음")]
+            public int plantFrames = 5;
+            [Tooltip("새 방식: 주먹이 뻗는 틱 수. 판정은 이 구간에만 (명중 판정 구는 아래 '명중' 수치 그대로)")]
+            public int strikeExtendFrames = 6;
             [Tooltip("새 방식: 박기·뻗기 동안 리지드바디 감속 (돌진 끝 속도에서 멈춰 서는 빠르기)")]
             public float strikeStopDamping = 10f;
 
@@ -230,8 +224,8 @@ namespace MyDongari.Game.Tuning
             [Range(0f, 1f)] public float endSpeedRatio = 0.2f;
             [Tooltip("벽 등에 막혀 거리를 못 채울 때를 대비한 최대 돌진 시간 = (거리/속도) × 이 배수")]
             public float timeoutMultiplier = 1.5f;
-            [Tooltip("런지 쿨다운(초, V9f): 런지를 시작한 순간부터 이 시간 동안 다시 못 쓴다. 쿨다운 중 공격 입력은 버린다(펀치로도 안 바뀜)")]
-            public float cooldown = 3f;
+            [Tooltip("런지 쿨다운(틱, V9f): 런지를 시작한 순간부터 이 틱 동안 다시 못 쓴다 (180f = 3초). 쿨다운 중 공격 입력은 버린다(펀치로도 안 바뀜)")]
+            public int cooldownFrames = 180;
 
             [Header("명중")]
             [Tooltip("명중 피해 (펀치보다 약간 낮게)")]
@@ -254,16 +248,16 @@ namespace MyDongari.Game.Tuning
         public class AnchorClawValues
         {
             public float pullSpeed = 15f;
-            [Tooltip("최대 당김 시간(초)")]
-            public float pullDuration = 1.5f;
+            [Tooltip("최대 당김 시간(틱)")]
+            public int pullFrames = 90;
             [Tooltip("상대가 이 거리(m) 안으로 끌려오면 당김 종료")]
             public float pullStopDistance = 3f;
-            [Tooltip("쿨다운(초). 클로가 손을 떠난 순간(예비 동작 끝)부터 센다")]
-            public float cooldown = 5f;
+            [Tooltip("쿨다운(틱, 300f = 5초). 클로가 손을 떠난 순간(예비 동작 끝)부터 센다")]
+            public int cooldownFrames = 300;
 
             [Header("발사 (투사체 — 유도 없음, 발사 순간 상대 위치로 일직선)")]
-            [Tooltip("예비 동작(초): 팔을 뒤로 당기고 손끝이 빛난다. 이 동안 스턴되면 취소(쿨다운 안 씀)")]
-            public float windupTime = 0.2f;
+            [Tooltip("예비 동작(틱): 팔을 뒤로 당기고 손끝이 빛난다. 이 동안 스턴되면 취소(쿨다운 안 씀)")]
+            public int windupFrames = 12;
             [Tooltip("클로가 날아가는 속도(m/s)")]
             public float projectileSpeed = 40f;
             [Tooltip("사거리(m). 손에서 이만큼 날아가도 못 맞으면 빗나감")]
@@ -287,10 +281,10 @@ namespace MyDongari.Game.Tuning
             [Header("훅 연출")]
             [Tooltip("그랩이 박히는 순간 확 끌려오는 초기 속도. pullSpeed보다 커야 '훅' 느낌이 남")]
             public float hookImpactSpeed = 32f;
-            [Tooltip("초기 훅 속도에서 pullSpeed로 줄어드는 데 걸리는 시간(초)")]
-            public float hookEaseTime = 0.2f;
-            [Tooltip("그랩이 박히는 순간 상대에게 거는 짧은 경직(초)")]
-            public float hookImpactStun = 0.25f;
+            [Tooltip("초기 훅 속도에서 pullSpeed로 줄어드는 데 걸리는 틱")]
+            public int hookEaseFrames = 12;
+            [Tooltip("그랩이 박히는 순간 상대에게 거는 짧은 경직(틱)")]
+            public int hookImpactStunFrames = 15;
 
             [Header("파일드라이버 (가드·패리 관통)")]
             public float pileDriverDamage = 50f;
@@ -363,7 +357,8 @@ namespace MyDongari.Game.Tuning
             public float knockback = 15f;
             [Tooltip("넉백 방향의 위쪽 성분. 클수록 더 띄운다")]
             public float knockbackLift = 0.3f;
-            public float cooldown = 8f;
+            [Tooltip("쿨다운(틱, 480f = 8초)")]
+            public int cooldownFrames = 480;
         }
 
         [Serializable]

@@ -207,7 +207,7 @@ namespace MyDongari.Game.Feedback
                 {
                     Play(anchorHitClip);
                     BernardTuning values = tuning != null ? tuning.Values : BernardTuning.Fallback;
-                    if (values.AnchorClaw.hookImpactStun > 0f) OnGrabbed(target);
+                    if (values.AnchorClaw.hookImpactStunFrames > 0) OnGrabbed(target);
                 }, "CombatFeedback.onGrab");
                 Action onFire = () => ErrorLog.Run(() => Play(anchorFireClip), "CombatFeedback.onClawFire");
                 Action onMiss = () => ErrorLog.Run(() => Play(anchorMissClip), "CombatFeedback.onClawMiss");
@@ -438,7 +438,7 @@ namespace MyDongari.Game.Feedback
                     // 전신 모션 기체의 파일 드라이버는 외형 타격 순간(OnMotionImpact)에 낸다
                     else if (info.Type == AttackType.PileDriver && !MechVisualRig.HandlesPileDriverImpactOf(info.Attacker)) Play(pileDriverHitClip);
                     // 그대로 맞아서 스턴이 걸린 경우만 STUN (런지·차징 태클 등). 자기 경직은 이 경로로 오지 않는다
-                    if (info.StunDuration > 0f) Popup(fb, stunLabel, stunColor);
+                    if (info.StunFrames > 0) Popup(fb, stunLabel, stunColor);
                     break;
             }
         }

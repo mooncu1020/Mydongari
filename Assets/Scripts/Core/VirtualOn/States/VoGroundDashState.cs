@@ -129,7 +129,7 @@ namespace MyDongari.Core.VirtualOn.States
 
             if (_attack.IsAttacking)
             {
-                VoDashAttackResult r = _attack.Tick(Dt, ref _heading, _speed * Motor.SpeedScale, _offset, out bool stop);
+                VoDashAttackResult r = _attack.Tick(ref _heading, _speed * Motor.SpeedScale, _offset, out bool stop);
                 if (r == VoDashAttackResult.Finished)
                 {
                     Leave(DashExitReason.Tackle, StateMachine.VoStand);
@@ -178,9 +178,9 @@ namespace MyDongari.Core.VirtualOn.States
                         _heading = Bearing(Motor.Yaw + _offset);
                         _speed = V.dashSpeed.Evaluate(_offset);
                     }
-                    _attack.TickCharge(Dt);
+                    _attack.TickCharge();
                     // 공격 버튼(WeaponSystem → RequestTackle) 또는 차징 접촉 → 이번 틱에 시작
-                    VoDashAttackResult started = _attack.Tick(Dt, ref _heading, _speed * Motor.SpeedScale, _offset, out _);
+                    VoDashAttackResult started = _attack.Tick(ref _heading, _speed * Motor.SpeedScale, _offset, out _);
                     if (started == VoDashAttackResult.Running)
                     {
                         Motor.MoveDirection = _heading;
@@ -230,8 +230,6 @@ namespace MyDongari.Core.VirtualOn.States
             if (_phase != Phase.Sustain || _airborne) return false;
             return _attack.Request();
         }
-
-        public bool WouldHitWithin(float seconds) => _attack.WouldHitWithin(seconds, _heading, _speed * Motor.SpeedScale);
 
         public void EndByClash()
         {

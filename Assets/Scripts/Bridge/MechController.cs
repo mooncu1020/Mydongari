@@ -78,19 +78,19 @@ namespace MyDongari.Bridge
         /// <summary>지금 속도(m/s). 이동기가 실제로 움직인 속도 (키네마틱 리지드바디의 속도는 쓸 수 없다).</summary>
         public Vector3 Velocity => MotionBridge.GetVelocity(Rb);
 
-        // 넉백 뒤 이동 로직이 속도를 덮어쓰지 않는 남은 시간(초). 이 동안 이동기는 외부 속도로 움직인다
-        private float _moveHoldTimer;
+        // 넉백 뒤 이동 로직이 속도를 덮어쓰지 않는 남은 틱. 이 동안 이동기는 외부 속도로 움직인다
+        private int _moveHoldTimer;
 
         /// <summary>넉백 유지 중이라 이동 로직이 속도를 건드리면 안 되는지.</summary>
-        public bool IsMoveHeld => _moveHoldTimer > 0f;
+        public bool IsMoveHeld => _moveHoldTimer > 0;
 
         /// <summary>
-        /// 넉백을 받았을 때 부른다 (MeleeSystem). knockbackMoveHold초 동안 이동 상태가 속도를 덮어쓰지 않는다.
+        /// 넉백을 받았을 때 부른다 (MeleeSystem). knockbackMoveHoldFrames틱 동안 이동 상태가 속도를 덮어쓰지 않는다.
         /// 대시 중이었으면 대시를 끝낸다 — 안 끝내면 유지 시간이 지난 뒤 맞은 자리에서 다시 돌진한다.
         /// </summary>
         public void HoldMoveControl()
         {
-            _moveHoldTimer = Mathf.Max(_moveHoldTimer, Move.knockbackMoveHold);
+            _moveHoldTimer = Mathf.Max(_moveHoldTimer, Move.knockbackMoveHoldFrames);
             if (StateMachine != null && StateMachine.IsDashing) StateMachine.ActiveDash.EndByKnockback();
         }
 
@@ -134,7 +134,8 @@ namespace MyDongari.Bridge
 
         private void FixedUpdate()
         {
-            if (_moveHoldTimer > 0f) _moveHoldTimer -= Time.fixedDeltaTime;
+            // 물리 스텝 = 전투 틱 (60Hz 고정)이라 스텝마다 1씩 줄인다
+            if (_moveHoldTimer > 0) _moveHoldTimer--;
             // 지면은 이동기가 직접 본다
             if (Motor.IsActive) IsGrounded = Motor.IsGrounded;
         }
@@ -153,7 +154,7 @@ namespace MyDongari.Bridge
         /// <summary>라운드 시작: 넉백 유지 시간 초기화, 땅에 있는 것으로.</summary>
         public void ResetForRound()
         {
-            _moveHoldTimer = 0f;
+            _moveHoldTimer = 0;
             IsGrounded = true;
             if (Motor.IsActive) Motor.ResetForRound();
         }

@@ -38,6 +38,9 @@ namespace MyDongari.Game.Input
         public int DashPressCount { get; private set; }
         public int JumpPressCount { get; private set; }
         public int GuardPressCount { get; private set; }
+        public int AttackPressCount { get; private set; }
+        public int Skill1PressCount { get; private set; }
+        public int Skill2PressCount { get; private set; }
         public bool Skill1Input { get; private set; }
         public bool Skill2Input { get; private set; }
 
@@ -222,6 +225,9 @@ namespace MyDongari.Game.Input
             if (DashPressedThisFrame) DashPressCount++;
             if (JumpPressedThisFrame) JumpPressCount++;
             if (GuardPressedThisFrame) GuardPressCount++;
+            if (AttackPressedThisFrame) AttackPressCount++;
+            if (Skill1Input) Skill1PressCount++;
+            if (Skill2Input) Skill2PressCount++;
 
             if (InputTrace.ShouldLog(this, "2 InputReader"))
             {
