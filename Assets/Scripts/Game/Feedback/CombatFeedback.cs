@@ -341,6 +341,9 @@ namespace MyDongari.Game.Feedback
             BernardTuning.HitFeelValues feel = TuningOf(fb.Mech).HitFeel;
             BernardTuning.HitGradeValues grade = feel.Grade(result == HitResult.Clash ? AttackStrength.Light : info.Strength);
             float scale = result == HitResult.Guarded ? feel.guardedScale : 1f;
+            // 화면 흔들림 길이는 히트스톱을 따른다 (근접 피격 = 15틱). 맞딜·사격처럼 히트스톱이 없는 것만 등급 값
+            float shakeTime = info.IsMelee && result != HitResult.Clash
+                ? CombatTime.Seconds(StyleOverrides.Current.EffectiveCombat.hitStopFrames) : grade.shakeTime;
 
             if (result == HitResult.Hit || result == HitResult.GuardBroken)
             {
@@ -367,12 +370,12 @@ namespace MyDongari.Game.Feedback
             MechIdentity victimId = fb.Mech.GetComponent<MechIdentity>();
             if (victimId != null && victimId.MechCamera != null)
             {
-                victimId.MechCamera.AddDirectionalShake(hitDirection, grade.victimShake * scale, grade.shakeTime, feel.directionalShakeFrequency);
+                victimId.MechCamera.AddDirectionalShake(hitDirection, grade.victimShake * scale, shakeTime, feel.directionalShakeFrequency);
             }
             MechIdentity attackerId = info.Attacker != null ? info.Attacker.GetComponent<MechIdentity>() : null;
             if (attackerId != null && attackerId.MechCamera != null)
             {
-                attackerId.MechCamera.AddShake(grade.attackerShake * scale, grade.shakeTime);
+                attackerId.MechCamera.AddShake(grade.attackerShake * scale, shakeTime);
             }
         }
 

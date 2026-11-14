@@ -185,7 +185,7 @@ namespace MyDongari.Game.Visual
         private LockOnSystem _lockOn;
         private MechIdentity _identity;
 
-        // 리그 자체 시계(scaled). 히트스톱(timeScale 0) 동안 동작도 같이 멈춘다
+        // 리그 자체 시계. 기체별 히트스톱 동안 동작도 같이 멈춘다
         private float _clock;
         private float _walkPhase;
         private const float None = -999f;
@@ -591,6 +591,10 @@ namespace MyDongari.Game.Visual
             // 첫 프레임 0, 히트스톱 0은 정상. NaN·음수만 0으로 (Q2)
             float dt = Time.deltaTime;
             if (!IsFinite(dt) || dt < 0f) dt = 0f;
+            // 기체별 히트스톱(15틱) 동안 외형도 멈춘다: 리그 시계를 세우고 애니메이터 재생 속도를 0으로
+            bool hitStopped = _melee != null && _melee.IsHitStopped;
+            if (hitStopped) dt = 0f;
+            if (animator != null) animator.speed = hitStopped ? 0f : 1f;
             _clock += dt;
             BernardTuning.VisualValues v = V;
 

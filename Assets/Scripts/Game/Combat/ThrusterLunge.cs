@@ -133,10 +133,11 @@ namespace MyDongari.Game.Combat
         }
 
         /// <summary>전투 틱마다 (MeleeSystem이 부른다): 쿨다운을 줄이고, 상태 머신이 없는 기체는 돌진도 진행한다.</summary>
-        public void CombatTick()
+        public void CombatTick(bool frozen)
         {
             if (_cooldownFrames > 0) _cooldownFrames--;
-            if (!_selfDriven) return;
+            // 히트스톱 중엔 쿨다운만 돌고 돌진은 멈춘다
+            if (!_selfDriven || frozen) return;
             // LungeState.Update와 같은 규칙: 스턴이면 돌진을 끊는다(빗나감)
             if (IsStunned)
             {

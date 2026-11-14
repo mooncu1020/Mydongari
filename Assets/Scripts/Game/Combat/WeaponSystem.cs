@@ -83,6 +83,14 @@ namespace MyDongari.Game.Combat
         /// <summary>공격 입력을 버퍼에 넣는다 (기상 대기 끝의 선입력 공격).</summary>
         public void BufferAttackPress() => _attackBuffer.Press();
 
+        /// <summary>히트스톱 중인 틱: 입력만 읽어 둔다 (공격 버튼은 버퍼에 넣되 버퍼 시간은 흐르지 않는다). 스킬 입력은 버린다.</summary>
+        public void CombatTickFrozen()
+        {
+            if (ConsumePress(_inputReader.AttackPressCount, ref _lastAttackPressCount)) _attackBuffer.Press();
+            ConsumePress(_inputReader.Skill1PressCount, ref _lastSkill1PressCount);
+            ConsumePress(_inputReader.Skill2PressCount, ref _lastSkill2PressCount);
+        }
+
         /// <summary>전투 틱마다 (MeleeSystem이 부른다): 스킬·공격 버튼의 새 입력을 읽고 공격을 고른다.</summary>
         public void CombatTick(bool roundActive)
         {

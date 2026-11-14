@@ -132,8 +132,6 @@ namespace MyDongari.EditorTools
             pairSo.FindProperty("player2Input").objectReferenceValue = p2.GetComponent<PlayerInput>();
             pairSo.ApplyModifiedProperties();
 
-            // 5-1) 히트스톱 (없으면 런타임에 자동으로 붙지만, 수치 조정을 저장하려면 씬에 있어야 한다)
-            if (gameManager.GetComponent<HitStop>() == null) Undo.AddComponent<HitStop>(gameManager.gameObject);
             // 5-2) 상태 피드백 (같은 이유: 효과음 클립을 넣어 저장하려면 씬에 있어야 한다)
             if (gameManager.GetComponent<CombatFeedback>() == null)
             {

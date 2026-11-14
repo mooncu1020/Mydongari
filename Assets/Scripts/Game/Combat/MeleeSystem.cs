@@ -55,8 +55,11 @@ namespace MyDongari.Game.Combat
         public float Impact => _impact.Value;
         public bool CanTackle => _tackleTimer >= Tackle.cooldownFrames;
         public int TackleRecoveryFrames => Tackle.recoveryFrames;
-        /// <summary>히트스톱 중 (모션·수평 이동 정지).</summary>
-        public bool IsHitStopped => false;
+        /// <summary>
+        /// 히트스톱 중 (전투 사양서 2.4·9장): 기체별 15f. 그동안 모션(공격 단계·경직 시간)·수평 이동·다운계 중력이 멈추고 외형도 멈춘다.
+        /// 무적·쿨다운·입력 카운터는 계속 돈다.
+        /// </summary>
+        public bool IsHitStopped => _hitStop > 0;
 
         /// <summary>내가 맞았을 때(피격자 쪽) 판정 결과가 적용되면 발생. 로그·연출은 여기 구독.</summary>
         public event Action<HitInfo, HitResult> OnHitResolved;
@@ -90,6 +93,8 @@ namespace MyDongari.Game.Combat
         // 충격치 누적값·근접 무적
         private readonly ImpactMeter _impact = new ImpactMeter();
         private int _meleeInvuln;
+        // 남은 히트스톱(틱)
+        private int _hitStop;
         // 경직·가드 경직: 남은 틱, 밀려나는 방향(공격 방향), 속력(u/f)
         private int _pushFrames;
         private bool _pushIsGuard;
@@ -175,6 +180,8 @@ namespace MyDongari.Game.Combat
 
         public void CollectHits()
         {
+            // 히트스톱 중에는 공격도 멈춰 있다 (판정 없음)
+            if (IsHitStopped) return;
             CollectPunchHit();
             if (_lunge != null) _lunge.CollectHits();
             if (_slam != null) _slam.CollectHits();
@@ -205,6 +212,17 @@ namespace MyDongari.Game.Combat
             if (_stateMachine != null) _stateMachine.SyncKnockdownState();
 
             bool roundActive = Flow.GameManager.Instance == null || Flow.GameManager.Instance.IsRoundActive;
+            if (IsHitStopped)
+            {
+                // 히트스톱: 쿨다운·입력 카운터만 돈다. 공격 진행·가드 전환·이동은 멈춘다 (이동기가 있으면 이동기도 이 틱을 건너뛴다)
+                ReadGuardPress();
+                if (_claw != null) _claw.CombatTick();
+                if (_slam != null) _slam.CombatTick();
+                if (_lunge != null) _lunge.CombatTick(frozen: true);
+                if (_weapon != null) _weapon.CombatTickFrozen();
+                if (_stateMachine == null && _rb != null && !IsKnockedDown && !IsPushed) MotionBridge.SetHorizontalVelocity(_rb, Vector3.zero);
+                return;
+            }
             if (IsGuardStaggered)
             {
                 // 가드 경직: 가드는 그대로 유지, 입력은 받지 않는다 (끝나면 가드 유지로 돌아간다)
@@ -225,7 +243,7 @@ namespace MyDongari.Game.Combat
             // 스킬·공격: 쿨다운은 계속 돌고, 입력은 각 컴포넌트가 상황을 보고 받는다
             if (_claw != null) _claw.CombatTick();
             if (_slam != null) _slam.CombatTick();
-            if (_lunge != null) _lunge.CombatTick();
+            if (_lunge != null) _lunge.CombatTick(frozen: false);
             if (_weapon != null) _weapon.CombatTick(roundActive);
             if (_dummy != null) _dummy.CombatTick();
 
@@ -243,6 +261,12 @@ namespace MyDongari.Game.Combat
         /// <summary>틱 끝 (이동 적분 뒤). 근접 구동이 이번 틱에 다음 타로 넘어갔거나 끝났는지 본다.</summary>
         public void EndTick()
         {
+            // 히트스톱 카운트 (전투 사양서 4.2-②-9)
+            if (_hitStop > 0)
+            {
+                _hitStop--;
+                return;
+            }
             VoMeleeDrive drive = ActiveDrive;
             if (drive == null)
             {
@@ -257,6 +281,8 @@ namespace MyDongari.Game.Combat
 
         private void ApplyDecisions()
         {
+            // 내가 때린 공격이 맞았다(또는 막혔다): 때린 쪽 히트스톱. 맞은 쪽이 이미 근접 무적이었으면 걸리지 않는다(판단 때 걸러짐)
+            if (Ledger.AttackerStopPending) _hitStop = Mathf.Max(_hitStop, C.hitStopFrames);
             var decisions = Ledger.Decisions;
             Reaction heaviest = Reaction.None;
             HitInfo heaviestInfo = default;
@@ -298,6 +324,12 @@ namespace MyDongari.Game.Combat
                 case HitResult.Guarded:
                     if (_health != null) _health.TakeDamage(decision.Damage);
                     _impact.Add(decision.ImpactAdded);
+                    // 근접 계열 피격이면 맞은 쪽은 항상 히트스톱 15f + 근접 무적 4f (반응이 없는 약한 피격도)
+                    if (info.IsMelee)
+                    {
+                        _hitStop = Mathf.Max(_hitStop, C.hitStopFrames);
+                        GrantMeleeInvuln(C.hitInvulnFrames);
+                    }
                     // 막을 때마다 히트가 오른다 (가드의 대가)
                     if (decision.Result == HitResult.Guarded && _heatGauge != null) _heatGauge.AddHeat(Guard.heatPerBlock);
                     break;
@@ -693,6 +725,7 @@ namespace MyDongari.Game.Combat
             CancelMelee(notify: false);
             _impact.Clear();
             _meleeInvuln = 0;
+            _hitStop = 0;
             _pushFrames = 0;
             Ledger.Reset();
             if (_input != null) _lastGuardPressCount = _input.GuardPressCount;

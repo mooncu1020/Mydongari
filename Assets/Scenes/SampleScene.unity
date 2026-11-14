@@ -4119,23 +4119,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Camera.MechCamera
   target: {fileID: 775153504}
-  followDistance: 6
-  followHeight: 2.5
   lookHeight: 1.5
-  lookAhead: 8
-  yawFollowSpeed: 8
-  positionFollowSpeed: 100
-  dashPositionFollowSpeed: 12
-  positionFollowBlendRate: 200
   collideWithWorld: 1
   collisionRadius: 0.25
   collisionMargin: 0.05
   collisionLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  baseFieldOfView: 52
-  sprintFov: 90
-  fovLerpSpeed: 5
   addOffscreenArrow: 1
 --- !u!1 &407335948
 GameObject:
@@ -7753,7 +7743,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 847eced36369a92478b8aec165f50789, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Movement.MechController
-  forceInterpolation: 1
   meleeSystem: {fileID: 775153509}
   cameraTransform: {fileID: 405262798}
   mechCamera: {fileID: 405262802}
@@ -7781,14 +7770,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 65857f0986909504ebebb12a8e147ba1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Input.InputReader
-  doubleTapWindow: 0.3
   moveDeadzone: 0.3
-  gesture:
-    neutralThreshold: 0.3
-    edgeThreshold: 0.8
-    flickReachTime: 0.15
-    flickReleaseTime: 0.25
-    sectorHalfAngle: 30
   gameplayActionMap: Player
   menuNavigateThreshold: 0.5
   selectHoldTime: 0.6
@@ -14580,7 +14562,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1342267389}
   - component: {fileID: 1342267388}
-  - component: {fileID: 1342267392}
   - component: {fileID: 1342267391}
   - component: {fileID: 1342267390}
   - component: {fileID: 1342267393}
@@ -14731,18 +14712,6 @@ MonoBehaviour:
   strideScrapeLoopClip: {fileID: 0}
   strideScrapeVolume: 0.6
   sfxVolume: 1
---- !u!114 &1342267392
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1342267387}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e10905847edb0c3449a9c8113f0d1664, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Core.HitStop
 --- !u!114 &1342267393
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -16133,7 +16102,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 847eced36369a92478b8aec165f50789, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Movement.MechController
-  forceInterpolation: 1
   meleeSystem: {fileID: 1437728192}
   cameraTransform: {fileID: 1760294304}
   mechCamera: {fileID: 1760294302}
@@ -16149,14 +16117,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 65857f0986909504ebebb12a8e147ba1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Input.InputReader
-  doubleTapWindow: 0.3
   moveDeadzone: 0.3
-  gesture:
-    neutralThreshold: 0.3
-    edgeThreshold: 0.8
-    flickReachTime: 0.15
-    flickReleaseTime: 0.25
-    sectorHalfAngle: 30
   gameplayActionMap: Player
   menuNavigateThreshold: 0.5
   selectHoldTime: 0.6
@@ -18680,23 +18641,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Camera.MechCamera
   target: {fileID: 1437728181}
-  followDistance: 6
-  followHeight: 2.5
   lookHeight: 1.5
-  lookAhead: 8
-  yawFollowSpeed: 8
-  positionFollowSpeed: 100
-  dashPositionFollowSpeed: 12
-  positionFollowBlendRate: 200
   collideWithWorld: 1
   collisionRadius: 0.25
   collisionMargin: 0.05
   collisionLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  baseFieldOfView: 52
-  sprintFov: 90
-  fovLerpSpeed: 5
   addOffscreenArrow: 1
 --- !u!114 &1760294303
 MonoBehaviour:

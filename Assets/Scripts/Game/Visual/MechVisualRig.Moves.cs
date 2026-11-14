@@ -534,12 +534,6 @@ namespace MyDongari.Game.Visual
         {
             _pileImpactRealTime = Time.unscaledTime;
             ShakeCameras(m.pileDriverShake, m.pileDriverShakeTime, bothPlayers: true);
-            BernardTuning.HitStopValues hitStop = _tuning.Get(this).HitStop;
-            if (hitStop.enabled && GameManager.Instance != null)
-            {
-                HitStop stop = GameManager.Instance.GetComponent<HitStop>();
-                if (stop != null) stop.Request(hitStop.pileDriver);
-            }
             Vector3 fist = GetPunchPoint(true);
             OnMotionImpact?.Invoke("PileDriver", fist, 1f);
         }

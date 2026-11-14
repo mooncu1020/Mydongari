@@ -89,14 +89,8 @@ namespace MyDongari.Game.Tuning
         [Serializable]
         public class GuardValues
         {
-            [Tooltip("가드로 받은 근접 계열(펀치·대시 어택·슬램) 피해 감쇄율. 0.5 = 절반만 들어감")]
-            [Range(0f, 1f)] public float meleeReduction = 0.5f;
-            [Tooltip("가드로 받은 투사체 피해 감쇄율 (사격 기체용)")]
-            [Range(0f, 1f)] public float projectileReduction = 0.7f;
             [Tooltip("가드로 공격을 받을 때마다 오르는 히트")]
             public float heatPerBlock = 10f;
-            [Tooltip("과열 상태에서 가드로 받으면 가드가 깨지고 이 시간(초) 동안 스턴")]
-            public float breakStun = 0.9f;
             [Tooltip("가드를 내린 뒤 다시 올릴 수 있을 때까지 대기(틱). 패리 성공 직후엔 면제")]
             public int reraiseDelayFrames = 24;
             [Tooltip("가드 중 리지드바디 감속. 방어 자세로 버티는 느낌")]
@@ -340,22 +334,6 @@ namespace MyDongari.Game.Tuning
         }
 
         [Serializable]
-        public class HitStopValues
-        {
-            public bool enabled = true;
-            [Header("길이 (초, 실제 시간)")]
-            public float punch = 0.05f;
-            [Tooltip("런지·차징 태클·대시 어택")]
-            public float lungeTackle = 0.08f;
-            public float clash = 0.12f;
-            [Tooltip("슬램·파일드라이버·투사체. 0이면 없음")]
-            public float other = 0f;
-            [Tooltip("파일 드라이버 (전신 모션 모델만): 판정은 누른 순간이지만 히트스톱은 외형 어퍼컷이 닿는 순간(Motion.uppercutRiseTime 뒤)에 이 길이로 건다. " +
-                     "임시 상자·모션 끔이면 위 Other 그대로")]
-            public float pileDriver = 0.2f;
-        }
-
-        [Serializable]
         public class GaitValues
         {
             [Header("이동 다리 모션 (P2: 실제 수평 속도로 고름, 전력질주 상태만 호버). 하체 뼈가 있는 모델 + 전신 모션, 외형만")]
@@ -462,13 +440,11 @@ namespace MyDongari.Game.Tuning
         [Serializable]
         public class HitGradeValues
         {
-            [Tooltip("히트스톱(초, 실제 시간)")]
-            public float hitStop;
             [Tooltip("맞은 쪽 화면이 타격 방향으로 밀렸다 돌아오는 크기(m)")]
             public float victimShake;
             [Tooltip("때린 쪽 화면 흔들림 크기(m)")]
             public float attackerShake;
-            [Tooltip("화면 흔들림 시간(초)")]
+            [Tooltip("화면 흔들림 시간(초). 히트스톱이 걸리는 근접 피격은 이 값 대신 히트스톱 길이(15틱 = 0.25초)를 쓴다 — 맞딜·사격만 이 값")]
             public float shakeTime;
             [Tooltip("맞은 기체 상체가 맞은 방향 반대로 젖혀지는 각도(°, 하체 뼈가 있는 모델)")]
             public float reactLean;
@@ -483,10 +459,9 @@ namespace MyDongari.Game.Tuning
 
             public HitGradeValues() { }
 
-            public HitGradeValues(float hitStop, float victimShake, float attackerShake, float shakeTime,
+            public HitGradeValues(float victimShake, float attackerShake, float shakeTime,
                 float reactLean, float reactKnee, float reactPush, float reactTime, float effectScale)
             {
-                this.hitStop = hitStop;
                 this.victimShake = victimShake;
                 this.attackerShake = attackerShake;
                 this.shakeTime = shakeTime;
@@ -502,11 +477,9 @@ namespace MyDongari.Game.Tuning
         public class HitFeelValues
         {
             [Header("등급별 (약: 콤보 원·투 / 중: 쓰리·대시 어택 / 강: 런지·태클·파일 드라이버·슬램)")]
-            public HitGradeValues light = new HitGradeValues(0.05f, 0.04f, 0.015f, 0.12f, 6f, 6f, 0.05f, 0.25f, 0.6f);
-            public HitGradeValues medium = new HitGradeValues(0.07f, 0.07f, 0.025f, 0.18f, 11f, 12f, 0.1f, 0.35f, 1f);
-            public HitGradeValues heavy = new HitGradeValues(0.1f, 0.12f, 0.04f, 0.28f, 18f, 20f, 0.18f, 0.5f, 1.6f);
-            [Tooltip("켜면 히트스톱 길이를 위 등급별 값으로. 끄면 예전 종류별 값(히트스톱 묶음의 Punch·Lunge Tackle·Other)")]
-            public bool gradeHitStop = true;
+            public HitGradeValues light = new HitGradeValues(0.04f, 0.015f, 0.12f, 6f, 6f, 0.05f, 0.25f, 0.6f);
+            public HitGradeValues medium = new HitGradeValues(0.07f, 0.025f, 0.18f, 11f, 12f, 0.1f, 0.35f, 1f);
+            public HitGradeValues heavy = new HitGradeValues(0.12f, 0.04f, 0.28f, 18f, 20f, 0.18f, 0.5f, 1.6f);
             [Tooltip("가드로 막았을 때 화면 흔들림·이펙트 배율 (번쩍임·피격 반응은 없음)")]
             [Range(0f, 1f)] public float guardedScale = 0.5f;
 
@@ -929,9 +902,7 @@ namespace MyDongari.Game.Tuning
         [SerializeField] private ImpactSlamValues impactSlam = new ImpactSlamValues();
         [Header("락온")]
         [SerializeField] private LockOnValues lockOn = new LockOnValues();
-        [Header("히트스톱")]
-        [SerializeField] private HitStopValues hitStop = new HitStopValues();
-        [Header("타격감 (N1: 세기 등급별 히트스톱·흔들림·피격 반응·이펙트)")]
+        [Header("타격감 (N1: 세기 등급별 흔들림·피격 반응·이펙트. 히트스톱은 등급과 무관하게 기체별 15틱)")]
         [SerializeField] private HitFeelValues hitFeel = new HitFeelValues();
         [Header("외형 애니메이션 (MechVisualRig)")]
         [SerializeField] private VisualValues visual = new VisualValues();
@@ -954,7 +925,6 @@ namespace MyDongari.Game.Tuning
         public ImpactSlamValues ImpactSlam => impactSlam;
         public KnockdownValues Knockdown => knockdown;
         public LockOnValues LockOn => lockOn;
-        public HitStopValues HitStop => hitStop;
         public HitFeelValues HitFeel => hitFeel;
         public VisualValues Visual => visual;
         public MotionValues Motion => motion;

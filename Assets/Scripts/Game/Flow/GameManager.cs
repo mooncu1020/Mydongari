@@ -216,8 +216,6 @@ namespace MyDongari.Game.Flow
             // 첫 배치. 타이틀이면 두 사람이 다 메뉴를 조작할 수 있게 2인 배치를 깔아 둔다
             ApplyLayout(StartLayout());
 
-            // 씬에 안 붙여 둔 경우에도 히트스톱이 동작하게 (수치 조정은 인스펙터에서 직접 추가해서)
-            if (GetComponent<HitStop>() == null) gameObject.AddComponent<HitStop>();
             // 상태 피드백(팝업·틴트·효과음)도 같은 방식. 효과음 클립을 넣으려면 씬에 직접 붙여 둔다
             if (GetComponent<CombatFeedback>() == null) gameObject.AddComponent<CombatFeedback>();
             // 빌드 운영(ESC 길게 종료·커서·전체 화면). 에디터에선 기본으로 아무것도 안 한다
