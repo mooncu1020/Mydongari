@@ -26,22 +26,28 @@ namespace MyDongari.Bridge
         }
 
         /// <summary>속도를 통째로 지정 (넉다운 비행, 앵커 클로 끌어오기 등). V8이면 외부 속도로.</summary>
-        public static void SetVelocity(Rigidbody rb, Vector3 velocity)
+        /// <summary>undamped = 이번 틱은 리지드바디 감속을 흉내 내지 않고 그대로 적분 (피격 반응처럼 틱마다 속도를 정해 주는 경우).</summary>
+        public static void SetVelocity(Rigidbody rb, Vector3 velocity, bool undamped = false)
         {
             if (rb == null) return;
             VoMotor motor = ActiveMotor(rb);
-            if (motor != null) motor.SetExternalVelocity(velocity);
+            if (motor != null)
+            {
+                motor.SetExternalVelocity(velocity);
+                if (undamped) motor.SkipExternalDampingThisTick();
+            }
             else if (!rb.isKinematic) rb.linearVelocity = velocity;
         }
 
         /// <summary>수평 속도만 지정하고 세로 속도는 그대로.</summary>
-        public static void SetHorizontalVelocity(Rigidbody rb, Vector3 horizontal)
+        public static void SetHorizontalVelocity(Rigidbody rb, Vector3 horizontal, bool undamped = false)
         {
             if (rb == null) return;
             VoMotor motor = ActiveMotor(rb);
             if (motor != null)
             {
                 motor.SetExternalHorizontal(horizontal);
+                if (undamped) motor.SkipExternalDampingThisTick();
                 return;
             }
             if (!rb.isKinematic) rb.linearVelocity = new Vector3(horizontal.x, rb.linearVelocity.y, horizontal.z);

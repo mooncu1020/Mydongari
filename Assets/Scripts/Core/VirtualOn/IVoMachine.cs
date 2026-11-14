@@ -55,6 +55,8 @@ namespace MyDongari.Core.VirtualOn
         /// <summary>낙하 (발판 끝·공중 대시 끝·공중 피격). vy는 u/f.</summary>
         void V8Fall(float vy, bool landingLag);
         void V8GroundDash(int code, bool fromWalk, bool closeStepWindow);
+        /// <summary>지상 대시를 기체 방향이 아니라 basisBearing(°) 기준으로 (기상 대시: 상대 방위 + 대시 오프셋, 전투 사양서 2.3).</summary>
+        void V8GroundDashFrom(int code, float basisBearing);
         void V8CloseStep(int code, bool fromDash);
         void V8DashStop(Vector3 heading, float offset, bool airborne);
         void V8AirDash(int code);

@@ -50,7 +50,7 @@ namespace MyDongari.Bridge
         }
 
         // ---- 게임 상태 ----
-        public bool IsStunned => Melee != null && Melee.IsStunned;
+        public bool IsStunned => Melee != null && Melee.IsActionLocked;
 
         public bool IsExternalMode
         {
@@ -58,7 +58,7 @@ namespace MyDongari.Bridge
             {
                 MechState state = StateMachine != null ? StateMachine.CurrentState : null;
                 return _controller.IsMoveHeld || _controller.IsExternallyControlled ||
-                       state is LungeState || state is KnockdownState;
+                       state is LungeState || state is KnockdownState || (Melee != null && Melee.IsPushed);
             }
         }
 

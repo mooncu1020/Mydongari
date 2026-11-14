@@ -253,6 +253,15 @@ namespace MyDongari.Core.VirtualOn
             _external = new Vector3(horizontal.x, _external.y, horizontal.z);
         }
 
+        // 이번 틱 외부 속도 적분에서 감속 흉내를 건너뛸지 (틱마다 속도를 정해 주는 피격 반응용)
+        private bool _skipExternalDamping;
+
+        /// <summary>이번 틱은 외부 속도를 감속 없이 그대로 적분한다.</summary>
+        public void SkipExternalDampingThisTick()
+        {
+            _skipExternalDamping = true;
+        }
+
         public void AddExternalImpulse(Vector3 deltaVelocity)
         {
             // 걷던 속도에 얹지 않고 넉백만 (그 자리에서 밀려남). 세로는 지금 낙하 속도에서
@@ -731,7 +740,8 @@ namespace MyDongari.Core.VirtualOn
             float gravity = v.gravity * U / (dt * dt);
             if (!IsGrounded && Rb.useGravity) vel.y -= gravity * dt;
             // 리지드바디 감속을 흉내 (PhysX: v × 1 / (1 + dt × damping))
-            float damping = Mathf.Max(0f, Rb.linearDamping);
+            float damping = _skipExternalDamping ? 0f : Mathf.Max(0f, Rb.linearDamping);
+            _skipExternalDamping = false;
             float k = 1f / (1f + dt * damping);
             vel.x *= k;
             vel.z *= k;

@@ -57,12 +57,25 @@ namespace MyDongari.Core.VirtualOn.States
             _code = code;
             _fromWalk = fromWalk;
             _closeStepWindow = closeStepWindow;
+            _hasBasis = false;
+        }
+
+        // 진로 기준 방위를 기체 방향 대신 따로 받았는지 (기상 대시 = 상대 방위 기준)
+        private bool _hasBasis;
+        private float _basis;
+
+        /// <summary>진로 기준을 기체 방향 대신 bearing(°)으로 (Prepare 뒤에 부른다).</summary>
+        public void PrepareBasis(float bearing)
+        {
+            _hasBasis = true;
+            _basis = bearing;
         }
 
         public override void Enter()
         {
             _offset = VoLever.Offset(_code);
-            _heading = Bearing(Motor.Yaw + _offset);
+            _heading = Bearing((_hasBasis ? _basis : Motor.Yaw) + _offset);
+            _hasBasis = false;
             _speed = V.dashSpeed.Evaluate(_offset);
             bool back = IsBackward(_offset);
             _startFrames = back ? V.dashStartFramesBack : V.dashStartFrames;

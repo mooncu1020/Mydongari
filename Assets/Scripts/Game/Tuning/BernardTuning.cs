@@ -71,8 +71,6 @@ namespace MyDongari.Game.Tuning
         {
             [Tooltip("쓰리 피해 배율 (Punch.damage × 이 값)")]
             public float thirdDamageMultiplier = 1.5f;
-            [Tooltip("쓰리 넉백 힘(Impulse). 원·투는 넉백 없음")]
-            public float thirdKnockback = 8f;
         }
 
         [Serializable]
@@ -121,16 +119,12 @@ namespace MyDongari.Game.Tuning
         {
             [Tooltip("차징 태클 기본 피해. 차징이 길수록 최대 2배")]
             public float damage = 30f;
-            [Tooltip("차징 태클 기본 넉백. 차징이 길수록 최대 2배")]
-            public float knockback = 8f;
             [Tooltip("태클 판정 거리(m). 대시 어택 공통")]
             public float range = 5f;
             [Tooltip("태클 판정 부채꼴 반각(°). 대시 어택·자동 접촉 태클 공통")]
             public float halfAngle = 45f;
             [Tooltip("태클·대시 어택 재사용 대기(틱)")]
             public int cooldownFrames = 60;
-            [Tooltip("차징 태클을 그대로 맞은 상대의 스턴(초)")]
-            public float victimStun = 1.7f;
             [Tooltip("태클을 부딪친 뒤(또는 헛친 뒤) 공격자 자신의 경직(틱). 패리당했을 땐 풀린다")]
             public int recoveryFrames = 30;
 
@@ -154,9 +148,6 @@ namespace MyDongari.Game.Tuning
         {
             [Tooltip("가드에 막힌다(가드 규칙 적용). 차징 태클과 달리 관통·스턴 없음")]
             public float damage = 20f;
-            public float knockback = 6f;
-            [Tooltip("그대로 맞았을 때 상대 스턴(초). 0이면 없음")]
-            public float stun = 0f;
 
             [Header("유도 (V4)")]
             [Tooltip("공격을 시작할 때 상대가 이 거리(m) 안이면 따라간다. 밖이면 직선")]
@@ -209,10 +200,6 @@ namespace MyDongari.Game.Tuning
             [Header("명중")]
             [Tooltip("명중 피해 (펀치보다 약간 낮게)")]
             public float damage = 15f;
-            [Tooltip("명중 시 상대 스턴(초). 후속 펀치 1회가 들어갈 틈")]
-            public float hitStun = 0.5f;
-            [Tooltip("명중 시 상대 넉백. 0이면 밀지 않음(후속 펀치 거리 유지)")]
-            public float hitKnockback = 0f;
             [Tooltip("명중 판정 구의 반경(m)")]
             public float hitRadius = 1.2f;
             [Tooltip("명중 판정 구를 기체 앞쪽으로 내미는 거리(m)")]
@@ -285,16 +272,12 @@ namespace MyDongari.Game.Tuning
             public float slideDistance = 2f;
             [Tooltip("비행 최고 높이(m)")]
             public float flightHeight = 1.5f;
-            [Tooltip("비행 시간(초)")]
+            [Tooltip("파일 드라이버 비행 시간(초 → 30틱). 외형의 비행 포즈 길이로도 쓴다")]
             public float flightTime = 0.5f;
-            [Tooltip("미끄러짐 시간(초). 속도가 선형으로 0까지 준다")]
+            [Tooltip("외형 전용: 누운 자세 포즈 길이(초). 실제 누움은 40틱(전투 사양서)")]
             public float slideTime = 0.45f;
-            [Tooltip("기상 시간(초)")]
+            [Tooltip("외형 전용: 기상 모션 포즈 길이(초). 실제 기상 모션 30틱을 이 길이에 맞춰 재생한다")]
             public float getUpTime = 0.8f;
-            [Tooltip("기상 시작부터 무적(판정 무시) 시간(초)")]
-            public float invulnerableTime = 0.8f;
-            [Tooltip("히트스톱이 끝난 뒤 날아오르기까지 여유(초, 게임 시간)")]
-            public float launchMargin = 0.03f;
 
             [Header("벽·충돌")]
             [Tooltip("벽 검사 구 반지름 = 몸 반지름 × 이 값")]
@@ -333,9 +316,6 @@ namespace MyDongari.Game.Tuning
             [Tooltip("전방 부채꼴 전체 각도(°)")]
             public float angle = 90f;
             public float damage = 60f;
-            public float knockback = 15f;
-            [Tooltip("넉백 방향의 위쪽 성분. 클수록 더 띄운다")]
-            public float knockbackLift = 0.3f;
             [Tooltip("쿨다운(틱, 480f = 8초)")]
             public int cooldownFrames = 480;
         }

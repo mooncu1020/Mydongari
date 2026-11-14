@@ -77,7 +77,8 @@ namespace MyDongari.Game.Combat.Skills
                 HitInfo info = _melee != null
                     ? _melee.NewHit(AttackType.Slam, HitKind.Melee, t.damage, opponent.gameObject)
                     : new HitInfo { Type = AttackType.Slam, Kind = HitKind.Melee, Damage = t.damage, Attacker = gameObject, Direction = dirToTarget };
-                info.KnockbackForce = t.knockback;
+                // 일반 근접(가드 가능), 충격치는 다운급
+                info.Impact = StyleOverrides.Current.slamImpact;
                 // 상대 콜라이더가 여러 개여도 한 번만 맞는다
                 MeleeSystem.QueueHit(opponent.gameObject, info);
                 return;

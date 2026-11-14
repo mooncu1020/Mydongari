@@ -73,10 +73,8 @@ namespace MyDongari.Game.Combat
         public bool IgnoresGuard;
         /// <summary>패리가 안 된다. 파일 드라이버(잡기 후속타).</summary>
         public bool IgnoresParry;
-        /// <summary>그대로 맞았을 때 피격자를 미는 힘(Impulse). 0이면 없음</summary>
-        public float KnockbackForce;
-        /// <summary>그대로 맞았을 때 피격자에게 거는 경직(틱). 0이면 없음</summary>
-        public int StunFrames;
+        /// <summary>판단된 반응 단계. 피격자가 적용할 때 채운다 (연출·로그용).</summary>
+        public Reaction Reaction;
         /// <summary>날아가기 전 대기(틱). 파일 드라이버가 외형 어퍼컷이 닿는 순간에 맞추려고 쓴다.</summary>
         public int LaunchDelayFrames;
 

@@ -104,6 +104,14 @@ namespace MyDongari.Bridge
         [Tooltip("점프 하강 중 피격 캡슐의 높이·반지름 배율 (원본: 피격 구 2개)")]
         [Range(0.1f, 1f)] public float jumpFallingHurtScale = 0.45f;
 
+        [Header("충격치 (원본: A1 1타 500 → 경직, A1 2타 1100 → 다운)")]
+        [Tooltip("원의 충격치. 우리 값 280 = 경직만 (원 + 투를 연달아 맞아도 다운 문턱 600 아래). 끄면 원본 500")]
+        public FloatOverride punch1Impact = new FloatOverride(true, 280f);
+        [Tooltip("투의 충격치. 우리 값 280 = 경직만. 끄면 원본 1100(다운)")]
+        public FloatOverride punch2Impact = new FloatOverride(true, 280f);
+        [Tooltip("임팩트 슬램의 충격치 (원본에 대응 없음 — 일반 근접, 가드 가능, 다운급)")]
+        public float slamImpact = 1100f;
+
         // ---- 유효값 ----
         [NonSerialized] private VoSpec _effective;
         [NonSerialized] private VoCombatSpec _effectiveCombat;
@@ -121,6 +129,8 @@ namespace MyDongari.Bridge
         private VoCombatSpec BuildCombat()
         {
             VoCombatSpec c = VoCombatSpec.Original();
+            punch1Impact.Apply(ref c.impactA1First);
+            punch2Impact.Apply(ref c.impactA1Second);
             return c;
         }
 

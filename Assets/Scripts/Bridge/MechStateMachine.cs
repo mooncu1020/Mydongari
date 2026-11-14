@@ -159,23 +159,6 @@ namespace MyDongari.Bridge
         private void Start()
         {
             ToStand();
-            // 공중에서 맞으면 그 자리에서 떨어져 착지 경직 (V5). 넉백은 수평만 지운다
-            if (MechController.MeleeSystem != null) MechController.MeleeSystem.OnHitResolved += OnHitResolved;
-        }
-
-        private void OnDestroy()
-        {
-            if (MechController != null && MechController.MeleeSystem != null) MechController.MeleeSystem.OnHitResolved -= OnHitResolved;
-        }
-
-        private void OnHitResolved(HitInfo info, HitResult result)
-        {
-            if (!IsAirborne) return;
-            if (result != HitResult.Hit && result != HitResult.GuardBroken) return;
-            // 공중에서 맞으면 수평 이동을 끊고 그 자리에서 떨어진다(착지 경직). 넉백은 외부 속도로 따로 들어온다
-            Motor.Vy = Mathf.Min(0f, Motor.Vy);
-            if (_currentState is VoJumpState && !VoJump.IsRising) VoJump.MarkLandingLag();
-            else V8Fall(Motor.Vy, true);
         }
 
         /// <summary>라운드 시작: 사망으로 꺼졌던 상태머신을 켜고 서기로.</summary>
@@ -233,6 +216,13 @@ namespace MyDongari.Bridge
         public void V8GroundDash(int code, bool fromWalk, bool closeStepWindow)
         {
             VoGroundDash.Prepare(code, fromWalk, closeStepWindow);
+            ChangeState(VoGroundDash);
+        }
+
+        public void V8GroundDashFrom(int code, float basisBearing)
+        {
+            VoGroundDash.Prepare(code, false, false);
+            VoGroundDash.PrepareBasis(basisBearing);
             ChangeState(VoGroundDash);
         }
 

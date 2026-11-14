@@ -109,6 +109,8 @@ namespace MyDongari.Bridge
             if (_homing) UpdateHoming(ref heading);
             _heading = heading;
             if (melee == null) return VoDashAttackResult.Running;
+            // 정지 거리 (전투 사양서 1.7: 대시 근접은 상대 15u에서 멈춘다) — 상대를 뚫고 지나가지 않는다
+            if (IsOpponentWithin(StyleOverrides.Current.EffectiveCombat.dashMeleeStopDistance * melee.U)) stop = true;
 
             if (_attackElapsed >= melee.TackleStartupFrames(_type) + ActiveFrames(_type))
             {

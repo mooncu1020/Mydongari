@@ -186,7 +186,7 @@ namespace MyDongari.Game.Combat
             // 새 판정 방식의 박기·뻗기 단계 (M4)
             if (Phase == LungePhase.Plant || Phase == LungePhase.Strike) return TickStrike(t);
 
-            SetDashVelocity(t.speed);
+            SetDashVelocity(LimitedDashSpeed(t));
             // 돌진 중엔 감속 없이 일정 속도 (Slide/SideStep과 같은 우선순위)
             if (_controller != null) _controller.RequestDamping(0f, priority: 5);
 
@@ -230,12 +230,29 @@ namespace MyDongari.Game.Combat
                     ? _melee.NewHit(AttackType.Lunge, HitKind.Strong, t.damage, opponent.gameObject)
                     : new HitInfo { Type = AttackType.Lunge, Kind = HitKind.Strong, Damage = t.damage, Attacker = gameObject };
                 info.Direction = _direction;
-                info.KnockbackForce = t.hitKnockback;
-                info.StunFrames = CombatTime.Frames(t.hitStun);
+                // 강타: 가드 불능, 날아감
+                info.Impact = StyleOverrides.Current.EffectiveCombat.impactStrong;
                 MeleeSystem.QueueHit(opponent.gameObject, info);
                 FinishHit();
                 return;
             }
+        }
+
+        /// <summary>
+        /// 정지 거리·넘어가기 방지 (전투 사양서 1.3·3.1의 대시 근접 값): 상대가 돌진 정면에 있을 때,
+        /// 거리가 정지 거리(15u) 이하면 속력 0, 이번 틱 이동량은 상대 거리를 넘지 않는다. 옆·뒤의 상대는 지나친다.
+        /// </summary>
+        private float LimitedDashSpeed(BernardTuning.LungeValues t)
+        {
+            MechIdentity opponent = _identity.Opponent;
+            if (opponent == null || !opponent.gameObject.activeInHierarchy) return t.speed;
+            Vector3 toTarget = opponent.transform.position - _rb.position;
+            toTarget.y = 0f;
+            float distance = toTarget.magnitude;
+            if (distance > 0.0001f && Vector3.Angle(_direction, toTarget) > t.strikeHalfAngle) return t.speed;
+            float u = _melee != null ? _melee.U : StyleOverrides.Current.Effective.fallbackBodyHeight / StyleOverrides.Current.Effective.bodyHeightUnits;
+            if (distance <= StyleOverrides.Current.EffectiveCombat.dashMeleeStopDistance * u) return 0f;
+            return Mathf.Min(t.speed, distance * CombatTime.TickRate);
         }
 
         /// <summary>돌진 거리를 다 갔거나(벽 등으로 막혀) 최대 시간이 지났는지.</summary>

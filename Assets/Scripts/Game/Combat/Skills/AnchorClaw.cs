@@ -370,7 +370,8 @@ namespace MyDongari.Game.Combat.Skills
             info.Direction = MechFacing.AttackForward(transform);
             info.IgnoresGuard = true;
             info.IgnoresParry = true;
-            info.LaunchDelayFrames = CombatTime.Frames((MechVisualRig.HandlesPileDriverImpactOf(gameObject) ? tuning.Motion.uppercutRiseTime : 0f) + tuning.Knockdown.launchMargin);
+            info.Impact = StyleOverrides.Current.EffectiveCombat.impactStrong;
+            info.LaunchDelayFrames = MechVisualRig.HandlesPileDriverImpactOf(gameObject) ? CombatTime.Frames(tuning.Motion.uppercutRiseTime) : 0;
             MeleeSystem.QueueHit(target.gameObject, info);
         }
 

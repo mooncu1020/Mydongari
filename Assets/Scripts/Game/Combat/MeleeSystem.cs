@@ -39,7 +39,20 @@ namespace MyDongari.Game.Combat
         /// <summary>넉다운 중(비행·미끄러짐·기상). 공격·가드·이동 입력 무시.</summary>
         public bool IsKnockedDown => _knockdown != null && _knockdown.IsKnockedDown;
         public bool IsParrying { get; private set; }
-        public bool IsStunned => _stunFrames > 0;
+        /// <summary>행동 불가: 경직(피격 반응) 또는 우리 규칙의 경직(공격자 경직·훅 경직).</summary>
+        public bool IsStunned => _stunFrames > 0 || IsStaggered;
+        /// <summary>경직(피격 반응, 28f) 중. 입력을 전혀 처리하지 않고 버퍼에도 남기지 않는다.</summary>
+        public bool IsStaggered => _pushFrames > 0 && !_pushIsGuard;
+        /// <summary>가드 경직(16f) 중. 끝나면 가드 유지로 돌아간다.</summary>
+        public bool IsGuardStaggered => _pushFrames > 0 && _pushIsGuard;
+        /// <summary>경직·가드 경직으로 밀려나는 중 (이동기는 그동안 외부 속도로 움직인다).</summary>
+        public bool IsPushed => _pushFrames > 0;
+        /// <summary>이동·공격·스킬 입력을 받지 않는 상태 (경직·가드 경직·공격자 경직).</summary>
+        public bool IsActionLocked => IsStunned || IsGuardStaggered;
+        /// <summary>근접 무적 중 (근접 계열 피격을 통째로 무시).</summary>
+        public bool IsMeleeInvulnerable => _meleeInvuln > 0;
+        /// <summary>충격치 누적값 (전투 사양서 2.1).</summary>
+        public float Impact => _impact.Value;
         public bool CanTackle => _tackleTimer >= Tackle.cooldownFrames;
         public int TackleRecoveryFrames => Tackle.recoveryFrames;
         /// <summary>히트스톱 중 (모션·수평 이동 정지).</summary>
@@ -74,6 +87,14 @@ namespace MyDongari.Game.Combat
         // 상태 머신이 없는 기체(연습 봇)의 근접 구동. 이동기가 있는 기체는 코어의 근접 상태(VoMeleeState)가 구동한다
         private readonly VoMeleeDrive _ownDrive = new VoMeleeDrive();
         private int _parryFrames;
+        // 충격치 누적값·근접 무적
+        private readonly ImpactMeter _impact = new ImpactMeter();
+        private int _meleeInvuln;
+        // 경직·가드 경직: 남은 틱, 밀려나는 방향(공격 방향), 속력(u/f)
+        private int _pushFrames;
+        private bool _pushIsGuard;
+        private Vector3 _pushDirection;
+        private float _pushSpeed;
         private int _tackleTimer = Long;
         private int _stunFrames;
         private int _reraiseFrames;
@@ -123,14 +144,27 @@ namespace MyDongari.Game.Combat
         public void DecideHits()
         {
             if (Ledger.IncomingCount == 0) return;
-            Ledger.Decide(new DefenderPosture
+            Ledger.Decide(C, new DefenderPosture
             {
                 Invulnerable = _knockdown != null && _knockdown.IsInvulnerable,
+                MeleeInvulnerable = IsMeleeInvulnerable,
                 Parrying = IsParrying,
                 Guarding = IsGuarding,
-                Overheated = _heatGauge != null && _heatGauge.IsOverheated,
-                GuardedDamageScale = 1f - Guard.meleeReduction
+                FacingYaw = FacingYaw,
+                Airborne = _stateMachine != null && _stateMachine.IsAirborne,
+                Dashing = _stateMachine != null && _stateMachine.IsDashing && !_stateMachine.IsAirborne,
+                Impact = _impact.Value
             });
+        }
+
+        /// <summary>내 정면(Unity Y 회전, °).</summary>
+        private float FacingYaw
+        {
+            get
+            {
+                VoMotor motor = Motor;
+                return motor != null && motor.IsActive ? motor.Yaw : transform.eulerAngles.y;
+            }
         }
 
         public void TickStandalone()
@@ -161,16 +195,24 @@ namespace MyDongari.Game.Combat
             if (_tackleTimer < Long) _tackleTimer++;
             if (_reraiseFrames > 0) _reraiseFrames--;
             if (_stunFrames > 0) _stunFrames--;
+            // 충격치는 매 틱 줄고, 무적 타이머도 매 틱 준다 (히트스톱 중에도)
+            _impact.Tick(C.impactDecay);
+            if (_meleeInvuln > 0) _meleeInvuln--;
 
             ApplyDecisions();
-
-            if (_knockdown != null) _knockdown.CombatTick();
+            TickPush();
+            TickKnockdown();
             if (_stateMachine != null) _stateMachine.SyncKnockdownState();
 
             bool roundActive = Flow.GameManager.Instance == null || Flow.GameManager.Instance.IsRoundActive;
-            if (IsStunned || IsKnockedDown)
+            if (IsGuardStaggered)
             {
-                // 스턴·넉다운 중엔 가드 불가 (올리고 있던 가드도 내림). 스턴 자체가 벌이라 재사용 대기는 걸지 않는다
+                // 가드 경직: 가드는 그대로 유지, 입력은 받지 않는다 (끝나면 가드 유지로 돌아간다)
+                ReadGuardPress();
+            }
+            else if (IsStunned || IsKnockedDown)
+            {
+                // 경직·넉다운 중엔 가드 불가 (올리고 있던 가드도 내림). 경직 자체가 벌이라 재사용 대기는 걸지 않는다
                 if (IsGuarding) DropGuard(applyReraiseDelay: false);
                 ReadGuardPress();
             }
@@ -216,15 +258,30 @@ namespace MyDongari.Game.Combat
         private void ApplyDecisions()
         {
             var decisions = Ledger.Decisions;
-            for (int i = 0; i < decisions.Count; i++) ApplyDecision(decisions[i]);
+            Reaction heaviest = Reaction.None;
+            HitInfo heaviestInfo = default;
+            for (int i = 0; i < decisions.Count; i++)
+            {
+                HitDecision decision = decisions[i];
+                ApplyDecision(decision);
+                if (decision.Reaction > heaviest)
+                {
+                    heaviest = decision.Reaction;
+                    heaviestInfo = decision.Info;
+                }
+            }
+            // 같은 틱 여러 발이면 가장 무거운 반응 하나로 들어간다
+            if (heaviest != Reaction.None) EnterReaction(heaviest, heaviestInfo);
             var reflects = Ledger.Reflects;
             for (int i = 0; i < reflects.Count; i++) ApplyReflect(reflects[i]);
             Ledger.ClearApplied();
         }
 
+        /// <summary>판단된 피격 하나: 피해·충격치 누적, 알림. 반응 상태로 들어가는 것은 EnterReaction이 한다.</summary>
         private void ApplyDecision(HitDecision decision)
         {
             HitInfo info = decision.Info;
+            info.Reaction = decision.Reaction;
             switch (decision.Result)
             {
                 case HitResult.Clash:
@@ -237,21 +294,12 @@ namespace MyDongari.Game.Combat
                     _parryGrace = true;
                     break;
                 case HitResult.Hit:
-                    if (_health != null) _health.TakeDamage(decision.Damage);
-                    ApplyKnockback(info.Direction, info.KnockbackForce);
-                    if (info.StunFrames > 0) ApplyStun(info.StunFrames);
-                    if (info.Type == AttackType.PileDriver && _knockdown != null) _knockdown.Begin(info.Direction, CombatTime.Seconds(info.LaunchDelayFrames));
-                    break;
                 case HitResult.GuardBroken:
-                    if (_health != null) _health.TakeDamage(decision.Damage);
-                    ApplyKnockback(info.Direction, info.KnockbackForce);
-                    DropGuard(applyReraiseDelay: false);
-                    ApplyStun(Mathf.Max(CombatTime.Frames(Guard.breakStun), info.StunFrames));
-                    break;
                 case HitResult.Guarded:
                     if (_health != null) _health.TakeDamage(decision.Damage);
-                    ApplyKnockback(info.Direction, info.KnockbackForce);
-                    if (_heatGauge != null) _heatGauge.AddHeat(Guard.heatPerBlock);
+                    _impact.Add(decision.ImpactAdded);
+                    // 막을 때마다 히트가 오른다 (가드의 대가)
+                    if (decision.Result == HitResult.Guarded && _heatGauge != null) _heatGauge.AddHeat(Guard.heatPerBlock);
                     break;
             }
             OnHitResolved?.Invoke(info, decision.Result);
@@ -259,12 +307,154 @@ namespace MyDongari.Game.Combat
             if (attacker != null) attacker.NotifyAttackResolved(info, decision.Result);
         }
 
+        /// <summary>반응 상태로 들어간다 (전투 사양서 2.2). 정산한 틱에 바로 — 그 틱의 이동 적분부터 밀려남이 반영된다.</summary>
+        private void EnterReaction(Reaction reaction, HitInfo info)
+        {
+            VoCombatSpec c = C;
+            switch (reaction)
+            {
+                case Reaction.InvulnOnly:
+                    // 점프 중·지상 대시 중의 경직급 피격: 반응 없이 무적만
+                    GrantMeleeInvuln(c.reactInvulnFrames);
+                    break;
+
+                case Reaction.GuardStagger:
+                    // 가드 경직: 공격 방향으로 밀리고, 근접 무적 16f. 끝나면 가드 유지로
+                    BeginPush(c.guardStaggerFrames, c.guardStaggerSpeed, info.Direction, guard: true);
+                    GrantMeleeInvuln(c.reactInvulnFrames);
+                    break;
+
+                case Reaction.Stagger:
+                    InterruptActions();
+                    BeginPush(c.staggerFrames, c.staggerSpeed, info.Direction, guard: false);
+                    // 근접으로 경직했으면 근접 무적 16f
+                    if (info.IsMelee) GrantMeleeInvuln(c.reactInvulnFrames);
+                    break;
+
+                case Reaction.Down:
+                case Reaction.AirDown:
+                case Reaction.Blown:
+                    InterruptActions();
+                    _pushFrames = 0;
+                    // 다운·날아감·공중 다운에 들어가면 충격치 누적을 지운다 (경직으로는 안 지운다)
+                    _impact.Clear();
+                    if (_knockdown != null)
+                    {
+                        DownKind kind = info.Type == AttackType.PileDriver ? DownKind.PileDriver
+                            : reaction == Reaction.Down ? DownKind.Down
+                            : reaction == Reaction.AirDown ? DownKind.AirDown : DownKind.Blown;
+                        _knockdown.Begin(kind, info.Direction, info.LaunchDelayFrames);
+                    }
+                    break;
+            }
+        }
+
+        /// <summary>반응으로 끊기는 것: 가드, 펀치, 대시, 런지.</summary>
+        private void InterruptActions()
+        {
+            if (IsGuarding) DropGuard(applyReraiseDelay: false);
+            CancelMelee(notify: true);
+            if (_stateMachine != null && _stateMachine.IsDashing) _stateMachine.ActiveDash.EndByKnockback();
+        }
+
+        /// <summary>근접 무적을 frames틱 준다 (더 긴 쪽이 남는다).</summary>
+        public void GrantMeleeInvuln(int frames)
+        {
+            _meleeInvuln = Mathf.Max(_meleeInvuln, frames);
+        }
+
+        /// <summary>상대가 200u 안이면 0.78 (이동 사양서의 근접 감속 — 피격 밀림에도 걸린다), 아니면 1.</summary>
+        public float CloseSlowScale
+        {
+            get
+            {
+                VoSpec v = StyleOverrides.Current.Effective;
+                return TryGetOpponentRelation(out float distance, out _) && distance < v.closeSlowDistance ? v.closeSlowScale : 1f;
+            }
+        }
+
+        private void BeginPush(int frames, float speed, Vector3 direction, bool guard)
+        {
+            direction.y = 0f;
+            _pushFrames = frames;
+            _pushIsGuard = guard;
+            _pushSpeed = speed;
+            _pushDirection = direction.sqrMagnitude > 0.0001f ? direction.normalized : -transform.forward;
+        }
+
+        /// <summary>경직·가드 경직 한 틱: 공격 방향으로 밀린다 (히트스톱이 아닌 틱마다, 근접 감속과 함께). 끝나면 멈춘다.</summary>
+        private void TickPush()
+        {
+            if (_pushFrames <= 0 || _rb == null) return;
+            if (IsKnockedDown)
+            {
+                _pushFrames = 0;
+                return;
+            }
+            if (IsHitStopped)
+            {
+                MotionBridge.SetHorizontalVelocity(_rb, Vector3.zero, undamped: true);
+                return;
+            }
+            _pushFrames--;
+            float speed = _pushFrames > 0 ? _pushSpeed * CloseSlowScale * U * CombatTime.TickRate : 0f;
+            MotionBridge.SetHorizontalVelocity(_rb, _pushDirection * speed, undamped: true);
+        }
+
+        /// <summary>넉다운 한 틱 + 기상 입력 (전투 사양서 2.3).</summary>
+        private void TickKnockdown()
+        {
+            if (_knockdown == null || !_knockdown.IsKnockedDown) return;
+            VoMotor motor = Motor;
+            bool live = motor != null && motor.IsActive;
+            bool dashHeld = false;
+            if (_knockdown.IsWaitingWake)
+            {
+                bool attack = _weapon != null && _weapon.PeekAttackPressed();
+                bool guard = _input != null && _input.GuardPressCount != _lastGuardPressCount;
+                bool jump = live && motor.JumpNew;
+                bool lever = live && motor.Lever.Direction >= 0 && motor.Lever.WasNeutral;
+                bool mash = attack || guard || jump || lever || (live && motor.TurboNew);
+                _knockdown.WakeInput(attack, jump, mash);
+                dashHeld = live && motor.TurboHeld && motor.Lever.Direction >= 0 && motor.DashAllowed && _stateMachine != null;
+            }
+            KnockTickResult result = _knockdown.CombatTick(IsHitStopped, dashHeld);
+            VoCombatSpec c = C;
+            switch (result)
+            {
+                case KnockTickResult.Recovered:
+                    // 그냥 일어나면 무적이 길다
+                    GrantMeleeInvuln(c.wakeInvulnFrames);
+                    break;
+                case KnockTickResult.WakeAttack:
+                    // 바로 공격으로 일어나면 무적이 짧다. 공격은 이 틱의 공격 선택(구역이면 펀치, 아니면 런지)으로 나간다
+                    GrantMeleeInvuln(c.wakeActionInvulnFrames);
+                    if (_stateMachine != null) _stateMachine.ToStand();
+                    if (_weapon != null) _weapon.BufferAttackPress();
+                    break;
+                case KnockTickResult.WakeDash:
+                    if (_stateMachine != null)
+                    {
+                        _stateMachine.ToStand();
+                        // 일반 대시와 달리 상대 방위 기준
+                        _stateMachine.V8GroundDashFrom(motor.Lever.Direction, motor.HasOpponent ? motor.OpponentBearing : motor.Yaw);
+                    }
+                    break;
+                case KnockTickResult.WakeJump:
+                    if (_stateMachine != null)
+                    {
+                        _stateMachine.ToStand();
+                        _stateMachine.TryStartJumpV8();
+                    }
+                    break;
+            }
+        }
+
         /// <summary>내가 때린 공격을 상대가 패리해 되돌아온 것: 돌진 중이라 가드가 없다 → 감쇄 없이 체력에 바로 + 밀려남.</summary>
         private void ApplyReflect(ReflectRecord reflect)
         {
             if (_health != null) _health.TakeDamage(reflect.Damage * Parry.reflectRatio);
-            float force = reflect.Info.KnockbackForce > 0f ? reflect.Info.KnockbackForce : Parry.reflectKnockback;
-            ApplyKnockback(reflect.Direction, force);
+            ApplyKnockback(reflect.Direction, Parry.reflectKnockback);
         }
 
         /// <summary>피격자가 내 공격의 결과를 알려 준다 (피격자의 정산 단계에서).</summary>
@@ -501,12 +691,15 @@ namespace MyDongari.Game.Combat
             _reraiseFrames = 0;
             _tackleTimer = Long;
             CancelMelee(notify: false);
+            _impact.Clear();
+            _meleeInvuln = 0;
+            _pushFrames = 0;
             Ledger.Reset();
             if (_input != null) _lastGuardPressCount = _input.GuardPressCount;
             if (_stateMachine != null) _stateMachine.MechController.SetBaselineDamping(Guard.releaseDamping);
         }
 
-        /// <summary>frames틱 동안 행동 불가 (공격자 경직·훅 경직·가드 깨짐). 더 긴 쪽이 남는다.</summary>
+        /// <summary>frames틱 동안 행동 불가 (우리 규칙: 공격자 경직·훅 경직). 더 긴 쪽이 남는다. 피격 반응의 경직은 EnterReaction이 건다.</summary>
         public void ApplyStun(int frames)
         {
             if (frames <= 0) return;
@@ -561,10 +754,10 @@ namespace MyDongari.Game.Combat
                 if (!_identity.IsOpponentCollider(hit)) continue;
                 // 상대 기체의 자식 콜라이더에 맞아도 컴포넌트는 루트(MechIdentity가 있는 곳)에서 찾는다
                 GameObject target = _identity.Opponent.gameObject;
+                // 차징 태클 = 강타(가드 불능, 날아감), 대시 공격 = 근접 계열 2(가드 가능, 때린 쪽이 멈추지 않는다)
                 HitInfo info = NewHit(type, charged ? HitKind.Strong : HitKind.Melee2,
                     charged ? tackle.damage * (1f + chargePower) : dash.damage, target);
-                info.KnockbackForce = charged ? tackle.knockback * (1f + chargePower) : dash.knockback;
-                info.StunFrames = CombatTime.Frames(charged ? tackle.victimStun : dash.stun);
+                info.Impact = charged ? C.impactStrong : C.impactDashMelee;
                 QueueHit(target, info);
                 return true;
             }
@@ -748,10 +941,11 @@ namespace MyDongari.Game.Combat
             BernardTuning.PunchValues punch = Punch;
             BernardTuning.ComboValues combo = Combo;
             bool third = _comboStep == 3;
-            // 쓰리는 피해 배율 + 넉백 (원·투는 예전 펀치 그대로)
+            // 쓰리는 피해 배율. 충격치: 원·투는 경직만(우리 값 280), 쓰리는 다운(원본 C1 1100)
+            VoCombatSpec c = C;
             HitInfo info = NewHit(AttackType.Punch, HitKind.Melee,
                 third ? punch.damage * combo.thirdDamageMultiplier : punch.damage, opponent.gameObject);
-            info.KnockbackForce = third ? combo.thirdKnockback : 0f;
+            info.Impact = third ? c.impactC1 : (_comboStep == 2 ? c.impactA1Second : c.impactA1First);
             info.ComboStep = _comboStep;
             QueueHit(opponent.gameObject, info);
             _swingHit = true;

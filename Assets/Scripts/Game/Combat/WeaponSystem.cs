@@ -77,6 +77,12 @@ namespace MyDongari.Game.Combat
             return pressed;
         }
 
+        /// <summary>공격 버튼을 지난 틱 뒤에 새로 눌렀는지 (읽기만 — 기상 대기의 선입력·연타 판정용).</summary>
+        public bool PeekAttackPressed() => _inputReader != null && _inputReader.AttackPressCount != _lastAttackPressCount;
+
+        /// <summary>공격 입력을 버퍼에 넣는다 (기상 대기 끝의 선입력 공격).</summary>
+        public void BufferAttackPress() => _attackBuffer.Press();
+
         /// <summary>전투 틱마다 (MeleeSystem이 부른다): 스킬·공격 버튼의 새 입력을 읽고 공격을 고른다.</summary>
         public void CombatTick(bool roundActive)
         {
@@ -93,8 +99,8 @@ namespace MyDongari.Game.Combat
 
             _fireTimer += 1f / CombatTime.TickRate;
 
-            // 넉다운 중엔 공격·스킬 입력을 무시한다 (버퍼에도 안 남김)
-            if (_meleeSystem != null && _meleeSystem.IsKnockedDown)
+            // 넉다운·경직·가드 경직 중엔 공격·스킬 입력을 전혀 처리하지 않는다 (버퍼에도 안 남김)
+            if (_meleeSystem != null && (_meleeSystem.IsKnockedDown || _meleeSystem.IsStaggered || _meleeSystem.IsGuardStaggered))
             {
                 _attackBuffer.Clear();
                 return;

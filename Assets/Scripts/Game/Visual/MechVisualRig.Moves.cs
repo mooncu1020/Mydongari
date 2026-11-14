@@ -298,7 +298,7 @@ namespace MyDongari.Game.Visual
                 case HitResult.GuardBroken:
                     _breakStart = _clock;
                     // MeleeSystem과 같은 길이: 가드 브레이크 스턴과 공격 스턴 중 긴 쪽
-                    _breakLength = Mathf.Max(_tuning.Get(this).Guard.breakStun, CombatTime.Seconds(info.StunFrames));
+                    _breakLength = CombatTime.Seconds(StyleOverrides.Current.EffectiveCombat.hitStopFrames);
                     _guardWeight = 0f;
                     break;
             }
@@ -775,7 +775,7 @@ namespace MyDongari.Game.Visual
 
                 case KnockdownController.KnockPhase.GetUp:
                 {
-                    float total = Mathf.Max(0.05f, Mathf.Max(k.getUpTime, k.invulnerableTime));
+                    float total = Mathf.Max(0.05f, k.getUpTime);
                     Key(0f, PoseNames.KnockdownLand);
                     Key(total * k.getUpKneelAt, PoseNames.GetUpKneel, MechPoseLibrary.EaseSmooth);
                     Key(total * Mathf.Max(k.getUpKneelAt, k.getUpRiseAt), PoseNames.GetUpRise, MechPoseLibrary.EaseSmooth);
