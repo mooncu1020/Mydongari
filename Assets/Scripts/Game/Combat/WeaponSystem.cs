@@ -10,7 +10,7 @@ using MyDongari.Game.Tuning;
 
 namespace MyDongari.Game.Combat
 {
-    /// <summary>락온 밖(상대 6m 밖 또는 락온 없음)에서 공격 버튼이 무엇을 할지. 버나드 계열은 Lunge.</summary>
+    /// <summary>근접 구역 밖에서 공격 버튼이 무엇을 할지. 버나드 계열은 Lunge.</summary>
     public enum RangedMode
     {
         Lunge,
@@ -153,10 +153,10 @@ namespace MyDongari.Game.Combat
         }
 
         /// <summary>
-        /// 지금 상황으로 공격 버튼 한 번의 동작을 고르고 시작한다. 우선순위 (GAME_SPEC_V3 "공격" 표):
-        /// 1 앵커 클로로 끌어온 직후 → 파일 드라이버, 2 내가 공중 → 유도 내려찍기(6단계), 3 상대 공중 + 6m 안 → 대공 어퍼컷(6단계),
-        /// 4 대시 0.8초 미만 → 유도 대시 어택, 5 대시 0.8초 이상 → 차징 태클, 6 상대 6m 안 → 펀치 콤보, 7 그 외 → 스러스터 런지.
-        /// 시작했으면 그 종류, 지금 못 하면(쿨다운·발생 중·런지 중·스턴 등) null.
+        /// 지금 상황으로 공격 버튼 한 번의 동작을 고르고 시작한다. 우선순위:
+        /// ① 앵커 클로로 끌어온 직후 → 파일 드라이버, ② 점프 입력 후 8f 이내 + 근접 구역(높이차 창 무시) → 뛰어 베기,
+        /// ③ 대시 중 → 대시 공격(48f 미만) / 차징 태클(이상), ④ 근접 구역 A 안 → 펀치 콤보, ⑤ 그 밖 → 스러스터 런지.
+        /// 그 밖의 공중 공격은 없다. 시작했으면 그 종류, 지금 못 하면(공격 중·런지 중·경직 등) null.
         /// </summary>
         private AttackType? TryStartAttack()
         {
@@ -171,17 +171,18 @@ namespace MyDongari.Game.Combat
                 return _anchorClaw.TryPileDriver() ? AttackType.PileDriver : (AttackType?)null;
             }
 
-            // 2) 내가 공중 → 유도 내려찍기(6단계, 지금은 공중 입력을 위 Update에서 무시), 3) 상대가 공중 + 6m 안 → 대공 어퍼컷(6단계): 자리만
+            // ② 뛰어 베기: 점프 입력 후 8f 이내 + 근접 구역(높이차 창 무시)
+            if (_meleeSystem != null && _meleeSystem.TryJumpSlash()) return AttackType.JumpSlash;
 
             if (_stateMachine != null && _stateMachine.IsDashing)
             {
-                // 4·5) 대시 중 공격 버튼 = 0.8초 미만 유도 대시 어택 / 이상 차징 태클
+                // ③ 대시 중 공격 버튼 = 48f 미만 유도 대시 어택 / 이상 차징 태클
                 if (!_stateMachine.ActiveDash.RequestTackle()) return null;
                 return _stateMachine.ActiveDash.IsTackleCharged ? AttackType.Tackle : AttackType.DashAttack;
             }
 
-            // 6·7) V3: 펀치/런지 전환은 하드 락온(10m)과 따로 meleeSwitchRange(6m). 6~10m는 하드락 안이어도 런지
-            if (IsOpponentInMeleeRange())
+            // ④·⑤ 근접 구역 A(원본: 바깥 70u·안쪽 원 12.5u·원뿔 42.2°·높이차 창) 안이면 펀치, 밖이면 런지
+            if (_meleeSystem != null && _meleeSystem.IsOpponentInMeleeZone())
             {
                 return _meleeSystem != null && _meleeSystem.TryMeleeAttack() ? AttackType.Punch : (AttackType?)null;
             }
@@ -198,15 +199,6 @@ namespace MyDongari.Game.Combat
                 return _thrusterLunge.TryLunge() ? AttackType.Lunge : (AttackType?)null;
             }
             return null;
-        }
-
-        /// <summary>상대가 펀치 전환 거리 안인지 (기체 기준 3D 거리).</summary>
-        private bool IsOpponentInMeleeRange()
-        {
-            MechIdentity opponent = _identity != null ? _identity.Opponent : null;
-            if (opponent == null || !opponent.gameObject.activeInHierarchy) return false;
-            float range = _tuning.Get(this).LockOn.meleeSwitchRange;
-            return Vector3.Distance(transform.position, opponent.transform.position) <= range;
         }
 
         private void TryFire()

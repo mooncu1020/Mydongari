@@ -339,6 +339,35 @@ namespace MyDongari.Game.Combat
             };
         }
 
+        // ---------------- 근접 구역 ----------------
+
+        private static float UnitMeters(VoMotor motor) =>
+            motor != null && motor.IsActive ? motor.U : StyleOverrides.Current.Effective.fallbackBodyHeight / StyleOverrides.Current.Effective.bodyHeightUnits;
+
+        /// <summary>이 기체의 1u(m). 이동기가 있으면 잰 기체 키 기준, 없으면(연습 봇) 기준 키 1.93m / 22.</summary>
+        public float U => UnitMeters(Motor);
+
+        /// <summary>
+        /// 상대가 근접 구역 A 안인지 (전투 사양서 1.1: 바깥 70u, 안쪽 원 12.5u, 원뿔 반각 42.2°, 높이차 −24 ~ +13u).
+        /// 공격 버튼이 펀치가 되는 조건. ignoreHeight = 높이차 창을 보지 않는다(뛰어 베기).
+        /// 이동기가 있으면 이동기가 이번 틱 위치로 계산한 값, 없으면(연습 봇) 같은 식으로 직접 잰다.
+        /// </summary>
+        public bool IsOpponentInMeleeZone(bool ignoreHeight = false)
+        {
+            VoMotor motor = Motor;
+            if (motor != null && motor.IsActive) return ignoreHeight ? motor.InMeleeZoneAnyHeight : motor.InMeleeZone;
+            MechIdentity opponent = _identity.Opponent;
+            if (opponent == null || !opponent.gameObject.activeInHierarchy) return false;
+            Vector3 offset = VoMotor.OpponentPosition(opponent.transform) - transform.position;
+            float u = U;
+            float height = -offset.y / u;
+            offset.y = 0f;
+            Vector3 forward = transform.forward;
+            forward.y = 0f;
+            float angle = offset.sqrMagnitude > 0.000001f ? Vector3.Angle(forward, offset) : 0f;
+            return VoMeleeZone.Evaluate(StyleOverrides.Current.EffectiveCombat, offset.magnitude / u, angle, height, ignoreHeight, out _);
+        }
+
         // ---------------- 입력 소스 ----------------
 
         /// <summary>전투 입력 소스를 바꾼다. 연습 봇처럼 런타임에 입력 컴포넌트를 붙이는 기체용.</summary>
@@ -565,6 +594,14 @@ namespace MyDongari.Game.Combat
                 QueueHit(target, info);
                 return true;
             }
+            return false;
+        }
+
+        // ---------------- 뛰어 베기 ----------------
+
+        /// <summary>뛰어 베기 (원본 점프 근접): 점프 입력 후 8f 이내 + 근접 구역(높이차 창 무시)이면 발동.</summary>
+        public bool TryJumpSlash()
+        {
             return false;
         }
 

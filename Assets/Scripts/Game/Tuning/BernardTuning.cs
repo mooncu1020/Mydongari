@@ -376,9 +376,6 @@ namespace MyDongari.Game.Tuning
             [Tooltip("이 거리(m) 밖으로 나가면 하드 락온 해제. 걸림과 2m 떼어 경계에서 깜빡이지 않게 (앵커 클로 사거리와 같음)")]
             public float hardLockExitRange = 12f;
 
-            [Header("공격 전환")]
-            [Tooltip("상대까지 이 거리(m) 안이면 공격 버튼 = 펀치 콤보, 밖이면 스러스터 런지. 하드 락온 거리와 따로")]
-            public float meleeSwitchRange = 6f;
         }
 
         [Serializable]

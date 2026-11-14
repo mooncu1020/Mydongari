@@ -34,6 +34,7 @@ namespace MyDongari.Bridge
         // ---- 수치 ----
         /// <summary>원본값 + StyleOverrides에서 켜진 칸.</summary>
         public VoSpec Spec => StyleOverrides.Current.Effective;
+        public VoCombatSpec CombatSpec => StyleOverrides.Current.EffectiveCombat;
         public float GroundMinNormalY => _controller.Tuning.Movement.groundMinNormalY;
 
         // ---- 입력 ----

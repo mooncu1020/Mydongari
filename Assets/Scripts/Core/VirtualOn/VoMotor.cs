@@ -102,6 +102,14 @@ namespace MyDongari.Core.VirtualOn
         /// <summary>정면에서 상대까지 각(°, 오른쪽 +).</summary>
         public float OpponentAngleOff { get; private set; }
         public bool InCloseZone { get; private set; }
+        /// <summary>높이차(내 발 − 상대 발, u). 내가 위면 +.</summary>
+        public float OpponentHeightDiffU { get; private set; }
+        /// <summary>근접 구역 A 안인지 (전투 사양서 1.1: 높이차 창 → 안쪽 원 → 원뿔). 공격 버튼이 근접으로 바뀌는 조건.</summary>
+        public bool InMeleeZone { get; private set; }
+        /// <summary>높이차 창을 빼고 본 근접 구역 (점프 이륙·점프 근접 예외).</summary>
+        public bool InMeleeZoneAnyHeight { get; private set; }
+        /// <summary>근접 구역의 안쪽 원 안(밀착)인지.</summary>
+        public bool InMeleeInner { get; private set; }
 
         // ---- 대시 게이지 (사양서 1.2) ----
         public float DashGauge { get; set; }
@@ -558,15 +566,24 @@ namespace MyDongari.Core.VirtualOn
             {
                 OpponentDistanceU = float.MaxValue;
                 InCloseZone = false;
+                InMeleeZone = false;
+                InMeleeZoneAnyHeight = false;
+                InMeleeInner = false;
                 return;
             }
             Vector3 target = OpponentPosition(opponent);
             Vector3 offset = target - _position;
+            OpponentHeightDiffU = -offset.y / U;
             offset.y = 0f;
             OpponentDistanceU = offset.magnitude / U;
             OpponentBearing = offset.sqrMagnitude > 0.000001f ? Mathf.Atan2(offset.x, offset.z) * Mathf.Rad2Deg : _yaw;
             OpponentAngleOff = Mathf.DeltaAngle(_yaw, OpponentBearing);
             InCloseZone = OpponentDistanceU < V.closeZoneDistance;
+            // 근접 구역 (전투 사양서 4.2-②-2: 이 틱 위치로 계산)
+            VoCombatSpec c = Host.CombatSpec;
+            InMeleeZoneAnyHeight = VoMeleeZone.Evaluate(c, OpponentDistanceU, OpponentAngleOff, OpponentHeightDiffU, true, out bool inner);
+            InMeleeZone = VoMeleeZone.Evaluate(c, OpponentDistanceU, OpponentAngleOff, OpponentHeightDiffU, false, out _);
+            InMeleeInner = inner && InMeleeZone;
         }
 
         /// <summary>

@@ -272,7 +272,7 @@ namespace MyDongari.Game.Bot
         }
 
         /// <summary>
-        /// 발동 시점 상황으로 공격을 고른다 — 플레이어와 같은 기준: 펀치 전환 거리(6m) 안이면 펀치, 밖이면 런지.
+        /// 발동 시점 상황으로 공격을 고른다 — 플레이어와 같은 기준: 근접 구역 A 안이면 펀치, 밖이면 런지.
         /// 스턴·쿨다운·발생 중·런지 중이면 null (버퍼가 다시 시도).
         /// </summary>
         private AttackType? TryStartAttack()
@@ -280,8 +280,7 @@ namespace MyDongari.Game.Bot
             if (_player == null) return null;
             if (_meleeSystem != null && _meleeSystem.IsStunned) return null;
 
-            float dist = Vector3.Distance(transform.position, _player.position);
-            if (dist <= _tuning.Get(this).LockOn.meleeSwitchRange)
+            if (_meleeSystem != null && _meleeSystem.IsOpponentInMeleeZone())
             {
                 return _meleeSystem != null && _meleeSystem.TryMeleeAttack() ? AttackType.Punch : (AttackType?)null;
             }

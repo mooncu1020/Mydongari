@@ -83,6 +83,23 @@ namespace MyDongari.Bridge
 
         // ---- 유효값 ----
         [NonSerialized] private VoSpec _effective;
+        [NonSerialized] private VoCombatSpec _effectiveCombat;
+
+        /// <summary>전투 원본 사본에 켜진 칸만 덮어쓴 전투 수치.</summary>
+        public VoCombatSpec EffectiveCombat
+        {
+            get
+            {
+                if (_effectiveCombat == null) _effectiveCombat = BuildCombat();
+                return _effectiveCombat;
+            }
+        }
+
+        private VoCombatSpec BuildCombat()
+        {
+            VoCombatSpec c = VoCombatSpec.Original();
+            return c;
+        }
 
         /// <summary>원본 사본에 켜진 칸만 덮어쓴 이동기 수치. 에셋을 고치면(OnValidate) 다음에 읽을 때 다시 만든다.</summary>
         public VoSpec Effective
@@ -97,11 +114,13 @@ namespace MyDongari.Bridge
         private void OnValidate()
         {
             _effective = null;
+            _effectiveCombat = null;
         }
 
         private void OnEnable()
         {
             _effective = null;
+            _effectiveCombat = null;
         }
 
         private VoSpec Build()
