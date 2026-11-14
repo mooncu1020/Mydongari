@@ -650,6 +650,7 @@ namespace MyDongari.Game.Combat
         {
             _comboStep = step;
             _swingHit = false;
+            _hasLastSpherePoint = false;
             OnComboStep?.Invoke(step);
             // 맞든 빗나가든 휘두른 순간 히트가 오른다
             if (_heatGauge != null) _heatGauge.AddHeat(Punch.heatPerPunch);
@@ -716,37 +717,131 @@ namespace MyDongari.Game.Combat
             MotionBridge.SetHorizontalVelocity(_rb, forward.normalized * (speed * U * CombatTime.TickRate));
         }
 
+        // 공격 구의 지난 틱 위치 (쓸기 시작점). 휘두르는 동안 틱마다 갱신
+        private Vector3 _lastSpherePoint;
+        private bool _hasLastSpherePoint;
+
         /// <summary>
-        /// 펀치 판정 (틱 끝): 판정 창이 열린 틱에, 판정하는 순간의 내 정면·상대 위치 기준. 한 번 휘두를 때 한 번만 맞는다.
+        /// 펀치 판정 (틱 끝, 모든 기체가 움직인 뒤). 우리 근사: 공격 구(기체 중심 + 정면 × 사거리, 손 높이)를 지난 틱 위치 → 이번 틱 위치로
+        /// 쓸어서 상대 피격 캡슐과 겹치면 명중. 판정 창이 열린 틱에만 보고, 한 번 휘두를 때 한 상대에게 한 번만 맞는다.
         /// </summary>
         private void CollectPunchHit()
         {
             VoMeleeDrive drive = ActiveDrive;
-            if (drive == null || !drive.HitActiveThisTick || _swingHit) return;
+            if (drive == null)
+            {
+                _hasLastSpherePoint = false;
+                return;
+            }
+            StyleOverrides style = StyleOverrides.Current;
+            StyleOverrides.AttackSphere sphere = _comboStep >= 3 ? style.thirdSphere : style.punchSphere;
+            Vector3 point = AttackSpherePoint(sphere.range);
+            Vector3 from = _hasLastSpherePoint ? _lastSpherePoint : point;
+            _lastSpherePoint = point;
+            _hasLastSpherePoint = true;
+            if (!drive.HitActiveThisTick || _swingHit) return;
+
+            MechIdentity opponent = _identity.Opponent;
+            if (opponent == null || !opponent.gameObject.activeInHierarchy) return;
+            if (!SweepHitsOpponent(from, point, sphere.radius, opponent.gameObject)) return;
+
             BernardTuning.PunchValues punch = Punch;
             BernardTuning.ComboValues combo = Combo;
             bool third = _comboStep == 3;
+            // 쓰리는 피해 배율 + 넉백 (원·투는 예전 펀치 그대로)
+            HitInfo info = NewHit(AttackType.Punch, HitKind.Melee,
+                third ? punch.damage * combo.thirdDamageMultiplier : punch.damage, opponent.gameObject);
+            info.KnockbackForce = third ? combo.thirdKnockback : 0f;
+            info.ComboStep = _comboStep;
+            QueueHit(opponent.gameObject, info);
+            _swingHit = true;
+        }
 
-            MechIdentity opponent = _identity.Opponent;
-            if (opponent == null || !IsInFrontArc(opponent.transform, punch.halfAngle)) return;
-            // V5: 위아래 차이가 크면(점프한 상대·고지대) 빗나감
-            if (Mathf.Abs(opponent.transform.position.y - transform.position.y) > punch.heightTolerance) return;
+        /// <summary>지금 내 위치·정면 기준 공격 구 중심: 기체 중심에서 정면으로 range(m), 손 높이.</summary>
+        public Vector3 AttackSpherePoint(float range)
+        {
+            VoMotor motor = Motor;
+            bool live = motor != null && motor.IsActive;
+            Vector3 position = live ? motor.Position : (_rb != null ? _rb.position : transform.position);
+            Vector3 forward = live ? motor.Forward : transform.forward;
+            forward.y = 0f;
+            forward = forward.sqrMagnitude > 0.0001f ? forward.normalized : Vector3.forward;
+            float feet = position.y + FootOffset;
+            float height = BodyHeightMeters * StyleOverrides.Current.attackHandHeightRatio;
+            return new Vector3(position.x, feet + height, position.z) + forward * range;
+        }
 
-            // 거리는 콜라이더 표면 기준(OverlapSphere)이라 덩치 큰 기체도 사거리가 자연스럽다
-            Collider[] hits = Physics.OverlapSphere(transform.position, punch.range);
-            foreach (Collider hit in hits)
+        /// <summary>공격 구가 from → to로 쓸고 간 자취가 target의 피격 캡슐과 겹치는지.</summary>
+        public static bool SweepHitsOpponent(Vector3 from, Vector3 to, float radius, GameObject target)
+        {
+            MeleeSystem defender = target.GetComponent<MeleeSystem>();
+            if (defender != null)
             {
-                if (!_identity.IsOpponentCollider(hit)) continue;
-
-                // 쓰리는 피해 배율 + 넉백 (원·투는 예전 펀치 그대로)
-                HitInfo info = NewHit(AttackType.Punch, HitKind.Melee,
-                    third ? punch.damage * combo.thirdDamageMultiplier : punch.damage, opponent.gameObject);
-                info.KnockbackForce = third ? combo.thirdKnockback : 0f;
-                info.ComboStep = _comboStep;
-                QueueHit(opponent.gameObject, info);
-                _swingHit = true;
-                return;
+                defender.GetHurtCapsule(out Vector3 a, out Vector3 b, out float r);
+                return HitGeometry.SweptSphereHitsCapsule(from, to, radius, a, b, r);
             }
+            // 전투 허브가 없는 대상: 콜라이더 표면까지의 거리로
+            Collider col = target.GetComponent<Collider>();
+            if (col == null) return false;
+            Vector3 closest = col.ClosestPoint(to);
+            return (closest - to).sqrMagnitude <= radius * radius;
+        }
+
+        private CapsuleCollider _capsule;
+        private bool _capsuleLooked;
+
+        private CapsuleCollider Capsule
+        {
+            get
+            {
+                if (!_capsuleLooked)
+                {
+                    _capsuleLooked = true;
+                    _capsule = GetComponent<CapsuleCollider>();
+                }
+                return _capsule;
+            }
+        }
+
+        /// <summary>기체 루트에서 발바닥까지(m, 보통 음수).</summary>
+        private float FootOffset
+        {
+            get
+            {
+                CapsuleCollider capsule = Capsule;
+                return capsule != null ? capsule.center.y - capsule.height * 0.5f : 0f;
+            }
+        }
+
+        /// <summary>기체 키(m): 이동기가 잰 값, 없으면 기준 키.</summary>
+        private float BodyHeightMeters
+        {
+            get
+            {
+                VoMotor motor = Motor;
+                return motor != null && motor.IsActive ? motor.BodyHeight : StyleOverrides.Current.Effective.fallbackBodyHeight;
+            }
+        }
+
+        /// <summary>
+        /// 내 피격 캡슐 (축의 두 끝·반지름, 월드). 기체의 캡슐 콜라이더 그대로이고, 점프 중에는 줄어든다
+        /// (상승 × 0.6, 하강 × 0.45 — 원본의 피격 구 7개 → 3개 → 2개를 흉내 낸 우리 근사).
+        /// </summary>
+        public void GetHurtCapsule(out Vector3 a, out Vector3 b, out float radius)
+        {
+            VoMotor motor = Motor;
+            Vector3 position = motor != null && motor.IsActive ? motor.Position : (_rb != null ? _rb.position : transform.position);
+            CapsuleCollider capsule = Capsule;
+            float height = capsule != null ? capsule.height : BodyHeightMeters;
+            float r = capsule != null ? capsule.radius : 0.5f;
+            Vector3 center = position + (capsule != null ? new Vector3(capsule.center.x, 0f, capsule.center.z) : Vector3.zero);
+            float scale = 1f;
+            if (_stateMachine != null && _stateMachine.CurrentState is Core.VirtualOn.States.VoJumpState jump && jump.IsAirState)
+            {
+                StyleOverrides style = StyleOverrides.Current;
+                scale = jump.IsRising ? style.jumpRisingHurtScale : style.jumpFallingHurtScale;
+            }
+            HitGeometry.UprightCapsule(center, position.y + FootOffset, height, r, scale, out a, out b, out radius);
         }
 
         /// <summary>상대가 forward 기준 ±Tackle.halfAngle 안인지 (대시 진행 방향 기준 판정용). 거리는 따로 본다.</summary>
@@ -754,12 +849,6 @@ namespace MyDongari.Game.Combat
         {
             MechIdentity opponent = _identity.Opponent;
             return opponent != null && IsInFrontArc(opponent.transform, Tackle.halfAngle, forward);
-        }
-
-        private bool IsInFrontArc(Transform target, float halfAngle)
-        {
-            // 공격 방향 = 상체 방향 (G2. 상하체 분리가 없는 기체는 기체 정면)
-            return IsInFrontArc(target, halfAngle, MechFacing.AttackForward(transform));
         }
 
         private bool IsInFrontArc(Transform target, float halfAngle, Vector3 forward)

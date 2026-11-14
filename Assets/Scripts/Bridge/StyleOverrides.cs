@@ -79,6 +79,31 @@ namespace MyDongari.Bridge
         [Tooltip("가드 자동 선회: 상대가 정면 밖일 때 (1092 = 360°/s). 33.75° ~ 보간 끝 각도 사이는 두 값 사이를 선형으로")]
         public float guardTurnOutside = 1092f;
 
+        /// <summary>공격 구 하나: 기체 중심에서 정면으로 range(m) 나간 손 높이의 점에 반지름 radius(m).</summary>
+        [Serializable]
+        public struct AttackSphere
+        {
+            [Tooltip("기체 중심에서 정면으로 구 중심까지(m)")]
+            public float range;
+            [Tooltip("구 반지름(m)")]
+            public float radius;
+            public AttackSphere(float range, float radius) { this.range = range; this.radius = radius; }
+        }
+
+        [Header("명중 판정 — 우리 근사 (원본: 칼끝이 쓸고 간 면 vs 피격 구 7개, 골격 길이 미확정)")]
+        [Tooltip("원·투의 공격 구. 지난 틱 위치 → 이번 틱 위치로 쓸어서 상대 피격 캡슐과 겹치면 명중")]
+        public AttackSphere punchSphere = new AttackSphere(1.8f, 0.5f);
+        [Tooltip("쓰리의 공격 구")]
+        public AttackSphere thirdSphere = new AttackSphere(2.0f, 0.6f);
+        [Tooltip("뛰어 베기의 공격 구")]
+        public AttackSphere jumpSlashSphere = new AttackSphere(2.0f, 0.7f);
+        [Tooltip("공격 구 높이 = 발 + 기체 키 × 이 비율 (손 높이)")]
+        [Range(0f, 1f)] public float attackHandHeightRatio = 0.6f;
+        [Tooltip("점프 상승 중 피격 캡슐의 높이·반지름 배율 (원본: 피격 구 7개 → 3개)")]
+        [Range(0.1f, 1f)] public float jumpRisingHurtScale = 0.6f;
+        [Tooltip("점프 하강 중 피격 캡슐의 높이·반지름 배율 (원본: 피격 구 2개)")]
+        [Range(0.1f, 1f)] public float jumpFallingHurtScale = 0.45f;
+
         // ---- 유효값 ----
         [NonSerialized] private VoSpec _effective;
         [NonSerialized] private VoCombatSpec _effectiveCombat;

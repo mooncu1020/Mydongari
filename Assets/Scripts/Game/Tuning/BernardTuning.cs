@@ -59,12 +59,6 @@ namespace MyDongari.Game.Tuning
         [Serializable]
         public class PunchValues
         {
-            [Tooltip("펀치 사거리(m)")]
-            public float range = 3f;
-            [Tooltip("V5: 두 기체 높이 차가 이 값(m)을 넘으면 펀치가 빗나간다 (점프한 상대·고지대 위아래)")]
-            public float heightTolerance = 2f;
-            [Tooltip("펀치 판정 부채꼴 반각(°). 기체 정면 기준 ±이 각도 안의 상대만 맞는다")]
-            public float halfAngle = 45f;
             public float damage = 25f;
             [Tooltip("펀치 한 방(발동 기준)마다 오르는 히트")]
             public float heatPerPunch = 6f;
