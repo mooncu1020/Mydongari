@@ -20,9 +20,25 @@ namespace MyDongari.Core.VirtualOn
         /// <summary>상대 거리 입력 축소 (8.3m 안 0.7, 11.8m까지 선형으로 1).</summary>
         public float DistanceScale { get; private set; } = 1f;
         public bool IsNeutral => Direction < 0;
+        /// <summary>직전 틱에 중립이었는지 (대시 방향 재입력 조건, 사양서 4.4).</summary>
+        public bool WasNeutral { get; private set; } = true;
 
         /// <summary>방향 코드 → 기준 정면에서 잰 각(°, 오른쪽 +). 코드가 커질수록 왼쪽(반시계)으로 돈다.</summary>
         public static float Offset(int code) => code < 0 ? 0f : Mathf.DeltaAngle(0f, -code * 45f);
+
+        /// <summary>
+        /// 두 방향 코드가 정반대 계열인지 (사양서 4.4 방향 재입력): 앞 계열(앞·앞대각) ↔ 뒤 계열(뒤·뒤대각), 왼쪽 ↔ 오른쪽.
+        /// 같은 계열 안의 변경과 90° 변경은 정반대가 아니다.
+        /// </summary>
+        public static bool IsOppositeFamily(int a, int b)
+        {
+            if (a < 0 || b < 0) return false;
+            if ((IsFrontFamily(a) && IsBackFamily(b)) || (IsBackFamily(a) && IsFrontFamily(b))) return true;
+            return (a == 2 && b == 6) || (a == 6 && b == 2);
+        }
+
+        private static bool IsFrontFamily(int code) => code == 0 || code == 1 || code == 7;
+        private static bool IsBackFamily(int code) => code == 3 || code == 4 || code == 5;
 
         /// <summary>스틱 → 8방향 코드. threshold 미만이면 중립.</summary>
         public static int Code(Vector2 stick, float threshold)
@@ -38,6 +54,7 @@ namespace MyDongari.Core.VirtualOn
             Direction = -1;
             Stick = Vector2.zero;
             DistanceScale = 1f;
+            WasNeutral = true;
         }
 
         // 이보다 작으면 중립 (호스트가 기울기 문턱 아래를 0으로 보내 준다)
@@ -46,6 +63,7 @@ namespace MyDongari.Core.VirtualOn
         /// <summary>한 틱. stick = 호스트가 준 레버(문턱 아래는 0).</summary>
         public void Tick(Vector2 stick, float distanceScale)
         {
+            WasNeutral = Direction < 0;
             Direction = Code(stick, NeutralEpsilon);
             Stick = Direction >= 0 ? stick.normalized : Vector2.zero;
             DistanceScale = distanceScale;

@@ -46,31 +46,6 @@ namespace MyDongari.Bridge
             public void Apply(ref bool target) { if (enabled) target = value; }
         }
 
-        /// <summary>근접 스텝 속력 곡선에서 원본에 없는 세 점(앞대각·뒤대각·뒤). 앞·옆은 원본이라 여기서 못 바꾼다.</summary>
-        [Serializable]
-        public struct CloseStepFill
-        {
-            [Tooltip("켜면 아래 세 값으로 채운다. 끄면 코어의 중립 채움(대각 = 앞과 옆의 중간, 뒤 = 앞)")]
-            public bool enabled;
-            public float frontDiagonal;
-            public float backDiagonal;
-            public float back;
-            public CloseStepFill(bool enabled, float frontDiagonal, float backDiagonal, float back)
-            {
-                this.enabled = enabled;
-                this.frontDiagonal = frontDiagonal;
-                this.backDiagonal = backDiagonal;
-                this.back = back;
-            }
-            public void Apply(ref VoDirectional target)
-            {
-                if (!enabled) return;
-                target.frontDiagonal = frontDiagonal;
-                target.backDiagonal = backDiagonal;
-                target.back = back;
-            }
-        }
-
         [Header("선회 (원본: 사양서 2.2)")]
         [Tooltip("V9e: 빠른 '정면 밖' 선회율(759°/s)을 상대 쪽으로 도는 입력에만 쓴다 — 반대쪽으로 돌 때는 항상 '정면 안' 선회율. 원본은 방향을 가리지 않는다(끔)")]
         public BoolOverride fastTurnOnlyTowardOpponent = new BoolOverride(true, true);
@@ -82,8 +57,6 @@ namespace MyDongari.Bridge
         public BoolOverride neutralTurboDashesForward = new BoolOverride(true, true);
         [Tooltip("V8.2: 근접 구역 서기의 중립 ○ 앞 대시가 시작 후 이 프레임 안에 스틱이 들어오면 근접 스텝으로 바뀐다 (15f = 0.25초). 원본엔 없다(0)")]
         public IntOverride closeStepFromDashFrames = new IntOverride(true, 15);
-        [Tooltip("V9a: 하강 중에도 급강하(공중 ✕)를 받는다. 원본은 상승 중에만(끔)")]
-        public BoolOverride diveAllowedWhileFalling = new BoolOverride(true, true);
         [Tooltip("V9a: 상승 중 △ 재입력(2단 점프). 원본엔 있다(켬) — 우리는 뺐다")]
         public BoolOverride risingRejump = new BoolOverride(true, false);
         [Tooltip("V8.1: L스틱이 이 기울기 이상이면 그 방향으로 민 것 — 걷기·점프는 즉시 방향별 최대 속도. 원본의 레버 누적값 모델(임계 64/48, 속력 × 0.8~1.2) 대신 쓰는 우리 입력 규칙이라 끌 수 없다")]
@@ -99,16 +72,6 @@ namespace MyDongari.Bridge
         [Tooltip("세로 FOV(°). 사양서에 없는 우리 값 — 원본 카메라 거리 9.2m(78u, 기체 키 2.6m 기준)에서 기체가 화면 높이의 45%가 되도록 역산한 값: " +
                  "2 × atan((2.6 ÷ 0.45) ÷ (2 × 9.2)) ≈ 34.9° → 35°")]
         public float cameraFov = 35f;
-
-        [Header("근접 스텝 속력 (원본: 앞 1.5 → 2.9, 옆 4.2 → 2.2 u/f만 있음)")]
-        [Tooltip("시작 속력의 앞대각·뒤대각·뒤 (u/f). 사양서에 없어 정한 값: 대각 = 앞과 옆의 중간, 뒤 = 앞")]
-        public CloseStepFill closeStepStartFill = new CloseStepFill(true, 2.85f, 2.85f, 1.5f);
-        [Tooltip("끝 속력의 앞대각·뒤대각·뒤 (u/f)")]
-        public CloseStepFill closeStepEndFill = new CloseStepFill(true, 2.55f, 2.55f, 2.9f);
-
-        [Header("단위 (원본: 22u = 2.6m 추정)")]
-        [Tooltip("V7b: 렌더러로 키를 못 재거나 1~6m 밖이면 쓰는 키(m). 버나드를 실제로 잰 값 1.93m — 1u = 0.0877m, 기획서의 m/s(키 2.6m 환산)보다 속도·점프·카메라 거리가 0.74배")]
-        public FloatOverride fallbackBodyHeight = new FloatOverride(true, 1.93f);
 
         [Header("우리 규칙의 선회율 (원본에 대응 없음, 각 단위/f — 65536 = 360°)")]
         [Tooltip("가드 자동 선회 (V9a): 가드 중엔 R스틱 대신 몸이 상대 쪽으로 돈다. 상대가 정면 ±33.75° 안일 때 (400 = 132°/s)")]
@@ -148,14 +111,10 @@ namespace MyDongari.Bridge
             turnBlendEndAngle.Apply(ref s.turnBlendEndAngle);
             neutralTurboDashesForward.Apply(ref s.neutralTurboDashesForward);
             closeStepFromDashFrames.Apply(ref s.closeStepFromDashFrames);
-            diveAllowedWhileFalling.Apply(ref s.diveAllowedWhileFalling);
             risingRejump.Apply(ref s.risingRejump);
             cameraPositionFollow.Apply(ref s.cameraPositionFollow);
             cameraMaxScreenOffset.Apply(ref s.cameraMaxScreenOffset);
             cameraBaseHeightRatio.Apply(ref s.cameraBaseHeightRatio);
-            closeStepStartFill.Apply(ref s.closeStepStartSpeed);
-            closeStepEndFill.Apply(ref s.closeStepEndSpeed);
-            fallbackBodyHeight.Apply(ref s.fallbackBodyHeight);
             return s;
         }
 

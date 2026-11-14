@@ -168,6 +168,16 @@ namespace MyDongari.Core.VirtualOn.States
                         if (TryJump()) return;
                         _exitReason = DashExitReason.Other;
                     }
+                    // 방향 재입력 (사양서 4.4): 직전 틱 레버 중립 + 이번 틱 새 방향 + 정반대 계열이 아님. 터보는 필요 없고 게이지는 이어진다.
+                    // 진로 = 지금 기체 방향 + 새 오프셋으로 다시 고정, 속력도 새 방향 것으로
+                    if (!_airborne && Motor.Lever.WasNeutral && Motor.Lever.Direction >= 0 &&
+                        !VoLever.IsOppositeFamily(_code, Motor.Lever.Direction))
+                    {
+                        _code = Motor.Lever.Direction;
+                        _offset = VoLever.Offset(_code);
+                        _heading = Bearing(Motor.Yaw + _offset);
+                        _speed = V.dashSpeed.Evaluate(_offset);
+                    }
                     _attack.TickCharge(Dt);
                     // 공격 버튼(WeaponSystem → RequestTackle) 또는 차징 접촉 → 이번 틱에 시작
                     VoDashAttackResult started = _attack.Tick(Dt, ref _heading, _speed * Motor.SpeedScale, _offset, out _);

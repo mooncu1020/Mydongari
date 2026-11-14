@@ -607,3 +607,10 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 ## 도구
 
 - [ ] (U1) `Tools/Build And Smoke Test` → 씬이 저장되고 빌드가 진행됨 → 콘솔 `[SmokeTest] 빌드 성공 …` → 1280×720 창으로 게임이 뜸(전체 화면 아님) → 약 10초 뒤 창이 닫힘 → 콘솔에 `[SmokeTest] … Exception N줄, Error N줄, NaN N줄`과 해당 줄 목록. `Builds/날짜_시간/`에 exe·Player.log·SmokeTestSummary.txt. 기다리는 동안 에디터 조작 가능
+
+## 전투 재구성 (버추얼온 전투 뼈대, 2026-11-15 — 근거 `docs/REFERENCE_COMBAT.md`)
+
+- [ ] (전투A) 근접 스텝(상대 6m 안, ○ 먼저 → 스틱): 옆·앞대각은 빠르게 튀어 나갔다 느려지고, 앞·뒤는 느리게 출발해 빨라짐. 뒤 스텝이 앞 스텝보다 눈에 띄게 짧음
+- [ ] (전투A) 지상 대시 지속 중 스틱을 놓았다가(한 틱 이상 중립) 다른 방향으로 넣으면 ○ 없이 그 방향 대시로 꺾임(진로 = 지금 몸 방향 기준). 앞 → 뒤, 왼 → 오른처럼 정반대로는 안 꺾임. 스틱을 떼지 않고 돌리기만 하면 안 꺾임
+- [ ] (전투A) 점프 하강 중 ✕를 누르고 있으면 급강하 대신 점점 빨리 떨어짐(15틱 동안 가속, 떼면 평소 낙하 속도). 상승 중 ✕는 예전처럼 급강하
+- [ ] (전투A) `StyleOverrides` 인스펙터에 `근접 스텝 속력`·`단위`·`Dive Allowed While Falling` 칸이 없음(정상). 스모크 로그 `[VoSpec] … 원본과 다른 칸`에 `fallbackBodyHeight`·`closeStep…`·`diveAllowedWhileFalling`이 안 나옴

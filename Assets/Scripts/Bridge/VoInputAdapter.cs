@@ -58,6 +58,7 @@ namespace MyDongari.Bridge
             // 두 틱 사이에 눌렀다 뗀 탭도 "누름"으로 본다
             frame.TurboHeld = _input.DashHeld || frame.TurboNew;
             frame.JumpHeld = _input.JumpHeld || frame.JumpNew;
+            frame.DiveHeld = _input.GuardHeld || frame.DiveNew;
 
             UnityEngine.Vector2 stick = _input.MoveInput;
             frame.LeverStick = stick.magnitude < stickThreshold ? UnityEngine.Vector2.zero : stick;

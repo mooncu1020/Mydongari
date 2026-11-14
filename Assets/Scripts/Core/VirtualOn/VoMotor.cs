@@ -44,7 +44,7 @@ namespace MyDongari.Core.VirtualOn
 
         // ---- 단위 ----
         /// <summary>렌더러로 잰 기체 키(m).</summary>
-        public float BodyHeight { get; private set; } = 2.6f;
+        public float BodyHeight { get; private set; } = 1.93f;
         /// <summary>1u(m).</summary>
         public float U => BodyHeight / Mathf.Max(1f, V.bodyHeightUnits);
         /// <summary>틱 길이(초).</summary>
@@ -124,6 +124,8 @@ namespace MyDongari.Core.VirtualOn
         public int JumpHeldFrames { get; private set; }
         /// <summary>급강하 입력(V9a: 공중에서 ✕) 새 입력.</summary>
         public bool DiveNew { get; private set; }
+        /// <summary>급강하 입력을 누르고 있는지 (공중에서만). 하강 가속이 읽는다.</summary>
+        public bool DiveHeld { get; private set; }
         /// <summary>수동 선회 계수 (−1 ~ 1, 부호 유지 제곱). 오른쪽 +.</summary>
         public float TurnCoefficient { get; private set; }
         /// <summary>마우스로 모은 선회(°, 키보드·마우스 예비 조작).</summary>
@@ -489,6 +491,7 @@ namespace MyDongari.Core.VirtualOn
             bool airborne = StateMachine.CurrentState is VoState s && s.IsAirState;
             // 급강하 입력은 공중일 때만 받는다 (우리 조작에선 같은 버튼이 땅에서 가드·패리라서, V9a)
             DiveNew = airborne && frame.DiveNew;
+            DiveHeld = airborne && frame.DiveHeld;
 
             // 입력 축소: 상대 8.3m 안 × 0.7, 11.8m까지 선형으로 1 (걷기·점프 속력 배율)
             float distanceScale = 1f;

@@ -84,8 +84,8 @@ namespace MyDongari.Core.VirtualOn
         // ---- 단위 [0] ----
         /// <summary>기체 키가 몇 u인지.</summary>
         public float bodyHeightUnits = 22f;
-        /// <summary>기체 키를 렌더러로 못 재거나 1~6m 밖이면 쓰는 키(m). 원본 추정 22u = 2.6m.</summary>
-        public float fallbackBodyHeight = 2.6f;
+        /// <summary>기체 키를 렌더러로 못 재거나 1~6m 밖이면 쓰는 키(m). 22u = 1.93m (개정 사양서의 지정 기준).</summary>
+        public float fallbackBodyHeight = 1.93f;
         /// <summary>고정 틱(Hz). [1.1]</summary>
         public float tickRate = 60f;
 
@@ -94,10 +94,10 @@ namespace MyDongari.Core.VirtualOn
         public VoDirectional dashSpeed = new VoDirectional(3.40f, 3.20f, 3.15f, 3.00f, 2.00f);
         public VoDirectional airDashSpeed = new VoDirectional(3.50f, 3.20f, 3.20f, 3.20f, 2.00f);
         public VoDirectional jumpSpeed = new VoDirectional(1.60f, 1.95f, 2.00f, 1.95f, 1.60f);
-        /// <summary>근접 스텝 시작 속력. 원본은 앞 1.5·옆 4.2뿐 [4.3·8]. 대각·뒤는 [미상] — 대각 = 앞과 옆의 중간, 뒤 = 앞으로 채움.</summary>
-        public VoDirectional closeStepStartSpeed = new VoDirectional(1.5f, 2.85f, 4.2f, 2.85f, 1.5f);
-        /// <summary>근접 스텝 끝 속력. 원본은 앞 2.9·옆 2.2뿐. 대각·뒤는 [미상] — 같은 방식으로 채움.</summary>
-        public VoDirectional closeStepEndSpeed = new VoDirectional(2.9f, 2.55f, 2.2f, 2.55f, 2.9f);
+        /// <summary>근접 스텝 시작 속력 5점 [4.3]. 앞·뒤는 느리게 출발하고 옆·대각은 빠르게 튀어 나간다.</summary>
+        public VoDirectional closeStepStartSpeed = new VoDirectional(1.5f, 4.2f, 4.2f, 2.5f, 1.2f);
+        /// <summary>근접 스텝 끝 속력 5점 [4.3].</summary>
+        public VoDirectional closeStepEndSpeed = new VoDirectional(2.9f, 2.4f, 2.2f, 1.95f, 1.8f);
 
         // ---- 거리 (u) ----
         /// <summary>상대가 이 거리 안이면 모든 이동 수평 속력 × closeSlowScale (200u = 23.6m). [1.4]</summary>
@@ -219,8 +219,14 @@ namespace MyDongari.Core.VirtualOn
         public float diveAccel = 0.25f;
         /// <summary>vy가 이 값보다 크면(덜 빠르면) 매 틱 diveAccel만큼 더 빨라진다.</summary>
         public float diveAccelUntilVy = -2.751f;
-        /// <summary>[스위치] 하강 중에도 급강하 입력을 받는다. 원본은 상승 중에만.</summary>
-        public bool diveAllowedWhileFalling = false;
+
+        // ---- 하강 가속 [4.6] ----
+        /// <summary>
+        /// 하강 중 레버 모으기를 누르고 있는 k번째 틱(k = 0 ~ fallAccelLastFrame)에 vy −= fallAccelStep × (k + 1).
+        /// 하한(fallMinVy)은 다음 틱 보조 처리의 적분 뒤에 걸려서 가속된 vy가 두 번 적분된다 (실효 1.45 → 7.05u/f).
+        /// </summary>
+        public float fallAccelStep = 0.2f;
+        public int fallAccelLastFrame = 14;
 
         // ---- 지면·벽 (u) [6.1] ----
         /// <summary>이 높이 이하 단차는 따라 오르내리고, 넘으면 아래는 낙하·위는 벽 (5u).</summary>

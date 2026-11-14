@@ -7,7 +7,7 @@ namespace MyDongari.Core.VirtualOn.States
     /// 다음 틱부터 하강, 천장이면 급강하 / 본: y += vy) → 하강(보조: y += vy → 착지 판정 → vy −0.074, 하한 −0.526 / 본: y += vy 한 번 더 — 실효 7.46m/s).
     /// 수평은 점프 속도 곡선 × 레버 벡터(기체 기준). 선회는 고정율 21°/s(○를 누르고 있으면 127°/s).
     /// 상승 중 레버 벌리기 재입력 = vy를 한 번 다시 3.25로(risingRejump — 우리 스타일 V9a는 끈다). 하강 중 누른 지 7~14f째 호버.
-    /// 급강하 = 상승 중 급강하 입력(diveAllowedWhileFalling이면 하강 중에도 — 우리 스타일 V9a가 켠다). 상승 중 터보(+레버) = 공중 대시 8방향.
+    /// 급강하 = 상승 중 급강하 입력. 하강 중 급강하 입력 유지 = 하강 가속(15틱 동안 vy −= 0.2(k + 1), 실효 1.45 → 7.05u/f). 상승 중 터보(+레버) = 공중 대시 8방향.
     /// 발판에서 떨어진 낙하(PrepareFall)도 이 상태의 하강 단계다.
     /// </summary>
     public class VoJumpState : VoState
@@ -20,6 +20,8 @@ namespace MyDongari.Core.VirtualOn.States
         private bool _airActionUsed;
         private bool _reinputUsed;
         private bool _needsLandingLag;
+        // 하강 중 레버 모으기를 누르고 있는 틱 수 (하강 가속)
+        private int _fallAccelFrame;
         // 다음 Enter 설정
         private bool _prepareJump;
         private float _prepareVy;
@@ -59,6 +61,7 @@ namespace MyDongari.Core.VirtualOn.States
             _pendingFall = false;
             _airActionUsed = false;
             _reinputUsed = false;
+            _fallAccelFrame = 0;
             if (_prepareJump)
             {
                 _prepareJump = false;
@@ -155,11 +158,16 @@ namespace MyDongari.Core.VirtualOn.States
                 case Phase.Fall:
                     if (!IsStunned)
                     {
-                        // 스위치(V9a): 원본은 상승 중에만 급강하를 받는다
-                        if (V.diveAllowedWhileFalling && Motor.DiveNew)
+                        // 하강 가속 (사양서 4.6): 레버 모으기를 누르고 있는 k번째 틱(k ≤ 14)에 vy −= 0.2(k + 1).
+                        // 하한은 다음 틱 보조 처리가 y를 더한 뒤에 걸어서, 가속된 vy가 이번 본 처리와 다음 보조 처리에서 두 번 적분된다
+                        if (Motor.DiveHeld)
                         {
-                            StateMachine.V8Dive();
-                            return;
+                            if (_fallAccelFrame <= V.fallAccelLastFrame) Motor.Vy -= V.fallAccelStep * (_fallAccelFrame + 1);
+                            _fallAccelFrame++;
+                        }
+                        else
+                        {
+                            _fallAccelFrame = 0;
                         }
                         // 호버: △를 누른 지 7~14f째 vy += (경과 − 7) × 0.1, 상한 −0.01
                         if (Motor.JumpHeld && Motor.JumpHeldFrames >= V.hoverStartFrame && Motor.JumpHeldFrames <= V.hoverEndFrame)

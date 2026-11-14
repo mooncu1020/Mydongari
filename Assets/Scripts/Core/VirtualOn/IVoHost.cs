@@ -22,6 +22,8 @@ namespace MyDongari.Core.VirtualOn
         public bool JumpHeld;
         /// <summary>레버 모으기(급강하) 새 입력. 공중일 때만 이동기가 받아들인다.</summary>
         public bool DiveNew;
+        /// <summary>레버 모으기 유지 (하강 가속). 공중일 때만 이동기가 받아들인다.</summary>
+        public bool DiveHeld;
     }
 
     /// <summary>
