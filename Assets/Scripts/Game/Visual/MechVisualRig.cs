@@ -164,7 +164,7 @@ namespace MyDongari.Game.Visual
         private BernardTuning.AttackStartupValues Startup => _tuning.Get(this).Startup;
 
         // 예비 동작 길이 = 그 공격의 발생 시간(버튼 → 판정). 발생 시간이 0(즉시 판정)이면 Visual의 기본 예비 동작 길이
-        private float PunchWindup => Startup.punch > 0f ? Startup.punch : V.anticipationTime;
+        private float PunchWindup => MeleeSystem.PunchWindupSeconds(_punchStep);
         private float TackleWindup
         {
             get

@@ -299,6 +299,8 @@ namespace MyDongari.Game.Bot
             if (_controlLock != null && _controlLock.IsLocked) return; // 앵커클로 등에 잡혀있으면 양보
             if (_lunge != null && _lunge.IsLunging) return;            // 돌진은 ThrusterLunge가 진행
             if (_meleeSystem != null && _meleeSystem.IsStunned) return;
+            // 펀치(파고들기) 중엔 근접 구동이 몸을 움직이고 돌린다
+            if (_meleeSystem != null && _meleeSystem.IsMeleeActive) return;
 
             float dist = Vector3.Distance(transform.position, _player.position);
 
@@ -434,7 +436,7 @@ namespace MyDongari.Game.Bot
             // 발생 시간이 반응 시간보다 짧으면(0 = 즉시 판정 포함) 늦어서 못 막는다
             BernardTuning opponentTuning = TuningOf(_watchedOpponent);
             BernardTuning.AttackStartupValues startup = opponentTuning.Startup;
-            float hitIn = type == AttackType.Punch ? startup.punch
+            float hitIn = type == AttackType.Punch ? MeleeSystem.PunchWindupSeconds(1)
                 : CombatTime.Seconds(type == AttackType.Tackle ? startup.chargedTackleFrames : startup.dashAttackFrames);
             // V4: 대시 어택·태클은 발생 시간 뒤 돌진해서 닿을 때 맞는다 — 남은 거리를 대시 속도로 나눈 만큼 늦다
             if (type != AttackType.Punch && _player != null)

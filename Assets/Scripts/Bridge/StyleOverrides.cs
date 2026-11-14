@@ -78,8 +78,6 @@ namespace MyDongari.Bridge
         public float guardTurnInside = 400f;
         [Tooltip("가드 자동 선회: 상대가 정면 밖일 때 (1092 = 360°/s). 33.75° ~ 보간 끝 각도 사이는 두 값 사이를 선형으로")]
         public float guardTurnOutside = 1092f;
-        [Tooltip("공격 사용 '사격 조준': 15f 동안 몸을 상대 쪽으로 돌리는 선회율. 원본은 무기별 80~2560 — 우리 공격(펀치·런지 등) 하나의 값 (2560 = 14.06°/f)")]
-        public float attackAimRate = 2560f;
 
         // ---- 유효값 ----
         [NonSerialized] private VoSpec _effective;

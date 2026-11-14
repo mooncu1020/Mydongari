@@ -51,7 +51,6 @@ namespace MyDongari.Bridge
 
         // ---- 게임 상태 ----
         public bool IsStunned => Melee != null && Melee.IsStunned;
-        public float MoveSpeedScale => Melee != null ? Melee.MoveSpeedScale : 1f;
 
         public bool IsExternalMode
         {

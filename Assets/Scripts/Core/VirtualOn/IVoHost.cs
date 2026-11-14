@@ -51,8 +51,6 @@ namespace MyDongari.Core.VirtualOn
         // ---- 게임 상태 ----
         /// <summary>스턴 중 (원본의 경직·금지 플래그 자리). 상태 전환·선회가 멈춘다.</summary>
         bool IsStunned { get; }
-        /// <summary>걷기·점프 수평 속력에 곱하는 배율 (우리 콤보 감속). 원본은 1.</summary>
-        float MoveSpeedScale { get; }
         /// <summary>이번 틱을 이동 상태 대신 외부 속도로 움직여야 하는지 (넉백 유지·외부 제어·런지·넉다운 — 사양서 1.4-1 "넉백 보간" 자리).</summary>
         bool IsExternalMode { get; }
         /// <summary>

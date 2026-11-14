@@ -84,6 +84,11 @@ namespace MyDongari.Core.VirtualOn
         public float HorizontalSpeed { get; set; }
         /// <summary>이번 틱 진행 방향(수평, 크기 1).</summary>
         public Vector3 MoveDirection { get; set; }
+        /// <summary>
+        /// 이번 틱 수평 속력이 보정(근접 감속 × 0.78·추적 포화 × 0.1·넘어가기 방지)까지 끝난 값인지. 근접 구동이 켠다 —
+        /// 그러면 이동 적분이 다시 곱하지 않는다. 매 틱 꺼진 채로 시작.
+        /// </summary>
+        public bool SpeedIsFinal { get; set; }
 
         // ---- 외부 속도 ----
         private Vector3 _external;
@@ -141,15 +146,15 @@ namespace MyDongari.Core.VirtualOn
         public float MouseTurnDegrees { get; private set; }
 
         // ---- 자동 선회·카메라 방위 (사양서 2.3) ----
-        public enum AutoTurnMode { Default, JumpAim, SustainAim, AttackAim, AirDashReturn }
+        public enum AutoTurnMode { Default, JumpAim, SustainAim, MeleeTrack, AirDashReturn }
         public AutoTurnMode AutoTurn { get; private set; }
         private int _autoTurnFrames;
         /// <summary>카메라 방위(°). 기본 모드에선 몸에 붙고, 점프 조준·공중 대시 중엔 몸을 최대 22.5°/f로 쫓는다.</summary>
         public float CameraYaw { get; private set; }
         /// <summary>선회 리드각(°). 선회 방향으로 화면이 앞서 돈다.</summary>
         public float CameraLead { get; private set; }
-        /// <summary>이번 틱 사격 조준이 최대 선회율에 걸렸는지 (수평 속력 × 0.1).</summary>
-        private bool _attackAimSaturated;
+        /// <summary>이번 틱 근접 추적이 최대 선회율에 걸렸는지 (수평 속력 × 0.1).</summary>
+        public bool MeleeTrackSaturated { get; private set; }
         /// <summary>이번 틱 가드 자동 선회가 몸을 돌렸는지 (수동 선회를 막는다).</summary>
         private bool _guardTurning;
 
@@ -369,19 +374,19 @@ namespace MyDongari.Core.VirtualOn
         }
 
         /// <summary>
-        /// 공격(무기)을 시작했을 때. 사격 조준 모드 — attackAimFrames 동안 몸을 상대 쪽으로 최대 aimRateUnits(각 단위/f)로.
-        /// 선회율은 원본에서 무기별 값이라 호스트가 준다. 대시 중 공격은 대시가 지속 조준을 건다.
+        /// 근접 추적 시작 (전투 사양서 1.3, 이동 사양서 2.3 "근접 추적"). 다음 틱부터 attackAimFrames(15f) 동안 몸을 상대 쪽으로
+        /// 최대 rateUnits(각 단위/f, 근접 변형별)로 돌린다. 상대가 근접 구역의 안쪽 원에 들어오면 즉시 끝.
+        /// 표적은 원본의 "지연 표적 위치" 대신 상대의 지금 위치다 (지연 표적은 코어에 없다 — 미구현 목록).
         /// </summary>
-        public void NotifyAttackStarted(float aimRateUnits)
+        public void StartMeleeTrack(float rateUnits)
         {
-            if (!IsActive || (StateMachine != null && StateMachine.IsDashing)) return;
-            if (AutoTurn == AutoTurnMode.JumpAim) return;
-            _attackAimRate = aimRateUnits;
-            SetAutoTurn(AutoTurnMode.AttackAim);
+            if (!IsActive) return;
+            _meleeTrackRate = rateUnits;
+            SetAutoTurn(AutoTurnMode.MeleeTrack);
         }
 
-        // 이번 사격 조준의 최대 선회율(각 단위/f)
-        private float _attackAimRate;
+        // 이번 근접 추적의 최대 선회율(각 단위/f)
+        private float _meleeTrackRate;
 
         /// <summary>정지 맞춤: 카메라 방위를 몸에 바로 맞추고 기본 모드로.</summary>
         public void AlignCamera()
@@ -428,6 +433,7 @@ namespace MyDongari.Core.VirtualOn
 
             HorizontalSpeed = 0f;
             MoveDirection = Forward;
+            SpeedIsFinal = false;
 
             // 상태가 Aux에서 바뀌었을 수 있다
             state = StateMachine.CurrentState;
@@ -601,7 +607,7 @@ namespace MyDongari.Core.VirtualOn
         private void UpdateAutoTurn()
         {
             VoSpec v = V;
-            _attackAimSaturated = false;
+            MeleeTrackSaturated = false;
             _autoTurnFrames++;
             _guardTurning = false;
             switch (AutoTurn)
@@ -624,14 +630,16 @@ namespace MyDongari.Core.VirtualOn
                 case AutoTurnMode.SustainAim:
                     if (HasOpponent) TurnToward(OpponentBearing, v.dashAttackAimRate);
                     break;
-                case AutoTurnMode.AttackAim:
-                    if (HasOpponent)
+                case AutoTurnMode.MeleeTrack:
+                    // 안쪽 원에 들어왔거나 15f가 지났으면 끝 (이 틱은 돌지 않는다)
+                    if (!HasOpponent || _autoTurnFrames > v.attackAimFrames || InMeleeInner)
                     {
-                        float before = Mathf.Abs(Mathf.DeltaAngle(_yaw, OpponentBearing));
-                        TurnToward(OpponentBearing, _attackAimRate);
-                        _attackAimSaturated = before > VoUnits.AngleUnitsToDegrees(_attackAimRate);
+                        SetAutoTurn(AutoTurnMode.Default);
+                        break;
                     }
-                    if (!HasOpponent || _autoTurnFrames > v.attackAimFrames || InCloseZone) SetAutoTurn(AutoTurnMode.Default);
+                    float before = Mathf.Abs(Mathf.DeltaAngle(_yaw, OpponentBearing));
+                    TurnToward(OpponentBearing, _meleeTrackRate);
+                    MeleeTrackSaturated = before > VoUnits.AngleUnitsToDegrees(_meleeTrackRate);
                     break;
                 case AutoTurnMode.AirDashReturn:
                     if (TurnToward(CameraYaw, v.airDashReturnRate)) SetAutoTurn(AutoTurnMode.Default);
@@ -682,9 +690,12 @@ namespace MyDongari.Core.VirtualOn
         {
             VoSpec v = V;
             float speed = HorizontalSpeed;
-            // 근접 감속: 상대 200u 안이면 × 0.78
-            if (HasOpponent && OpponentDistanceU < v.closeSlowDistance) speed *= v.closeSlowScale;
-            if (_attackAimSaturated) speed *= v.attackAimSlowScale;
+            // 근접 감속: 상대 200u 안이면 × 0.78 (근접 구동은 넘어가기 방지까지 끝낸 값을 주므로 다시 곱하지 않는다)
+            if (!SpeedIsFinal)
+            {
+                if (HasOpponent && OpponentDistanceU < v.closeSlowDistance) speed *= v.closeSlowScale;
+                if (MeleeTrackSaturated) speed *= v.attackAimSlowScale;
+            }
             Vector3 dir = MoveDirection;
             dir.y = 0f;
             Vector3 delta = dir.sqrMagnitude > 0.000001f ? dir.normalized * (speed * U) : Vector3.zero;

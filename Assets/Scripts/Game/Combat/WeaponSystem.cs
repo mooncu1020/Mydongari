@@ -135,13 +135,7 @@ namespace MyDongari.Game.Combat
             bool startedAttack = _attackBuffer.Tick(bufferTime, TryStartAttack, out AttackType started, out bool fromBuffer);
             // V9f: 런지 쿨다운 중에 누른 공격은 버린다 — 버퍼에 남겨 두면 그 사이 상대가 6m 안에 들어왔을 때 펀치로 바뀌어 나간다
             if (_discardAttackInput) _attackBuffer.Clear();
-            if (startedAttack)
-            {
-                if (fromBuffer) OnBufferedAttack?.Invoke(started);
-                // V8: 공격을 쓰면 "사격 조준" — 15f 동안 몸을 상대 쪽으로 돌린다 (대시 중 공격은 대시가 지속 조준)
-                MechController controller = _stateMachine != null ? _stateMachine.MechController : null;
-                if (controller != null) controller.NotifyAttackStarted();
-            }
+            if (startedAttack && fromBuffer) OnBufferedAttack?.Invoke(started);
         }
 
         /// <summary>원거리 상황(파일드라이버·질주·하드 락온이 아님)인지.</summary>
@@ -169,6 +163,12 @@ namespace MyDongari.Game.Combat
             if (_anchorClaw != null && _anchorClaw.IsPileDriverReady)
             {
                 return _anchorClaw.TryPileDriver() ? AttackType.PileDriver : (AttackType?)null;
+            }
+
+            // 펀치 중에 누른 공격 = 다음 타 예약 (② 단계에서만 받는다. 구역을 벗어났어도 콤보는 이어진다)
+            if (_meleeSystem != null && _meleeSystem.IsMeleeActive)
+            {
+                return _meleeSystem.TryMeleeAttack() ? AttackType.Punch : (AttackType?)null;
             }
 
             // ② 뛰어 베기: 점프 입력 후 8f 이내 + 근접 구역(높이차 창 무시)

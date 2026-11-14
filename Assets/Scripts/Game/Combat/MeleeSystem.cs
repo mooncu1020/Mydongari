@@ -32,6 +32,7 @@ namespace MyDongari.Game.Combat
         private BernardTuning.TackleValues Tackle => _tuning.Get(this).Tackle;
         private BernardTuning.DashAttackValues DashAttack => _tuning.Get(this).DashAttack;
         private BernardTuning.AttackStartupValues Startup => _tuning.Get(this).Startup;
+        private static VoCombatSpec C => StyleOverrides.Current.EffectiveCombat;
         private BernardTuning.ComboValues Combo => _tuning.Get(this).Combo;
 
         public bool IsGuarding { get; private set; }
@@ -53,8 +54,8 @@ namespace MyDongari.Game.Combat
         /// <summary>발생 시간 도중 스턴·가드 깨짐 등으로 공격이 취소됐을 때.</summary>
         public event Action<AttackType> OnAttackCanceled;
 
-        /// <summary>펀치 발생 시간 중(버튼은 눌렀고 아직 판정 전)인지.</summary>
-        public bool IsPunchPending => _punchElapsed >= 0;
+        /// <summary>펀치(파고들기 → 공격 → 후딜) 중인지.</summary>
+        public bool IsMeleeActive => ActiveDrive != null;
 
         /// <summary>마지막으로 시작한 펀치의 콤보 단계 (1 원, 2 투, 3 쓰리). 콤보가 끊겼거나 꺼져 있으면 0. 외형·로그용.</summary>
         public int ComboStep => _comboStep;
@@ -64,32 +65,14 @@ namespace MyDongari.Game.Combat
         /// <summary>이 기체의 피격 기록.</summary>
         public CombatLedger Ledger { get; } = new CombatLedger();
 
-        /// <summary>
-        /// 콤보에 따른 이동 속도 비율 (N2): 콤보 중(누른 순간 ~ 다음 타 입력 창 끝) moveSpeedScale, 쓰리 회복 동안 thirdRecoveryMoveSpeedScale.
-        /// </summary>
-        public float MoveSpeedScale
-        {
-            get
-            {
-                BernardTuning.ComboValues combo = Combo;
-                if (!combo.enabled || _comboStep == 0) return 1f;
-                if (_punchElapsed >= 0) return combo.moveSpeedScale;
-                if (_comboStep == 3) return _sincePunchResolve < CombatTime.Frames(combo.thirdRecovery) ? combo.thirdRecoveryMoveSpeedScale : 1f;
-                return _sincePunchResolve <= CombatTime.Frames(combo.window) ? combo.moveSpeedScale : 1f;
-            }
-        }
-
         // ---- 틱 카운터 (전부 틱 수) ----
         private const int Long = 100000;
-        private int _meleeTimer = Long;
-        // 펀치 발생 시간 경과. 음수면 발생 중인 펀치 없음
-        private int _punchElapsed = -1;
-        // 이번 틱 끝(CollectHits)에 펀치 판정을 할지
-        private bool _punchStrike;
-        // 마지막으로 시작한 펀치의 콤보 단계 (0 = 콤보 아님)
+        // 지금 휘두르기의 콤보 단계 (1 원, 2 투, 3 쓰리. 0 = 휘두르는 중 아님)
         private int _comboStep;
-        // 마지막 펀치 판정 뒤 지난 틱
-        private int _sincePunchResolve = Long;
+        // 지금 휘두르기가 이미 맞았는지 (한 번 휘두를 때 한 상대에게 한 번만)
+        private bool _swingHit;
+        // 상태 머신이 없는 기체(연습 봇)의 근접 구동. 이동기가 있는 기체는 코어의 근접 상태(VoMeleeState)가 구동한다
+        private readonly VoMeleeDrive _ownDrive = new VoMeleeDrive();
         private int _parryFrames;
         private int _tackleTimer = Long;
         private int _stunFrames;
@@ -158,11 +141,7 @@ namespace MyDongari.Game.Combat
 
         public void CollectHits()
         {
-            if (_punchStrike)
-            {
-                _punchStrike = false;
-                ResolvePunch();
-            }
+            CollectPunchHit();
             if (_lunge != null) _lunge.CollectHits();
             if (_slam != null) _slam.CollectHits();
             if (_claw != null) _claw.CollectHits();
@@ -179,9 +158,7 @@ namespace MyDongari.Game.Combat
             // 판단이 끝났으니 지난 틱 기록은 비운다 (모든 기체의 DecideHits는 어느 기체의 틱보다 먼저 끝난다)
             Ledger.EndDecide();
 
-            if (_meleeTimer < Long) _meleeTimer++;
             if (_tackleTimer < Long) _tackleTimer++;
-            if (_sincePunchResolve < Long) _sincePunchResolve++;
             if (_reraiseFrames > 0) _reraiseFrames--;
             if (_stunFrames > 0) _stunFrames--;
 
@@ -210,12 +187,8 @@ namespace MyDongari.Game.Combat
             if (_weapon != null) _weapon.CombatTick(roundActive);
             if (_dummy != null) _dummy.CombatTick();
 
-            // 펀치 발생 시간: 다 지난 틱의 끝(모든 기체가 움직인 뒤)에 판정한다
-            if (_punchElapsed >= 0)
-            {
-                _punchElapsed++;
-                if (_punchElapsed >= CombatTime.Frames(Startup.punch)) _punchStrike = true;
-            }
+            // 상태 머신이 없는 기체는 근접 구동을 여기서 직접 돌린다
+            if (_stateMachine == null) TickOwnDrive();
 
             if (InputTrace.ShouldLog(this, "3 ICombatInputSource"))
             {
@@ -225,9 +198,17 @@ namespace MyDongari.Game.Combat
             }
         }
 
-        /// <summary>틱 끝 (이동 적분 뒤).</summary>
+        /// <summary>틱 끝 (이동 적분 뒤). 근접 구동이 이번 틱에 다음 타로 넘어갔거나 끝났는지 본다.</summary>
         public void EndTick()
         {
+            VoMeleeDrive drive = ActiveDrive;
+            if (drive == null)
+            {
+                // 휘두르기가 끝났다(후딜 끝·점프/대시 취소)
+                _comboStep = 0;
+                return;
+            }
+            if (drive.Step != _comboStep) BeginSwing(drive.Step);
         }
 
         // ---------------- 피격 적용 ----------------
@@ -248,8 +229,7 @@ namespace MyDongari.Game.Combat
             {
                 case HitResult.Clash:
                     // 맞딜: 둘 다 피해 0 + 밀려남 (각자 자기 틱에 자기 몫만). 진행 중인 내 공격은 맞딜로 소진
-                    if (_punchElapsed >= 0) _punchElapsed = -1;
-                    _punchStrike = false;
+                    CancelMelee(notify: false);
                     if (_stateMachine != null && _stateMachine.IsDashing && _stateMachine.ActiveDash.IsAttacking) _stateMachine.ActiveDash.EndByClash();
                     ApplyKnockback(info.Direction, Punch.clashKnockback);
                     break;
@@ -445,6 +425,9 @@ namespace MyDongari.Game.Combat
             // V5: 공중(점프는 회피 대신 무방비)과 착지 경직 중에도 가드·패리 불가
             bool blocked = _stateMachine != null &&
                 (_stateMachine.IsDashing || _stateMachine.IsAirborne || _stateMachine.IsLanding);
+            // 펀치 중에는 ① 파고들기에서만 가드로 갈 수 있다 (② 공격·③ 후딜은 불가)
+            VoMeleeDrive drive = ActiveDrive;
+            if (drive != null && drive.Phase != VoMeleeDrive.DrivePhase.Approach) blocked = true;
             bool pressed = ReadGuardPress();
             bool guardHeld = _input != null && (_input.GuardHeld || pressed);
 
@@ -454,6 +437,8 @@ namespace MyDongari.Game.Combat
                 if (!IsGuarding)
                 {
                     IsGuarding = true;
+                    // 파고들기(①) 중에 올린 가드는 펀치를 접고 가드로 넘어간다 (전투 사양서 1.3)
+                    CancelMelee(notify: true);
                     // V9a: 가드는 ✕. 공중에서 ✕를 누른 채 착지하면 여기서 일반 가드로 이어지지만, 새로 누른 것이 아니라 패리는 안 열린다.
                     // 패리 창은 "버튼을 새로 누른 순간" 올라간 가드에만 연다.
                     // 재사용 대기 중 누르고 버티다 자동으로 올라간 가드까지 패리를 주면 대기가 의미 없어진다.
@@ -514,12 +499,8 @@ namespace MyDongari.Game.Combat
             EndParryWindow();
             _parryGrace = false;
             _reraiseFrames = 0;
-            _meleeTimer = Long;
             _tackleTimer = Long;
-            _punchElapsed = -1;
-            _punchStrike = false;
-            _sincePunchResolve = Long;
-            _comboStep = 0;
+            CancelMelee(notify: false);
             Ledger.Reset();
             if (_input != null) _lastGuardPressCount = _input.GuardPressCount;
             if (_stateMachine != null) _stateMachine.MechController.SetBaselineDamping(Guard.releaseDamping);
@@ -529,16 +510,9 @@ namespace MyDongari.Game.Combat
         public void ApplyStun(int frames)
         {
             if (frames <= 0) return;
-            // 발생 시간 중에 스턴·가드 깨짐을 당하면 그 펀치는 나가지 않는다
-            if (_punchElapsed >= 0)
-            {
-                _punchElapsed = -1;
-                _punchStrike = false;
-                OnAttackCanceled?.Invoke(AttackType.Punch);
-            }
+            // 휘두르는 중에 굳으면 그 펀치는 끊긴다 (다음 펀치는 원부터)
+            CancelMelee(notify: true);
             _stunFrames = Mathf.Max(_stunFrames, frames);
-            // 맞아서 굳으면 콤보는 끊긴다 (다음 펀치는 원부터)
-            _comboStep = 0;
         }
 
         // ---------------- 대시 어택·차징 태클 ----------------
@@ -605,55 +579,150 @@ namespace MyDongari.Game.Combat
             return false;
         }
 
-        // ---------------- 펀치 ----------------
+        // ---------------- 펀치 (파고들기 근접: 원 = 템진 A1 1타, 투 = A1 2타, 쓰리 = C1) ----------------
+
+        /// <summary>지금 도는 근접 구동 (없으면 null). 이동기가 있는 기체는 코어 근접 상태의 것, 없는 기체는 내 것.</summary>
+        private VoMeleeDrive ActiveDrive
+        {
+            get
+            {
+                if (_stateMachine != null) return _stateMachine.IsMelee ? _stateMachine.VoMelee.Drive : null;
+                return _ownDrive.IsActive ? _ownDrive : null;
+            }
+        }
+
+        /// <summary>콤보 단계의 구동 수치 (전투 사양서 1.2).</summary>
+        public static VoMeleeMove PunchMove(int step)
+        {
+            VoCombatSpec c = C;
+            return step >= 3 ? c.c1 : (step == 2 ? c.a1Second : c.a1First);
+        }
+
+        /// <summary>버튼을 누른 뒤 판정 창이 열릴 때까지(초). 외형 예비 동작 길이·봇 반응용.</summary>
+        public static float PunchWindupSeconds(int step)
+        {
+            VoMeleeMove m = PunchMove(Mathf.Max(1, step));
+            return CombatTime.Seconds(m.approachFrames + m.hitStart);
+        }
+
+        /// <summary>판정 창이 열린 뒤 휘두르기가 끝날 때까지(초, 후딜 포함). 외형 회복 동작 길이용.</summary>
+        public static float PunchRecoverySeconds(int step)
+        {
+            VoMeleeMove m = PunchMove(Mathf.Max(1, step));
+            return CombatTime.Seconds(m.attackFrames - m.hitStart + m.recoveryFrames);
+        }
 
         /// <summary>
-        /// 너클 펀치 시작. 쿨다운·과열·스턴·발생 중이면 안 나가고 false (입력 버퍼가 다시 시도한다).
-        /// 시작했으면 true: 발생 시간이 지난 틱의 끝에 판정한다.
+        /// 펀치 버튼. 휘두르는 중이 아니면 원을 시작하고, ② 공격 단계면 다음 타를 예약한다(② 끝에서 ③을 건너뛰고 다음 타 ①로. 쓰리 뒤는 없음).
+        /// 과열이면 시작도 예약도 안 된다. 못 받았으면 false (입력 버퍼가 다시 시도한다).
         /// </summary>
         public bool TryMeleeAttack()
         {
-            if (_punchElapsed >= 0) return false;
-            // 스턴 중엔 펀치를 시작할 수 없다 (런지·가드와 같은 규칙. 발생 중 스턴이면 취소되는 것과 짝). 넉다운도
             if (IsStunned || IsKnockedDown) return false;
-            BernardTuning.PunchValues punch = Punch;
-            BernardTuning.ComboValues combo = Combo;
-            int step = NextComboStep(combo);
-            if (combo.enabled && _comboStep == 3 && _sincePunchResolve < CombatTime.Frames(combo.thirdRecovery)) return false;
-            // 콤보 다음 타는 짧은 간격, 원(새 콤보·단발)은 예전 쿨다운
-            int needed = CombatTime.Frames(step >= 2 ? combo.interval : punch.cooldown);
-            if (_meleeTimer < needed) return false;
             // 과열이면 주먹이 안 나간다. 히트게이지가 없는 기체(더미)는 제한 없음
             if (_heatGauge != null && !_heatGauge.CanPunch()) return false;
-            _meleeTimer = 0;
-            _comboStep = step;
-            if (step > 0) OnComboStep?.Invoke(step);
-            // 맞든 빗나가든 휘두른 순간 히트가 오른다
-            if (_heatGauge != null) _heatGauge.AddHeat(punch.heatPerPunch);
-            OnAttackStarted?.Invoke(AttackType.Punch);
-            _punchElapsed = 0;
+
+            VoMeleeDrive drive = ActiveDrive;
+            if (drive != null)
+            {
+                if (drive.Step >= 3) return false;
+                return drive.Queue(PunchMove(drive.Step + 1));
+            }
+
+            if (_stateMachine != null)
+            {
+                if (!_stateMachine.CanStartLunge) return false;
+                if (IsGuarding) DropGuard(applyReraiseDelay: false);
+                _stateMachine.V8Melee(PunchMove(1), 1);
+            }
+            else
+            {
+                if (_lunge != null && _lunge.IsLunging) return false;
+                if (IsGuarding) DropGuard(applyReraiseDelay: false);
+                BeginOwnDrive();
+            }
+            BeginSwing(1);
             return true;
         }
 
-        /// <summary>
-        /// 지금 펀치를 시작하면 몇 번째 타인지 (N2). 원·투를 친 뒤 판정 순간부터 window 안이면 다음 타, 아니면 원.
-        /// 쓰리 다음은 원. 콤보가 꺼져 있으면 0(단발).
-        /// </summary>
-        private int NextComboStep(BernardTuning.ComboValues combo)
+        /// <summary>휘두르기 하나의 시작 (원, 또는 콤보로 넘어간 투·쓰리): 히트 증가, 알림, 한 번 맞기 표시 초기화.</summary>
+        private void BeginSwing(int step)
         {
-            if (!combo.enabled) return 0;
-            if ((_comboStep == 1 || _comboStep == 2) && _punchElapsed < 0 && _sincePunchResolve <= CombatTime.Frames(combo.window))
-            {
-                return _comboStep + 1;
-            }
-            return 1;
+            _comboStep = step;
+            _swingHit = false;
+            OnComboStep?.Invoke(step);
+            // 맞든 빗나가든 휘두른 순간 히트가 오른다
+            if (_heatGauge != null) _heatGauge.AddHeat(Punch.heatPerPunch);
+            OnAttackStarted?.Invoke(AttackType.Punch);
         }
 
-        /// <summary>펀치 판정 (틱 끝): 판정하는 순간의 내 정면·상대 위치 기준. 맞았으면 상대 기록에 쌓는다.</summary>
-        private void ResolvePunch()
+        /// <summary>진행 중인 펀치를 끊는다 (경직·맞딜·가드 전환·라운드 리셋). notify면 외형·로그에 취소를 알린다.</summary>
+        private void CancelMelee(bool notify)
         {
-            _punchElapsed = -1;
-            _sincePunchResolve = 0;
+            bool active = ActiveDrive != null;
+            if (_stateMachine != null)
+            {
+                if (_stateMachine.IsMelee) _stateMachine.ToStand();
+            }
+            else
+            {
+                _ownDrive.Cancel();
+            }
+            _comboStep = 0;
+            if (active && notify) OnAttackCanceled?.Invoke(AttackType.Punch);
+        }
+
+        // ---- 상태 머신이 없는 기체(연습 봇)의 근접 구동: 같은 VoMeleeDrive를 리지드바디로 ----
+
+        private bool TryGetOpponentRelation(out float distanceU, out float signedAngle)
+        {
+            distanceU = float.MaxValue;
+            signedAngle = 0f;
+            MechIdentity opponent = _identity.Opponent;
+            if (opponent == null || !opponent.gameObject.activeInHierarchy) return false;
+            Vector3 offset = VoMotor.OpponentPosition(opponent.transform) - transform.position;
+            offset.y = 0f;
+            distanceU = offset.magnitude / U;
+            Vector3 forward = transform.forward;
+            forward.y = 0f;
+            signedAngle = offset.sqrMagnitude > 0.000001f ? Vector3.SignedAngle(forward, offset, Vector3.up) : 0f;
+            return true;
+        }
+
+        private void BeginOwnDrive()
+        {
+            bool has = TryGetOpponentRelation(out float distance, out _);
+            _ownDrive.Begin(PunchMove(1), 1, has, distance, C);
+        }
+
+        private void TickOwnDrive()
+        {
+            if (!_ownDrive.IsActive || _rb == null) return;
+            VoCombatSpec c = C;
+            bool has = TryGetOpponentRelation(out float distance, out float angle);
+            // 추적 회전: 최대율까지만 돌고, 못 따라간 틱은 속력 × 0.1
+            bool saturated = false;
+            if (has && _ownDrive.WantsTurn(c, distance <= c.zoneInner))
+            {
+                float max = VoUnits.AngleUnitsToDegrees(_ownDrive.Move.trackRate);
+                saturated = Mathf.Abs(angle) > max;
+                float turn = Mathf.Clamp(angle, -max, max);
+                _rb.MoveRotation(_rb.rotation * Quaternion.Euler(0f, turn, 0f));
+                angle -= turn;
+            }
+            float speed = _ownDrive.Tick(c, StyleOverrides.Current.Effective, has, distance, angle, saturated, out _);
+            Vector3 forward = _rb.rotation * Vector3.forward;
+            forward.y = 0f;
+            MotionBridge.SetHorizontalVelocity(_rb, forward.normalized * (speed * U * CombatTime.TickRate));
+        }
+
+        /// <summary>
+        /// 펀치 판정 (틱 끝): 판정 창이 열린 틱에, 판정하는 순간의 내 정면·상대 위치 기준. 한 번 휘두를 때 한 번만 맞는다.
+        /// </summary>
+        private void CollectPunchHit()
+        {
+            VoMeleeDrive drive = ActiveDrive;
+            if (drive == null || !drive.HitActiveThisTick || _swingHit) return;
             BernardTuning.PunchValues punch = Punch;
             BernardTuning.ComboValues combo = Combo;
             bool third = _comboStep == 3;
@@ -674,8 +743,8 @@ namespace MyDongari.Game.Combat
                     third ? punch.damage * combo.thirdDamageMultiplier : punch.damage, opponent.gameObject);
                 info.KnockbackForce = third ? combo.thirdKnockback : 0f;
                 info.ComboStep = _comboStep;
-                // 콜라이더가 여러 개여도 한 방은 한 번만 맞는다
                 QueueHit(opponent.gameObject, info);
+                _swingHit = true;
                 return;
             }
         }

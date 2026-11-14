@@ -150,9 +150,9 @@ namespace MyDongari.Core.VirtualOn
         public float jumpAimRate = 2304f;
         /// <summary>대시 중 공격 "지속 조준".</summary>
         public float dashAttackAimRate = 2304f;
-        /// <summary>"사격 조준" 유지 프레임 (지나거나 근접 구역에 들어오면 끝). 선회율은 무기별이라 호스트가 공격을 알릴 때 준다.</summary>
+        /// <summary>"근접 추적"(개정 전 이름 "사격 조준") 회전 프레임 (지나거나 근접 안쪽 원에 들어오면 끝). 선회율은 근접 변형별(VoCombatSpec).</summary>
         public int attackAimFrames = 15;
-        /// <summary>사격 조준이 최대 선회율에 걸린 틱의 수평 속력 배율.</summary>
+        /// <summary>근접 추적이 최대 선회율에 걸린 틱의 수평 속력 배율.</summary>
         public float attackAimSlowScale = 0.1f;
         /// <summary>공중 대시 복귀: 몸을 카메라 방위 쪽으로.</summary>
         public float airDashReturnRate = 2560f;

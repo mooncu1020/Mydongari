@@ -67,12 +67,6 @@ namespace MyDongari.Bridge
             _host.FrameUpdate();
         }
 
-        /// <summary>공격을 시작했을 때 (WeaponSystem). 이동기의 "사격 조준" — 15f 동안 몸을 상대 쪽으로.</summary>
-        public void NotifyAttackStarted()
-        {
-            if (Motor != null) Motor.NotifyAttackStarted(StyleOverrides.Current.attackAimRate);
-        }
-
         /// <summary>이동기.</summary>
         public VoMotor Motor { get; private set; }
         /// <summary>지금 속도(m/s). 이동기가 실제로 움직인 속도 (키네마틱 리지드바디의 속도는 쓸 수 없다).</summary>

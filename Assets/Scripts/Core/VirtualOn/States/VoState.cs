@@ -72,18 +72,17 @@ namespace MyDongari.Core.VirtualOn.States
         }
 
         /// <summary>
-        /// 걷기·점프 수평 (V8.1): 스틱 0.3 이상이면 즉시 그 방향의 최대 속도(곡선) × 입력 축소(상대 8.3~11.8m에서 0.7~1),
-        /// 방향 = 스틱 방향을 몸 정면으로 돌린 것(기체 기준). 23.6m 안 × 0.78은 이동 적분이 모든 이동에 곱한다.
+        /// 걷기·점프 수평 (V8.1): 스틱 0.3 이상이면 즉시 그 방향의 최대 속도(곡선) × 입력 축소(상대 70~100u에서 0.7~1),
+        /// 방향 = 스틱 방향을 몸 정면으로 돌린 것(기체 기준). 200u 안 × 0.78은 이동 적분이 모든 이동에 곱한다.
         /// </summary>
         protected void SetLeverMove(VoDirectional curve)
         {
             Vector2 stick = Motor.Lever.Stick;
             if (stick.sqrMagnitude < 0.000001f) return;
             float speed = curve.Evaluate(Motor.Lever.Angle) * Motor.Lever.DistanceScale;
-            float combo = Motor.Host.MoveSpeedScale;
             Vector3 dir = Quaternion.Euler(0f, Motor.Yaw, 0f) * new Vector3(stick.x, 0f, stick.y);
             Motor.MoveDirection = dir.normalized;
-            Motor.HorizontalSpeed = speed * combo;
+            Motor.HorizontalSpeed = speed;
         }
 
         /// <summary>방위 + 오프셋의 수평 방향.</summary>
@@ -105,8 +104,8 @@ namespace MyDongari.Core.VirtualOn.States
 
         public override void Main()
         {
-            // 공격 사용의 사격 조준은 15f 동안 유지, 나머지 자동 선회는 서기에서 기본으로
-            if (Motor.AutoTurn != VoMotor.AutoTurnMode.AttackAim) Motor.SetAutoTurn(VoMotor.AutoTurnMode.Default);
+            // 자동 선회는 서기에서 기본으로
+            Motor.SetAutoTurn(VoMotor.AutoTurnMode.Default);
             if (IsStunned) return;
             Motor.ApplyManualTurn(false);
 
@@ -134,7 +133,7 @@ namespace MyDongari.Core.VirtualOn.States
 
         public override void Main()
         {
-            if (Motor.AutoTurn != VoMotor.AutoTurnMode.AttackAim) Motor.SetAutoTurn(VoMotor.AutoTurnMode.Default);
+            Motor.SetAutoTurn(VoMotor.AutoTurnMode.Default);
             if (IsStunned)
             {
                 StateMachine.ChangeState(StateMachine.VoStand);

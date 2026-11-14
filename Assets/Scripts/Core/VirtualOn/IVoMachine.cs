@@ -59,6 +59,8 @@ namespace MyDongari.Core.VirtualOn
         void V8DashStop(Vector3 heading, float offset, bool airborne);
         void V8AirDash(int code);
         void V8Dive();
+        /// <summary>지상 근접 시작 (전투 사양서 1.2). move = 변형의 구동 수치, step = 몇 번째 타.</summary>
+        void V8Melee(VoMeleeMove move, int step);
         /// <summary>착지. needsLag면 착지 단계(사양서 4.6)를 거친다.</summary>
         void Land(bool needsLag);
 

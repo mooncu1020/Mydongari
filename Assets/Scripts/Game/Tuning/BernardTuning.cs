@@ -66,7 +66,6 @@ namespace MyDongari.Game.Tuning
             [Tooltip("펀치 판정 부채꼴 반각(°). 기체 정면 기준 ±이 각도 안의 상대만 맞는다")]
             public float halfAngle = 45f;
             public float damage = 25f;
-            public float cooldown = 0.5f;
             [Tooltip("펀치 한 방(발동 기준)마다 오르는 히트")]
             public float heatPerPunch = 6f;
             [Tooltip("맞딜: 양쪽 펀치가 거의 동시에 나갔을 때 서로 밀려나는 힘")]
@@ -76,29 +75,15 @@ namespace MyDongari.Game.Tuning
         [Serializable]
         public class ComboValues
         {
-            [Tooltip("끄면 예전처럼 펀치 쿨다운(Punch.cooldown)만 있는 단발 펀치")]
-            public bool enabled = true;
-            [Tooltip("앞 타 회복이 시작된 뒤(판정 순간부터) 이 시간(초) 안에 누르면 다음 타. 넘기면 원부터")]
-            public float window = 0.4f;
-            [Tooltip("콤보 다음 타까지 최소 간격(초, 누름 → 누름). 단발 펀치 쿨다운(0.5초)보다 짧게")]
-            public float interval = 0.3f;
             [Tooltip("쓰리 피해 배율 (Punch.damage × 이 값)")]
             public float thirdDamageMultiplier = 1.5f;
             [Tooltip("쓰리 넉백 힘(Impulse). 원·투는 넉백 없음")]
             public float thirdKnockback = 8f;
-            [Tooltip("쓰리 판정 뒤 다음 펀치까지 회복(초). O2: 0.6 → 0.8 (반복 초당 피해를 단발 펀치에 가깝게)")]
-            public float thirdRecovery = 0.8f;
-            [Tooltip("콤보 중(누른 순간 ~ 다음 타 입력 창 끝) 이동 속도 비율")]
-            [Range(0f, 1f)] public float moveSpeedScale = 0.6f;
-            [Tooltip("쓰리 회복 동안 이동 속도 비율")]
-            [Range(0f, 1f)] public float thirdRecoveryMoveSpeedScale = 0.4f;
         }
 
         [Serializable]
         public class AttackStartupValues
         {
-            [Tooltip("버튼을 누른 뒤 펀치 판정까지(초). 이 동안 예비 동작이 보인다. 0이면 누른 프레임에 즉시 판정")]
-            public float punch = 0.1f;
             [Tooltip("대시 어택(대시 48f 미만) 발생 시간(틱). 0이면 즉시")]
             public int dashAttackFrames = 7;
             [Tooltip("차징 태클(대시 48f 이상) 발생 시간(틱). 0이면 즉시")]

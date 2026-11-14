@@ -76,10 +76,8 @@ namespace MyDongari.Game.Visual
             if (!UseMotions) return PunchWindup + v.punchExtendTime + v.punchHoldTime;
             BernardTuning.MotionValues m = M;
             BernardTuning tuning = _tuning.Get(this);
-            float recovery;
-            if (_punchStep == 3) recovery = PunchWindup + tuning.Combo.thirdRecovery;
-            else if (_punchStep > 0) recovery = PunchWindup + tuning.Combo.window;
-            else recovery = tuning.Punch.cooldown;
+            // 판정 창이 열린 뒤 휘두르기가 끝날 때까지 (전투 틱의 ② 나머지 + ③ 후딜)
+            float recovery = PunchWindup + MeleeSystem.PunchRecoverySeconds(_punchStep);
             return Mathf.Max(PunchWindup + m.punchFollowTime + m.punchFollowHold + 0.01f, recovery);
         }
 
