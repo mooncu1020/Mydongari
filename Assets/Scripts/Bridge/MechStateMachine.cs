@@ -135,6 +135,8 @@ namespace MyDongari.Bridge
 
         /// <summary>스러스터 런지·펀치를 시작할 수 있는 상태(서기·걷기, 공격을 받는 대시 끝 단계). 다른 기동 중엔 불가.</summary>
         public bool CanStartLunge => _currentState is VoStandState || _currentState is VoWalkState ||
+                                     // 착지 단계(12f)는 지상 공격으로 취소할 수 있다 (전투 사양서 8장)
+                                     _currentState is LandingState ||
                                      ((IsDashStopping) && DashEndAllowsAttack);
 
         public string CurrentStateName => _currentState != null ? _currentState.GetType().Name : "None";

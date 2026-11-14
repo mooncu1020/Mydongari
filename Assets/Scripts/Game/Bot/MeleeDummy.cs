@@ -260,7 +260,7 @@ namespace MyDongari.Game.Bot
         private void UpdateAttackInput(bool pressed)
         {
             if (pressed) _attackBuffer.Press();
-            int bufferTime = CombatTime.Frames(_tuning.Get(this).Startup.inputBuffer);
+            int bufferTime = StyleOverrides.Current.EffectiveCombat.meleeBufferFrames;
             _discardAttackInput = false;
             bool startedAttack = _attackBuffer.Tick(bufferTime, TryStartAttack, out AttackType started, out bool fromBuffer);
             // V9f: 플레이어와 같게 — 런지 쿨다운 중에 누른 공격은 버린다 (나중에 펀치로 바뀌어 나가지 않게)

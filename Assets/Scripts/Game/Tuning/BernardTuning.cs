@@ -82,8 +82,6 @@ namespace MyDongari.Game.Tuning
             public int dashAttackFrames = 7;
             [Tooltip("차징 태클(대시 48f 이상) 발생 시간(틱). 0이면 즉시")]
             public int chargedTackleFrames = 6;
-            [Tooltip("공격 버튼 입력 버퍼(초). 쿨다운·발생 시간·런지·스턴 등으로 지금 못 나가는 공격은 이 시간 동안 기억했다가 가능해지는 순간 발동")]
-            public float inputBuffer = 0.15f;
         }
 
         [Serializable]

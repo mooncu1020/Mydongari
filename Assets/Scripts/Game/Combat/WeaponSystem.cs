@@ -65,6 +65,8 @@ namespace MyDongari.Game.Combat
             }
         }
 
+        // 지난 틱에 공중이었는지 (착지 순간 버퍼를 지우려고)
+        private bool _wasAirborne;
         private int _lastAttackPressCount;
         private int _lastSkill1PressCount;
         private int _lastSkill2PressCount;
@@ -114,13 +116,26 @@ namespace MyDongari.Game.Combat
                 return;
             }
 
-            // 공중·착지 경직 중엔 공격·스킬 입력 무시 (버퍼에도 안 남긴다). 예외: 점프 입력 후 8f 이내의 뛰어 베기
-            if (_stateMachine != null && (_stateMachine.IsAirborne || _stateMachine.IsLanding))
+            // 공중: 공격·스킬 입력 무시 (버퍼에도 안 남긴다). 예외: 점프 입력 후 8f 이내의 뛰어 베기
+            if (_stateMachine != null && _stateMachine.IsAirborne)
             {
+                _wasAirborne = true;
                 bool slashWindow = _meleeSystem != null && _meleeSystem.InJumpSlashWindow;
                 if (attackPressed && slashWindow && _meleeSystem.TryJumpSlash()) return;
                 if (!slashWindow) _attackBuffer.Clear();
                 else if (attackPressed) _attackBuffer.Press();
+                return;
+            }
+            // 착지 순간: 공중에서 예약한 입력은 지운다 (전투 사양서 8장)
+            if (_wasAirborne)
+            {
+                _wasAirborne = false;
+                _attackBuffer.Clear();
+            }
+            // 착지 단계(12f): 지상 공격만 즉시 받아 착지를 취소한다. 스킬·점프·대시는 착지가 끝난 뒤
+            if (_stateMachine != null && _stateMachine.IsLanding)
+            {
+                HandleAttackButton(attackPressed);
                 return;
             }
 
@@ -132,8 +147,8 @@ namespace MyDongari.Game.Combat
 
         /// <summary>
         /// 공격 버튼은 "누른 순간"에만 공격을 낸다(누르고 있기만 하면 아무것도 안 나감, GAME_SPEC 4장).
-        /// 지금 못 나가면 입력 버퍼(inputBuffer 초) 동안 기억했다가 가능해지는 프레임에 발동하고,
-        /// 무엇을 낼지는 그 프레임 상황으로 다시 정한다.
+        /// 지금 못 나가면 입력 버퍼(4틱) 동안 기억했다가 가능해지는 틱에 발동하고,
+        /// 무엇을 낼지는 그 틱 상황으로 다시 정한다.
         /// 예외: 사격 기체(Projectile 모드)의 원거리 사격만 누르고 있으면 연사 (버나드 로케 범위 밖).
         /// </summary>
         private void HandleAttackButton(bool attackPressed)
@@ -147,7 +162,8 @@ namespace MyDongari.Game.Combat
                 return;
             }
 
-            int bufferTime = CombatTime.Frames(_tuning.Get(this).Startup.inputBuffer);
+            // 공격 선입력 = 원본의 근접 변환 창 4f
+            int bufferTime = StyleOverrides.Current.EffectiveCombat.meleeBufferFrames;
             _discardAttackInput = false;
             bool startedAttack = _attackBuffer.Tick(bufferTime, TryStartAttack, out AttackType started, out bool fromBuffer);
             // V9f: 런지 쿨다운 중에 누른 공격은 버린다 — 버퍼에 남겨 두면 그 사이 상대가 6m 안에 들어왔을 때 펀치로 바뀌어 나간다
