@@ -71,6 +71,8 @@ namespace MyDongari.Game.Tuning
         {
             [Tooltip("쓰리 피해 배율 (Punch.damage × 이 값)")]
             public float thirdDamageMultiplier = 1.5f;
+            [Tooltip("뛰어 베기 피해 (원본 점프 근접 340~370 ÷ A1 1타 290 × 펀치 25 ≈ 30)")]
+            public float jumpSlashDamage = 30f;
         }
 
         [Serializable]

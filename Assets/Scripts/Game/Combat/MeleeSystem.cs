@@ -766,10 +766,39 @@ namespace MyDongari.Game.Combat
 
         // ---------------- 뛰어 베기 ----------------
 
-        /// <summary>뛰어 베기 (원본 점프 근접): 점프 입력 후 8f 이내 + 근접 구역(높이차 창 무시)이면 발동.</summary>
+        /// <summary>뛰어 베기 중인지.</summary>
+        public bool IsJumpSlashing => _stateMachine != null && _stateMachine.IsJumpMelee;
+
+        /// <summary>지금 뛰어 베기 입력 창 안인지: 점프 입력 후 8f 이내이고 점프 중(이륙·상승·하강)이거나 이번 틱에 점프를 누른 서기·걷기.</summary>
+        public bool InJumpSlashWindow
+        {
+            get
+            {
+                VoMotor motor = Motor;
+                if (_stateMachine == null || motor == null || !motor.IsActive) return false;
+                if (motor.JumpPressFrames > C.jumpMeleeInputFrames) return false;
+                MechState state = _stateMachine.CurrentState;
+                if (state is Core.VirtualOn.States.VoJumpState) return true;
+                return motor.JumpNew && (state is Core.VirtualOn.States.VoStandState || state is Core.VirtualOn.States.VoWalkState);
+            }
+        }
+
+        /// <summary>
+        /// 뛰어 베기 (원본 점프 근접, 전투 사양서 1.7): 점프 입력 후 8f 이내 + 근접 구역(높이차 창 무시)이면 발동.
+        /// 이동은 코어의 점프 근접 상태가(vy 3.80, 진로 정면, 추적 2560), 판정은 여기서(근접 계열 3 — 때린 쪽이 멈추지 않는다).
+        /// </summary>
         public bool TryJumpSlash()
         {
-            return false;
+            if (IsActionLocked || IsKnockedDown) return false;
+            if (!InJumpSlashWindow || !IsOpponentInMeleeZone(ignoreHeight: true)) return false;
+            if (IsGuarding) DropGuard(applyReraiseDelay: false);
+            _stateMachine.V8JumpMelee();
+            // 펀치 콤보 단계와 같은 칸을 쓴다 (1 = 휘두르는 중) — 히트·콤보 알림은 펀치 전용이라 여기서 직접 시작한다
+            _comboStep = 1;
+            _swingHit = false;
+            _hasLastSpherePoint = false;
+            OnAttackStarted?.Invoke(AttackType.JumpSlash);
+            return true;
         }
 
         // ---------------- 펀치 (파고들기 근접: 원 = 템진 A1 1타, 투 = A1 2타, 쓰리 = C1) ----------------
@@ -779,7 +808,11 @@ namespace MyDongari.Game.Combat
         {
             get
             {
-                if (_stateMachine != null) return _stateMachine.IsMelee ? _stateMachine.VoMelee.Drive : null;
+                if (_stateMachine != null)
+                {
+                    if (_stateMachine.IsMelee) return _stateMachine.VoMelee.Drive;
+                    return _stateMachine.IsJumpMelee ? _stateMachine.VoJumpMelee.Drive : null;
+                }
                 return _ownDrive.IsActive ? _ownDrive : null;
             }
         }
@@ -816,6 +849,8 @@ namespace MyDongari.Game.Combat
             if (_heatGauge != null && !_heatGauge.CanPunch()) return false;
 
             VoMeleeDrive drive = ActiveDrive;
+            // 뛰어 베기는 콤보로 이어지지 않는다
+            if (IsJumpSlashing) return false;
             if (drive != null)
             {
                 if (drive.Step >= 3) return false;
@@ -927,7 +962,8 @@ namespace MyDongari.Game.Combat
                 return;
             }
             StyleOverrides style = StyleOverrides.Current;
-            StyleOverrides.AttackSphere sphere = _comboStep >= 3 ? style.thirdSphere : style.punchSphere;
+            bool slash = IsJumpSlashing;
+            StyleOverrides.AttackSphere sphere = slash ? style.jumpSlashSphere : (_comboStep >= 3 ? style.thirdSphere : style.punchSphere);
             Vector3 point = AttackSpherePoint(sphere.range);
             Vector3 from = _hasLastSpherePoint ? _lastSpherePoint : point;
             _lastSpherePoint = point;
@@ -940,6 +976,15 @@ namespace MyDongari.Game.Combat
 
             BernardTuning.PunchValues punch = Punch;
             BernardTuning.ComboValues combo = Combo;
+            if (slash)
+            {
+                // 뛰어 베기: 근접 계열 3, 다운급
+                HitInfo slashInfo = NewHit(AttackType.JumpSlash, HitKind.Melee3, combo.jumpSlashDamage, opponent.gameObject);
+                slashInfo.Impact = C.impactJumpMelee;
+                QueueHit(opponent.gameObject, slashInfo);
+                _swingHit = true;
+                return;
+            }
             bool third = _comboStep == 3;
             // 쓰리는 피해 배율. 충격치: 원·투는 경직만(우리 값 280), 쓰리는 다운(원본 C1 1100)
             VoCombatSpec c = C;

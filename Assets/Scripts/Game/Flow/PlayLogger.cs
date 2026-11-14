@@ -409,6 +409,7 @@ namespace MyDongari.Game.Flow
                 case AttackType.Tackle: return "tackle";
                 case AttackType.Lunge: return "lunge";
                 case AttackType.Slam: return "slam";
+                case AttackType.JumpSlash: return "jumpslash";
                 case AttackType.PileDriver: return "piledriver";
                 default: return "projectile";
             }

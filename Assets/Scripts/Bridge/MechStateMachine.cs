@@ -64,6 +64,7 @@ namespace MyDongari.Bridge
         public VoAirDashState VoAirDash { get; private set; }
         public VoDiveState VoDive { get; private set; }
         public VoMeleeState VoMelee { get; private set; }
+        public VoJumpMeleeState VoJumpMelee { get; private set; }
         /// <summary>지금 상태.</summary>
         public MechState CurrentState => _currentState;
         /// <summary>상태가 돌고 있는지 (사망하면 꺼진다). 이동기가 본다.</summary>
@@ -116,6 +117,8 @@ namespace MyDongari.Bridge
 
         public bool IsRunning => _currentState is VoWalkState;
         public bool IsLunging => _currentState is LungeState;
+        /// <summary>뛰어 베기(점프 근접) 중.</summary>
+        public bool IsJumpMelee => _currentState is VoJumpMeleeState;
         /// <summary>지상 근접(펀치 콤보) 중.</summary>
         public bool IsMelee => _currentState is VoMeleeState;
 
@@ -154,6 +157,7 @@ namespace MyDongari.Bridge
             VoAirDash = new VoAirDashState(this);
             VoDive = new VoDiveState(this);
             VoMelee = new VoMeleeState(this);
+            VoJumpMelee = new VoJumpMeleeState(this);
         }
 
         private void Start()
@@ -247,6 +251,12 @@ namespace MyDongari.Bridge
         public void V8Dive()
         {
             ChangeState(VoDive);
+        }
+
+        /// <summary>뛰어 베기(점프 근접) 시작.</summary>
+        public void V8JumpMelee()
+        {
+            ChangeState(VoJumpMelee);
         }
 
         /// <summary>지상 근접 시작 (이동은 코어의 근접 상태가, 판정·충격치는 MeleeSystem이).</summary>

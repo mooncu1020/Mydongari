@@ -112,6 +112,22 @@ namespace MyDongari.Bridge
         [Tooltip("임팩트 슬램의 충격치 (원본에 대응 없음 — 일반 근접, 가드 가능, 다운급)")]
         public float slamImpact = 1100f;
 
+        [Header("뛰어 베기 — [미상] 원본 미확인이라 우리 값 (원본 확정: vy 3.80u/f, 추적 2560 단위/f, 점프 입력 후 8f)")]
+        [Tooltip("[미상] 기준 속력(u/f). 정면으로 파고드는 빠르기")]
+        public FloatOverride jumpMeleeSpeed = new FloatOverride(true, 4.0f);
+        [Tooltip("[미상] ① 파고들기 길이(틱)")]
+        public IntOverride jumpMeleeApproachFrames = new IntOverride(true, 12);
+        [Tooltip("[미상] ② 공격 길이(틱). 끝나면 일반 낙하")]
+        public IntOverride jumpMeleeAttackFrames = new IntOverride(true, 10);
+        [Tooltip("[미상] 판정 창 시작(② 단계 틱 번호)")]
+        public IntOverride jumpMeleeHitStart = new IntOverride(true, 2);
+        [Tooltip("[미상] 판정 창 끝(이 번호 직전까지 = 2~7f)")]
+        public IntOverride jumpMeleeHitEnd = new IntOverride(true, 8);
+        [Tooltip("[미상] 뛰어 베기 중 중력(u/f²). 점프 중력(0.074)이면 vy 3.80으로 6m까지 솟아 지상의 상대에게 안 닿아서, 다운 상태의 중력(0.451)을 빌려 썼다 — 정점 약 1.4m, 약 17틱 뒤 착지")]
+        public FloatOverride jumpMeleeGravity = new FloatOverride(true, 0.451f);
+        [Tooltip("[미상] 뛰어 베기 중 낙하 상한(u/f)")]
+        public FloatOverride jumpMeleeFallMaxVy = new FloatOverride(true, 4.001f);
+
         // ---- 유효값 ----
         [NonSerialized] private VoSpec _effective;
         [NonSerialized] private VoCombatSpec _effectiveCombat;
@@ -131,6 +147,13 @@ namespace MyDongari.Bridge
             VoCombatSpec c = VoCombatSpec.Original();
             punch1Impact.Apply(ref c.impactA1First);
             punch2Impact.Apply(ref c.impactA1Second);
+            jumpMeleeSpeed.Apply(ref c.jumpMelee.baseSpeed);
+            jumpMeleeApproachFrames.Apply(ref c.jumpMelee.approachFrames);
+            jumpMeleeAttackFrames.Apply(ref c.jumpMelee.attackFrames);
+            jumpMeleeHitStart.Apply(ref c.jumpMelee.hitStart);
+            jumpMeleeHitEnd.Apply(ref c.jumpMelee.hitEnd);
+            jumpMeleeGravity.Apply(ref c.jumpMeleeGravity);
+            jumpMeleeFallMaxVy.Apply(ref c.jumpMeleeFallMaxVy);
             return c;
         }
 

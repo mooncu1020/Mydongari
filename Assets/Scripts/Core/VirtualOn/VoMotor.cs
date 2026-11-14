@@ -136,6 +136,8 @@ namespace MyDongari.Core.VirtualOn
         public bool JumpHeld { get; private set; }
         /// <summary>△를 누른 채 지난 틱.</summary>
         public int JumpHeldFrames { get; private set; }
+        /// <summary>△를 누른 뒤 지난 틱 (안 눌렀으면 큰 값). 점프 근접의 "점프 입력 후 8f 이내" 판정용.</summary>
+        public int JumpPressFrames { get; private set; } = 9999;
         /// <summary>급강하 입력(V9a: 공중에서 ✕) 새 입력.</summary>
         public bool DiveNew { get; private set; }
         /// <summary>급강하 입력을 누르고 있는지 (공중에서만). 하강 가속이 읽는다.</summary>
@@ -291,6 +293,7 @@ namespace MyDongari.Core.VirtualOn
             AutoTurn = AutoTurnMode.Default;
             IsGrounded = true;
             TurboFrames = 9999;
+            JumpPressFrames = 9999;
             Host.ResetInput();
         }
 
@@ -523,6 +526,7 @@ namespace MyDongari.Core.VirtualOn
             JumpHeld = frame.JumpHeld;
             TurboFrames = TurboNew ? 0 : (TurboHeld ? Mathf.Min(TurboFrames + 1, 9999) : 9999);
             JumpHeldFrames = JumpHeld ? (JumpNew ? 0 : JumpHeldFrames + 1) : 0;
+            JumpPressFrames = JumpNew ? 0 : Mathf.Min(JumpPressFrames + 1, 9999);
 
             Vector2 stick = frame.LeverStick;
             bool airborne = StateMachine.CurrentState is VoState s && s.IsAirState;

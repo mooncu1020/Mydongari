@@ -106,10 +106,13 @@ namespace MyDongari.Game.Combat
                 return;
             }
 
-            // V5: 공중·착지 경직 중엔 공격·스킬 입력 무시. 버퍼에도 안 남긴다
+            // 공중·착지 경직 중엔 공격·스킬 입력 무시 (버퍼에도 안 남긴다). 예외: 점프 입력 후 8f 이내의 뛰어 베기
             if (_stateMachine != null && (_stateMachine.IsAirborne || _stateMachine.IsLanding))
             {
-                _attackBuffer.Clear();
+                bool slashWindow = _meleeSystem != null && _meleeSystem.InJumpSlashWindow;
+                if (attackPressed && slashWindow && _meleeSystem.TryJumpSlash()) return;
+                if (!slashWindow) _attackBuffer.Clear();
+                else if (attackPressed) _attackBuffer.Press();
                 return;
             }
 
