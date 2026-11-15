@@ -115,6 +115,10 @@ namespace MyDongari.Core.VirtualOn
         public bool InMeleeZoneAnyHeight { get; private set; }
         /// <summary>근접 구역의 안쪽 원 안(밀착)인지.</summary>
         public bool InMeleeInner { get; private set; }
+        /// <summary>지연 표적 (이동 사양서 1.2 ②-1). 근접 추적 회전의 표적.</summary>
+        public VoDelayedTarget DelayedTarget { get; } = new VoDelayedTarget();
+        /// <summary>지연 표적의 방위(°, Unity Y 회전). 상대가 없으면 내 방향.</summary>
+        public float DelayedTargetBearing { get; private set; }
 
         // ---- 대시 게이지 (사양서 1.2) ----
         public float DashGauge { get; set; }
@@ -283,6 +287,7 @@ namespace MyDongari.Core.VirtualOn
             Vy = 0f;
             _external = Vector3.zero;
             Velocity = Vector3.zero;
+            DelayedTarget.Reset();
         }
 
         /// <summary>라운드 시작: 게이지·입력·외부 속도 초기화, 땅에 있는 것으로.</summary>
@@ -389,7 +394,7 @@ namespace MyDongari.Core.VirtualOn
         /// <summary>
         /// 근접 추적 시작 (전투 사양서 1.3, 이동 사양서 2.3 "근접 추적"). 다음 틱부터 attackAimFrames(15f) 동안 몸을 상대 쪽으로
         /// 최대 rateUnits(각 단위/f, 근접 변형별)로 돌린다. 상대가 근접 구역의 안쪽 원에 들어오면 즉시 끝.
-        /// 표적은 원본의 "지연 표적 위치" 대신 상대의 지금 위치다 (지연 표적은 코어에 없다 — 미구현 목록).
+        /// 표적은 원본대로 "지연 표적 위치"다 (DelayedTarget — VoSpec.delayedTargetEnabled를 끄면 상대의 지금 위치).
         /// </summary>
         public void StartMeleeTrack(float rateUnits)
         {
@@ -431,6 +436,8 @@ namespace MyDongari.Core.VirtualOn
             // 상태 보조 (중력·일부 y 적분·대시 게이지 가산·대시 정지 입력)
             if (machineOn && !_externalMode && vo != null && !frozen) vo.Aux();
 
+            // 본 갱신 1 → 2: 지연 표적 갱신 → 상대 관계 (이동 사양서 1.2 ②)
+            UpdateDelayedTarget();
             UpdateOpponentRelation();
             // 공용: 대시 게이지 −200/f
             DashGauge = Mathf.Max(0f, DashGauge - V.gaugeDecay);
@@ -578,6 +585,28 @@ namespace MyDongari.Core.VirtualOn
             }
         }
 
+        /// <summary>
+        /// 지연 표적 갱신 (이동 사양서 1.2 ②-1). 상대의 같은 행동(상태 객체) 15f 이상이면 반씩 따라가고 아니면 상대 위치로 바로.
+        /// 상대에게 이동기가 없으면 행동을 모르므로 null(늘 같은 행동)로 센다.
+        /// </summary>
+        private void UpdateDelayedTarget()
+        {
+            Transform opponent = Host.Opponent;
+            if (opponent == null || !opponent.gameObject.activeInHierarchy)
+            {
+                DelayedTarget.Reset();
+                DelayedTargetBearing = _yaw;
+                return;
+            }
+            VoSpec v = V;
+            VoMotor other = Of(opponent.GetComponent<Rigidbody>());
+            object action = other != null && other.IsActive && other.StateMachine != null ? other.StateMachine.CurrentState : null;
+            Vector3 target = DelayedTarget.Update(OpponentPosition(opponent), action, v.delayedTargetEnabled, v.delayedTargetFrames, v.delayedTargetFollow);
+            Vector3 offset = target - _position;
+            offset.y = 0f;
+            DelayedTargetBearing = offset.sqrMagnitude > 0.000001f ? Mathf.Atan2(offset.x, offset.z) * Mathf.Rad2Deg : _yaw;
+        }
+
         private void UpdateOpponentRelation()
         {
             Transform opponent = Host.Opponent;
@@ -651,8 +680,9 @@ namespace MyDongari.Core.VirtualOn
                         SetAutoTurn(AutoTurnMode.Default);
                         break;
                     }
-                    float before = Mathf.Abs(Mathf.DeltaAngle(_yaw, OpponentBearing));
-                    TurnToward(OpponentBearing, _meleeTrackRate);
+                    // 표적은 지연 표적 (원본). 스위치를 끄면 DelayedTargetBearing = 상대의 지금 방위
+                    float before = Mathf.Abs(Mathf.DeltaAngle(_yaw, DelayedTargetBearing));
+                    TurnToward(DelayedTargetBearing, _meleeTrackRate);
                     MeleeTrackSaturated = before > VoUnits.AngleUnitsToDegrees(_meleeTrackRate);
                     break;
                 case AutoTurnMode.AirDashReturn:

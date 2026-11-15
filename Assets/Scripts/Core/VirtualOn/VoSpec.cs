@@ -154,6 +154,14 @@ namespace MyDongari.Core.VirtualOn
         public int attackAimFrames = 15;
         /// <summary>근접 추적이 최대 선회율에 걸린 틱의 수평 속력 배율.</summary>
         public float attackAimSlowScale = 0.1f;
+
+        // ---- 지연 표적 [1.2 ②-1] ----
+        /// <summary>[스위치] 근접 추적의 표적을 지연 표적 위치로 (원본 = 켬). 끄면 상대의 지금 위치.</summary>
+        public bool delayedTargetEnabled = true;
+        /// <summary>상대의 같은 행동이 이 틱 이상 이어지면 반씩 따라간다 (15f).</summary>
+        public int delayedTargetFrames = 15;
+        /// <summary>반씩 따라가기의 비율: 새 값 = 지난 값 + (상대 위치 − 지난 값) × 이 값 (0.5).</summary>
+        public float delayedTargetFollow = 0.5f;
         /// <summary>공중 대시 복귀: 몸을 카메라 방위 쪽으로.</summary>
         public float airDashReturnRate = 2560f;
         /// <summary>점프 조준·공중 대시 중 카메라 방위가 몸을 쫓는 최대율 (4096 = 22.5°/f).</summary>

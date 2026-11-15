@@ -516,5 +516,80 @@ namespace MyDongari.EditorTools.Tests
             Assert.IsTrue(HitGeometry.SweptSphereHitsCapsule(low, low, 0.5f, fa, fb, fr));
             Assert.IsFalse(HitGeometry.SweptSphereHitsCapsule(low, low, 0.5f, sa, sb, sr));
         }
+
+        // ---------------- 지연 표적 (이동 사양서 1.2 ②-1) ----------------
+
+        /// <summary>
+        /// 원·투의 추적 회전을 틱 단위로 흉내 낸다 (VoMotor 근접 추적 모드와 같은 계산: 지연 표적 갱신 → 표적 방위로 최대 trackRate 회전).
+        /// 상대는 60u 앞에서 옆으로 걷는 중(이미 20f째 같은 행동). 돌린 각의 합(°)을 돌려준다.
+        /// </summary>
+        private static float TrackedDegrees(VoCombatSpec c, VoSpec v, VoMeleeMove move, bool delayed)
+        {
+            var target = new VoDelayedTarget();
+            object walking = new object();
+            // 옆 걷기 2.70u/f × 근접 감속 0.78 (u 단위로 계산 — 1u = 1)
+            float lateral = v.walkSpeed.side * v.closeSlowScale;
+            Vector3 opponent = new Vector3(0f, 0f, 60f);
+            float yaw = 0f;
+            for (int i = 0; i < 20; i++)
+            {
+                opponent.x += lateral;
+                target.Update(opponent, walking, delayed, v.delayedTargetFrames, v.delayedTargetFollow);
+            }
+            // 펀치 시작 직전에 정면으로 맞춰 둔다 (둘 다 같은 출발점)
+            yaw = Mathf.Atan2(opponent.x, opponent.z) * Mathf.Rad2Deg;
+            float turned = 0f;
+            float max = VoUnits.AngleUnitsToDegrees(move.trackRate);
+            // 시작 틱은 돌지 않고, 다음 틱부터 trackTurnFrames 동안
+            for (int frame = 1; frame <= c.trackTurnFrames + 1; frame++)
+            {
+                opponent.x += lateral;
+                Vector3 t = target.Update(opponent, walking, delayed, v.delayedTargetFrames, v.delayedTargetFollow);
+                if (frame == 1) continue;
+                float bearing = Mathf.Atan2(t.x, t.z) * Mathf.Rad2Deg;
+                float step = Mathf.Clamp(Mathf.DeltaAngle(yaw, bearing), -max, max);
+                yaw += step;
+                turned += step;
+            }
+            return turned;
+        }
+
+        [Test]
+        public void DelayedTarget_PunchTracksSideWalkerLess()
+        {
+            VoCombatSpec c = Spec();
+            VoSpec v = new VoSpec();
+            Assert.IsTrue(v.delayedTargetEnabled, "원본 기본값은 지연 표적 켬");
+            foreach (VoMeleeMove move in new[] { c.a1First, c.a1Second })
+            {
+                float without = TrackedDegrees(c, v, move, false);
+                float with = TrackedDegrees(c, v, move, true);
+                Assert.Greater(without, 0f, "옆으로 걷는 상대 쪽으로 돈다");
+                Assert.Less(with, without - 0.5f, "지연 표적이 있으면 덜 따라간다");
+            }
+        }
+
+        [Test]
+        public void DelayedTarget_SnapsWhenActionChanges_FollowsHalfAfter15()
+        {
+            var target = new VoDelayedTarget();
+            object a = new object();
+            object b = new object();
+            Vector3 p = Vector3.zero;
+            // 처음 15틱(0~14)은 같은 행동이어도 바로 맞춘다
+            for (int i = 0; i < 15; i++)
+            {
+                p.x = i;
+                Assert.AreEqual(p.x, target.Update(p, a, true, 15, 0.5f).x, 1e-4f, "15f 전엔 상대 위치 그대로");
+            }
+            // 15틱째부터 반씩: (14 + 15) × 0.5
+            p.x = 15f;
+            Assert.AreEqual(14.5f, target.Update(p, a, true, 15, 0.5f).x, 1e-4f);
+            Assert.IsTrue(target.IsLagging);
+            // 행동이 바뀌면 바로 맞춘다
+            p.x = 16f;
+            Assert.AreEqual(16f, target.Update(p, b, true, 15, 0.5f).x, 1e-4f);
+            Assert.IsFalse(target.IsLagging);
+        }
     }
 }

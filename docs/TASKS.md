@@ -468,3 +468,8 @@
 - [x] **피해량** 템진 원본 비율로: `VoCombatSpec.damage…`(원본) + `StyleOverrides.damageScale`(10 ÷ 290). 슬램 10·파일 드라이버 50은 `BernardTuning` 그대로.
 - [x] **전투 스모크** `Tools/Combat Smoke Test`(`Game/Flow/CombatSmokeRunner`, batchmode `BuildAndSmokeTest.RunCombatFromCommandLine`). 플레이어 자리 자동 입력은 `InputReader.SetScripted/ScriptState/ScriptPress…`. 첫 실행 결과: 경직 2 / 다운 2 / 날아감 2 / 가드 경직 1 / 맞딜 2, 예외 0, 겹친 틱 0, 맵 밖 0 → PASS.
 - 메모: 전투 스모크로 확인된 것 — 원 10 → 투 4.5 → 쓰리 13.1 피해가 들어가고, **원·투를 맞힌 뒤의 쓰리는 누적 충격치(약 520 + 1100)가 날아감 문턱 1200을 넘어 다운이 아니라 날아감**이 된다(쓰리 단독 1100이면 다운). 다운은 대시 공격·뛰어 베기에서 나왔다. 스모크는 평지 한 줄에서 봇 상대로만 돈다 — 2인 대전·벽 근처·기상 선입력은 여전히 에디터 확인 대상.
+
+### 원본 복원·봇·2인 스모크·로그 (2026-11-15)
+
+- [x] **지연 표적** 원본 복원: `Core/VirtualOn/VoDelayedTarget`(신규), `VoMotor.DelayedTargetBearing`를 근접 추적(원·투·쓰리·뛰어 베기)의 표적으로, 스위치 `VoSpec.delayedTargetEnabled`(원본 = 켬). EditMode 테스트 2개.
+  - 남은 위험: "같은 행동"을 상대의 상태로 해석(QUESTIONS 지연표적). 효과는 꾸준히 걷는 상대 기준 약 한 틱만큼 늦게 쫓는 정도.
