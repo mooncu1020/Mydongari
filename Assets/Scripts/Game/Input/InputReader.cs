@@ -188,8 +188,68 @@ namespace MyDongari.Game.Input
                    $"액션 맵 {mapText}, Move 켜짐 {_moveAction.enabled}, 장치 [{string.Join(", ", devices)}]";
         }
 
+        // ---- 스크립트 입력 (전투 스모크 테스트용 자동 입력) ----
+        // 켜면 장치 대신 스크립트가 넣은 값이 이 플레이어의 입력이 된다. 전투·이동은 여전히 이 InputReader만 읽는다.
+        private bool _scripted;
+        private Vector2 _scriptMove;
+        private bool _scriptDash, _scriptJump, _scriptGuard;
+
+        /// <summary>스크립트 입력 모드인지.</summary>
+        public bool IsScripted => _scripted;
+
+        /// <summary>스크립트 입력 모드를 켜고 끈다. 켜면 장치 입력은 읽지 않는다(입력 잠금도 무시).</summary>
+        public void SetScripted(bool on)
+        {
+            _scripted = on;
+            ScriptState(Vector2.zero, false, false, false);
+        }
+
+        /// <summary>스크립트 입력: 스틱과 누르고 있는 버튼. 바로 반영된다(다음 전투 틱이 읽는다).</summary>
+        public void ScriptState(Vector2 move, bool dashHeld, bool jumpHeld, bool guardHeld)
+        {
+            _scriptMove = move;
+            _scriptDash = dashHeld;
+            _scriptJump = jumpHeld;
+            _scriptGuard = guardHeld;
+            if (_scripted) ApplyScripted();
+        }
+
+        /// <summary>스크립트 입력: 버튼을 새로 누름 (누름 횟수를 바로 올린다 — 다음 전투 틱이 새 입력으로 읽는다).</summary>
+        public void ScriptPressAttack() { if (_scripted) AttackPressCount++; }
+        public void ScriptPressDash() { if (_scripted) DashPressCount++; }
+        public void ScriptPressJump() { if (_scripted) JumpPressCount++; }
+        public void ScriptPressGuard() { if (_scripted) GuardPressCount++; }
+
+        private void ApplyScripted()
+        {
+            MoveInput = _scriptMove;
+            LookInput = Vector2.zero;
+            DashHeld = _scriptDash;
+            JumpHeld = _scriptJump;
+            GuardHeld = _scriptGuard;
+            AttackHeld = false;
+            DashPressedThisFrame = false;
+            JumpPressedThisFrame = false;
+            AttackPressedThisFrame = false;
+            GuardPressedThisFrame = false;
+            Skill1Input = false;
+            Skill2Input = false;
+            AnyInputThisFrame = false;
+            StartPressed = false;
+            MenuVertical = 0;
+            MenuConfirmPressed = false;
+            BotCyclePressed = false;
+            PracticeResetPressed = false;
+            HeatPresetPressed = -1;
+        }
+
         private void Update()
         {
+            if (_scripted)
+            {
+                ApplyScripted();
+                return;
+            }
             MoveInput = _moveAction.ReadValue<Vector2>();
             LookInput = _lookAction.ReadValue<Vector2>();
             if (InputTrace.ShouldLog(this, "1 PlayerInput"))

@@ -462,3 +462,9 @@
 - **정면 부호 (보고만, 고치지 않음):** 사양서는 정면 = (−sin 방위, cos 방위), +방위가 +z에서 −x 쪽. 코어(`VoMotor.Forward`, `OpponentBearing = atan2(x, z)`)는 Unity Y 회전 그대로라 정면 = (+sin, cos), +각이 +x 쪽(오른쪽 +). 즉 코어의 방위 = −(사양서 방위)로 좌우가 거울상이다. 코어 안에서는 한 가지 부호로 일관돼 동작에는 문제가 없고, 사양서의 "+방위 = 왼쪽" 표현을 코드에 옮길 때만 부호를 뒤집어 읽어야 한다(방향 코드 → 오프셋 `VoLever.Offset`이 이미 그렇게 한다).
 - **바뀐 주요 파일:** Core `VoTickDriver`·`VoMotor`·`VoSpec`·`VoCombatSpec`(신규)·`VoMeleeDrive`(신규)·`States/VoMeleeState`·`VoJumpMeleeState`(신규)·`IVoHost`·`IVoMachine` / Bridge `VoHostAdapter`·`MechStateMachine`·`MechController`·`MotionBridge`·`DashAttackRunner`·`StyleOverrides` / Game `MeleeSystem`(다시 씀)·`CombatLedger`·`HitRules`·`ReactionTimers`·`HitGeometry`(신규)·`HitTypes`·`WeaponSystem`·`ThrusterLunge`·`AnchorClaw`·`ImpactSlam`·`KnockdownController`(다시 씀)·`MeleeDummy`·`BotInput`·`InputReader`·`BernardTuning`.
 - **남은 위험:** ① 외형(`MechVisualRig`)은 시간 값의 출처만 바꿨다 — 펀치 예비 동작이 0.1초 → 원 0.32초(16 + 3f)로 길어져 포즈 타이밍이 어색할 수 있고, 뛰어 베기·경직·가드 경직 전용 포즈는 없다(기존 스턴 흔들림·넉다운 포즈 재사용). ② 뛰어 베기의 [미상] 값(특히 중력 0.451)은 맞는지 실기 확인 필요. ③ 연습 봇은 여전히 다이내믹 리지드바디라 밀려남·다운 궤적이 물리 감속·충돌의 영향을 조금 받는다. ④ 근접 추적 표적은 지연 표적이 아니라 상대의 지금 위치. ⑤ 기상 대시·기상 공격, 맞교환 동시 판정은 2인이 있어야 확인된다.
+
+### 전투 재구성 후속 (2026-11-15)
+
+- [x] **피해량** 템진 원본 비율로: `VoCombatSpec.damage…`(원본) + `StyleOverrides.damageScale`(10 ÷ 290). 슬램 10·파일 드라이버 50은 `BernardTuning` 그대로.
+- [x] **전투 스모크** `Tools/Combat Smoke Test`(`Game/Flow/CombatSmokeRunner`, batchmode `BuildAndSmokeTest.RunCombatFromCommandLine`). 플레이어 자리 자동 입력은 `InputReader.SetScripted/ScriptState/ScriptPress…`. 첫 실행 결과: 경직 2 / 다운 2 / 날아감 2 / 가드 경직 1 / 맞딜 2, 예외 0, 겹친 틱 0, 맵 밖 0 → PASS.
+- 메모: 전투 스모크로 확인된 것 — 원 10 → 투 4.5 → 쓰리 13.1 피해가 들어가고, **원·투를 맞힌 뒤의 쓰리는 누적 충격치(약 520 + 1100)가 날아감 문턱 1200을 넘어 다운이 아니라 날아감**이 된다(쓰리 단독 1100이면 다운). 다운은 대시 공격·뛰어 베기에서 나왔다. 스모크는 평지 한 줄에서 봇 상대로만 돈다 — 2인 대전·벽 근처·기상 선입력은 여전히 에디터 확인 대상.

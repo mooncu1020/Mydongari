@@ -28,13 +28,46 @@ namespace MyDongari.EditorTools
         /// <summary>빌드 쪽(AppRuntime)이 이 인자를 보면 전체 화면을 강제하지 않는다.</summary>
         public const string SmokeTestArgument = "-smokeTest";
 
+        // 전투 스모크 테스트: 빌드가 스스로 30초쯤 돌고 끝난다 (준비·카운트다운 + 20초). 이 시간이 지나도 안 끝나면 닫는다
+        private const float CombatRunSeconds = 60f;
+        private static bool _combat;
+        private static float CurrentRunSeconds => _combat ? CombatRunSeconds : RunSeconds;
+
         private static Process _process;
         private static string _logPath;
         private static string _buildFolder;
         private static double _startTime;
         private static double _closeRequestTime = -1;
 
+        /// <summary>
+        /// 전투 스모크 테스트: 빌드 → -combatSmoke로 실행 → PRACTICE에서 자동 입력으로 20초 동안 원투쓰리·가드·맞딜·런지·대시 공격·뛰어 베기를
+        /// 차례로 낸다(Game/Flow/CombatSmokeRunner) → Player.log의 [CombatSmoke] 줄(반응 횟수·예외·NaN·겹친 틱·맵 밖)을 콘솔에 요약.
+        /// 횟수가 0인 반응이 있으면 FAIL.
+        /// </summary>
+        [MenuItem("Tools/Combat Smoke Test")]
+        private static void RunCombat()
+        {
+            _combat = true;
+            Run();
+        }
+
         [MenuItem("Tools/Build And Smoke Test")]
+        private static void RunBasic()
+        {
+            _combat = false;
+            Run();
+        }
+
+        /// <summary>
+        /// 명령줄(batchmode)용 전투 스모크 테스트. 종료 코드: 0 = PASS, 2 = FAIL(반응 0회·예외·NaN·맵 밖), 1 = 빌드·실행 실패.
+        /// 예: Unity.exe -batchmode -projectPath . -executeMethod MyDongari.EditorTools.BuildAndSmokeTest.RunCombatFromCommandLine -logFile build.log
+        /// </summary>
+        public static void RunCombatFromCommandLine()
+        {
+            _combat = true;
+            RunFromCommandLine();
+        }
+
         private static void Run()
         {
             if (_process != null)
@@ -53,7 +86,7 @@ namespace MyDongari.EditorTools
             if (!TryBuild(out string exePath) || !TryLaunch(exePath)) return;
             _startTime = EditorApplication.timeSinceStartup;
             _closeRequestTime = -1;
-            Debug.Log($"[SmokeTest] 실행 — {RunSeconds:0}초 뒤 종료합니다");
+            Debug.Log(_combat ? "[SmokeTest] 전투 스모크 실행 — 20초 전투 뒤 스스로 종료합니다" : $"[SmokeTest] 실행 — {RunSeconds:0}초 뒤 종료합니다");
             EditorApplication.update += Tick;
         }
 
@@ -71,9 +104,9 @@ namespace MyDongari.EditorTools
                 if (TryBuild(out string exePath) && TryLaunch(exePath))
                 {
                     string how;
-                    if (_process.WaitForExit((int)(RunSeconds * 1000f)))
+                    if (_process.WaitForExit((int)(CurrentRunSeconds * 1000f)))
                     {
-                        how = $"10초 전에 종료됨(크래시 가능), 종료 코드 {SafeExitCode()}";
+                        how = _combat ? $"전투 스모크가 끝나 스스로 종료, 종료 코드 {SafeExitCode()}" : $"10초 전에 종료됨(크래시 가능), 종료 코드 {SafeExitCode()}";
                     }
                     else
                     {
@@ -100,6 +133,7 @@ namespace MyDongari.EditorTools
                     _process = null;
                     int matches = Summarize(how);
                     exitCode = matches == 0 ? 0 : matches > 0 ? 2 : 1;
+                    if (_combat && exitCode == 0 && !_combatPassed) exitCode = 2;
                 }
             }
             catch (Exception e)
@@ -146,7 +180,8 @@ namespace MyDongari.EditorTools
             var start = new ProcessStartInfo
             {
                 FileName = exePath,
-                Arguments = $"-logFile \"{_logPath}\" -screen-fullscreen 0 -screen-width 1280 -screen-height 720 {SmokeTestArgument}",
+                Arguments = $"-logFile \"{_logPath}\" -screen-fullscreen 0 -screen-width 1280 -screen-height 720 {SmokeTestArgument}" +
+                            (_combat ? " " + MyDongari.Game.Flow.CombatSmokeRunner.Argument : ""),
                 WorkingDirectory = _buildFolder,
                 UseShellExecute = false
             };
@@ -186,11 +221,13 @@ namespace MyDongari.EditorTools
             {
                 // 10초 전에 스스로 끝났으면 크래시일 수 있다
                 bool early = _closeRequestTime < 0;
-                Finish(early ? $"10초 전에 종료됨(크래시 가능), 종료 코드 {SafeExitCode()}" : "정상 종료 요청 후 끝남");
+                Finish(!early ? "정상 종료 요청 후 끝남"
+                    : _combat ? $"전투 스모크가 끝나 스스로 종료, 종료 코드 {SafeExitCode()}"
+                    : $"10초 전에 종료됨(크래시 가능), 종료 코드 {SafeExitCode()}");
                 return;
             }
 
-            if (_closeRequestTime < 0 && now - _startTime >= RunSeconds)
+            if (_closeRequestTime < 0 && now - _startTime >= CurrentRunSeconds)
             {
                 _closeRequestTime = now;
                 try
@@ -237,6 +274,9 @@ namespace MyDongari.EditorTools
             Summarize(how);
         }
 
+        // 전투 스모크의 RESULT PASS 줄을 봤는지
+        private static bool _combatPassed;
+
         // 4) Player.log 요약
         private static readonly Regex Pattern = new Regex(@"exception|error|\bNaN\b", RegexOptions.IgnoreCase);
 
@@ -269,6 +309,22 @@ namespace MyDongari.EditorTools
             }
 
             var text = new StringBuilder();
+            _combatPassed = false;
+            if (_combat)
+            {
+                // 전투 스모크 결과: 빌드가 남긴 [CombatSmoke] 줄을 그대로 옮긴다
+                string tag = MyDongari.Game.Flow.CombatSmokeRunner.LogTag;
+                bool any = false;
+                foreach (string raw in lines)
+                {
+                    string line = raw.TrimEnd('\r');
+                    if (!line.StartsWith(tag)) continue;
+                    any = true;
+                    text.AppendLine(line);
+                    if (line.Contains("RESULT PASS")) _combatPassed = true;
+                }
+                if (!any) text.AppendLine(tag + " 결과 줄이 없습니다 — 전투 스모크가 끝까지 돌지 못했습니다 (RESULT FAIL)");
+            }
             text.AppendLine($"[SmokeTest] {how}. 로그 {lines.Length}줄 — Exception {exceptions}줄, Error {errors}줄, NaN {nans}줄");
             text.AppendLine($"로그: {_logPath}");
             // 같은 줄이 반복되면 한 번만, 처음 나온 줄 번호와 횟수로
@@ -281,7 +337,8 @@ namespace MyDongari.EditorTools
             if (distinct > MaxListedLines) text.AppendLine($"  … 다른 줄 {distinct - MaxListedLines}종류 더 (로그 파일 참고)");
 
             File.WriteAllText(Path.Combine(_buildFolder, "SmokeTestSummary.txt"), text.ToString());
-            if (matches.Count == 0) Debug.Log(text.ToString());
+            if (_combat && !_combatPassed) Debug.LogError(text.ToString());
+            else if (matches.Count == 0) Debug.Log(text.ToString());
             else Debug.LogWarning(text.ToString());
             return matches.Count;
         }
