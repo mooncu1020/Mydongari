@@ -57,8 +57,48 @@ namespace MyDongari.EditorTools.Tests
 
             HitDecision three = HitRules.Decide(c, Punch(c, 3), posture, 0f, false);
             Assert.AreEqual(Reaction.Down, three.Reaction, "쓰리는 단독으로 다운");
-            HitDecision threeAfter = HitRules.Decide(c, Punch(c, 3), posture, meter.Value, false);
-            Assert.AreEqual(Reaction.Blown, threeAfter.Reaction, "원·투 누적 위의 쓰리는 날아감 문턱(1200)을 넘는다");
+        }
+
+        [Test]
+        public void ThreeAlone_KnocksDown()
+        {
+            VoCombatSpec c = Spec();
+            HitDecision three = HitRules.Decide(c, Punch(c, 3), new DefenderPosture(), 0f, false);
+            Assert.AreEqual(620f, three.ImpactAdded, 0.0001f, "쓰리 충격치 = 우리 값 620");
+            Assert.AreEqual(Reaction.Down, three.Reaction, "단독 쓰리(620 ≥ 600)는 다운");
+        }
+
+        [Test]
+        public void OneTwoThree_AllHit_EndsInDown_NotBlown()
+        {
+            VoCombatSpec c = Spec();
+            var posture = new DefenderPosture();
+            // 가장 불리한 경우: 세 타가 감소 없이 같은 틱에 쌓여도 날아감 문턱(1200)을 넘지 않는다
+            float worst = c.impactA1First + c.impactA1Second;
+            Assert.AreEqual(Reaction.Down, HitRules.Decide(c, Punch(c, 3), posture, worst, false).Reaction, "원·투 누적 최대(560) 위의 쓰리");
+
+            // 실제 콤보 간격으로: 원 → (히트스톱 15f + ② 나머지 + 투 ① 16f + 판정 3f) → 투 → 같은 간격 → 쓰리
+            var meter = new ImpactMeter();
+            HitDecision one = HitRules.Decide(c, Punch(c, 1), posture, meter.Value, false);
+            Assert.AreEqual(Reaction.Stagger, one.Reaction);
+            meter.Add(one.ImpactAdded);
+            for (int i = 0; i < 40; i++) meter.Tick(c.impactDecay);
+            HitDecision two = HitRules.Decide(c, Punch(c, 2), posture, meter.Value, false);
+            Assert.AreEqual(Reaction.Stagger, two.Reaction);
+            meter.Add(two.ImpactAdded);
+            for (int i = 0; i < 46; i++) meter.Tick(c.impactDecay);
+            HitDecision three = HitRules.Decide(c, Punch(c, 3), posture, meter.Value, false);
+            Assert.AreEqual(Reaction.Down, three.Reaction, "원투쓰리를 전부 맞아도 날아감이 아니라 다운");
+        }
+
+        [Test]
+        public void OriginalC1Impact_WouldBlowAwayAfterOneTwo()
+        {
+            // 덮어쓰기를 끈 원본 C1(1100)이면 원·투 누적 위에서 날아감이 된다 — 620으로 낮춘 이유
+            VoCombatSpec c = Spec();
+            HitInfo original = Punch(c, 3);
+            original.Impact = VoCombatSpec.Original().impactC1;
+            Assert.AreEqual(Reaction.Blown, HitRules.Decide(c, original, new DefenderPosture(), 480f, false).Reaction);
         }
 
         [Test]

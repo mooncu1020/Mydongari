@@ -61,6 +61,9 @@ MonoBehaviour:
   punch2Impact:
     enabled: 1
     value: 280
+  punch3Impact:
+    enabled: 1
+    value: 620
   slamImpact: 1100
   jumpMeleeSpeed:
     enabled: 1

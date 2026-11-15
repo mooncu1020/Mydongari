@@ -114,6 +114,8 @@ namespace MyDongari.Bridge
         public FloatOverride punch1Impact = new FloatOverride(true, 280f);
         [Tooltip("투의 충격치. 우리 값 280 = 경직만. 끄면 원본 1100(다운)")]
         public FloatOverride punch2Impact = new FloatOverride(true, 280f);
+        [Tooltip("쓰리의 충격치. 우리 값 620 = 단독으로 다운(문턱 600)이고, 원·투를 다 맞힌 뒤(누적 최대 560)에도 날아감 문턱 1200을 넘지 않아 다운으로 끝난다. 끄면 원본 C1 1100(원투쓰리가 날아감이 된다)")]
+        public FloatOverride punch3Impact = new FloatOverride(true, 620f);
         [Tooltip("임팩트 슬램의 충격치 (원본에 대응 없음 — 일반 근접, 가드 가능, 다운급)")]
         public float slamImpact = 1100f;
 
@@ -153,6 +155,7 @@ namespace MyDongari.Bridge
             damageScale.Apply(ref c.damageScale);
             punch1Impact.Apply(ref c.impactA1First);
             punch2Impact.Apply(ref c.impactA1Second);
+            punch3Impact.Apply(ref c.impactC1);
             jumpMeleeSpeed.Apply(ref c.jumpMelee.baseSpeed);
             jumpMeleeApproachFrames.Apply(ref c.jumpMelee.approachFrames);
             jumpMeleeAttackFrames.Apply(ref c.jumpMelee.attackFrames);

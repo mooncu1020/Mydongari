@@ -72,6 +72,8 @@ namespace MyDongari.Game.Flow
         // 결과
         private int _stagger, _down, _blown, _guardStagger, _clash, _invulnOnly, _hits;
         private int _exceptions, _nanTicks, _overlapTicks, _outOfMapTicks;
+        // 원투쓰리 장면이 어떤 반응으로 끝났는지 (다운이어야 한다)
+        private Reaction _comboEnd = Reaction.None;
         private readonly StringBuilder _firstProblems = new StringBuilder();
 
         private void OnEnable()
@@ -170,7 +172,11 @@ namespace MyDongari.Game.Flow
                 case Reaction.InvulnOnly: _invulnOnly++; break;
             }
             // 넘어뜨렸으면 이 장면의 공격은 끝 (누운 상대에게 계속 휘두르지 않게)
-            if (info.Reaction == Reaction.Down || info.Reaction == Reaction.AirDown || info.Reaction == Reaction.Blown) _sceneDone = true;
+            if (info.Reaction == Reaction.Down || info.Reaction == Reaction.AirDown || info.Reaction == Reaction.Blown)
+            {
+                _sceneDone = true;
+                if (_scene == 0 && _comboEnd == Reaction.None) _comboEnd = info.Reaction;
+            }
         }
 
         // ---------------- 장면 ----------------
@@ -336,10 +342,13 @@ namespace MyDongari.Game.Flow
             if (_blown == 0) missing.Append(" 날아감");
             if (_guardStagger == 0) missing.Append(" 가드경직");
             if (_clash == 0) missing.Append(" 맞딜");
-            bool pass = setupFailure == null && missing.Length == 0 && _exceptions == 0 && _nanTicks == 0 && _outOfMapTicks == 0;
+            // 원투쓰리는 날아감이 아니라 다운으로 끝나야 한다
+            bool comboOk = _comboEnd == Reaction.Down;
+            bool pass = setupFailure == null && missing.Length == 0 && comboOk && _exceptions == 0 && _nanTicks == 0 && _outOfMapTicks == 0;
 
             Debug.Log($"{LogTag} 반응: 경직 {_stagger} / 다운 {_down} / 날아감 {_blown} / 가드경직 {_guardStagger} / 맞딜 {_clash} (무적만 {_invulnOnly}, 명중 {_hits})");
             Debug.Log($"{LogTag} 안정성: 예외·오류 로그 {_exceptions} / 좌표 깨짐 틱 {_nanTicks} / 겹친 틱 {_overlapTicks} / 맵 밖 틱 {_outOfMapTicks} / 돌린 틱 {_tick}");
+            Debug.Log($"{LogTag} 원투쓰리 끝 반응: {_comboEnd} ({(comboOk ? "다운 — 정상" : "다운이어야 함")})");
             if (setupFailure != null) Debug.Log($"{LogTag} 준비 실패: {setupFailure}");
             if (missing.Length > 0) Debug.Log($"{LogTag} 횟수 0인 반응:{missing}");
             if (_firstProblems.Length > 0) Debug.Log($"{LogTag} 첫 오류 로그{_firstProblems}");
