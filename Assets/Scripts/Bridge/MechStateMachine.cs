@@ -19,8 +19,25 @@ namespace MyDongari.Bridge
     /// </summary>
     public class MechStateMachine : MonoBehaviour, IVoMachine
     {
-        public InputReader InputReader { get; private set; }
-        public MechController MechController { get; private set; }
+        // 연습 봇은 이 컴포넌트들을 런타임에 차례로 붙인다 — 내 Awake 때 아직 없던 짝도 나중에 찾도록 늦게 찾는다
+        public InputReader InputReader
+        {
+            get
+            {
+                if (_inputReader == null) _inputReader = GetComponent<InputReader>();
+                return _inputReader;
+            }
+        }
+        private InputReader _inputReader;
+        public MechController MechController
+        {
+            get
+            {
+                if (_controller == null) _controller = GetComponent<MechController>();
+                return _controller;
+            }
+        }
+        private MechController _controller;
 
         private MechState _currentState;
 
@@ -143,8 +160,8 @@ namespace MyDongari.Bridge
 
         private void Awake()
         {
-            InputReader = GetComponent<InputReader>();
-            MechController = GetComponent<MechController>();
+            _inputReader = GetComponent<InputReader>();
+            _controller = GetComponent<MechController>();
 
             LandingState = new LandingState(this);
             LungeState = new LungeState(this);

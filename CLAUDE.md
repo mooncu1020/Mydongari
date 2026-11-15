@@ -23,7 +23,7 @@
 | `Assets/Scripts/Game/Combat/` | `MeleeSystem`(기체별 전투 허브: 전투 틱, 피격 정산·반응, 펀치 콤보·뛰어 베기, 가드·패리, 히트스톱), 순수 로직 `CombatLedger`(피격 기록·맞교환)·`HitRules`(충격치·반응 판정)·`ReactionTimers`(히트스톱·무적·경직)·`HitGeometry`(공격 구 vs 캡슐), `WeaponSystem`(공격 버튼 선택), `LockOnSystem`, `Health`, `ThrusterLunge`, `Projectile`, `Skills/`(`AnchorClaw`, `ImpactSlam`) |
 | `Assets/Scripts/Game/States/`, `Game/Knockdown/` | 이동 상태 위에 얹는 게임 상태: `LandingState`, `LungeState`, `KnockdownState` + `KnockdownController` |
 | `Assets/Scripts/Game/Heat/`, `Game/Tuning/` | `HeatGauge` / `BernardTuning`(전투·외형 수치), `MechTuning` |
-| `Assets/Scripts/Game/Bot/` | 연습 봇 `MeleeDummy`, `BotInput` — 이동기 없이 다이내믹 리지드바디로 움직인다 |
+| `Assets/Scripts/Game/Bot/` | 연습 봇: `MeleeDummy`(부품 부착·한 틱 순서), `BotSenses`(눈 — 상대는 반응 지연만큼 지난 장면), `BotBrain`(행동 선택), `BotPad`(입력 생성 — 가상 패드 `InputReader`에 스틱·버튼). 플레이어와 같은 V8 이동기·전투 코드로 움직인다 |
 | `Assets/Scripts/Game/Input/` | `InputReader` (PlayerInput 기반), `VersusInputPairing` |
 | `Assets/Scripts/Game/UI/`, `Feedback/`, `Visual/` | `HUDController`·게이지·메뉴 / `CombatFeedback`·팝업·이펙트 / `MechVisualRig`(절차적 포즈) |
 | `Assets/Scripts/Game/Flow/` | `GameManager`(라운드/매치), `PlayLogger`(CSV 로그), `PracticeHotkeys`, `SplitScreenLetterbox` |
@@ -40,7 +40,7 @@
 - 순수 로직(`Core`의 `VoMeleeDrive`·`VoMeleeZone`, `Game/Combat`의 `CombatLedger`·`HitRules`·`ReactionTimers`·`HitGeometry`)을 고치면 `Assets/Editor/Tests/CombatRulesTests.cs`(EditMode)를 같이 고치고 돌린다.
 - Unity 6 API를 쓴다: `Rigidbody.linearVelocity`, `linearDamping` (`velocity`, `drag` 금지).
 - 리지드바디 감속은 `MechController.RequestDamping(value, priority)` / `SetBaselineDamping()`을 거친다. 직접 `linearDamping`을 쓰지 않는다.
-- 전투 코드가 기체를 밀 때는 `MotionBridge`(SetVelocity·AddImpulse·Teleport)를 거친다. 기체 리지드바디는 키네마틱이라 `linearVelocity`·`AddForce`를 직접 쓰면 안 움직인다 (연습 봇만 다이내믹 — MotionBridge가 알아서 나눈다).
+- 전투 코드가 기체를 밀 때는 `MotionBridge`(SetVelocity·AddImpulse·Teleport)를 거친다. 기체 리지드바디는 키네마틱이라 `linearVelocity`·`AddForce`를 직접 쓰면 안 움직인다 (이동기가 없는 기체만 다이내믹 — MotionBridge가 알아서 나눈다. 연습 봇도 이제 이동기를 쓴다).
 - 외부에서 상대 기체를 움직일 땐 `ExternalControlLock.Acquire()/Release()` 짝을 반드시 맞춘다.
 - **입력은 반드시 `InputReader`를 거친다.** `Mouse.current`, `Keyboard.current`, `Gamepad.current`를 게임 로직에서 직접 읽지 않는다 (2인 플레이가 깨진다).
 - **상대는 태그(`"Enemy"`, `"Player"`)로 찾지 않는다.** 각 기체가 가진 상대 참조를 쓴다 (TASKS A0에서 도입).

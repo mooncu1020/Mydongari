@@ -169,7 +169,7 @@ namespace MyDongari.Game.Flow
                 _unsubscribers.Add(() => { melee.OnAttackStarted -= onStart; melee.OnAttackCanceled -= onCancel; melee.OnHitResolved -= onHit; });
             }
 
-            // 버퍼 발동은 플레이어면 WeaponSystem, 연습 봇이면 MeleeDummy가 알린다
+            // 버퍼 발동은 WeaponSystem이 알린다 (연습 봇도 같은 WeaponSystem을 쓴다)
             Action<AttackType> onBuffered = type => ErrorLog.Run(() =>
             {
                 Count(index, "buffered_attack", AttackKey(type));
@@ -180,12 +180,6 @@ namespace MyDongari.Game.Flow
             {
                 weapon.OnBufferedAttack += onBuffered;
                 _unsubscribers.Add(() => weapon.OnBufferedAttack -= onBuffered);
-            }
-            MeleeDummy bot = mech.GetComponent<MeleeDummy>();
-            if (bot != null)
-            {
-                bot.OnBufferedAttack += onBuffered;
-                _unsubscribers.Add(() => bot.OnBufferedAttack -= onBuffered);
             }
 
             // 넉다운 (R1): 시작·벽 충돌·끝(수평 이동 거리·최고 높이 — 30fps 비교용)

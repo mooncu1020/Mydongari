@@ -11,8 +11,9 @@ namespace MyDongari.Game.Flow
 {
     /// <summary>
     /// 전투 스모크 테스트 (메뉴 Tools/Combat Smoke Test가 빌드를 -combatSmoke로 실행하면 스스로 생긴다).
-    /// PRACTICE 모드에서 플레이어 자리에 자동 입력(InputReader 스크립트 입력)을 넣고 연습 봇을 상대로 20초(1200틱) 동안
+    /// PRACTICE 모드에서 플레이어 자리에 자동 입력(InputReader 스크립트 입력)을 넣고 연습 봇을 상대로 30초(1800틱) 동안
     /// 장면 여섯 개를 차례로 돌린다: 원투쓰리 / 가드에 펀치 / 동시 펀치(맞딜) / 런지 / 대시 공격 / 뛰어 베기.
+    /// 이어서 봇 장면 세 개(P1은 가만히 또는 가끔 펀치): 공격만 모드 12m / 패리 모드 3m / 섞어서 모드 6m — 봇이 이동기로 다가가 공격하는지 본다.
     /// 장면마다 두 기체를 리셋하고 정해진 거리(기본 3m, 런지·대시는 그보다 멀리)에 마주 세운다.
     /// 끝나면 경직·다운·날아감·가드 경직·맞딜 발생 횟수, 예외·오류 로그 수, NaN, 두 기체가 겹친 틱 수, 맵 밖 이탈을 로그로 남기고 종료한다.
     /// 반응 횟수가 하나라도 0이거나 예외·NaN·맵 밖 이탈이 있으면 실패. 시간은 전부 물리 스텝(= 전투 틱) 수로 센다.
@@ -25,9 +26,13 @@ namespace MyDongari.Game.Flow
         /// <summary>결과 로그 머리말 (에디터 쪽이 Player.log에서 이 줄들을 찾는다).</summary>
         public const string LogTag = "[CombatSmoke]";
 
-        // 장면 하나의 길이(틱)와 장면 수 — 200 × 6 = 1200틱 = 20초
+        // 장면 하나의 길이(틱)와 장면 수 — 200 × 9 = 1800틱 = 30초
         private const int SceneTicks = 200;
-        private const int SceneCount = 6;
+        private const int SceneCount = 9;
+        // 봇 장면 (6 = 공격만, 7 = 패리, 8 = 섞어서)
+        private const int FirstBotScene = 6;
+        private const float BotApproachDistance = 12f;
+        private const float BotMixedDistance = 6f;
         // 기본 거리(m)와 런지·대시 공격을 거는 거리(근접 구역 6.1m 밖)
         private const float CloseDistance = 3f;
         private const float LungeDistance = 9f;
@@ -54,7 +59,8 @@ namespace MyDongari.Game.Flow
         private MeleeSystem _p1Melee;
         private MeleeSystem _botMelee;
         private MeleeDummy _botBrain;
-        private BotInput _botInput;
+        // 봇의 가상 패드 (봇 두뇌가 Idle이면 아무것도 안 누르므로 장면이 대신 누른다)
+        private InputReader _botPad;
         private Rigidbody _p1Rb;
         private Rigidbody _botRb;
 
@@ -74,6 +80,17 @@ namespace MyDongari.Game.Flow
         private int _exceptions, _nanTicks, _overlapTicks, _outOfMapTicks;
         // 원투쓰리 장면이 어떤 반응으로 끝났는지 (다운이어야 한다)
         private Reaction _comboEnd = Reaction.None;
+        // 봇 장면에서 본 봇 상태·행동 (장면별)
+        private readonly System.Collections.Generic.HashSet<string>[] _botStates =
+        {
+            new System.Collections.Generic.HashSet<string>(), new System.Collections.Generic.HashSet<string>(), new System.Collections.Generic.HashSet<string>()
+        };
+        private readonly System.Collections.Generic.HashSet<string>[] _botOrders =
+        {
+            new System.Collections.Generic.HashSet<string>(), new System.Collections.Generic.HashSet<string>(), new System.Collections.Generic.HashSet<string>()
+        };
+        private int _botParries;
+        private int _botHitsLanded;
         private readonly StringBuilder _firstProblems = new StringBuilder();
 
         private void OnEnable()
@@ -141,10 +158,10 @@ namespace MyDongari.Game.Flow
             _reader = _p1.GetComponent<InputReader>();
             _p1Melee = _p1.GetComponent<MeleeSystem>();
             _botMelee = _bot.GetComponent<MeleeSystem>();
-            _botInput = _bot.GetComponent<BotInput>();
+            _botPad = _bot.GetComponent<InputReader>();
             _p1Rb = _p1.GetComponent<Rigidbody>();
             _botRb = _bot.GetComponent<Rigidbody>();
-            if (_reader == null || _p1Melee == null || _botMelee == null || _botInput == null || _p1Rb == null || _botRb == null) return false;
+            if (_reader == null || _p1Melee == null || _botMelee == null || _botPad == null || _p1Rb == null || _botRb == null) return false;
 
             _reader.SetScripted(true);
             _p1Melee.OnHitResolved += OnHit;
@@ -156,6 +173,9 @@ namespace MyDongari.Game.Flow
 
         private void OnHit(HitInfo info, HitResult result)
         {
+            // 봇 장면: P1이 때린 걸 봇이 패리 / 봇이 때려 P1에게 닿음
+            if (_scene >= FirstBotScene && result == HitResult.Parried && info.Attacker == _p1) _botParries++;
+            if (_scene >= FirstBotScene && info.Attacker == _bot && (result == HitResult.Hit || result == HitResult.Guarded)) _botHitsLanded++;
             if (result == HitResult.Clash)
             {
                 _clash++;
@@ -186,6 +206,12 @@ namespace MyDongari.Game.Flow
             _scene = scene;
             _sceneTick = 0;
             _sceneDone = false;
+            if (scene >= FirstBotScene)
+            {
+                BotMode botMode = scene == FirstBotScene ? BotMode.Approach : scene == FirstBotScene + 1 ? BotMode.Parrier : BotMode.Mixed;
+                Arrange(scene == FirstBotScene ? BotApproachDistance : scene == FirstBotScene + 1 ? CloseDistance : BotMixedDistance, botMode);
+                return;
+            }
             float distance = scene == 3 ? LungeDistance : scene == 4 ? DashDistance : CloseDistance;
             Arrange(distance, scene == 1 ? BotMode.AlwaysGuard : BotMode.Idle);
         }
@@ -238,7 +264,7 @@ namespace MyDongari.Game.Flow
                     if (t == 30)
                     {
                         _reader.ScriptPressAttack();
-                        _botInput.PressAttack();
+                        _botPad.ScriptPressAttack();
                     }
                     break;
                 case 3:
@@ -255,6 +281,17 @@ namespace MyDongari.Game.Flow
                     if (!_sceneDone && t >= 28 && t <= 60 && t % 3 == 0) _reader.ScriptPressAttack();
                     if (t == 90) _reader.ScriptState(Vector2.zero, false, false, false);
                     break;
+                case 6:
+                case 8:
+                    // 봇 장면: P1은 가만히 (봇이 다가와 공격). 섞어서 장면은 P1이 가끔 펀치를 내 봇의 대응을 본다
+                    if (_scene == 8 && t % 50 == 25) _reader.ScriptPressAttack();
+                    RecordBot();
+                    break;
+                case 7:
+                    // 패리 장면: P1이 일정 간격으로 펀치
+                    if (t % 60 == 20) _reader.ScriptPressAttack();
+                    RecordBot();
+                    break;
                 case 5:
                     // 뛰어 베기: △ 뒤 8f 안에 공격
                     if (t == 20)
@@ -266,6 +303,14 @@ namespace MyDongari.Game.Flow
                     if (t == 30) _reader.ScriptState(Vector2.zero, false, false, false);
                     break;
             }
+        }
+
+        private void RecordBot()
+        {
+            int i = _scene - FirstBotScene;
+            MechStateMachine sm = _bot.GetComponent<MechStateMachine>();
+            if (sm != null) _botStates[i].Add(sm.CurrentStateName.Replace("State", "").Replace("Vo", ""));
+            _botOrders[i].Add(_botBrain.CurrentOrder.ToString());
         }
 
         /// <summary>장면 진행 상황 한 줄 (실패 원인을 로그만 보고 찾을 수 있게): 거리, P1 상태, 근접 구역, 두 기체 체력.</summary>
@@ -344,11 +389,22 @@ namespace MyDongari.Game.Flow
             if (_clash == 0) missing.Append(" 맞딜");
             // 원투쓰리는 날아감이 아니라 다운으로 끝나야 한다
             bool comboOk = _comboEnd == Reaction.Down;
-            bool pass = setupFailure == null && missing.Length == 0 && comboOk && _exceptions == 0 && _nanTicks == 0 && _outOfMapTicks == 0;
+            // 봇(공격만 모드)은 이동기로 다가가(걷기·대시) 공격 동작(펀치·뛰어 베기·런지·대시 공격)을 해야 한다
+            var approach = _botStates[0];
+            bool botMoved = approach.Contains("Walk") || approach.Contains("GroundDash");
+            bool botAttacked = approach.Contains("Melee") || approach.Contains("JumpMelee") || approach.Contains("Lunge") || _botHitsLanded > 0;
+            bool botOk = botMoved && botAttacked;
+            bool pass = setupFailure == null && missing.Length == 0 && comboOk && botOk && _exceptions == 0 && _nanTicks == 0 && _outOfMapTicks == 0;
 
             Debug.Log($"{LogTag} 반응: 경직 {_stagger} / 다운 {_down} / 날아감 {_blown} / 가드경직 {_guardStagger} / 맞딜 {_clash} (무적만 {_invulnOnly}, 명중 {_hits})");
             Debug.Log($"{LogTag} 안정성: 예외·오류 로그 {_exceptions} / 좌표 깨짐 틱 {_nanTicks} / 겹친 틱 {_overlapTicks} / 맵 밖 틱 {_outOfMapTicks} / 돌린 틱 {_tick}");
             Debug.Log($"{LogTag} 원투쓰리 끝 반응: {_comboEnd} ({(comboOk ? "다운 — 정상" : "다운이어야 함")})");
+            string[] names = { "공격만", "패리", "섞어서" };
+            for (int i = 0; i < 3; i++)
+            {
+                Debug.Log($"{LogTag} 봇 {names[i]}: 상태 [{string.Join(", ", _botStates[i])}] / 행동 [{string.Join(", ", _botOrders[i])}]");
+            }
+            Debug.Log($"{LogTag} 봇: 명중·가드됨 {_botHitsLanded} / 패리 {_botParries} ({(botOk ? "다가가 공격함 — 정상" : "공격만 모드가 다가가 공격해야 함")})");
             if (setupFailure != null) Debug.Log($"{LogTag} 준비 실패: {setupFailure}");
             if (missing.Length > 0) Debug.Log($"{LogTag} 횟수 0인 반응:{missing}");
             if (_firstProblems.Length > 0) Debug.Log($"{LogTag} 첫 오류 로그{_firstProblems}");

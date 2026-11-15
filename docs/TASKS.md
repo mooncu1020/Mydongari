@@ -473,3 +473,6 @@
 
 - [x] **지연 표적** 원본 복원: `Core/VirtualOn/VoDelayedTarget`(신규), `VoMotor.DelayedTargetBearing`를 근접 추적(원·투·쓰리·뛰어 베기)의 표적으로, 스위치 `VoSpec.delayedTargetEnabled`(원본 = 켬). EditMode 테스트 2개.
   - 남은 위험: "같은 행동"을 상대의 상태로 해석(QUESTIONS 지연표적). 효과는 꾸준히 걷는 상대 기준 약 한 틱만큼 늦게 쫓는 정도.
+- [x] **봇 V8** 연습 봇을 리지드바디 이동에서 VoMotor로: `InputReader` 가상 패드 모드(PlayerInput 없으면 스크립트 입력만, 입력 잠금을 따름), 봇 = `BotSenses`(반응 지연 링 버퍼) → `BotBrain`(모드별 행동 선택) → `BotPad`(입력 생성). `BotInput` 삭제. 전투 스모크에 봇 장면 3개(공격만·패리·섞어서).
+  - 바뀐 파일: `Game/Bot/*`, `InputReader`, `MechStateMachine`(참조 늦게 찾기), `MechController`(MeleeSystem 자동 찾기), `MeleeSystem`(히트스톱 중에도 봇 두뇌), `GameManager`(사람 기체 판정), `PlayLogger`, `CombatSmokeRunner`.
+  - 남은 위험: 봇 두뇌 수치는 정한 값(QUESTIONS 봇V8). 기상 선입력·근접 스텝·옆 대시 회피는 스모크가 직접 보지 않는다(체크리스트). 봇 외형은 이제 상태 머신을 읽어 걷기·대시 포즈가 나온다(외형 코드는 안 건드림).

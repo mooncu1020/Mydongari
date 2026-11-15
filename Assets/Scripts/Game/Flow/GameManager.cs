@@ -152,11 +152,18 @@ namespace MyDongari.Game.Flow
         private VersusInputPairing _pairing;
 
         /// <summary>2인 구성(입력이 있는 P2 기체)이 있는지. Setup Versus Scene 전 씬이면 false.</summary>
-        public bool CanStartVersus => _versusPlayer2 != null && _versusPlayer2.GetComponent<InputReader>() != null;
+        public bool CanStartVersus => IsHumanMech(_versusPlayer2);
         /// <summary>연습 상대(봇): Dummy Opponent, 없으면 입력이 없는 player2(Versus 세팅 전 씬의 DummyTarget).</summary>
         public GameObject PracticeOpponent =>
             dummyOpponent != null ? dummyOpponent :
-            _versusPlayer2 != null && _versusPlayer2.GetComponent<InputReader>() == null ? _versusPlayer2 : null;
+            _versusPlayer2 != null && !IsHumanMech(_versusPlayer2) ? _versusPlayer2 : null;
+        /// <summary>사람이 조작하는 기체인지 (InputReader가 있고 가상 패드가 아님 — 연습 봇은 런타임에 가상 패드 InputReader를 붙인다).</summary>
+        private static bool IsHumanMech(GameObject mech)
+        {
+            if (mech == null) return false;
+            InputReader reader = mech.GetComponent<InputReader>();
+            return reader != null && !reader.IsVirtualPad && mech.GetComponent<UnityEngine.InputSystem.PlayerInput>() != null;
+        }
         public bool CanStartPractice => PracticeOpponent != null;
         /// <summary>연습 봇 두뇌 (없으면 null).</summary>
         public MeleeDummy PracticeBot => PracticeOpponent != null ? PracticeOpponent.GetComponent<MeleeDummy>() : null;
@@ -375,10 +382,8 @@ namespace MyDongari.Game.Flow
                 return;
             }
             InputReader reader = mech.GetComponent<InputReader>();
-            BotInput bot = mech.GetComponent<BotInput>();
             MeleeSystem melee = mech.GetComponent<MeleeSystem>();
-            string source = reader != null ? "InputReader" : bot != null ? "BotInput" : "입력 소스 없음";
-            if (reader != null && bot != null) source += " (+BotInput도 붙어 있음)";
+            string source = reader == null ? "입력 소스 없음" : reader.IsVirtualPad ? "InputReader(가상 패드 — 봇)" : "InputReader";
             string binding = reader != null ? reader.DescribeBinding() : "PlayerInput 없음";
             string combat = melee != null ? melee.InputSourceName : "MeleeSystem 없음";
             Debug.Log($"[VersusInput] P{index} {mech.name} (active {mech.activeInHierarchy}): 입력 소스 {source}, {binding}, 전투 입력 {combat}");

@@ -3,6 +3,11 @@ using UnityEngine.InputSystem;
 
 namespace MyDongari.Game.Input
 {
+    /// <summary>
+    /// 한 플레이어의 입력. 게임 로직은 장치를 직접 읽지 않고 전부 이걸 거친다.
+    /// 같은 기체에 PlayerInput이 없으면 "가상 패드"가 된다 — 장치 대신 스크립트(연습 봇)가 스틱·버튼을 넣고,
+    /// 이동기·전투는 사람 패드와 똑같은 값(누름 횟수·누르고 있기·스틱)을 읽는다. 가상 패드도 입력 잠금(카운트다운)을 따른다.
+    /// </summary>
     public class InputReader : MonoBehaviour, ICombatInputSource
     {
         [Header("패드 왼쪽 스틱")]
@@ -83,6 +88,8 @@ namespace MyDongari.Game.Input
         {
             get
             {
+                // 스크립트·가상 패드의 선회는 R스틱 기울기로 넣는다
+                if (_scripted || _lookAction == null) return true;
                 InputControl control = _lookAction.activeControl;
                 if (control != null) return !(control.device is Pointer);
                 return _playerInput.currentControlScheme != KeyboardMouseScheme;
@@ -119,6 +126,13 @@ namespace MyDongari.Game.Input
         private void Awake()
         {
             _playerInput = GetComponent<PlayerInput>();
+            if (_playerInput == null)
+            {
+                // PlayerInput 없는 기체(연습 봇) = 가상 패드: 장치 액션 없이 스크립트 입력만 받는다
+                _virtualPad = true;
+                _scripted = true;
+                return;
+            }
             _moveAction = _playerInput.actions["Move"];
             _lookAction = _playerInput.actions["Look"];
             // Run·Slide·Quickturn·Sprint·Guard·StepLeft·StepRight·MoveStick·LookStick 액션은 V3에서 읽지 않아 .inputactions에서 지웠다 (가드는 Cross 액션)
@@ -191,17 +205,39 @@ namespace MyDongari.Game.Input
         // ---- 스크립트 입력 (전투 스모크 테스트용 자동 입력) ----
         // 켜면 장치 대신 스크립트가 넣은 값이 이 플레이어의 입력이 된다. 전투·이동은 여전히 이 InputReader만 읽는다.
         private bool _scripted;
+        // PlayerInput이 없어 늘 스크립트 입력인 가상 패드(연습 봇). 사람 패드처럼 입력 잠금을 따른다
+        private bool _virtualPad;
         private Vector2 _scriptMove;
-        private bool _scriptDash, _scriptJump, _scriptGuard;
+        private Vector2 _scriptLook;
+        private bool _scriptDash, _scriptJump, _scriptGuard, _scriptAttack;
 
         /// <summary>스크립트 입력 모드인지.</summary>
         public bool IsScripted => _scripted;
+        /// <summary>PlayerInput 없이 스크립트만 받는 가상 패드(연습 봇)인지. 사람이 조작하는 기체는 false.</summary>
+        public bool IsVirtualPad => _virtualPad;
+        // 가상 패드는 잠금 중 누름을 세지 않는다 (사람 패드와 같게). 스모크 테스트의 스크립트 입력은 잠금을 무시한다
+        private bool ScriptBlocked => _virtualPad && _inputLocked;
 
-        /// <summary>스크립트 입력 모드를 켜고 끈다. 켜면 장치 입력은 읽지 않는다(입력 잠금도 무시).</summary>
+        /// <summary>스크립트 입력 모드를 켜고 끈다. 켜면 장치 입력은 읽지 않는다(입력 잠금도 무시). 가상 패드는 늘 켜져 있다.</summary>
         public void SetScripted(bool on)
         {
-            _scripted = on;
+            _scripted = on || _virtualPad;
             ScriptState(Vector2.zero, false, false, false);
+            ScriptLook(Vector2.zero);
+        }
+
+        /// <summary>스크립트 입력: R스틱(선회). x = 좌우 선회 기울기.</summary>
+        public void ScriptLook(Vector2 look)
+        {
+            _scriptLook = look;
+            if (_scripted) ApplyScripted();
+        }
+
+        /// <summary>스크립트 입력: 공격 버튼을 누르고 있는지 (새 누름은 ScriptPressAttack).</summary>
+        public void ScriptAttackHeld(bool held)
+        {
+            _scriptAttack = held;
+            if (_scripted) ApplyScripted();
         }
 
         /// <summary>스크립트 입력: 스틱과 누르고 있는 버튼. 바로 반영된다(다음 전투 틱이 읽는다).</summary>
@@ -215,19 +251,20 @@ namespace MyDongari.Game.Input
         }
 
         /// <summary>스크립트 입력: 버튼을 새로 누름 (누름 횟수를 바로 올린다 — 다음 전투 틱이 새 입력으로 읽는다).</summary>
-        public void ScriptPressAttack() { if (_scripted) AttackPressCount++; }
-        public void ScriptPressDash() { if (_scripted) DashPressCount++; }
-        public void ScriptPressJump() { if (_scripted) JumpPressCount++; }
-        public void ScriptPressGuard() { if (_scripted) GuardPressCount++; }
+        public void ScriptPressAttack() { if (_scripted && !ScriptBlocked) AttackPressCount++; }
+        public void ScriptPressDash() { if (_scripted && !ScriptBlocked) DashPressCount++; }
+        public void ScriptPressJump() { if (_scripted && !ScriptBlocked) JumpPressCount++; }
+        public void ScriptPressGuard() { if (_scripted && !ScriptBlocked) GuardPressCount++; }
 
         private void ApplyScripted()
         {
-            MoveInput = _scriptMove;
-            LookInput = Vector2.zero;
-            DashHeld = _scriptDash;
-            JumpHeld = _scriptJump;
-            GuardHeld = _scriptGuard;
-            AttackHeld = false;
+            bool blocked = ScriptBlocked;
+            MoveInput = blocked ? Vector2.zero : _scriptMove;
+            LookInput = blocked ? Vector2.zero : _scriptLook;
+            DashHeld = !blocked && _scriptDash;
+            JumpHeld = !blocked && _scriptJump;
+            GuardHeld = !blocked && _scriptGuard;
+            AttackHeld = !blocked && _scriptAttack;
             DashPressedThisFrame = false;
             JumpPressedThisFrame = false;
             AttackPressedThisFrame = false;
@@ -364,6 +401,7 @@ namespace MyDongari.Game.Input
         {
             _inputLocked = locked;
             if (locked) ClearGameplayInput();
+            if (_scripted) ApplyScripted();
         }
 
         private void ClearGameplayInput()

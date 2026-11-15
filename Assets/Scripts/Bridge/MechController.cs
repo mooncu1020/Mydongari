@@ -44,6 +44,8 @@ namespace MyDongari.Bridge
             if (Rb != null) Rb.interpolation = RigidbodyInterpolation.Interpolate;
             InputReader = GetComponent<InputReader>();
             StateMachine = GetComponent<MechStateMachine>();
+            // 런타임에 붙인 기체(연습 봇)는 인스펙터 연결이 없다
+            if (meleeSystem == null) meleeSystem = GetComponent<MeleeSystem>();
 
             ControlLock = GetComponent<ExternalControlLock>();
             if (ControlLock == null) ControlLock = gameObject.AddComponent<ExternalControlLock>();

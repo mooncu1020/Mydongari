@@ -215,6 +215,8 @@ namespace MyDongari.Game.Combat
                 if (_slam != null) _slam.CombatTick();
                 if (_lunge != null) _lunge.CombatTick(frozen: true);
                 if (_weapon != null) _weapon.CombatTickFrozen();
+                // 봇 두뇌는 히트스톱 중에도 본다·누른다 (사람도 멈춘 동안 버튼을 누를 수 있다)
+                if (_dummy != null) _dummy.CombatTick();
                 if (_stateMachine == null && _rb != null && !IsKnockedDown && !IsPushed) MotionBridge.SetHorizontalVelocity(_rb, Vector3.zero);
                 return;
             }
@@ -586,9 +588,9 @@ namespace MyDongari.Game.Combat
         }
 
         /// <summary>
-        /// 사람 입력(InputReader)이 있으면 그걸, 없으면 다른 입력 소스(BotInput)를 쓴다.
+        /// 입력(InputReader — 사람 패드든 연습 봇의 가상 패드든)이 있으면 그걸, 없으면 다른 입력 소스를 쓴다.
         /// GetComponent&lt;ICombatInputSource&gt;는 컴포넌트 순서대로 첫 번째를 집어서,
-        /// 같은 기체에 BotInput이 붙어 있으면 사람 패드 대신 봇 버튼을 읽을 수 있다.
+        /// 같은 기체에 다른 입력 소스가 붙어 있으면 InputReader 대신 그걸 읽을 수 있다.
         /// </summary>
         private ICombatInputSource FindInputSource()
         {
