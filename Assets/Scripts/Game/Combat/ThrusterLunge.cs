@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using MyDongari.Bridge;
 using MyDongari.Core;
+using MyDongari.Core.VirtualOn;
 using MyDongari.Game.States;
 using MyDongari.Game.Tuning;
 
@@ -227,12 +228,15 @@ namespace MyDongari.Game.Combat
                 if (!_identity.IsOpponentCollider(hit)) continue;
                 // 속도를 먼저 줄여 둔다: 패리 반사 넉백이 이 뒤에 들어와야 덮어쓰이지 않는다
                 SetDashVelocity(Phase == LungePhase.Dash ? t.speed * t.endSpeedRatio : 0f);
+                // 피해 = 원본 A2(강타) × 체력 스케일
+                VoCombatSpec c = StyleOverrides.Current.EffectiveCombat;
+                float damage = c.Damage(c.damageA2);
                 HitInfo info = _melee != null
-                    ? _melee.NewHit(AttackType.Lunge, HitKind.Strong, t.damage, opponent.gameObject)
-                    : new HitInfo { Type = AttackType.Lunge, Kind = HitKind.Strong, Damage = t.damage, Attacker = gameObject };
+                    ? _melee.NewHit(AttackType.Lunge, HitKind.Strong, damage, opponent.gameObject)
+                    : new HitInfo { Type = AttackType.Lunge, Kind = HitKind.Strong, Damage = damage, Attacker = gameObject };
                 info.Direction = _direction;
                 // 강타: 가드 불능, 날아감
-                info.Impact = StyleOverrides.Current.EffectiveCombat.impactStrong;
+                info.Impact = c.impactStrong;
                 MeleeSystem.QueueHit(opponent.gameObject, info);
                 FinishHit();
                 return;

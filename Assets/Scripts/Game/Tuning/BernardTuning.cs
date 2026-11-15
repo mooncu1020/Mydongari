@@ -59,20 +59,10 @@ namespace MyDongari.Game.Tuning
         [Serializable]
         public class PunchValues
         {
-            public float damage = 25f;
             [Tooltip("펀치 한 방(발동 기준)마다 오르는 히트")]
             public float heatPerPunch = 6f;
             [Tooltip("맞딜: 양쪽 펀치가 거의 동시에 나갔을 때 서로 밀려나는 힘")]
             public float clashKnockback = 10f;
-        }
-
-        [Serializable]
-        public class ComboValues
-        {
-            [Tooltip("쓰리 피해 배율 (Punch.damage × 이 값)")]
-            public float thirdDamageMultiplier = 1.5f;
-            [Tooltip("뛰어 베기 피해 (원본 점프 근접 340~370 ÷ A1 1타 290 × 펀치 기본 25 ≈ 30)")]
-            public float jumpSlashDamage = 30f;
         }
 
         [Serializable]
@@ -111,8 +101,6 @@ namespace MyDongari.Game.Tuning
         [Serializable]
         public class TackleValues
         {
-            [Tooltip("차징 태클 기본 피해. 차징이 길수록 최대 2배")]
-            public float damage = 30f;
             [Tooltip("태클 판정 거리(m). 대시 어택 공통")]
             public float range = 5f;
             [Tooltip("태클 판정 부채꼴 반각(°). 대시 어택·자동 접촉 태클 공통")]
@@ -140,8 +128,6 @@ namespace MyDongari.Game.Tuning
         [Serializable]
         public class DashAttackValues
         {
-            [Tooltip("가드에 막힌다(가드 규칙 적용). 차징 태클과 달리 관통·스턴 없음")]
-            public float damage = 20f;
 
             [Header("유도 (V4)")]
             [Tooltip("공격을 시작할 때 상대가 이 거리(m) 안이면 따라간다. 밖이면 직선")]
@@ -192,8 +178,6 @@ namespace MyDongari.Game.Tuning
             public int cooldownFrames = 180;
 
             [Header("명중")]
-            [Tooltip("명중 피해 (펀치보다 약간 낮게)")]
-            public float damage = 15f;
             [Tooltip("명중 판정 구의 반경(m)")]
             public float hitRadius = 1.2f;
             [Tooltip("명중 판정 구를 기체 앞쪽으로 내미는 거리(m)")]
@@ -878,8 +862,6 @@ namespace MyDongari.Game.Tuning
         [SerializeField] private HeatValues heat = new HeatValues();
         [Header("펀치 / 맞딜")]
         [SerializeField] private PunchValues punch = new PunchValues();
-        [Header("원투쓰리 콤보 (N2: 각 타 발동은 Startup.punch, 히트는 펀치당 그대로)")]
-        [SerializeField] private ComboValues combo = new ComboValues();
         [Header("공격 발생 시간·입력 버퍼 (버튼 → 판정)")]
         [SerializeField] private AttackStartupValues startup = new AttackStartupValues();
         [Header("가드")]
@@ -913,7 +895,6 @@ namespace MyDongari.Game.Tuning
         public HeatValues Heat => heat;
         public PunchValues Punch => punch;
         public AttackStartupValues Startup => startup;
-        public ComboValues Combo => combo;
         public GuardValues Guard => guard;
         public ParryValues Parry => parry;
         public TackleValues Tackle => tackle;

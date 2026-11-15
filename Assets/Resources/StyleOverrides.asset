@@ -52,6 +52,9 @@ MonoBehaviour:
   attackHandHeightRatio: 0.6
   jumpRisingHurtScale: 0.6
   jumpFallingHurtScale: 0.45
+  damageScale:
+    enabled: 1
+    value: 0.03448276
   punch1Impact:
     enabled: 1
     value: 280

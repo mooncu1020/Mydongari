@@ -40,12 +40,8 @@ MonoBehaviour:
     coolingRate: 20
     sprintCoolingReduction: 0.7
   punch:
-    damage: 10
     heatPerPunch: 6
     clashKnockback: 10
-  combo:
-    thirdDamageMultiplier: 1.5
-    jumpSlashDamage: 30
   startup:
     dashAttackFrames: 7
     chargedTackleFrames: 6
@@ -59,7 +55,6 @@ MonoBehaviour:
     reflectRatio: 1
     reflectKnockback: 8
   tackle:
-    damage: 10
     range: 5
     halfAngle: 45
     cooldownFrames: 60
@@ -70,7 +65,6 @@ MonoBehaviour:
     activeFrames: 24
     hitDistance: 3
   dashAttack:
-    damage: 20
     homingRange: 25
     homingTurnRate: 120
     activeFrames: 36
@@ -87,7 +81,6 @@ MonoBehaviour:
     endSpeedRatio: 0.2
     timeoutMultiplier: 1.5
     cooldownFrames: 180
-    damage: 15
     hitRadius: 1.2
     hitForwardOffset: 1
     missLockDelay: 0.6

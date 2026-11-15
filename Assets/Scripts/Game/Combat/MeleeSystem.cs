@@ -33,7 +33,6 @@ namespace MyDongari.Game.Combat
         private BernardTuning.DashAttackValues DashAttack => _tuning.Get(this).DashAttack;
         private BernardTuning.AttackStartupValues Startup => _tuning.Get(this).Startup;
         private static VoCombatSpec C => StyleOverrides.Current.EffectiveCombat;
-        private BernardTuning.ComboValues Combo => _tuning.Get(this).Combo;
 
         public bool IsGuarding { get; private set; }
         /// <summary>넉다운 중(비행·미끄러짐·기상). 공격·가드·이동 입력 무시.</summary>
@@ -755,8 +754,6 @@ namespace MyDongari.Game.Combat
         {
             BernardTuning.TackleValues tackle = Tackle;
             bool charged = type == AttackType.Tackle;
-            // 차징 태클은 기존 공식(차징 반영), 대시 어택은 고정 수치
-            BernardTuning.DashAttackValues dash = DashAttack;
 
             // 정면 부채꼴 밖이면 헛침 (등 뒤·옆으로 스친 상대는 안 맞는다)
             if (!IsOpponentInTackleArc(forward)) return false;
@@ -768,9 +765,11 @@ namespace MyDongari.Game.Combat
                 // 상대 기체의 자식 콜라이더에 맞아도 컴포넌트는 루트(MechIdentity가 있는 곳)에서 찾는다
                 GameObject target = _identity.Opponent.gameObject;
                 // 차징 태클 = 강타(가드 불능, 날아감), 대시 공격 = 근접 계열 2(가드 가능, 때린 쪽이 멈추지 않는다)
+                // 피해: 차징 태클 = 원본 C2(차징이 길수록 최대 2배 — 우리 규칙), 대시 공격 = 원본 대시 근접 A
+                VoCombatSpec c = C;
                 HitInfo info = NewHit(type, charged ? HitKind.Strong : HitKind.Melee2,
-                    charged ? tackle.damage * (1f + chargePower) : dash.damage, target);
-                info.Impact = charged ? C.impactStrong : C.impactDashMelee;
+                    charged ? c.Damage(c.damageC2) * (1f + chargePower) : c.Damage(c.damageDashMelee), target);
+                info.Impact = charged ? c.impactStrong : c.impactDashMelee;
                 QueueHit(target, info);
                 return true;
             }
@@ -987,22 +986,20 @@ namespace MyDongari.Game.Combat
             if (opponent == null || !opponent.gameObject.activeInHierarchy) return;
             if (!SweepHitsOpponent(from, point, sphere.radius, opponent.gameObject)) return;
 
-            BernardTuning.PunchValues punch = Punch;
-            BernardTuning.ComboValues combo = Combo;
+            VoCombatSpec c = C;
             if (slash)
             {
-                // 뛰어 베기: 근접 계열 3, 다운급
-                HitInfo slashInfo = NewHit(AttackType.JumpSlash, HitKind.Melee3, combo.jumpSlashDamage, opponent.gameObject);
-                slashInfo.Impact = C.impactJumpMelee;
+                // 뛰어 베기: 근접 계열 3, 다운급. 피해 = 원본 점프 근접 A
+                HitInfo slashInfo = NewHit(AttackType.JumpSlash, HitKind.Melee3, c.Damage(c.damageJumpMelee), opponent.gameObject);
+                slashInfo.Impact = c.impactJumpMelee;
                 QueueHit(opponent.gameObject, slashInfo);
                 _swingHit = true;
                 return;
             }
             bool third = _comboStep == 3;
-            // 쓰리는 피해 배율. 충격치: 원·투는 경직만(우리 값 280), 쓰리는 다운(원본 C1 1100)
-            VoCombatSpec c = C;
-            HitInfo info = NewHit(AttackType.Punch, HitKind.Melee,
-                third ? punch.damage * combo.thirdDamageMultiplier : punch.damage, opponent.gameObject);
+            // 피해 = 원본 A1 1타 / A1 2타 / C1 × 체력 스케일. 충격치: 원·투는 경직만(우리 값 280), 쓰리는 원본 C1 1100
+            float damage = c.Damage(third ? c.damageC1 : (_comboStep == 2 ? c.damageA1Second : c.damageA1First));
+            HitInfo info = NewHit(AttackType.Punch, HitKind.Melee, damage, opponent.gameObject);
             info.Impact = third ? c.impactC1 : (_comboStep == 2 ? c.impactA1Second : c.impactA1First);
             info.ComboStep = _comboStep;
             QueueHit(opponent.gameObject, info);

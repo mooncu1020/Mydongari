@@ -650,3 +650,4 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (전투I) `BernardTuning → 공격 발생 시간`에 `Input Buffer` 칸이 없음(정상 — 4틱은 `VoCombatSpec.meleeBufferFrames`)
 - [ ] (전투J) `Window → General → Test Runner → EditMode → Run All`: `CombatRulesTests` 17개 전부 초록 (원·투 경직/쓰리 다운, 가드 10%, 경직 중 입력 무시, 히트스톱 15f, 파고들기 정지 거리, 같은 틱 맞교환 대칭, 30/60fps 동일, 근접 구역, 쓸기 판정)
 - [ ] (전투J) 플레이 중 `VoMotor → Debug Log`를 켜면 콘솔 `[VoCombatSpec] … 원본과 다른 칸`에 우리 값만 나옴: `impactA1First`·`impactA1Second`(280), `jumpMelee`(4u/f 12/10f 판정 2~8), `jumpMeleeGravity`·`jumpMeleeFallMaxVy`
+- [ ] (피해) 체력 100 기준 피해: 원 10 / 투 약 4.5 / 쓰리 약 13 / 뛰어 베기 약 11.7 / 대시 어택 약 9.5 / 런지 15 / 차징 태클 약 16(최대 차징 약 32) / 슬램 10 / 파일 드라이버 50. `StyleOverrides → 피해 → Damage Scale`을 바꾸면 슬램·파일 드라이버를 뺀 전부가 같은 비율로 변함. `BernardTuning`에 펀치·태클·대시 어택·런지의 `Damage` 칸과 `원투쓰리 콤보` 묶음이 없음(정상)

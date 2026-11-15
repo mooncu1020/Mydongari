@@ -424,6 +424,24 @@ namespace MyDongari.EditorTools.Tests
             }
         }
 
+        // ---------------- 피해 비율 = 원본 템진 ----------------
+
+        [Test]
+        public void Damage_KeepsOriginalRatios_ScaledSoOneIsTen()
+        {
+            VoCombatSpec c = Spec();
+            Assert.AreEqual(10f, c.Damage(c.damageA1First), 0.0001f, "원 = 10 (체력 100 기준)");
+            // 기술 사이의 비율은 원본 그대로 (A1 1타 290 기준)
+            Assert.AreEqual(130f / 290f, c.Damage(c.damageA1Second) / c.Damage(c.damageA1First), 0.0001f, "투");
+            Assert.AreEqual(380f / 290f, c.Damage(c.damageC1) / c.Damage(c.damageA1First), 0.0001f, "쓰리");
+            Assert.AreEqual(340f / 290f, c.Damage(c.damageJumpMelee) / c.Damage(c.damageA1First), 0.0001f, "뛰어 베기");
+            Assert.AreEqual(275f / 290f, c.Damage(c.damageDashMelee) / c.Damage(c.damageA1First), 0.0001f, "대시 공격");
+            Assert.AreEqual(435f / 290f, c.Damage(c.damageA2) / c.Damage(c.damageA1First), 0.0001f, "런지");
+            Assert.AreEqual(460f / 290f, c.Damage(c.damageC2) / c.Damage(c.damageA1First), 0.0001f, "차징 태클");
+            // 덮어쓰기를 끄면 원본 스케일
+            Assert.AreEqual(290f, VoCombatSpec.Original().Damage(VoCombatSpec.Original().damageA1First), 0.0001f);
+        }
+
         // ---------------- 근접 구역·명중 기하 ----------------
 
         [Test]

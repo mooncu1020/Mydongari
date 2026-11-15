@@ -104,6 +104,11 @@ namespace MyDongari.Bridge
         [Tooltip("점프 하강 중 피격 캡슐의 높이·반지름 배율 (원본: 피격 구 2개)")]
         [Range(0.1f, 1f)] public float jumpFallingHurtScale = 0.45f;
 
+        [Header("피해 (원본: 템진 근접 피해 — A1 1타 290 / 2타 130 / C1 380 / 점프 근접 340 / 대시 근접 275 / A2 435 / C2 460)")]
+        [Tooltip("원본 피해 → 우리 체력 스케일 배율. 기술 사이의 비율은 VoCombatSpec의 원본값 그대로이고 이 값 하나로 전체 크기를 맞춘다. " +
+                 "체력 100에서 원(A1 1타 290)이 10이 되도록 10 ÷ 290. 끄면 원본 스케일(1)이라 한 방에 죽는다")]
+        public FloatOverride damageScale = new FloatOverride(true, 10f / 290f);
+
         [Header("충격치 (원본: A1 1타 500 → 경직, A1 2타 1100 → 다운)")]
         [Tooltip("원의 충격치. 우리 값 280 = 경직만 (원 + 투를 연달아 맞아도 다운 문턱 600 아래). 끄면 원본 500")]
         public FloatOverride punch1Impact = new FloatOverride(true, 280f);
@@ -145,6 +150,7 @@ namespace MyDongari.Bridge
         private VoCombatSpec BuildCombat()
         {
             VoCombatSpec c = VoCombatSpec.Original();
+            damageScale.Apply(ref c.damageScale);
             punch1Impact.Apply(ref c.impactA1First);
             punch2Impact.Apply(ref c.impactA1Second);
             jumpMeleeSpeed.Apply(ref c.jumpMelee.baseSpeed);

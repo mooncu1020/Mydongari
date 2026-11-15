@@ -120,6 +120,27 @@ namespace MyDongari.Core.VirtualOn
         /// <summary>강타(A2·B2) 충격치.</summary>
         public float impactStrong = 1100f;
 
+        // ---- 피해 (템진 근접, 원본 체력 스케일) [1.2·6.3] ----
+        public float damageA1First = 290f;
+        public float damageA1Second = 130f;
+        public float damageC1 = 380f;
+        /// <summary>점프 근접 A.</summary>
+        public float damageJumpMelee = 340f;
+        /// <summary>대시 근접 A.</summary>
+        public float damageDashMelee = 275f;
+        /// <summary>강타 A2 (터보 + A).</summary>
+        public float damageA2 = 435f;
+        /// <summary>강타 C2 (터보 + C).</summary>
+        public float damageC2 = 460f;
+        /// <summary>
+        /// 원본 피해 → 게임 체력 스케일로 바꾸는 배율. 원본은 1(원본 체력 스케일 그대로). 기술 사이의 비율은 위 원본값이 정하고,
+        /// 게임은 이 배율 하나만 덮어쓴다 (체력 최대값에 맞춤).
+        /// </summary>
+        public float damageScale = 1f;
+
+        /// <summary>원본 피해를 게임 체력 스케일로.</summary>
+        public float Damage(float original) => original * damageScale;
+
         // ---- 경직 [2.2] ----
         public int staggerFrames = 28;
         /// <summary>공격 방향으로 밀리는 속력(u/f). 히트스톱이 아닌 틱마다, 근접 감속 × 0.78과 함께.</summary>
