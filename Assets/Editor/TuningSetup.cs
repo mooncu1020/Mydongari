@@ -32,6 +32,42 @@ namespace MyDongari.EditorTools
                 $"기체 {assigned}대(MeleeSystem이 있는 오브젝트)에 MechTuning을 연결했습니다. 씬을 저장하세요.", "확인");
         }
 
+        /// <summary>
+        /// 이미 저장된 에셋 값은 코드 기본값을 바꿔도 그대로라, 지시로 바뀐 값을 에셋에 넣는다 (.asset을 손으로 고치지 않으려고).
+        /// 파일 드라이버 피해 50 → 25. 명령줄: -executeMethod MyDongari.EditorTools.TuningSetup.ApplyRequestedValuesFromCommandLine
+        /// </summary>
+        [MenuItem("Mydongari/Tuning/Apply Requested Values (파일 드라이버 피해 25)")]
+        private static void ApplyRequestedValuesMenu()
+        {
+            string changes = ApplyRequestedValues();
+            EditorUtility.DisplayDialog("Bernard Tuning", changes.Length > 0 ? "바꾼 값:\n" + changes : "이미 모두 적용돼 있습니다.", "확인");
+        }
+
+        public static void ApplyRequestedValuesFromCommandLine()
+        {
+            Debug.Log("[TuningApply] " + ApplyRequestedValues().Replace("\n", " / "));
+        }
+
+        private static string ApplyRequestedValues()
+        {
+            BernardTuning tuning = EnsureAsset(out _);
+            var so = new SerializedObject(tuning);
+            var changes = new System.Text.StringBuilder();
+            SetFloat(so, "anchorClaw.pileDriverDamage", 25f, changes);
+            so.ApplyModifiedProperties();
+            EditorUtility.SetDirty(tuning);
+            AssetDatabase.SaveAssets();
+            return changes.ToString();
+        }
+
+        private static void SetFloat(SerializedObject so, string path, float value, System.Text.StringBuilder changes)
+        {
+            SerializedProperty property = so.FindProperty(path);
+            if (property == null || Mathf.Approximately(property.floatValue, value)) return;
+            changes.AppendLine($"{path}: {property.floatValue} → {value}");
+            property.floatValue = value;
+        }
+
         /// <summary>프로젝트에 BernardTuning 에셋이 있으면 그걸, 없으면 Resources에 코드 기본값으로 만든다.</summary>
         public static BernardTuning EnsureAsset(out bool created)
         {

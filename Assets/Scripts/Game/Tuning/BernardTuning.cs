@@ -113,8 +113,10 @@ namespace MyDongari.Game.Tuning
             [Header("차징 (V6.1: 대시 시간표에 맞춤)")]
             [Tooltip("대시 경과가 이 틱 이상일 때 공격하면 차징 태클 (미만은 유도 대시 어택). 48f = 0.8초")]
             public int dashChargeStartFrames = 48;
-            [Tooltip("대시 경과가 이 틱이면 차징 최대 (피해 2배). 96f = 1.6초")]
+            [Tooltip("대시 경과가 이 틱이면 차징 최대. 96f = 1.6초")]
             public int dashFullChargeFrames = 96;
+            [Tooltip("차징 최대일 때 피해 배율 (원본 C2 피해 × 1 ~ 이 값, 차징에 따라 선형). 우리 규칙 — 원본에는 차징이 없다")]
+            public float maxChargeDamageScale = 1.5f;
             [Tooltip("차징 상태로 이 거리(m) 안에 상대가 정면으로 닿으면 자동 태클")]
             public float contactRadius = 2f;
 
@@ -231,7 +233,7 @@ namespace MyDongari.Game.Tuning
             public int hookImpactStunFrames = 15;
 
             [Header("파일드라이버 (가드·패리 관통)")]
-            public float pileDriverDamage = 50f;
+            public float pileDriverDamage = 25f;
             [Tooltip("이 거리(m) 안이어야 파일드라이버가 나간다")]
             public float pileDriverRange = 4f;
 

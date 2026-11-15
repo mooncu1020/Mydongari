@@ -765,10 +765,10 @@ namespace MyDongari.Game.Combat
                 // 상대 기체의 자식 콜라이더에 맞아도 컴포넌트는 루트(MechIdentity가 있는 곳)에서 찾는다
                 GameObject target = _identity.Opponent.gameObject;
                 // 차징 태클 = 강타(가드 불능, 날아감), 대시 공격 = 근접 계열 2(가드 가능, 때린 쪽이 멈추지 않는다)
-                // 피해: 차징 태클 = 원본 C2(차징이 길수록 최대 2배 — 우리 규칙), 대시 공격 = 원본 대시 근접 A
+                // 피해: 차징 태클 = 원본 C2(차징이 길수록 최대 maxChargeDamageScale배 — 우리 규칙), 대시 공격 = 원본 대시 근접 A
                 VoCombatSpec c = C;
                 HitInfo info = NewHit(type, charged ? HitKind.Strong : HitKind.Melee2,
-                    charged ? c.Damage(c.damageC2) * (1f + chargePower) : c.Damage(c.damageDashMelee), target);
+                    charged ? c.Damage(c.damageC2) * Mathf.Lerp(1f, tackle.maxChargeDamageScale, chargePower) : c.Damage(c.damageDashMelee), target);
                 info.Impact = charged ? c.impactStrong : c.impactDashMelee;
                 QueueHit(target, info);
                 return true;

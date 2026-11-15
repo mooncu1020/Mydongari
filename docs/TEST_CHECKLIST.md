@@ -652,3 +652,4 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (전투J) 플레이 중 `VoMotor → Debug Log`를 켜면 콘솔 `[VoCombatSpec] … 원본과 다른 칸`에 우리 값만 나옴: `impactA1First`·`impactA1Second`(280), `jumpMelee`(4u/f 12/10f 판정 2~8), `jumpMeleeGravity`·`jumpMeleeFallMaxVy`
 - [ ] (피해) 체력 100 기준 피해: 원 10 / 투 약 4.5 / 쓰리 약 13 / 뛰어 베기 약 11.7 / 대시 어택 약 9.5 / 런지 15 / 차징 태클 약 16(최대 차징 약 32) / 슬램 10 / 파일 드라이버 50. `StyleOverrides → 피해 → Damage Scale`을 바꾸면 슬램·파일 드라이버를 뺀 전부가 같은 비율로 변함. `BernardTuning`에 펀치·태클·대시 어택·런지의 `Damage` 칸과 `원투쓰리 콤보` 묶음이 없음(정상)
 - [ ] (전투 스모크) 메뉴 `Tools/Combat Smoke Test` → 빌드가 PRACTICE에서 자동 입력으로 20초(원투쓰리 → 가드에 펀치 → 동시 펀치 → 런지 → 대시 공격 → 뛰어 베기) 돈 뒤 스스로 꺼지고, 콘솔에 `[CombatSmoke] 반응: 경직 … / 다운 … / 날아감 … / 가드경직 … / 맞딜 …`, `안정성: 예외·오류 로그 / 좌표 깨짐 틱 / 겹친 틱 / 맵 밖 틱`, `RESULT PASS`가 나옴. 반응 횟수가 하나라도 0이면 빨간 오류로 `RESULT FAIL`. 장면별 진행(거리·상태·체력)은 빌드 폴더 `Player.log`의 `[CombatSmoke] 장면 n` 줄
+- [ ] (피해 2) 차징 태클은 최대 차징에서 약 24(예전 약 32), 파일 드라이버는 25(예전 50). `BernardTuning → 태클 → Max Charge Damage Scale`(1.5)
