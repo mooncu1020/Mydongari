@@ -351,7 +351,7 @@ namespace MyDongari.Game.Combat
             if (_lockOn != null)
             {
                 _lockOn.SetHardLockSuppressed(false);
-                if (result == null) _lockOn.BlockHardLockFor(T.missLockDelay);
+                if (result == null) _lockOn.BlockHardLockFor(T.missLockDelayFrames);
             }
             OnLungeEnded?.Invoke(result);
         }

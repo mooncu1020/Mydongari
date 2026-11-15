@@ -1,4 +1,5 @@
 using UnityEngine;
+using MyDongari.Core.VirtualOn;
 using MyDongari.Bridge;
 using MyDongari.Game.Tuning;
 
@@ -18,9 +19,10 @@ namespace MyDongari.Game.Combat
 
         // 하드 락온 금지: 내 런지 돌진 중(플래그) + 런지 빗나감 직후(타이머)
         private bool _hardLockSuppressed;
-        private float _hardLockBlockTimer;
+        // 이 전투 틱(VoTickDriver.TickCount)까지 하드 락온 금지
+        private int _hardLockBlockUntilTick;
 
-        public bool IsHardLockBlocked => _hardLockSuppressed || _hardLockBlockTimer > 0f;
+        public bool IsHardLockBlocked => _hardLockSuppressed || VoTickDriver.TickCount < _hardLockBlockUntilTick;
 
         private void Awake()
         {
@@ -31,8 +33,6 @@ namespace MyDongari.Game.Combat
 
         private void Update()
         {
-            if (_hardLockBlockTimer > 0f) _hardLockBlockTimer -= Time.deltaTime;
-
             // V3: 하드 락온은 거리만 보므로 카메라가 없어도 판정한다
             UpdateHardLock();
             DetectTarget();
@@ -120,10 +120,10 @@ namespace MyDongari.Game.Combat
             if (suppressed) ReleaseHardLock();
         }
 
-        /// <summary>일정 시간 하드 락온 금지 (런지 빗나감 후 반격 틈).</summary>
-        public void BlockHardLockFor(float seconds)
+        /// <summary>frames틱 동안 하드 락온 금지 (런지 빗나감 후 반격 틈). 전투 틱으로 센다.</summary>
+        public void BlockHardLockFor(int frames)
         {
-            _hardLockBlockTimer = Mathf.Max(_hardLockBlockTimer, seconds);
+            _hardLockBlockUntilTick = Mathf.Max(_hardLockBlockUntilTick, VoTickDriver.TickCount + frames);
             ReleaseHardLock();
         }
 
@@ -131,7 +131,7 @@ namespace MyDongari.Game.Combat
         public void ResetForRound()
         {
             _hardLockSuppressed = false;
-            _hardLockBlockTimer = 0f;
+            _hardLockBlockUntilTick = 0;
             ForceRelease();
         }
 

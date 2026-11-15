@@ -186,8 +186,8 @@ namespace MyDongari.Game.Tuning
             public float hitForwardOffset = 1f;
 
             [Header("빗나감")]
-            [Tooltip("빗나간 뒤 이 시간(초) 동안 하드 락온이 다시 걸리지 않는다 (사이드스텝으로 피한 상대의 반격 틈)")]
-            public float missLockDelay = 0.6f;
+            [Tooltip("빗나간 뒤 이 틱 동안 하드 락온이 다시 걸리지 않는다 (피한 상대의 반격 틈). 36f = 0.6초")]
+            public int missLockDelayFrames = 36;
         }
 
         [Serializable]
@@ -252,8 +252,8 @@ namespace MyDongari.Game.Tuning
             public float slideDistance = 2f;
             [Tooltip("비행 최고 높이(m)")]
             public float flightHeight = 1.5f;
-            [Tooltip("파일 드라이버 비행 시간(초 → 30틱). 외형의 비행 포즈 길이로도 쓴다")]
-            public float flightTime = 0.5f;
+            [Tooltip("파일 드라이버 비행 시간(틱). 30f = 0.5초")]
+            public int flightFrames = 30;
             [Tooltip("외형 전용: 누운 자세 포즈 길이(초). 실제 누움은 40틱(전투 사양서)")]
             public float slideTime = 0.45f;
             [Tooltip("외형 전용: 기상 모션 포즈 길이(초). 실제 기상 모션 30틱을 이 길이에 맞춰 재생한다")]
@@ -829,8 +829,8 @@ namespace MyDongari.Game.Tuning
             public float clawReleaseTime = 0.3f;
 
             [Header("파일 드라이버 (M6: 판정·피해는 누른 순간 그대로, 아래는 외형)")]
-            [Tooltip("다리 펴기 → 골반 → 허리 → 주먹이 위로 올라가 외형 타격까지(초). 이 순간 피스톤·히트스톱·흔들림")]
-            public float uppercutRiseTime = 0.08f;
+            [Tooltip("다리 펴기 → 골반 → 허리 → 주먹이 위로 올라가 외형 타격까지(틱, 5f ≈ 0.08초). 이 순간 피스톤·흔들림이 나오고, 맞은 기체는 이 틱만큼 기다렸다 날아간다")]
+            public int uppercutRiseFrames = 5;
             [Tooltip("어퍼컷을 올린 채 유지(초)")]
             public float uppercutHold = 0.15f;
             [Tooltip("로우 가드로 돌아오는 시간(초)")]

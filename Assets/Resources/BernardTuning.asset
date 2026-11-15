@@ -84,7 +84,7 @@ MonoBehaviour:
     cooldownFrames: 180
     hitRadius: 1.2
     hitForwardOffset: 1
-    missLockDelay: 0.6
+    missLockDelayFrames: 36
   anchorClaw:
     pullSpeed: 15
     pullFrames: 90
@@ -111,7 +111,7 @@ MonoBehaviour:
     flightDistance: 8
     slideDistance: 2
     flightHeight: 1.5
-    flightTime: 0.5
+    flightFrames: 30
     slideTime: 0.45
     getUpTime: 0.8
     wallCheckRadiusScale: 0.9
@@ -379,7 +379,7 @@ MonoBehaviour:
     clawReelBlendTime: 0.2
     clawReelHold: 1
     clawReleaseTime: 0.3
-    uppercutRiseTime: 0.08
+    uppercutRiseFrames: 5
     uppercutHold: 0.15
     uppercutRecoverTime: 0.45
     pistonDistance: 0.18

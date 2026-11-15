@@ -353,7 +353,7 @@ namespace MyDongari.Game.Combat.Skills
 
         /// <summary>
         /// 틱 끝: 파일 드라이버를 상대 기록에 쌓는다. 잡기 후속타라 가드·패리를 모두 무시하고, 맞으면 공격자 상체 방향으로 넉다운(R1).
-        /// 전신 모션 기체는 외형 어퍼컷이 닿는 순간(uppercutRiseTime 뒤)에 날아가도록 그만큼 기다린다.
+        /// 전신 모션 기체는 외형 어퍼컷이 닿는 순간(uppercutRiseFrames 뒤)에 날아가도록 그만큼 기다린다.
         /// </summary>
         public void CollectHits()
         {
@@ -371,7 +371,7 @@ namespace MyDongari.Game.Combat.Skills
             info.IgnoresGuard = true;
             info.IgnoresParry = true;
             info.Impact = StyleOverrides.Current.EffectiveCombat.impactStrong;
-            info.LaunchDelayFrames = MechVisualRig.HandlesPileDriverImpactOf(gameObject) ? CombatTime.Frames(tuning.Motion.uppercutRiseTime) : 0;
+            info.LaunchDelayFrames = MechVisualRig.HandlesPileDriverImpactOf(gameObject) ? tuning.Motion.uppercutRiseFrames : 0;
             MeleeSystem.QueueHit(target.gameObject, info);
         }
 

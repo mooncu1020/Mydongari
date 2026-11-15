@@ -398,7 +398,7 @@ namespace MyDongari.Game.Visual
                 || InWindow(_pileStart, PileDriverLength(m));
         }
 
-        private float PileDriverLength(BernardTuning.MotionValues m) => m.uppercutRiseTime + m.uppercutHold + m.uppercutRecoverTime;
+        private float PileDriverLength(BernardTuning.MotionValues m) => CombatTime.Seconds(m.uppercutRiseFrames) + m.uppercutHold + m.uppercutRecoverTime;
 
         /// <summary>
         /// 앵커 클로: 예비(왼팔 뒤로, 발동 windupTime) → 던지기(왼팔 뻗음, 날아가는·감겨 오는 동안) → 빗나가면 복귀.
@@ -498,7 +498,7 @@ namespace MyDongari.Game.Visual
                 return;
             }
 
-            float rise = m.uppercutRiseTime;
+            float rise = CombatTime.Seconds(m.uppercutRiseFrames);
             float hold = rise + m.uppercutHold;
             float d = m.punchChainDelay;
             BeginMotion();

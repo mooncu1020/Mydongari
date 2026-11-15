@@ -24,11 +24,15 @@ namespace MyDongari.Game.Heat
             _stateMachine = GetComponent<MechStateMachine>();
         }
 
-        private void Update()
+        /// <summary>전투 틱마다 (MeleeSystem이 부른다): 냉각과 과열 판정. 냉각량은 초당 값 ÷ 60 — 프레임률과 무관하다.</summary>
+        public void CombatTick()
         {
             HandleCooling();
             CheckOverheat();
         }
+
+        // 틱 길이(초)
+        private const float TickSeconds = 1f / 60f;
 
         private void HandleCooling()
         {
@@ -39,7 +43,7 @@ namespace MyDongari.Game.Heat
                 {
                     currentCoolingRate *= (1f - T.sprintCoolingReduction);
                 }
-                CurrentHeat = Mathf.Max(CurrentHeat - currentCoolingRate * Time.deltaTime, 0f);
+                CurrentHeat = Mathf.Max(CurrentHeat - currentCoolingRate * TickSeconds, 0f);
                 if (CurrentHeat <= 0f)
                 {
                     IsOverheated = false;
@@ -55,7 +59,7 @@ namespace MyDongari.Game.Heat
                 normalCoolingRate *= (1f - T.sprintCoolingReduction);
             }
 
-            CurrentHeat = Mathf.Max(CurrentHeat - normalCoolingRate * Time.deltaTime, 0f);
+            CurrentHeat = Mathf.Max(CurrentHeat - normalCoolingRate * TickSeconds, 0f);
         }
 
         private void CheckOverheat()

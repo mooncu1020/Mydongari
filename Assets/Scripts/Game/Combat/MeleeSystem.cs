@@ -195,6 +195,8 @@ namespace MyDongari.Game.Combat
             if (_tackleTimer < Long) _tackleTimer++;
             if (_reraiseFrames > 0) _reraiseFrames--;
             if (_stunFrames > 0) _stunFrames--;
+            // 히트 게이지 냉각도 전투 틱으로 (히트스톱 중에도 식는다)
+            if (_heatGauge != null) _heatGauge.CombatTick();
             // 충격치는 매 틱 줄고, 무적 타이머도 매 틱 준다 (히트스톱 중에도)
             _impact.Tick(C.impactDecay);
             _react.TickInvuln();

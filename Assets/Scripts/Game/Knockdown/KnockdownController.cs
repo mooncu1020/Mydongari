@@ -284,9 +284,9 @@ namespace MyDongari.Game.Knockdown
                     break;
                 case DownKind.PileDriver:
                 {
-                    // 우리 넉백 궤적: flightTime 동안 flightDistance를 등속으로, flightHeight까지 올랐다가 원래 높이로 (v0 = 4h/T, g = 8h/T²)
+                    // 우리 넉백 궤적: flightFrames 동안 flightDistance를 등속으로, flightHeight까지 올랐다가 원래 높이로 (v0 = 4h/T, g = 8h/T²)
                     BernardTuning.KnockdownValues k = K;
-                    float frames = Mathf.Max(3, CombatTime.Frames(k.flightTime));
+                    float frames = Mathf.Max(3, k.flightFrames);
                     float height = Mathf.Max(0f, k.flightHeight) / U;
                     _vy = 4f * height / frames;
                     _gravity = 8f * height / (frames * frames);
@@ -329,7 +329,7 @@ namespace MyDongari.Game.Knockdown
             {
                 case DownKind.Blown: min = c.blownLaunchMinFrames; break;
                 case DownKind.AirDown: min = 0; break;
-                case DownKind.PileDriver: min = Mathf.Max(3, CombatTime.Frames(K.flightTime)); break;
+                case DownKind.PileDriver: min = Mathf.Max(3, K.flightFrames); break;
                 default: min = c.downLaunchMinFrames; break;
             }
             bool timeout = Kind == DownKind.AirDown && _frame >= c.airDownMaxFrames;

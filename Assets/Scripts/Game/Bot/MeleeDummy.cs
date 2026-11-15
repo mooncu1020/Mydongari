@@ -184,49 +184,59 @@ namespace MyDongari.Game.Bot
             _pendingGuardTime = -1f;
             _pendingCounterTime = -1f;
             _attackTimer = 0f;
-            _nextLungeTime = Time.time + Random.Range(lungeIntervalMin, lungeIntervalMax);
+            _nextLungeTime = Now + Random.Range(lungeIntervalMin, lungeIntervalMax);
         }
 
         // ---------------- 매 프레임 ----------------
 
         private int _lastAttackPressCount;
+        // 봇 두뇌의 시계: 전투 틱 수. 공격 간격·런지 간격·패리 반응·가드 유지·Mixed 전환을 전부 이걸로 센다 (프레임률과 무관)
+        private int _ticks;
+        private const float TickSeconds = 1f / CombatTime.TickRate;
+        /// <summary>봇 두뇌 시계(초 = 틱 ÷ 60). 인스펙터의 초 단위 설정값과 비교하려고 초로 바꾼 값.</summary>
+        private float Now => _ticks * TickSeconds;
 
-        /// <summary>전투 틱마다 (MeleeSystem이 부른다): 봇이 누른 공격 버튼을 플레이어와 같은 입력 버퍼·같은 틱으로 처리한다.</summary>
+        /// <summary>
+        /// 전투 틱마다 (MeleeSystem이 부른다): 봇 두뇌(행동 타이머·버튼)를 한 틱 돌리고,
+        /// 누른 공격 버튼을 플레이어와 같은 입력 버퍼·같은 틱으로 처리한다.
+        /// </summary>
         public void CombatTick()
         {
-            int count = _botInput.AttackPressCount;
-            bool pressed = count != _lastAttackPressCount;
-            _lastAttackPressCount = count;
+            _ticks++;
+            // 카운트다운·라운드 사이·사망·상대 없음: 버튼을 다 떼고 가만히
             if (!CanAct())
             {
+                if (_botInput.GuardHeld || _pendingGuardTime >= 0f || _pendingCounterTime >= 0f) ResetBehaviour();
+                _lastAttackPressCount = _botInput.AttackPressCount;
                 _attackBuffer.Clear();
                 return;
             }
+            BrainTick();
+            int count = _botInput.AttackPressCount;
+            bool pressed = count != _lastAttackPressCount;
+            _lastAttackPressCount = count;
             UpdateAttackInput(pressed);
         }
 
         private void Update()
         {
-            // 상대는 GameManager가 Awake 이후·모드 전환 때 연결하니 매 프레임 참조를 갱신
+            // 상대는 GameManager가 Awake 이후·모드 전환 때 연결하니 매 프레임 참조를 갱신 (인스펙터에서 바꾼 모드도 여기서 반영)
             if (mode != _appliedMode) SetMode(mode);
             WatchOpponent(_identity.Opponent);
             _player = _identity.Opponent != null ? _identity.Opponent.transform : null;
+        }
 
-            // 카운트다운·라운드 사이·사망·상대 없음: 버튼을 다 떼고 가만히
-            if (!CanAct())
-            {
-                if (_botInput.GuardHeld || _pendingGuardTime >= 0f || _pendingCounterTime >= 0f) ResetBehaviour();
-                return;
-            }
-
-            if (mode == BotMode.Mixed && Time.time >= _mixedSwitchTime)
+        /// <summary>봇 두뇌 한 틱: 모드별로 가드를 올리고 내리고, 공격 버튼을 누른다.</summary>
+        private void BrainTick()
+        {
+            if (mode == BotMode.Mixed && Now >= _mixedSwitchTime)
             {
                 _active = PickMixed();
-                _mixedSwitchTime = Time.time + Random.Range(mixedSegmentMin, mixedSegmentMax);
+                _mixedSwitchTime = Now + Random.Range(mixedSegmentMin, mixedSegmentMax);
                 ResetBehaviour();
             }
 
-            _attackTimer += Time.deltaTime;
+            _attackTimer += TickSeconds;
             float dist = Vector3.Distance(transform.position, _player.position);
 
             switch (_active)
@@ -236,7 +246,7 @@ namespace MyDongari.Game.Bot
                     break;
 
                 case BotMode.AlwaysGuard:
-                    // 계속 누르고 있는 가드: 가드 히트로 과열되면 MeleeSystem이 깨고, 스턴이 풀리면 다시 올라간다
+                    // 계속 누르고 있는 가드
                     _botInput.SetGuard(true);
                     break;
 
@@ -365,7 +375,7 @@ namespace MyDongari.Game.Bot
         private void UpdateLunger(float dist)
         {
             if (_lunge == null || _lunge.IsLunging) return;
-            if (Time.time < _nextLungeTime) return;
+            if (Now < _nextLungeTime) return;
             // V9f: 봇도 플레이어와 같은 런지 쿨다운(3초)을 탄다 — 쿨다운 중엔 누르지 않고 끝나길 기다린다
             if (_lunge.IsOnCooldown) return;
             if (dist < lungerMinDistance || dist > lungerMaxDistance) return;
@@ -373,24 +383,24 @@ namespace MyDongari.Game.Bot
 
             // 런지 거리(하드 락온 밖)라 버튼을 누르면 런지가 나간다. 스턴 등으로 안 나가면 버퍼가 잠깐 다시 시도
             _botInput.PressAttack();
-            _nextLungeTime = Time.time + Random.Range(lungeIntervalMin, lungeIntervalMax);
+            _nextLungeTime = Now + Random.Range(lungeIntervalMin, lungeIntervalMax);
         }
 
         private void UpdateParrier()
         {
-            if (_pendingGuardTime >= 0f && Time.time >= _pendingGuardTime)
+            if (_pendingGuardTime >= 0f && Now >= _pendingGuardTime)
             {
                 _pendingGuardTime = -1f;
                 PressGuard();
             }
 
-            if (_guardHoldUntil >= 0f && Time.time >= _guardHoldUntil)
+            if (_guardHoldUntil >= 0f && Now >= _guardHoldUntil)
             {
                 _guardHoldUntil = -1f;
                 _botInput.SetGuard(false);
             }
 
-            if (_pendingCounterTime >= 0f && Time.time >= _pendingCounterTime)
+            if (_pendingCounterTime >= 0f && Now >= _pendingCounterTime)
             {
                 _pendingCounterTime = -1f;
                 _guardHoldUntil = -1f;
@@ -405,7 +415,7 @@ namespace MyDongari.Game.Bot
         {
             if (_botInput.GuardHeld || _meleeSystem == null) return;
             _botInput.SetGuard(true);
-            _guardHoldUntil = Time.time + parryHoldTime;
+            _guardHoldUntil = Now + parryHoldTime;
             // 같은 프레임에 들어오는 공격에 대비해 가드 처리를 지금 한 번 돌린다 (규칙은 Update와 동일)
             _meleeSystem.ApplyGuardInputNow();
         }
@@ -446,7 +456,7 @@ namespace MyDongari.Game.Bot
                 hitIn += Mathf.Max(0f, distance - reach) / Mathf.Max(0.1f, opponentTuning.Movement.dashSpeed.front);
             }
             float window = CombatTime.Seconds(_tuning.Get(this).Parry.windowFrames);
-            _pendingGuardTime = Time.time + Mathf.Max(reactionTime, hitIn - window * 0.5f);
+            _pendingGuardTime = Now + Mathf.Max(reactionTime, hitIn - window * 0.5f);
         }
 
         /// <summary>상대가 런지 돌진을 시작했다. 반응 시간 뒤, 예상 도착에 패리 창이 걸치도록 누른다.</summary>
@@ -485,7 +495,7 @@ namespace MyDongari.Game.Bot
                 eta = Mathf.Max(0f, distance - reach) / speed;
             }
             float window = CombatTime.Seconds(_tuning.Get(this).Parry.windowFrames);
-            _pendingGuardTime = Time.time + Mathf.Max(reactionTime, eta - window * 0.5f);
+            _pendingGuardTime = Now + Mathf.Max(reactionTime, eta - window * 0.5f);
         }
 
         private void OnOwnHitResolved(HitInfo info, HitResult result)
@@ -505,7 +515,7 @@ namespace MyDongari.Game.Bot
         {
             if (result == HitResult.Parried && counterAfterParry && _active == BotMode.Parrier)
             {
-                _pendingCounterTime = Time.time + counterDelay;
+                _pendingCounterTime = Now + counterDelay;
             }
         }
 
