@@ -134,8 +134,11 @@ namespace MyDongari.Bridge
         /// <summary>공격이 끝남(명중·빗나감): 공격자 경직. 패리·맞딜당했으면 그 경직은 결과가 올 때(다음 틱) 풀린다.</summary>
         private void Finish(MeleeSystem melee, float snappedAngle)
         {
+            bool landed = _landed;
             _attackElapsed = -1;
             _landed = false;
+            // 빗나감(상대가 피함)도 로그가 알 수 있게
+            if (melee != null) melee.NotifyTackleEnded(_type, landed);
             if (_sm.Motor != null) _sm.Motor.SetAutoTurn(VoMotor.AutoTurnMode.Default);
             if (melee == null) return;
             int recovery = _type == AttackType.DashAttack

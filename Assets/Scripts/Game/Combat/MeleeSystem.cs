@@ -68,6 +68,21 @@ namespace MyDongari.Game.Combat
         public event Action<AttackType> OnAttackStarted;
         /// <summary>발생 시간 도중 스턴·가드 깨짐 등으로 공격이 취소됐을 때.</summary>
         public event Action<AttackType> OnAttackCanceled;
+        /// <summary>이 기체에 히트스톱이 걸렸을 때 (true = 때린 쪽으로, false = 맞은 쪽으로). 로그용.</summary>
+        public event Action<bool> OnHitStopStarted;
+        /// <summary>다운에서 일어나는 방식이 정해졌을 때 (그냥 / 공격 / 대시 / 점프). 로그용.</summary>
+        public event Action<KnockTickResult> OnWokeUp;
+        /// <summary>내 대시 공격·차징 태클이 끝났을 때 (landed = 상대에게 닿아 기록에 쌓았는지 — false면 빗나감). 로그용.</summary>
+        public event Action<AttackType, bool> OnTackleEnded;
+
+        /// <summary>대시 공격 진행기(DashAttackRunner)가 공격을 끝냈다고 알린다.</summary>
+        public void NotifyTackleEnded(AttackType type, bool landed) => OnTackleEnded?.Invoke(type, landed);
+
+        private void BeginHitStop(bool asAttacker)
+        {
+            _react.BeginHitStop(C.hitStopFrames);
+            OnHitStopStarted?.Invoke(asAttacker);
+        }
 
         /// <summary>펀치(파고들기 → 공격 → 후딜) 중인지.</summary>
         public bool IsMeleeActive => ActiveDrive != null;
@@ -275,7 +290,7 @@ namespace MyDongari.Game.Combat
         private void ApplyDecisions()
         {
             // 내가 때린 공격이 맞았다(또는 막혔다): 때린 쪽 히트스톱. 맞은 쪽이 이미 근접 무적이었으면 걸리지 않는다(판단 때 걸러짐)
-            if (Ledger.AttackerStopPending) _react.BeginHitStop(C.hitStopFrames);
+            if (Ledger.AttackerStopPending) BeginHitStop(asAttacker: true);
             var decisions = Ledger.Decisions;
             Reaction heaviest = Reaction.None;
             HitInfo heaviestInfo = default;
@@ -305,7 +320,7 @@ namespace MyDongari.Game.Combat
             {
                 case HitResult.Clash:
                     // 맞딜: 둘 다 피해 0 + 밀려남 (각자 자기 틱에 자기 몫만). 진행 중인 내 공격은 맞딜로 소진
-                    CancelMelee(notify: false);
+                    CancelMelee(notify: false, reason: "clash");
                     if (_stateMachine != null && _stateMachine.IsDashing && _stateMachine.ActiveDash.IsAttacking) _stateMachine.ActiveDash.EndByClash();
                     ApplyKnockback(info.Direction, Punch.clashKnockback);
                     break;
@@ -320,7 +335,7 @@ namespace MyDongari.Game.Combat
                     // 근접 계열 피격이면 맞은 쪽은 항상 히트스톱 15f + 근접 무적 4f (반응이 없는 약한 피격도)
                     if (info.IsMelee)
                     {
-                        _react.BeginHitStop(C.hitStopFrames);
+                        BeginHitStop(asAttacker: false);
                         GrantMeleeInvuln(C.hitInvulnFrames);
                     }
                     // 막을 때마다 히트가 오른다 (가드의 대가)
@@ -378,7 +393,7 @@ namespace MyDongari.Game.Combat
         private void InterruptActions()
         {
             if (IsGuarding) DropGuard(applyReraiseDelay: false);
-            CancelMelee(notify: true);
+            CancelMelee(notify: true, reason: "hit");
             if (_stateMachine != null && _stateMachine.IsDashing) _stateMachine.ActiveDash.EndByKnockback();
         }
 
@@ -436,6 +451,8 @@ namespace MyDongari.Game.Combat
                 dashHeld = live && motor.TurboHeld && motor.Lever.Direction >= 0 && motor.DashAllowed && _stateMachine != null;
             }
             KnockTickResult result = _knockdown.CombatTick(IsHitStopped, dashHeld);
+            if (result == KnockTickResult.Recovered || result == KnockTickResult.WakeAttack ||
+                result == KnockTickResult.WakeDash || result == KnockTickResult.WakeJump) OnWokeUp?.Invoke(result);
             VoCombatSpec c = C;
             switch (result)
             {
@@ -645,7 +662,7 @@ namespace MyDongari.Game.Combat
                 {
                     IsGuarding = true;
                     // 파고들기(①) 중에 올린 가드는 펀치를 접고 가드로 넘어간다 (전투 사양서 1.3)
-                    CancelMelee(notify: true);
+                    CancelMelee(notify: true, reason: "guard");
                     // V9a: 가드는 ✕. 공중에서 ✕를 누른 채 착지하면 여기서 일반 가드로 이어지지만, 새로 누른 것이 아니라 패리는 안 열린다.
                     // 패리 창은 "버튼을 새로 누른 순간" 올라간 가드에만 연다.
                     // 재사용 대기 중 누르고 버티다 자동으로 올라간 가드까지 패리를 주면 대기가 의미 없어진다.
@@ -707,7 +724,7 @@ namespace MyDongari.Game.Combat
             _parryGrace = false;
             _reraiseFrames = 0;
             _tackleTimer = Long;
-            CancelMelee(notify: false);
+            CancelMelee(notify: false, reason: "reset");
             _impact.Clear();
             _react.Reset();
             Ledger.Reset();
@@ -720,7 +737,7 @@ namespace MyDongari.Game.Combat
         {
             if (frames <= 0) return;
             // 휘두르는 중에 굳으면 그 펀치는 끊긴다 (다음 펀치는 원부터)
-            CancelMelee(notify: true);
+            CancelMelee(notify: true, reason: "stun");
             _stunFrames = Mathf.Max(_stunFrames, frames);
         }
 
@@ -902,8 +919,17 @@ namespace MyDongari.Game.Combat
         }
 
         /// <summary>진행 중인 펀치를 끊는다 (경직·맞딜·가드 전환·라운드 리셋). notify면 외형·로그에 취소를 알린다.</summary>
-        private void CancelMelee(bool notify)
+        /// <summary>전투 허브가 마지막으로 펀치를 끊은 이유 (clash·hit·guard·stun·reset)와 그 틱. 로그의 근접 취소용.</summary>
+        public string LastMeleeCancelReason { get; private set; }
+        public int LastMeleeCancelTick { get; private set; } = -1;
+
+        private void CancelMelee(bool notify, string reason)
         {
+            if (ActiveDrive != null)
+            {
+                LastMeleeCancelReason = reason;
+                LastMeleeCancelTick = VoTickDriver.TickCount;
+            }
             bool active = ActiveDrive != null;
             if (_stateMachine != null)
             {

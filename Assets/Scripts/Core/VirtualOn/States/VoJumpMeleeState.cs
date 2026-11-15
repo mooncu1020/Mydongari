@@ -29,8 +29,12 @@ namespace MyDongari.Core.VirtualOn.States
             StateMachine.NotifyJumped();
         }
 
+        /// <summary>마지막으로 나갈 때 휘두르기가 아직 진행 중이었는지 (끊겼는지). 로그용.</summary>
+        public bool ExitedMidSwing { get; private set; }
+
         public override void Exit()
         {
+            ExitedMidSwing = Drive.IsActive;
             Drive.Cancel();
             if (Motor.AutoTurn == VoMotor.AutoTurnMode.MeleeTrack) Motor.SetAutoTurn(VoMotor.AutoTurnMode.Default);
         }

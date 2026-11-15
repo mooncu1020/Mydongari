@@ -36,8 +36,12 @@ namespace MyDongari.Core.VirtualOn.States
             StartTrack();
         }
 
+        /// <summary>마지막으로 나갈 때 휘두르기가 아직 진행 중이었는지 (= 점프·대시·경직 등으로 끊김). 끝까지 휘두르고 나가면 false. 로그용.</summary>
+        public bool ExitedMidSwing { get; private set; }
+
         public override void Exit()
         {
+            ExitedMidSwing = Drive.IsActive;
             Drive.Cancel();
             if (Motor.AutoTurn == VoMotor.AutoTurnMode.MeleeTrack) Motor.SetAutoTurn(VoMotor.AutoTurnMode.Default);
         }

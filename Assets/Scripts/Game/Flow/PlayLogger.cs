@@ -65,7 +65,12 @@ namespace MyDongari.Game.Flow
             // ○ 대시(V3.1): 진입 수와 끝난 이유별 수 (나머지 이유는 0이 아닐 때만 추가로 나온다)
             "dash_enter", "dash_exit_canceled", "dash_exit_bump", "dash_exit_wall", "dash_exit_timeout",
             // 점프(V5): 점프 수, 공중 대시 수, 착지 경직 수 (긴 경직은 V7c부터 항상 0)
-            "jump", "air_dash", "landing_lag", "landing_lag_long"
+            "jump", "air_dash", "landing_lag", "landing_lag_long",
+            // 전투 반응·기상·근접 취소·대시 공격 회피 (events의 같은 이름 줄 수)
+            "reaction_stagger", "reaction_down", "reaction_blown", "reaction_guard_stagger", "reaction_air_down",
+            "hit_while_landing", "melee_cancel", "hitstop_start",
+            "wake_plain", "wake_attack", "wake_dash", "wake_jump",
+            "dash_attack_miss", "dash_attack_evaded"
         };
         private static readonly string[] BandNames = { "near", "mid", "far" };
 
@@ -160,13 +165,29 @@ namespace MyDongari.Game.Flow
                 melee.OnComboStep += onCombo;
                 MeleeSystem comboMelee = melee;
                 _unsubscribers.Add(() => comboMelee.OnComboStep -= onCombo);
-                Action<HitInfo, HitResult> onHit = (info, result) => ErrorLog.Run(() => OnHitResolved(index, info, result), "PlayLogger.onHit");
+                MechStateMachine hitSm = mech.GetComponent<MechStateMachine>();
+                Action<HitInfo, HitResult> onHit = (info, result) => ErrorLog.Run(() => OnHitResolved(index, info, result, melee, hitSm), "PlayLogger.onHit");
                 // 발생 시간 중 스턴 등으로 취소된 공격 (punch_canceled 등)
                 Action<AttackType> onCancel = type => ErrorLog.Run(() => Count(index, AttackKey(type) + "_canceled"), "PlayLogger.onCancel");
                 melee.OnAttackStarted += onStart;
                 melee.OnAttackCanceled += onCancel;
                 melee.OnHitResolved += onHit;
-                _unsubscribers.Add(() => { melee.OnAttackStarted -= onStart; melee.OnAttackCanceled -= onCancel; melee.OnHitResolved -= onHit; });
+                // 히트스톱 시작 (때린 쪽·맞은 쪽), 기상 방식, 대시 공격이 빗나감(상대가 피함)
+                Action<bool> onStop = asAttacker => ErrorLog.Run(() => Count(index, "hitstop_start", asAttacker ? "attacker" : "defender"), "PlayLogger.onHitStop");
+                Action<KnockTickResult> onWake = kind => ErrorLog.Run(() => Count(index, "wake_" + WakeKey(kind)), "PlayLogger.onWake");
+                Action<AttackType, bool> onTackleEnd = (type, landed) => ErrorLog.Run(() => OnTackleEnded(index, type, landed), "PlayLogger.onTackleEnd");
+                melee.OnHitStopStarted += onStop;
+                melee.OnWokeUp += onWake;
+                melee.OnTackleEnded += onTackleEnd;
+                _unsubscribers.Add(() =>
+                {
+                    melee.OnAttackStarted -= onStart;
+                    melee.OnAttackCanceled -= onCancel;
+                    melee.OnHitResolved -= onHit;
+                    melee.OnHitStopStarted -= onStop;
+                    melee.OnWokeUp -= onWake;
+                    melee.OnTackleEnded -= onTackleEnd;
+                });
             }
 
             // 버퍼 발동은 WeaponSystem이 알린다 (연습 봇도 같은 WeaponSystem을 쓴다)
@@ -241,12 +262,18 @@ namespace MyDongari.Game.Flow
             MechStateMachine sm = mech.GetComponent<MechStateMachine>();
             if (sm != null)
             {
+                MeleeSystem stateMelee = mech.GetComponent<MeleeSystem>();
+                MechState previous = sm.CurrentState;
                 Action<MechState> onState = state => ErrorLog.Run(() =>
                 {
                     // "sidestep" 집계는 사이드스텝이 없어져 항상 0 (CSV 열은 형식 유지로 남김)
                     if (state is VoAirDashState) Count(index, "air_dash");
                     else if (state is VoCloseStepState) Count(index, "close_step");
                     else if (state is VoDiveState) Count(index, "dive");
+                    // 근접 취소: 휘두르는 도중 다른 상태로 나갔다 → 무엇으로 끊겼는지
+                    bool midSwing = (previous is VoMeleeState m && m.ExitedMidSwing) || (previous is VoJumpMeleeState jm && jm.ExitedMidSwing);
+                    if (midSwing) Count(index, "melee_cancel", MeleeCancelKey(state, stateMelee));
+                    previous = state;
                 }, "PlayLogger.onState");
                 sm.OnStateChanged += onState;
                 _unsubscribers.Add(() => sm.OnStateChanged -= onState);
@@ -266,10 +293,19 @@ namespace MyDongari.Game.Flow
                 });
 
                 {
-                    Action onDashStart = () => ErrorLog.Run(
-                        () => Count(index, "dash_enter"), "PlayLogger.onDashStart");
-                    Action<DashExitReason> onDashEnd = reason => ErrorLog.Run(
-                        () => Count(index, "dash_exit_" + DashExitKey(reason)), "PlayLogger.onDashEnd");
+                    // 대시 시작(지상·공중) / 끝(이유 + 이어진 틱 수)
+                    int dashStartTick = -1;
+                    Action onDashStart = () => ErrorLog.Run(() =>
+                    {
+                        dashStartTick = VoTickDriver.TickCount;
+                        Count(index, "dash_enter", sm.IsAirborne ? "air" : "ground");
+                    }, "PlayLogger.onDashStart");
+                    Action<DashExitReason> onDashEnd = reason => ErrorLog.Run(() =>
+                    {
+                        string length = dashStartTick >= 0 ? (VoTickDriver.TickCount - dashStartTick) + "f" : "";
+                        dashStartTick = -1;
+                        Count(index, "dash_exit_" + DashExitKey(reason), length);
+                    }, "PlayLogger.onDashEnd");
                     sm.OnDashStarted += onDashStart;
                     sm.OnDashEnded += onDashEnd;
                     _unsubscribers.Add(() =>
@@ -342,8 +378,17 @@ namespace MyDongari.Game.Flow
         }
 
         /// <summary>피격자(defender) 쪽 MeleeSystem에서 결과가 정해졌을 때.</summary>
-        private void OnHitResolved(int defender, HitInfo info, HitResult result)
+        private void OnHitResolved(int defender, HitInfo info, HitResult result, MeleeSystem defenderMelee, MechStateMachine defenderSm)
         {
+            // 반응 종류 + 충격치 누적값(이 타격을 더한 뒤), 착지 경직 중 피격
+            if (result == HitResult.Hit || result == HitResult.Guarded || result == HitResult.GuardBroken)
+            {
+                string impact = defenderMelee != null ? defenderMelee.Impact.ToString("F0", CultureInfo.InvariantCulture) : "";
+                if (info.Reaction != Reaction.None) Count(defender, "reaction_" + ReactionKey(info.Reaction), $"{AttackKey(info.Type)} impact={impact}");
+                else LogEvent(defender, "reaction_none", $"{AttackKey(info.Type)} impact={impact}");
+                if (defenderSm != null && defenderSm.IsLanding) Count(defender, "hit_while_landing", AttackKey(info.Type));
+            }
+
             int attacker = ResolveAttackerIndex(info, defender);
             string resultKey = ResultKey(result);
 
@@ -374,6 +419,66 @@ namespace MyDongari.Game.Flow
                     Count(attacker, "clash");
                     break;
             }
+        }
+
+        /// <summary>대시 공격·차징 태클이 끝남. 빗나갔으면 공격자 miss, 피격자는 피함(그때 무엇을 하고 있었는지).</summary>
+        private void OnTackleEnded(int attacker, AttackType type, bool landed)
+        {
+            if (landed || type != AttackType.DashAttack) return;
+            Count(attacker, "dash_attack_miss");
+            int defender = attacker == 1 ? 2 : 1;
+            GameObject defenderMech = defender == 1 ? player1 : player2;
+            MechStateMachine sm = defenderMech != null ? defenderMech.GetComponent<MechStateMachine>() : null;
+            Count(defender, "dash_attack_evaded", sm != null ? sm.CurrentStateName : "");
+        }
+
+        private static string ReactionKey(Reaction reaction)
+        {
+            switch (reaction)
+            {
+                case Reaction.InvulnOnly: return "invuln_only";
+                case Reaction.GuardStagger: return "guard_stagger";
+                case Reaction.Stagger: return "stagger";
+                case Reaction.Down: return "down";
+                case Reaction.AirDown: return "air_down";
+                case Reaction.Blown: return "blown";
+                default: return "none";
+            }
+        }
+
+        private static string WakeKey(KnockTickResult kind)
+        {
+            switch (kind)
+            {
+                case KnockTickResult.WakeAttack: return "attack";
+                case KnockTickResult.WakeDash: return "dash";
+                case KnockTickResult.WakeJump: return "jump";
+                default: return "plain";
+            }
+        }
+
+        /// <summary>근접을 끊은 것: 들어간 상태(점프·대시·근접 스텝·런지·넉다운) 또는 전투 허브가 끊은 이유(맞딜·피격·가드·경직).</summary>
+        private static string MeleeCancelKey(MechState next, MeleeSystem melee)
+        {
+            if (melee != null && melee.LastMeleeCancelTick == VoTickDriver.TickCount && !string.IsNullOrEmpty(melee.LastMeleeCancelReason))
+                return melee.LastMeleeCancelReason;
+            switch (next)
+            {
+                case VoJumpMeleeState _: return "jump_slash";
+                case VoJumpState _: return "jump";
+                case VoCloseStepState _: return "close_step";
+                case VoGroundDashState _: return "dash";
+                case LungeState _: return "lunge";
+                case KnockdownState _: return "knockdown";
+            }
+            if (melee != null)
+            {
+                if (melee.IsKnockedDown) return "knockdown";
+                if (melee.IsStaggered || melee.IsStunned) return "stagger";
+                if (melee.IsGuardStaggered || melee.IsGuarding) return "guard";
+                if (melee.IsPushed) return "clash";
+            }
+            return "other";
         }
 
         private void OnLungeEnded(int attacker, HitResult? result)

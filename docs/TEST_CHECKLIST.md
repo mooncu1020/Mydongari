@@ -662,3 +662,28 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (봇 V8) `MeleeDummy` 인스펙터에 `두뇌`·`가상 패드` 묶음이 보이고, 반응 지연(틱)을 크게 하면 봇의 패리·회피가 눈에 띄게 늦어짐
 - [ ] (2인 스모크) 메뉴 `Tools/Combat Smoke Test`가 이제 약 2분: PRACTICE 9장면(30초) 뒤 VERSUS로 바뀌어 1P·2P 둘 다 자동 입력으로 7장면을 60fps로 한 번, 30fps로 한 번 돎. `Player.log`에 `[CombatSmoke] 60fps V1 …`~`V7`, `30fps …`, `VERSUS 60fps·30fps 비교: 반응·최종 체력 같음`, `RESULT PASS`
 - [ ] (2인 스모크) V1·V2 맞딜: 둘 다 `[맞딜]`, 체력 100, `맞딜 뒤 밀림`이 1P·2P 같음(약 0.50m). `파고듦`은 1P 1.12m / 2P 0.87m로 다른 게 정상(1P가 먼저 움직이는 원본 순서). V3: 2P만 14틱 멈추고 1P는 0틱. V4: 벽에 붙은 임시 상자(회색)에 `최대 파묻힘 0.000m`. V6(4.5m에서 점프): `AirDown` 뒤 `기상 대시 True`
+
+### 로그 CSV 열 (PlayLogger, 2026-11-15 추가분 포함)
+
+빌드 옆(에디터는 프로젝트 루트) `Logs/PlayLogs/`에 세 파일.
+
+- `events_*.csv` 열: `time`(게임 시간 초) · `round`(라운드 번호) · `player`(P1/P2, 공용이면 -) · `event`(아래 이름) · `distance`(두 기체 거리 m) · `detail`(이벤트별 상세)
+- `summary_*.csv` 열: `match`(매치 번호, 연습이면 `_practice`, 도중 종료면 `_incomplete`) · `player` · `metric`(아래 이벤트 이름 = 그 매치의 횟수) · `value`
+- `playlog_*.csv` 열: 0.1초마다 `time, round, p1_hp, p1_heat, p1_state, p1_posX, p1_posZ, p1_moveX, p1_moveY, p2_…(같은 순서), distance, dist_band` (바뀐 것 없음)
+
+새로 추가·확장한 `event` (detail 형식):
+
+| event | 뜻 | detail |
+|---|---|---|
+| `dash_enter` | 대시 시작 (확장) | `ground` 지상 / `air` 공중 |
+| `dash_exit_<이유>` | 대시 끝 (확장). 이유: canceled·wall·landed·stun·tackle(대시 공격으로 넘어감)·bump·timeout·jump·close_step | 이어진 틱 수 (`31f`) |
+| `jump` | 점프 (기존) | 없음 |
+| `hit_while_landing` | 착지 경직(12f) 중에 맞음 (맞은 쪽) | 맞은 공격 (`punch` 등) |
+| `melee_cancel` | 펀치·뛰어 베기를 휘두르는 도중 끊김 | 무엇으로: `jump` 점프 · `dash` 대시 · `close_step` 근접 스텝 · `jump_slash` · `lunge` · `knockdown` · `clash` 맞딜 · `hit` 맞음 · `guard` 가드 · `stun` 경직 · `reset` 라운드 리셋 · `other` |
+| `reaction_<종류>` | 맞은 반응 (맞은 쪽). 종류: `stagger` 경직 · `down` 다운 · `blown` 날아감 · `guard_stagger` 가드 경직 · `air_down` 공중 다운 · `invuln_only` 반응 없이 무적. 반응이 없는 피격은 `reaction_none`(이벤트만, 요약엔 안 셈) | `<공격> impact=<충격치 누적값>` — 이 타격을 더한 뒤의 누적값 (예: `punch impact=519`) |
+| `hitstop_start` | 이 기체에 히트스톱(15f)이 걸림 | `attacker` 때린 쪽으로 / `defender` 맞은 쪽으로 |
+| `wake_<방식>` | 다운에서 일어남. 방식: `plain` 그냥 · `attack` 일어나며 공격 · `dash` 일어나며 대시 · `jump` 일어나며 점프 | 없음 |
+| `dash_attack_miss` | 내 대시 공격이 빗나감 (때린 쪽) | 없음 |
+| `dash_attack_evaded` | 상대 대시 공격을 피함 (피한 쪽) | 그 순간 내 상태 (`VoJumpState` = 점프로 피함 등) |
+
+- [ ] (로그) 2인 대전 한 판 뒤 `events_*.csv`에 위 이벤트가 나옴: 펀치를 점프·대시로 끊으면 `melee_cancel,jump|dash`, 맞딜이면 `melee_cancel,clash`, 다운을 당하고 연타·선입력에 따라 `wake_attack|dash|jump|plain`, 대시 공격을 점프로 피하면 `dash_attack_evaded,VoJumpState`. `summary_*.csv`에 `reaction_*`·`hitstop_start`·`wake_*` 줄이 0이어도 항상 나옴
