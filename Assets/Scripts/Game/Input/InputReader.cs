@@ -121,7 +121,7 @@ namespace MyDongari.Game.Input
             _playerInput = GetComponent<PlayerInput>();
             _moveAction = _playerInput.actions["Move"];
             _lookAction = _playerInput.actions["Look"];
-            // Run·Slide·QuickTurn·Sprint 액션은 .inputactions에 남아 있지만 V3에서 읽지 않는다 (걷기·슬라이딩·초신지선회·전력질주 삭제)
+            // Run·Slide·Quickturn·Sprint·Guard·StepLeft·StepRight·MoveStick·LookStick 액션은 V3에서 읽지 않아 .inputactions에서 지웠다 (가드는 Cross 액션)
             _dashAction = _playerInput.actions["Dash"];
             _jumpAction = _playerInput.actions["Jump"];
             _skill1Action = _playerInput.actions["Skill1"];
