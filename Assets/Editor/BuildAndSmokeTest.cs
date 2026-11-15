@@ -28,8 +28,8 @@ namespace MyDongari.EditorTools
         /// <summary>빌드 쪽(AppRuntime)이 이 인자를 보면 전체 화면을 강제하지 않는다.</summary>
         public const string SmokeTestArgument = "-smokeTest";
 
-        // 전투 스모크 테스트: 빌드가 스스로 30초쯤 돌고 끝난다 (준비·카운트다운 + 20초). 이 시간이 지나도 안 끝나면 닫는다
-        private const float CombatRunSeconds = 60f;
+        // 전투 스모크 테스트: 빌드가 스스로 2분쯤 돌고 끝난다 (PRACTICE 30초 + VERSUS 35초 × 60fps·30fps + 카운트다운 셋). 이 시간이 지나도 안 끝나면 닫는다
+        private const float CombatRunSeconds = 200f;
         private static bool _combat;
         private static float CurrentRunSeconds => _combat ? CombatRunSeconds : RunSeconds;
 

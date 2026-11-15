@@ -14,6 +14,7 @@ namespace MyDongari.Game.Flow
     /// PRACTICE 모드에서 플레이어 자리에 자동 입력(InputReader 스크립트 입력)을 넣고 연습 봇을 상대로 30초(1800틱) 동안
     /// 장면 여섯 개를 차례로 돌린다: 원투쓰리 / 가드에 펀치 / 동시 펀치(맞딜) / 런지 / 대시 공격 / 뛰어 베기.
     /// 이어서 봇 장면 세 개(P1은 가만히 또는 가끔 펀치): 공격만 모드 12m / 패리 모드 3m / 섞어서 모드 6m — 봇이 이동기로 다가가 공격하는지 본다.
+    /// 그다음 VERSUS 모드로 바꿔 1P·2P 둘 다 자동 입력인 장면(VersusSmokeScenes)을 60fps로 한 번, 30fps로 한 번 돌리고 두 결과가 같은지 본다.
     /// 장면마다 두 기체를 리셋하고 정해진 거리(기본 3m, 런지·대시는 그보다 멀리)에 마주 세운다.
     /// 끝나면 경직·다운·날아감·가드 경직·맞딜 발생 횟수, 예외·오류 로그 수, NaN, 두 기체가 겹친 틱 수, 맵 밖 이탈을 로그로 남기고 종료한다.
     /// 반응 횟수가 하나라도 0이거나 예외·NaN·맵 밖 이탈이 있으면 실패. 시간은 전부 물리 스텝(= 전투 틱) 수로 센다.
@@ -63,6 +64,16 @@ namespace MyDongari.Game.Flow
         private InputReader _botPad;
         private Rigidbody _p1Rb;
         private Rigidbody _botRb;
+
+        // VERSUS 단계: 0 = 아직(PRACTICE 중), 1 = 60fps 준비·진행, 2 = 30fps 준비·진행, 3 = 끝
+        private int _versusStage;
+        private int _versusWait;
+        private VersusSmokeScenes _versus60;
+        private VersusSmokeScenes _versus30;
+        private VersusSmokeScenes _versusActive;
+        private bool _practiceDone;
+        private const int VersusFps = 60;
+        private const int VersusSlowFps = 30;
 
         private bool _ready;
         private bool _finished;
@@ -123,10 +134,16 @@ namespace MyDongari.Game.Flow
                 return;
             }
 
+            if (_practiceDone)
+            {
+                TickVersus();
+                return;
+            }
             Measure();
             if (_tick >= SceneTicks * SceneCount)
             {
-                Finish(null);
+                _practiceDone = true;
+                _reader.SetScripted(false);
                 return;
             }
             int scene = _tick / SceneTicks;
@@ -327,12 +344,78 @@ namespace MyDongari.Game.Flow
                       $" 넉다운 {_botMelee.IsKnockedDown}, 체력 {(h1 != null ? h1.CurrentHealth : -1f):0.0}/{(h2 != null ? h2.CurrentHealth : -1f):0.0}");
         }
 
+        // ---------------- VERSUS ----------------
+
+        /// <summary>PRACTICE 장면이 끝난 뒤: VERSUS로 바꾸고 60fps → 30fps로 같은 장면을 돌린다.</summary>
+        private void TickVersus()
+        {
+            if (_versusStage == 0)
+            {
+                if (!_gm.CanStartVersus)
+                {
+                    Finish("VERSUS를 시작할 수 없습니다 (2인 기체 없음)");
+                    return;
+                }
+                _versusStage = 1;
+                BeginVersusStage(VersusFps);
+                return;
+            }
+            if (_versusActive == null)
+            {
+                // 라운드 시작(카운트다운)을 기다린다
+                _versusWait++;
+                if (_versusWait > ReadyTimeoutTicks)
+                {
+                    Finish("VERSUS 라운드가 시작되지 않았습니다");
+                    return;
+                }
+                if (_gm.Mode != GameMode.Versus || !_gm.IsRoundActive) return;
+                var scenes = new VersusSmokeScenes();
+                if (!scenes.Setup(_gm, _versusStage == 1 ? VersusFps + "fps" : VersusSlowFps + "fps"))
+                {
+                    Finish("VERSUS 기체 부품을 찾지 못했습니다");
+                    return;
+                }
+                _versusActive = scenes;
+                if (_versusStage == 1) _versus60 = scenes;
+                else _versus30 = scenes;
+                Debug.Log($"{LogTag} VERSUS {scenes.Label} 시작: {VersusSmokeScenes.SceneCount}장면 × {VersusSmokeScenes.SceneTicks}틱");
+                return;
+            }
+            _versusActive.Tick();
+            Measure();
+            if (!_versusActive.Done) return;
+            _versusActive.Release();
+            _versusActive = null;
+            if (_versusStage == 1)
+            {
+                _versusStage = 2;
+                BeginVersusStage(VersusSlowFps);
+                return;
+            }
+            _versusStage = 3;
+            Finish(null);
+        }
+
+        private void BeginVersusStage(int fps)
+        {
+            // 화면 프레임만 바꾼다 (전투 틱은 60Hz 고정). 30fps면 한 프레임에 물리 스텝 두 번
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = fps;
+            _versusWait = 0;
+            _gm.StartMode(GameMode.Versus);
+        }
+
         // ---------------- 측정 ----------------
 
         private void Measure()
         {
+            // VERSUS 단계에선 지금 상대(2P)로 잰다
+            GameObject other = _practiceDone && _gm != null ? _gm.Player2 : _bot;
+            Rigidbody otherRb = other != null ? other.GetComponent<Rigidbody>() : null;
+            if (otherRb == null) return;
             Vector3 a = _p1Rb.position;
-            Vector3 b = _botRb.position;
+            Vector3 b = otherRb.position;
             if (!IsFinite(a) || !IsFinite(b))
             {
                 _nanTicks++;
@@ -341,11 +424,11 @@ namespace MyDongari.Game.Flow
             if (IsOutOfMap(a) || IsOutOfMap(b)) _outOfMapTicks++;
 
             // 겹침: 두 캡슐의 수평 거리가 반지름 합보다 1cm 넘게 작고 높이도 겹친다
-            float ra = RadiusOf(_p1), rb = RadiusOf(_bot);
+            float ra = RadiusOf(_p1), rb = RadiusOf(other);
             Vector3 flat = a - b;
             float dy = Mathf.Abs(flat.y);
             flat.y = 0f;
-            if (flat.magnitude < ra + rb - 0.01f && dy < HeightOf(_p1) * 0.5f + HeightOf(_bot) * 0.5f) _overlapTicks++;
+            if (flat.magnitude < ra + rb - 0.01f && dy < HeightOf(_p1) * 0.5f + HeightOf(other) * 0.5f) _overlapTicks++;
         }
 
         private bool IsOutOfMap(Vector3 position)
@@ -378,6 +461,7 @@ namespace MyDongari.Game.Flow
         {
             _finished = true;
             if (_reader != null) _reader.SetScripted(false);
+            if (_versusActive != null) _versusActive.Release();
             if (_p1Melee != null) _p1Melee.OnHitResolved -= OnHit;
             if (_botMelee != null) _botMelee.OnHitResolved -= OnHit;
 
@@ -394,7 +478,12 @@ namespace MyDongari.Game.Flow
             bool botMoved = approach.Contains("Walk") || approach.Contains("GroundDash");
             bool botAttacked = approach.Contains("Melee") || approach.Contains("JumpMelee") || approach.Contains("Lunge") || _botHitsLanded > 0;
             bool botOk = botMoved && botAttacked;
-            bool pass = setupFailure == null && missing.Length == 0 && comboOk && botOk && _exceptions == 0 && _nanTicks == 0 && _outOfMapTicks == 0;
+            // VERSUS: 장면별 검사 + 60fps·30fps 결과가 같아야 한다
+            string versus60 = _versus60 != null ? _versus60.Problems() : "60fps 장면을 안 돌림";
+            string versus30 = _versus30 != null ? _versus30.Problems() : "30fps 장면을 안 돌림";
+            string fpsDiff = _versus60 != null && _versus30 != null ? VersusSmokeScenes.Compare(_versus60, _versus30) : "비교할 결과 없음";
+            bool versusOk = versus60 == null && versus30 == null && fpsDiff == null;
+            bool pass = setupFailure == null && missing.Length == 0 && comboOk && botOk && versusOk && _exceptions == 0 && _nanTicks == 0 && _outOfMapTicks == 0;
 
             Debug.Log($"{LogTag} 반응: 경직 {_stagger} / 다운 {_down} / 날아감 {_blown} / 가드경직 {_guardStagger} / 맞딜 {_clash} (무적만 {_invulnOnly}, 명중 {_hits})");
             Debug.Log($"{LogTag} 안정성: 예외·오류 로그 {_exceptions} / 좌표 깨짐 틱 {_nanTicks} / 겹친 틱 {_overlapTicks} / 맵 밖 틱 {_outOfMapTicks} / 돌린 틱 {_tick}");
@@ -405,6 +494,9 @@ namespace MyDongari.Game.Flow
                 Debug.Log($"{LogTag} 봇 {names[i]}: 상태 [{string.Join(", ", _botStates[i])}] / 행동 [{string.Join(", ", _botOrders[i])}]");
             }
             Debug.Log($"{LogTag} 봇: 명중·가드됨 {_botHitsLanded} / 패리 {_botParries} ({(botOk ? "다가가 공격함 — 정상" : "공격만 모드가 다가가 공격해야 함")})");
+            Debug.Log($"{LogTag} VERSUS 60fps: {versus60 ?? "정상"}");
+            Debug.Log($"{LogTag} VERSUS 30fps: {versus30 ?? "정상"}");
+            Debug.Log($"{LogTag} VERSUS 60fps·30fps 비교: {fpsDiff ?? "반응·최종 체력 같음"}");
             if (setupFailure != null) Debug.Log($"{LogTag} 준비 실패: {setupFailure}");
             if (missing.Length > 0) Debug.Log($"{LogTag} 횟수 0인 반응:{missing}");
             if (_firstProblems.Length > 0) Debug.Log($"{LogTag} 첫 오류 로그{_firstProblems}");

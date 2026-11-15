@@ -565,6 +565,12 @@ namespace MyDongari.Game.Flow
         public void ResetPracticeNow()
         {
             if (Mode != GameMode.Practice) return;
+            ResetMechsNow();
+        }
+
+        /// <summary>두 기체를 지금 바로 스폰 자리·라운드 시작 상태로 (모드 무관, 라운드는 그대로). 전투 스모크의 VERSUS 장면이 쓴다.</summary>
+        public void ResetMechsNow()
+        {
             StopActiveMoves(player1);
             StopActiveMoves(player2);
             ResetMech(player1, player1SpawnPoint);
