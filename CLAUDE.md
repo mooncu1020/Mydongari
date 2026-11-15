@@ -61,7 +61,12 @@
 1. 작업 시작 전에 `docs/GAME_SPEC.md`, `docs/TASKS.md`를 읽는다.
 2. 브랜치 `v3`에서 작업한다. **push는 하지 않는다.**
 3. TASKS의 순서대로 한 태스크씩 처리한다. 태스크 하나 = 커밋 하나 이상. 커밋 메시지는 한국어로 "태스크ID: 요약" (예: `A3: 가드 규칙을 히트 기반으로 교체`).
-4. 이 환경에서는 Unity 에디터를 실행할 수 없다. 그래서:
+4. 이 환경에서는 Unity 에디터 창을 띄워 직접 플레이할 수는 없지만, **배치 모드로 컴파일·빌드·테스트는 돌릴 수 있다** (`Unity.exe -batchmode -projectPath . …`, 에디터가 이 프로젝트를 열고 있으면 안 된다). 커밋 전에 돌린다:
+   - 빌드 스모크: `-executeMethod MyDongari.EditorTools.BuildAndSmokeTest.RunFromCommandLine` (메뉴 `Tools/Build And Smoke Test`) — 빌드 후 10초 실행, Player.log의 Exception·Error·NaN 0줄이어야 한다.
+   - 전투 스모크: `-executeMethod MyDongari.EditorTools.BuildAndSmokeTest.RunCombatFromCommandLine` (메뉴 `Tools/Combat Smoke Test`) — PRACTICE에서 자동 입력 20초, `[CombatSmoke] RESULT PASS`여야 한다.
+   - EditMode 테스트: `-runTests -testPlatform EditMode -testResults <파일>` (`Assets/Editor/Tests/`).
+   - 씬·에셋을 고쳐야 하면 손으로 YAML을 건드리지 말고 에디터 스크립트를 `-executeMethod`로 돌려 Unity가 쓰게 한다 (예: `StyleOverridesSetup.SaveFromCommandLine`, `MissingScriptCleanup.RunFromCommandLine`).
+   - 스모크와 테스트는 조작감·연출·2인 대전을 보지 못한다. 그래서 아래 두 가지는 여전히 한다.
    - 존재하는 API만 쓰고, 바꾼 public 멤버를 참조하는 곳을 `grep`으로 전부 찾아 같이 고친다. 컴파일 에러를 남기지 않는 게 최우선이다.
    - 태스크마다 `docs/TEST_CHECKLIST.md`에 사용자가 에디터에서 직접 확인할 항목을 추가한다 (무엇을 하면 무엇이 보여야 하는지).
    - 인스펙터에서 새로 연결해야 하는 참조가 생기면 `docs/SETUP.md`에 적는다.
