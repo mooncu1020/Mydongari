@@ -179,3 +179,14 @@
 | CL5 | `StyleOverrides`에서 켬/끔이 없는 칸 4종(`stickThreshold` 0.3, `cameraFov` 35, 가드 자동 선회 400/1092, 사격 조준 2560)은 원본에 대응 값이 없어 "끄면 원본"이 성립하지 않아 값만 뒀다. 원본에 있던 상승 중 재점프는 `risingRejump` 스위치 뒤에 V8.2 코드를 되살렸고 우리 값은 끔 — 켠 상태의 동작은 에디터에서 한 번 확인 필요. | 값만 / 재점프 끔 | |
 | CL6 | 계획과 달리 `IDashMove`·`DashExitReason`은 `Core/VirtualOn`에(코어 상태가 구현), `MechIdentity`는 `Bridge`에, `HitStop`은 `Game/Flow`에 뒀다 — "Core는 Bridge/Game을 using하지 않는다"를 지키려고. `PlayLogger`는 로그 집계용으로 코어 상태 타입을 직접 본다(읽기만). 컴파일러가 강제하지는 않는다(asmdef 없음) — 확인 명령: `grep -rn "using MyDongari.\(Bridge\|Game\)" Assets/Scripts/Core` 결과가 비어야 함. | 위 배치 | |
 | CL7 | `BernardTuning.asset`을 Unity가 다시 쓰게 했다(`Mydongari/Tuning/Save Tuning Assets To Disk`). 코드에서 없어진 칸(`boost` 블록, 예전 `movement` 칸들)은 빠지고, 에셋에 없던 블록(`combo`·`startup`·`knockdown`·`hitFeel`·`visual`·`gait`·`motion`)은 코드 기본값으로 채워졌다 — 지금까지 실제로 돌던 값과 같다. 앞으로 인스펙터에서 바꾼 값은 에셋에 남는다. | 저장 | |
+| 전투D | 근접 추적의 표적: 사양은 "지연 표적 위치(Core에 있으면 그것)"인데 코어에 지연 표적이 없다. | 상대의 지금 위치로 추적 (PLAN_CLEANUP C6) | |
+| 전투D | 쓰리(C1)를 콤보 3타로: 원본 템진은 A1이 2타까지고 C1은 단독 근접이다. 지시대로 투의 ② 단계 예약으로 ③을 건너뛰고 쓰리로 잇는다. 투의 단계 길이는 원과 같게. | 지시대로 (C7·C8) | |
+| 전투F | 가드된 근접의 반응: 사양서 2.1 표대로면 가드 중 충격치가 10%라 대개 200 미만 = "반응 없음"이 되는데, 1.5절과 지시(H)는 "막으면 가드 경직 16f". | 막으면 항상 가드 경직, 강타·판정값 ≥ 1200이면 깨져 날아감 (C17) | |
+| 전투F | 기상 대기의 대시 선입력: 사양은 "대시 방향(대시 허가 필요)"만 있다. | 대기가 끝나는 틱에 ○를 누르고 있고 + 스틱 방향 + 대시 게이지 허가면 상대 방위 기준 대시. 우선순위는 사양서 표 순서(공격 → 대시 → 점프 → 그냥 기상) | |
+| 전투F | 파일 드라이버 넉다운의 대기: 예전엔 전역 히트스톱이 끝난 뒤 + 여유 0.03초에 날아갔다. | 외형 어퍼컷이 닿는 시간(`Motion.uppercutRiseTime`)만큼 틱으로 기다리고, 그 사이 걸린 기체별 히트스톱 15f 동안은 대기도 멈춘다 | |
+| 전투G | 뛰어 베기의 수평 속력·단계 길이·판정 창·중력이 원본 미확인. 점프 중력(0.074) 그대로면 vy 3.80으로 6m까지 솟아 지상의 상대에게 판정 구가 닿지 않는다. | 기준 4.0u/f, 12/10f, 판정 2~7f, 중력 0.451·낙하 상한 4.001(다운 상태 값) — 정점 약 1.4m, 약 17틱 뒤 착지. 전부 `StyleOverrides` [미상] 칸 (C23) | |
+| 전투G | 뛰어 베기 피해: 우리 값이 없던 새 기술. | 30 (`BernardTuning.Combo.jumpSlashDamage`, 펀치 코드 기본 25 × 원본 비율 340/290). 에셋의 펀치 피해가 10으로 조정돼 있어 상대적으로 큰 편 — 확인 필요 | |
+| 전투H | "가드됨이면 때린 쪽 15f"와 "대시 공격·뛰어 베기는 때린 쪽이 멈추지 않는다"가 겹칠 때(대시 공격이 가드됨). | 가드됨이면 종류와 무관하게 때린 쪽도 멈춘다 (지시 문장 순서대로) | |
+| 전투H | 맞딜(같은 틱 맞교환)의 히트스톱: 예전엔 0.12초, 새 규칙엔 언급 없음. | 히트스톱 없이 밀려나기만 (C28) | |
+| 전투H | 지운 `HitStop.cs`가 씬의 GameManager에 Missing Script로 남는다. | 에디터 batchmode(`MissingScriptCleanup.RunFromCommandLine`)로 씬에서 떼고 저장했다(YAML 수동 편집 아님). 같이 빠진 것은 CL3에서 지운 칸의 고아 값뿐 | |
+| 전투J | EditMode 테스트 위치: asmdef를 쓰지 않기로 했던 결정(Q5)을 유지하려고 테스트 어셈블리를 따로 만들지 않았다. | `Assets/Editor/Tests/`(Assembly-CSharp-Editor)에 두고 batchmode `-runTests -testPlatform EditMode`로 17개 통과 확인 | |

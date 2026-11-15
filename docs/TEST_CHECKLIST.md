@@ -648,3 +648,5 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] (전투I) 대시 선입력: 경직·후딜·착지가 끝나기 15틱(0.25초) 안에 ○를 누른 채 방향을 넣고 있으면 풀리는 첫 틱에 대시(상대 6m 안에서 ○ 먼저 → 스틱이면 근접 스텝). 점프는 미리 눌러 둬도 안 나가고 풀린 뒤 다시 눌러야 함(기상 대기만 예외)
 - [ ] (전투I) 착지 경직(12틱) 중 공격을 누르면 착지를 끊고 바로 펀치(근접 구역)·런지가 나감. 공중에서 미리 눌러 둔 공격은 착지해도 안 나감. 착지 중 스킬·점프·대시는 여전히 불가
 - [ ] (전투I) `BernardTuning → 공격 발생 시간`에 `Input Buffer` 칸이 없음(정상 — 4틱은 `VoCombatSpec.meleeBufferFrames`)
+- [ ] (전투J) `Window → General → Test Runner → EditMode → Run All`: `CombatRulesTests` 17개 전부 초록 (원·투 경직/쓰리 다운, 가드 10%, 경직 중 입력 무시, 히트스톱 15f, 파고들기 정지 거리, 같은 틱 맞교환 대칭, 30/60fps 동일, 근접 구역, 쓸기 판정)
+- [ ] (전투J) 플레이 중 `VoMotor → Debug Log`를 켜면 콘솔 `[VoCombatSpec] … 원본과 다른 칸`에 우리 값만 나옴: `impactA1First`·`impactA1Second`(280), `jumpMelee`(4u/f 12/10f 판정 2~8), `jumpMeleeGravity`·`jumpMeleeFallMaxVy`

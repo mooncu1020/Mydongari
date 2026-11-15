@@ -24,9 +24,6 @@ MonoBehaviour:
   closeStepFromDashFrames:
     enabled: 1
     value: 15
-  diveAllowedWhileFalling:
-    enabled: 1
-    value: 1
   risingRejump:
     enabled: 1
     value: 0
@@ -41,19 +38,45 @@ MonoBehaviour:
     enabled: 1
     value: 0.5
   cameraFov: 35
-  closeStepStartFill:
-    enabled: 1
-    frontDiagonal: 2.85
-    backDiagonal: 2.85
-    back: 1.5
-  closeStepEndFill:
-    enabled: 1
-    frontDiagonal: 2.55
-    backDiagonal: 2.55
-    back: 2.9
-  fallbackBodyHeight:
-    enabled: 1
-    value: 1.93
   guardTurnInside: 400
   guardTurnOutside: 1092
-  attackAimRate: 2560
+  punchSphere:
+    range: 1.8
+    radius: 0.5
+  thirdSphere:
+    range: 2
+    radius: 0.6
+  jumpSlashSphere:
+    range: 2
+    radius: 0.7
+  attackHandHeightRatio: 0.6
+  jumpRisingHurtScale: 0.6
+  jumpFallingHurtScale: 0.45
+  punch1Impact:
+    enabled: 1
+    value: 280
+  punch2Impact:
+    enabled: 1
+    value: 280
+  slamImpact: 1100
+  jumpMeleeSpeed:
+    enabled: 1
+    value: 4
+  jumpMeleeApproachFrames:
+    enabled: 1
+    value: 12
+  jumpMeleeAttackFrames:
+    enabled: 1
+    value: 10
+  jumpMeleeHitStart:
+    enabled: 1
+    value: 2
+  jumpMeleeHitEnd:
+    enabled: 1
+    value: 8
+  jumpMeleeGravity:
+    enabled: 1
+    value: 0.451
+  jumpMeleeFallMaxVy:
+    enabled: 1
+    value: 4.001

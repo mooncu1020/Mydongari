@@ -240,6 +240,7 @@ namespace MyDongari.Core.VirtualOn
                 // 정리 뒤에도 수치가 그대로인지 비교하려고 유효값 전부와 원본과 다른 칸을 남긴다
                 Debug.Log($"[VoSpec] {name} 유효값:\n{V.Dump()}", this);
                 Debug.Log($"[VoSpec] {name} 원본과 다른 칸:\n{V.DescribeDifferences()}", this);
+                Debug.Log($"[VoCombatSpec] {name} 원본과 다른 칸:\n{Host.CombatSpec.DescribeDifferences()}", this);
             }
         }
 

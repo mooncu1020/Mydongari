@@ -25,101 +25,78 @@ MonoBehaviour:
       side: 22.3
       backDiagonal: 21.3
       back: 14.2
-    knockbackMoveHold: 0.35
+    knockbackMoveHoldFrames: 21
     bumpSpeed: 4
-    dashAttackRecovery:
-      front: 0.2
-      frontDiagonal: 0.22
-      side: 0.23
-      backDiagonal: 0.27
-      back: 0.3
+    dashAttackRecoveryFrames:
+      front: 12
+      frontDiagonal: 13
+      side: 14
+      backDiagonal: 16
+      back: 18
     mouseTurnSensitivity: 2
-    landingLag: 0.2
     groundMinNormalY: 0.7
   heat:
     maxHeat: 100
     coolingRate: 20
     sprintCoolingReduction: 0.7
   punch:
-    range: 3
-    heightTolerance: 2
-    halfAngle: 45
     damage: 10
-    cooldown: 0.5
     heatPerPunch: 6
     clashKnockback: 10
   combo:
-    enabled: 1
-    window: 0.4
-    interval: 0.3
     thirdDamageMultiplier: 1.5
-    thirdKnockback: 8
-    thirdRecovery: 0.8
-    moveSpeedScale: 0.6
-    thirdRecoveryMoveSpeedScale: 0.4
+    jumpSlashDamage: 30
   startup:
-    punch: 0.1
-    dashAttack: 0.12
-    chargedTackle: 0.1
-    clashWindow: 0.1
-    inputBuffer: 0.15
+    dashAttackFrames: 7
+    chargedTackleFrames: 6
   guard:
-    meleeReduction: 0.5
-    projectileReduction: 0.7
     heatPerBlock: 10
-    breakStun: 0.9
-    reraiseDelay: 0.4
+    reraiseDelayFrames: 24
     damping: 8
     releaseDamping: 2
   parry:
-    window: 0.15
+    windowFrames: 9
     reflectRatio: 1
     reflectKnockback: 8
   tackle:
     damage: 10
-    knockback: 8
     range: 5
     halfAngle: 45
-    cooldown: 1
-    victimStun: 1.7
-    recoveryStun: 0.5
-    dashChargeStartTime: 0.8
-    dashFullChargeTime: 1.6
+    cooldownFrames: 60
+    recoveryFrames: 30
+    dashChargeStartFrames: 48
+    dashFullChargeFrames: 96
     contactRadius: 2
-    activeTime: 0.4
+    activeFrames: 24
     hitDistance: 3
   dashAttack:
     damage: 20
-    knockback: 6
-    stun: 0
     homingRange: 25
     homingTurnRate: 120
-    activeTime: 0.6
+    activeFrames: 36
     hitDistance: 3
   lunge:
     judgeMode: 0
     strikeDistance: 2.5
     strikeHalfAngle: 45
-    plantTime: 0.08
-    strikeExtendTime: 0.1
+    plantFrames: 5
+    strikeExtendFrames: 6
     strikeStopDamping: 10
     distance: 8
     speed: 30
     endSpeedRatio: 0.2
     timeoutMultiplier: 1.5
-    cooldown: 3
+    cooldownFrames: 180
     damage: 15
-    hitStun: 0.5
-    hitKnockback: 0
     hitRadius: 1.2
     hitForwardOffset: 1
     missLockDelay: 0.6
   anchorClaw:
     pullSpeed: 15
-    pullDuration: 1.5
+    pullFrames: 90
     pullStopDistance: 3
-    cooldown: 5
-    windupTime: 0.2
+    cooldownFrames: 300
+    windupFrames: 12
     projectileSpeed: 40
     range: 12
     hitRadius: 0.5
@@ -131,8 +108,8 @@ MonoBehaviour:
     glowSize: 0.45
     glowColor: {r: 1, g: 0.85, b: 0.3, a: 1}
     hookImpactSpeed: 32
-    hookEaseTime: 0.2
-    hookImpactStun: 0.25
+    hookEaseFrames: 12
+    hookImpactStunFrames: 15
     pileDriverDamage: 50
     pileDriverRange: 4
     terrainFloorNormalY: 0.7
@@ -143,8 +120,6 @@ MonoBehaviour:
     flightTime: 0.5
     slideTime: 0.45
     getUpTime: 0.8
-    invulnerableTime: 0.8
-    launchMargin: 0.03
     wallCheckRadiusScale: 0.9
     wallCheckSkin: 0.05
     wallShake: 0.15
@@ -162,25 +137,14 @@ MonoBehaviour:
     range: 8
     angle: 90
     damage: 10
-    knockback: 15
-    knockbackLift: 0.3
-    cooldown: 2
+    cooldownFrames: 480
   lockOn:
     softRange: 50
     softAngle: 30
     hardLockEnterRange: 10
     hardLockExitRange: 12
-    meleeSwitchRange: 6
-  hitStop:
-    enabled: 1
-    punch: 0.05
-    lungeTackle: 0.08
-    clash: 0.12
-    other: 0
-    pileDriver: 0.2
   hitFeel:
     light:
-      hitStop: 0.05
       victimShake: 0.04
       attackerShake: 0.015
       shakeTime: 0.12
@@ -190,7 +154,6 @@ MonoBehaviour:
       reactTime: 0.25
       effectScale: 0.6
     medium:
-      hitStop: 0.07
       victimShake: 0.07
       attackerShake: 0.025
       shakeTime: 0.18
@@ -200,7 +163,6 @@ MonoBehaviour:
       reactTime: 0.35
       effectScale: 1
     heavy:
-      hitStop: 0.1
       victimShake: 0.12
       attackerShake: 0.04
       shakeTime: 0.28
@@ -209,7 +171,6 @@ MonoBehaviour:
       reactPush: 0.18
       reactTime: 0.5
       effectScale: 1.6
-    gradeHitStop: 1
     guardedScale: 0.5
     flashTime: 0.05
     flashColor: {r: 1, g: 1, b: 1, a: 1}

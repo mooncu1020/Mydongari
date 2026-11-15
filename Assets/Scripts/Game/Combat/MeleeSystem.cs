@@ -42,15 +42,15 @@ namespace MyDongari.Game.Combat
         /// <summary>행동 불가: 경직(피격 반응) 또는 우리 규칙의 경직(공격자 경직·훅 경직).</summary>
         public bool IsStunned => _stunFrames > 0 || IsStaggered;
         /// <summary>경직(피격 반응, 28f) 중. 입력을 전혀 처리하지 않고 버퍼에도 남기지 않는다.</summary>
-        public bool IsStaggered => _pushFrames > 0 && !_pushIsGuard;
+        public bool IsStaggered => _react.IsStaggered;
         /// <summary>가드 경직(16f) 중. 끝나면 가드 유지로 돌아간다.</summary>
-        public bool IsGuardStaggered => _pushFrames > 0 && _pushIsGuard;
+        public bool IsGuardStaggered => _react.IsGuardStaggered;
         /// <summary>경직·가드 경직으로 밀려나는 중 (이동기는 그동안 외부 속도로 움직인다).</summary>
-        public bool IsPushed => _pushFrames > 0;
+        public bool IsPushed => _react.IsPushed;
         /// <summary>이동·공격·스킬 입력을 받지 않는 상태 (경직·가드 경직·공격자 경직).</summary>
         public bool IsActionLocked => IsStunned || IsGuardStaggered;
         /// <summary>근접 무적 중 (근접 계열 피격을 통째로 무시).</summary>
-        public bool IsMeleeInvulnerable => _meleeInvuln > 0;
+        public bool IsMeleeInvulnerable => _react.IsMeleeInvulnerable;
         /// <summary>충격치 누적값 (전투 사양서 2.1).</summary>
         public float Impact => _impact.Value;
         public bool CanTackle => _tackleTimer >= Tackle.cooldownFrames;
@@ -59,7 +59,7 @@ namespace MyDongari.Game.Combat
         /// 히트스톱 중 (전투 사양서 2.4·9장): 기체별 15f. 그동안 모션(공격 단계·경직 시간)·수평 이동·다운계 중력이 멈추고 외형도 멈춘다.
         /// 무적·쿨다운·입력 카운터는 계속 돈다.
         /// </summary>
-        public bool IsHitStopped => _hitStop > 0;
+        public bool IsHitStopped => _react.IsHitStopped;
 
         /// <summary>내가 맞았을 때(피격자 쪽) 판정 결과가 적용되면 발생. 로그·연출은 여기 구독.</summary>
         public event Action<HitInfo, HitResult> OnHitResolved;
@@ -92,14 +92,8 @@ namespace MyDongari.Game.Combat
         private int _parryFrames;
         // 충격치 누적값·근접 무적
         private readonly ImpactMeter _impact = new ImpactMeter();
-        private int _meleeInvuln;
-        // 남은 히트스톱(틱)
-        private int _hitStop;
-        // 경직·가드 경직: 남은 틱, 밀려나는 방향(공격 방향), 속력(u/f)
-        private int _pushFrames;
-        private bool _pushIsGuard;
-        private Vector3 _pushDirection;
-        private float _pushSpeed;
+        // 히트스톱·근접 무적·경직(가드 경직) 카운터 (순수 로직)
+        private readonly ReactionTimers _react = new ReactionTimers();
         private int _tackleTimer = Long;
         private int _stunFrames;
         private int _reraiseFrames;
@@ -204,7 +198,7 @@ namespace MyDongari.Game.Combat
             if (_stunFrames > 0) _stunFrames--;
             // 충격치는 매 틱 줄고, 무적 타이머도 매 틱 준다 (히트스톱 중에도)
             _impact.Tick(C.impactDecay);
-            if (_meleeInvuln > 0) _meleeInvuln--;
+            _react.TickInvuln();
 
             ApplyDecisions();
             TickPush();
@@ -262,11 +256,7 @@ namespace MyDongari.Game.Combat
         public void EndTick()
         {
             // 히트스톱 카운트 (전투 사양서 4.2-②-9)
-            if (_hitStop > 0)
-            {
-                _hitStop--;
-                return;
-            }
+            if (_react.EndTick()) return;
             VoMeleeDrive drive = ActiveDrive;
             if (drive == null)
             {
@@ -282,7 +272,7 @@ namespace MyDongari.Game.Combat
         private void ApplyDecisions()
         {
             // 내가 때린 공격이 맞았다(또는 막혔다): 때린 쪽 히트스톱. 맞은 쪽이 이미 근접 무적이었으면 걸리지 않는다(판단 때 걸러짐)
-            if (Ledger.AttackerStopPending) _hitStop = Mathf.Max(_hitStop, C.hitStopFrames);
+            if (Ledger.AttackerStopPending) _react.BeginHitStop(C.hitStopFrames);
             var decisions = Ledger.Decisions;
             Reaction heaviest = Reaction.None;
             HitInfo heaviestInfo = default;
@@ -327,7 +317,7 @@ namespace MyDongari.Game.Combat
                     // 근접 계열 피격이면 맞은 쪽은 항상 히트스톱 15f + 근접 무적 4f (반응이 없는 약한 피격도)
                     if (info.IsMelee)
                     {
-                        _hitStop = Mathf.Max(_hitStop, C.hitStopFrames);
+                        _react.BeginHitStop(C.hitStopFrames);
                         GrantMeleeInvuln(C.hitInvulnFrames);
                     }
                     // 막을 때마다 히트가 오른다 (가드의 대가)
@@ -367,7 +357,7 @@ namespace MyDongari.Game.Combat
                 case Reaction.AirDown:
                 case Reaction.Blown:
                     InterruptActions();
-                    _pushFrames = 0;
+                    _react.PushFrames = 0;
                     // 다운·날아감·공중 다운에 들어가면 충격치 누적을 지운다 (경직으로는 안 지운다)
                     _impact.Clear();
                     if (_knockdown != null)
@@ -392,7 +382,7 @@ namespace MyDongari.Game.Combat
         /// <summary>근접 무적을 frames틱 준다 (더 긴 쪽이 남는다).</summary>
         public void GrantMeleeInvuln(int frames)
         {
-            _meleeInvuln = Mathf.Max(_meleeInvuln, frames);
+            _react.GrantInvuln(frames);
         }
 
         /// <summary>상대가 200u 안이면 0.78 (이동 사양서의 근접 감속 — 피격 밀림에도 걸린다), 아니면 1.</summary>
@@ -408,29 +398,21 @@ namespace MyDongari.Game.Combat
         private void BeginPush(int frames, float speed, Vector3 direction, bool guard)
         {
             direction.y = 0f;
-            _pushFrames = frames;
-            _pushIsGuard = guard;
-            _pushSpeed = speed;
-            _pushDirection = direction.sqrMagnitude > 0.0001f ? direction.normalized : -transform.forward;
+            if (direction.sqrMagnitude < 0.0001f) direction = -transform.forward;
+            _react.BeginPush(frames, speed, direction, guard);
         }
 
         /// <summary>경직·가드 경직 한 틱: 공격 방향으로 밀린다 (히트스톱이 아닌 틱마다, 근접 감속과 함께). 끝나면 멈춘다.</summary>
         private void TickPush()
         {
-            if (_pushFrames <= 0 || _rb == null) return;
+            if (!_react.IsPushed || _rb == null) return;
             if (IsKnockedDown)
             {
-                _pushFrames = 0;
+                _react.PushFrames = 0;
                 return;
             }
-            if (IsHitStopped)
-            {
-                MotionBridge.SetHorizontalVelocity(_rb, Vector3.zero, undamped: true);
-                return;
-            }
-            _pushFrames--;
-            float speed = _pushFrames > 0 ? _pushSpeed * CloseSlowScale * U * CombatTime.TickRate : 0f;
-            MotionBridge.SetHorizontalVelocity(_rb, _pushDirection * speed, undamped: true);
+            float speed = _react.TickPush(CloseSlowScale) * U * CombatTime.TickRate;
+            MotionBridge.SetHorizontalVelocity(_rb, _react.PushDirection * speed, undamped: true);
         }
 
         /// <summary>넉다운 한 틱 + 기상 입력 (전투 사양서 2.3).</summary>
@@ -724,9 +706,7 @@ namespace MyDongari.Game.Combat
             _tackleTimer = Long;
             CancelMelee(notify: false);
             _impact.Clear();
-            _meleeInvuln = 0;
-            _hitStop = 0;
-            _pushFrames = 0;
+            _react.Reset();
             Ledger.Reset();
             if (_input != null) _lastGuardPressCount = _input.GuardPressCount;
             if (_stateMachine != null) _stateMachine.MechController.SetBaselineDamping(Guard.releaseDamping);
