@@ -682,11 +682,11 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 | `melee_cancel` | 펀치를 휘두르는 도중 끊김 | 무엇으로: `jump` 점프 · `dash` 대시 · `close_step` 근접 스텝 · `jump_slash` · `lunge` · `knockdown` · `clash` 맞딜 · `hit` 맞음 · `guard` 가드 · `stun` 경직 · `reset` 라운드 리셋 · `other` |
 | `reaction_<종류>` | 맞은 반응 (맞은 쪽). 종류: `stagger` 경직 · `down` 다운 · `blown` 날아감 · `guard_stagger` 가드 경직 · `air_down` 공중 다운 · `invuln_only` 반응 없이 무적. 반응이 없는 피격은 `reaction_none`(이벤트만, 요약엔 안 셈) | `<공격> impact=<충격치 누적값>` — 이 타격을 더한 뒤의 누적값 (예: `punch impact=519`) |
 | `hitstop_start` | 이 기체에 히트스톱(15f)이 걸림 | `attacker` 때린 쪽으로 / `defender` 맞은 쪽으로 |
-| `wake_<방식>` | 다운에서 일어남. 방식: `plain` 그냥 · `attack` 일어나며 공격 · `dash` 일어나며 대시 · `jump` 일어나며 점프 | 없음 |
+| `wake_<방식>` | 다운에서 일어남. 방식: `normal` 그냥(2026-11-16 전 이름 `plain`) · `attack` 일어나며 공격 · `dash` 일어나며 대시 · `jump` 일어나며 점프 | 없음 |
 | `dash_attack_miss` | 내 대시 공격이 빗나감 (때린 쪽) | 없음 |
 | `dash_attack_evaded` | 상대 대시 공격을 피함 (피한 쪽) | 그 순간 내 상태 (`VoJumpState` = 점프로 피함 등) |
 
-- [ ] (로그) 2인 대전 한 판 뒤 `events_*.csv`에 위 이벤트가 나옴: 펀치를 점프·대시로 끊으면 `melee_cancel,jump|dash`, 맞딜이면 `melee_cancel,clash`, 다운을 당하고 연타·선입력에 따라 `wake_attack|dash|jump|plain`, 대시 공격을 점프로 피하면 `dash_attack_evaded,VoJumpState`. `summary_*.csv`에 `reaction_*`·`hitstop_start`·`wake_*` 줄이 0이어도 항상 나옴
+- [ ] (로그) 2인 대전 한 판 뒤 `events_*.csv`에 위 이벤트가 나옴: 펀치를 점프·대시로 끊으면 `melee_cancel,jump|dash`, 맞딜이면 `melee_cancel,clash`, 다운을 당하고 연타·선입력에 따라 `wake_attack|dash|jump|normal`, 대시 공격을 점프로 피하면 `dash_attack_evaded,VoJumpState`. `summary_*.csv`에 `reaction_*`·`hitstop_start`·`wake_*` 줄이 0이어도 항상 나옴
 
 ---
 
@@ -717,3 +717,8 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 
 - [ ] (스모크) `Tools/Combat Smoke Test` 결과에 `VERSUS 60fps·30fps 비교: 반응·최종 체력·밀림 같음 (… 최대 차이 0.000mm, 허용 1mm)`
 - [ ] (에디터, 선택) Game 뷰에서 프레임을 30으로 제한(`FrameRateTester`)하고 맞딜·런지 박기·넉다운을 해 봐도 밀리는 거리가 60fps 때와 눈으로 같다
+
+### 종결2 로그 확인
+
+- [ ] (스모크) `Tools/Combat Smoke Test` 결과에 `로그 확인: 여섯 이벤트 모두 정확히 1번 — 정상`과 이벤트별 줄(`로그 착지 경직 중 피격: P2 hit_while_landing × 1 (punch)` 등)
+- [ ] (패드) 한 판 뒤 `Logs/PlayLogs/events_*.csv`에서: 상대가 점프 착지하는 순간 때리면 `hit_while_landing`, 다운된 뒤 □ 연타면 `wake_attack`, △면 `wake_jump`, ○ + 방향 유지면 `wake_dash`, 가만히 있으면 `wake_normal`, 펀치를 점프·대시로 끊으면 `melee_cancel,jump|dash`

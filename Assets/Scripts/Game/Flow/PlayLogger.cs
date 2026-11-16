@@ -71,7 +71,7 @@ namespace MyDongari.Game.Flow
             // 전투 반응·기상·근접 취소·대시 공격 회피 (events의 같은 이름 줄 수)
             "reaction_stagger", "reaction_down", "reaction_blown", "reaction_guard_stagger", "reaction_air_down",
             "hit_while_landing", "melee_cancel", "hitstop_start",
-            "wake_plain", "wake_attack", "wake_dash", "wake_jump",
+            "wake_normal", "wake_attack", "wake_dash", "wake_jump",
             "dash_attack_miss", "dash_attack_evaded"
         };
         private static readonly string[] BandNames = { "near", "mid", "far" };
@@ -470,7 +470,7 @@ namespace MyDongari.Game.Flow
                 case KnockTickResult.WakeAttack: return "attack";
                 case KnockTickResult.WakeDash: return "dash";
                 case KnockTickResult.WakeJump: return "jump";
-                default: return "plain";
+                default: return "normal";
             }
         }
 
@@ -578,6 +578,12 @@ namespace MyDongari.Game.Flow
             counts[key] = value + 1;
         }
 
+        /// <summary>
+        /// events CSV에 한 줄이 남을 때마다 (player 0 = 공통, 1·2 = 기체, evt = 이벤트 이름, detail = 상세).
+        /// 전투 스모크가 "이 이벤트가 로그에 실제로 몇 번 찍혔는지" 세는 데 쓴다.
+        /// </summary>
+        public static event Action<int, string, string> OnEventLogged;
+
         private void LogEvent(int player, string evt, string detail)
         {
             if (_eventSb == null) return;
@@ -586,6 +592,7 @@ namespace MyDongari.Game.Flow
             _eventSb.AppendLine(string.Format("{0:F2},{1},{2},{3},{4:F2},{5}",
                 Time.time, round, player == 0 ? "-" : "P" + player, evt, CurrentDistance(), detail));
             _dirty = true;
+            OnEventLogged?.Invoke(player, evt, detail);
         }
 
         private void Update()

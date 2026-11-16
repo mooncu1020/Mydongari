@@ -13,7 +13,9 @@ namespace MyDongari.Game.Flow
     /// 전투 스모크 테스트 (메뉴 Tools/Combat Smoke Test가 빌드를 -combatSmoke로 실행하면 스스로 생긴다).
     /// PRACTICE 모드에서 플레이어 자리에 자동 입력(InputReader 스크립트 입력)을 넣고 연습 봇을 상대로 장면(PracticeScene)을 차례로 돌린다:
     /// 원투쓰리 / 가드에 펀치 / 동시 펀치(맞딜) / 런지 / 대시 공격 / 밀착 원투쓰리(0.8m, 40° 비스듬히 — 3타 모두 명중해야 한다)
-    /// / 내려찍기 셋(정점에서 명중 · 하강 중 명중 · 상대가 옆 대시로 피해 빗나감 → 착지 경직 30f).
+    /// / 내려찍기 셋(정점에서 명중 · 하강 중 명중 · 상대가 옆 대시로 피해 빗나감 → 착지 경직 30f)
+    /// / 로그 확인 여섯(착지 경직 중 피격 · 기상 대기 중 공격·점프·대시 선입력 · 아무것도 안 누르는 기상 · 펀치 근접 취소) —
+    /// 장면마다 PlayLogger events CSV에 해당 이벤트가 정확히 1번 찍혀야 한다.
     /// 이어서 봇 장면 세 개(P1은 가만히 또는 가끔 펀치): 공격만 모드 12m / 패리 모드 3m / 섞어서 모드 6m — 봇이 이동기로 다가가 공격하는지 본다.
     /// 그다음 VERSUS 모드로 바꿔 1P·2P 둘 다 자동 입력인 장면(VersusSmokeScenes)을 60fps로 한 번, 30fps로 한 번 돌리고 두 결과가 같은지 본다.
     /// 장면마다 두 기체를 리셋하고 정해진 거리(기본 3m, 런지·대시는 그보다 멀리)에 마주 세운다.
@@ -36,6 +38,8 @@ namespace MyDongari.Game.Flow
             CloseCombo,
             /// <summary>내려찍기: 정점에서 눌러 명중 / 하강 중에 눌러 명중 / 봇이 옆 대시로 피해 빗나감.</summary>
             DiveApex, DiveFalling, DiveEvade,
+            /// <summary>로그 확인: 장면마다 PlayLogger에 정해진 이벤트가 정확히 1번 찍혀야 한다 (LogChecks).</summary>
+            LogLandingHit, LogWakeAttack, LogWakeJump, LogWakeDash, LogWakeNormal, LogMeleeCancel,
             BotApproach, BotParry, BotMixed
         }
 
@@ -43,12 +47,46 @@ namespace MyDongari.Game.Flow
         {
             PracticeScene.Combo, PracticeScene.Guard, PracticeScene.Clash, PracticeScene.Lunge, PracticeScene.DashAttack,
             PracticeScene.CloseCombo, PracticeScene.DiveApex, PracticeScene.DiveFalling, PracticeScene.DiveEvade,
+            PracticeScene.LogLandingHit, PracticeScene.LogWakeAttack, PracticeScene.LogWakeJump, PracticeScene.LogWakeDash,
+            PracticeScene.LogWakeNormal, PracticeScene.LogMeleeCancel,
             PracticeScene.BotApproach, PracticeScene.BotParry, PracticeScene.BotMixed
         };
 
         // 장면 하나의 기본 길이(틱)
         private const int SceneTicks = 200;
-        private static int TicksOf(PracticeScene scene) => SceneTicks;
+        // 기상 장면은 날아감 → 누움 40f → 기상 대기 56f → 기상 모션 30f까지 봐야 해서 길다
+        private const int WakeSceneTicks = 360;
+        private static int TicksOf(PracticeScene scene) =>
+            scene >= PracticeScene.LogWakeAttack && scene <= PracticeScene.LogWakeNormal ? WakeSceneTicks : SceneTicks;
+
+        /// <summary>로그 확인 장면이 기다리는 이벤트 (플레이어 번호, events CSV의 이벤트 이름).</summary>
+        private struct LogCheck
+        {
+            public PracticeScene Scene;
+            public int Player;
+            public string Event;
+            public string Label;
+        }
+
+        private static readonly LogCheck[] LogChecks =
+        {
+            new LogCheck { Scene = PracticeScene.LogLandingHit, Player = 2, Event = "hit_while_landing", Label = "착지 경직 중 피격" },
+            new LogCheck { Scene = PracticeScene.LogWakeAttack, Player = 2, Event = "wake_attack", Label = "기상 대기 중 공격 선입력" },
+            new LogCheck { Scene = PracticeScene.LogWakeJump, Player = 2, Event = "wake_jump", Label = "기상 대기 중 점프 선입력" },
+            new LogCheck { Scene = PracticeScene.LogWakeDash, Player = 2, Event = "wake_dash", Label = "기상 대기 중 대시 선입력" },
+            new LogCheck { Scene = PracticeScene.LogWakeNormal, Player = 2, Event = "wake_normal", Label = "아무것도 안 누르는 기상" },
+            new LogCheck { Scene = PracticeScene.LogMeleeCancel, Player = 1, Event = "melee_cancel", Label = "펀치 근접 취소" }
+        };
+        // 장면별로 PlayLogger에 찍힌 줄 수 ("장면|P번호 이벤트" → 횟수)와 상세
+        private readonly System.Collections.Generic.Dictionary<string, int> _logCounts = new System.Collections.Generic.Dictionary<string, int>();
+        private readonly System.Collections.Generic.Dictionary<string, string> _logDetails = new System.Collections.Generic.Dictionary<string, string>();
+        private bool IsLogScene => _sceneIndex >= 0 && _scene >= PracticeScene.LogLandingHit && _scene <= PracticeScene.LogMeleeCancel;
+        private static string LogKey(PracticeScene scene, int player, string evt) => $"{scene}|P{player} {evt}";
+        private Knockdown.KnockdownController _botKnockdown;
+        private MechStateMachine _botSm;
+        private bool _logPressed;
+        private bool _botRose;
+        private int _botUpTicks;
 
         private const float BotApproachDistance = 12f;
         private const float BotMixedDistance = 6f;
@@ -57,6 +95,10 @@ namespace MyDongari.Game.Flow
         // 밀착 장면: 거리(m)와 P1을 상대에게서 돌려 세우는 각(°)
         private const float TouchDistance = 0.8f;
         private const float TouchAngle = 40f;
+        // 로그 장면: 착지 경직 중 피격 — 붙어 서는 거리(m), 떨어지는 봇이 (땅에 선 P1보다) 이 높이(m) 아래로 오면 P1이 펀치를 누른다
+        // (낙하 0.092m/틱 → 약 17틱 뒤 착지, 펀치 판정은 누른 뒤 19~24틱 → 착지 경직 12틱 안에 맞는다)
+        private const float LandingHitDistance = 1.5f;
+        private const float LandingHitPressHeight = 1.6f;
         // 내려찍기 장면: 명중 장면 거리 / 피하기 장면 거리(m), 하강 중 장면은 정점 뒤 이 틱에 누른다, 봇은 예비를 본 뒤 이 틱에 옆 대시
         private const float DiveHitDistance = 3f;
         private const float DiveEvadeDistance = 8f;
@@ -161,11 +203,23 @@ namespace MyDongari.Game.Flow
         private void OnEnable()
         {
             Application.logMessageReceived += OnLog;
+            PlayLogger.OnEventLogged += OnEventLogged;
         }
 
         private void OnDisable()
         {
             Application.logMessageReceived -= OnLog;
+            PlayLogger.OnEventLogged -= OnEventLogged;
+        }
+
+        /// <summary>PlayLogger가 events CSV에 한 줄을 남겼다 — 로그 확인 장면이면 장면별로 센다.</summary>
+        private void OnEventLogged(int player, string evt, string detail)
+        {
+            if (!_ready || _practiceDone || !IsLogScene) return;
+            string key = LogKey(_scene, player, evt);
+            _logCounts.TryGetValue(key, out int count);
+            _logCounts[key] = count + 1;
+            _logDetails[key] = detail;
         }
 
         private void OnLog(string condition, string stackTrace, LogType type)
@@ -242,6 +296,8 @@ namespace MyDongari.Game.Flow
             _p1Melee.OnPunchTraced += OnP1PunchTraced;
             _p1Melee.OnDiveStrikeLanded += OnP1DiveLanded;
             _p1Sm = _p1.GetComponent<MechStateMachine>();
+            _botSm = _bot.GetComponent<MechStateMachine>();
+            _botKnockdown = _bot.GetComponent<Knockdown.KnockdownController>();
             _ready = true;
             Debug.Log($"{LogTag} 시작: P1 {_p1.name} vs 봇 {_bot.name}, {SceneOrder.Length}장면");
             return true;
@@ -309,6 +365,19 @@ namespace MyDongari.Game.Flow
                 case PracticeScene.Guard: Arrange(CloseDistance, BotMode.AlwaysGuard); break;
                 case PracticeScene.Lunge: Arrange(LungeDistance, BotMode.Idle); break;
                 case PracticeScene.DashAttack: Arrange(DashDistance, BotMode.Idle); break;
+                case PracticeScene.LogLandingHit:
+                    Arrange(LandingHitDistance, BotMode.Idle);
+                    _logPressed = false;
+                    _botRose = false;
+                    break;
+                case PracticeScene.LogWakeAttack:
+                case PracticeScene.LogWakeJump:
+                case PracticeScene.LogWakeDash:
+                case PracticeScene.LogWakeNormal:
+                    Arrange(LungeDistance, BotMode.Idle);
+                    _logPressed = false;
+                    _botUpTicks = 0;
+                    break;
                 case PracticeScene.DiveApex:
                 case PracticeScene.DiveFalling:
                 case PracticeScene.DiveEvade:
@@ -408,6 +477,69 @@ namespace MyDongari.Game.Flow
                 case PracticeScene.DiveFalling:
                 case PracticeScene.DiveEvade:
                     RunDiveScene(t);
+                    break;
+                case PracticeScene.LogLandingHit:
+                {
+                    // 봇이 제자리에서 뛴다 → 떨어지는 봇의 발이 정해진 높이까지 내려오면 P1이 펀치 → 판정 창이 착지 경직(12틱) 안에 열린다
+                    if (t == 20) _botPad.ScriptPressJump();
+                    var jump = _botSm != null ? _botSm.CurrentState as Core.VirtualOn.States.VoJumpState : null;
+                    // 실제로 뛰어오른 뒤의 하강만 본다 (리셋 직후 한두 틱의 낙하 상태에 속지 않게)
+                    if (t > 20 && jump != null && jump.IsRising) _botRose = true;
+                    bool falling = _botRose && jump != null && jump.IsAirState && !jump.IsRising;
+                    if (falling && !_logPressed && _botRb.position.y - _p1Rb.position.y <= LandingHitPressHeight)
+                    {
+                        _logPressed = true;
+                        _reader.ScriptPressAttack();
+                    }
+                    break;
+                }
+                case PracticeScene.LogWakeAttack:
+                case PracticeScene.LogWakeJump:
+                case PracticeScene.LogWakeDash:
+                case PracticeScene.LogWakeNormal:
+                    RunWakeScene(t);
+                    break;
+                case PracticeScene.LogMeleeCancel:
+                    // 펀치 ① 파고들기 중에 점프로 끊는다 (근접 취소)
+                    if (t == 20) _reader.ScriptPressAttack();
+                    if (t == 26)
+                    {
+                        _reader.ScriptState(Vector2.zero, false, true, false);
+                        _reader.ScriptPressJump();
+                    }
+                    if (t == 36) _reader.ScriptState(Vector2.zero, false, false, false);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 기상 장면: P1이 런지로 봇을 날린다 → 봇이 기상 대기에 들어가면 장면이 봇의 가상 패드를 대신 누른다
+        /// (공격 연타 / 점프 한 번 / ○ + 옆 방향 유지 / 아무것도 안 누름). 봇 두뇌가 틱마다 패드를 떼므로 유지 값은 틱마다 다시 넣는다.
+        /// </summary>
+        private void RunWakeScene(int t)
+        {
+            if (t == 20) _reader.ScriptPressAttack();
+            if (_botKnockdown == null) return;
+            bool down = _botKnockdown.IsKnockedDown;
+            bool waiting = _botKnockdown.IsWaitingWake;
+            switch (_scene)
+            {
+                case PracticeScene.LogWakeAttack:
+                    // 공격 선입력은 대기 타이머가 12f 미만일 때만 받으므로 대기 내내 3틱마다 누른다
+                    if (waiting && t % 3 == 0) _botPad.ScriptPressAttack();
+                    break;
+                case PracticeScene.LogWakeJump:
+                    if (waiting && !_logPressed)
+                    {
+                        _logPressed = true;
+                        _botPad.ScriptPressJump();
+                    }
+                    break;
+                case PracticeScene.LogWakeDash:
+                    // 대기가 끝나는 순간 ○ + 방향이 들어와 있어야 한다. 일어난 뒤 10틱까지 누르고 뗀다
+                    if (waiting) _logPressed = true;
+                    if (_logPressed && !down) _botUpTicks++;
+                    if (waiting || (_logPressed && _botUpTicks <= 10)) _botPad.ScriptState(Vector2.right, true, false, false);
                     break;
             }
         }
@@ -574,6 +706,32 @@ namespace MyDongari.Game.Flow
             return offset.magnitude > MaxHorizontal;
         }
 
+        /// <summary>로그 확인 장면의 검사: 기다리는 이벤트가 정확히 1번이어야 한다. 문제가 없으면 null.</summary>
+        private string LogProblems()
+        {
+            var sb = new StringBuilder();
+            foreach (LogCheck check in LogChecks)
+            {
+                _logCounts.TryGetValue(LogKey(check.Scene, check.Player, check.Event), out int count);
+                if (count != 1) sb.Append($" [{check.Label}: {check.Event} {count}번 (1번이어야 함)]");
+            }
+            return sb.Length > 0 ? sb.ToString().Trim() : null;
+        }
+
+        /// <summary>기상 장면에서 같이 찍힌 다른 기상 이벤트 (엉뚱한 방식으로 일어났는지 보려고).</summary>
+        private string OtherWakes(LogCheck check)
+        {
+            if (!check.Event.StartsWith("wake_")) return "";
+            var sb = new StringBuilder();
+            foreach (string kind in new[] { "wake_normal", "wake_attack", "wake_dash", "wake_jump" })
+            {
+                if (kind == check.Event) continue;
+                _logCounts.TryGetValue(LogKey(check.Scene, check.Player, kind), out int count);
+                if (count > 0) sb.Append($" {kind} × {count}");
+            }
+            return sb.Length > 0 ? " — 다른 기상:" + sb : "";
+        }
+
         /// <summary>내려찍기 세 장면의 검사. 문제가 없으면 null.</summary>
         private string DiveProblems()
         {
@@ -653,9 +811,11 @@ namespace MyDongari.Game.Flow
             bool versusOk = versus60 == null && versus30 == null && fpsDiff == null;
             // 밀착 원투쓰리: 세 타 모두 명중해야 한다
             bool closeOk = _closeComboRan && _closeComboHits == 7;
+            // 로그 확인: 장면마다 기다리는 이벤트가 PlayLogger에 정확히 1번
+            string logProblems = LogProblems();
             // 내려찍기: 정점·하강 중 = 명중(다운) + 양쪽 히트스톱 + 착지 경직 12f / 피하기 = 빗나감 + 착지 경직 30f
             string diveProblems = DiveProblems();
-            bool pass = setupFailure == null && missing.Length == 0 && comboOk && closeOk && diveProblems == null && botOk && versusOk && _exceptions == 0 && _nanTicks == 0 && _outOfMapTicks == 0;
+            bool pass = setupFailure == null && missing.Length == 0 && comboOk && closeOk && diveProblems == null && logProblems == null && botOk && versusOk && _exceptions == 0 && _nanTicks == 0 && _outOfMapTicks == 0;
 
             Debug.Log($"{LogTag} 반응: 경직 {_stagger} / 다운 {_down} / 날아감 {_blown} / 가드경직 {_guardStagger} / 맞딜 {_clash} (무적만 {_invulnOnly}, 명중 {_hits})");
             Debug.Log($"{LogTag} 안정성: 예외·오류 로그 {_exceptions} / 좌표 깨짐 틱 {_nanTicks} / 겹친 틱 {_overlapTicks} / 맵 밖 틱 {_outOfMapTicks} / 돌린 틱 {_tick}");
@@ -669,6 +829,14 @@ namespace MyDongari.Game.Flow
                           $" 경직 {d.LagFrames}f(잰 값 {d.LandingTicks}틱) / 히트스톱 P1 {d.P1StopTicks}틱·봇 {d.BotStopTicks}틱 / 봇 대시 {d.BotDashed} / 가장 가까운 거리 {d.Closest:0.00}m");
             }
             Debug.Log($"{LogTag} 내려찍기: {diveProblems ?? "정상"}");
+            foreach (LogCheck check in LogChecks)
+            {
+                string key = LogKey(check.Scene, check.Player, check.Event);
+                _logCounts.TryGetValue(key, out int count);
+                _logDetails.TryGetValue(key, out string detail);
+                Debug.Log($"{LogTag} 로그 {check.Label}: P{check.Player} {check.Event} × {count}{(string.IsNullOrEmpty(detail) ? "" : $" ({detail})")}{OtherWakes(check)}");
+            }
+            Debug.Log($"{LogTag} 로그 확인: {logProblems ?? "여섯 이벤트 모두 정확히 1번 — 정상"}");
             string[] names = { "공격만", "패리", "섞어서" };
             for (int i = 0; i < 3; i++)
             {
