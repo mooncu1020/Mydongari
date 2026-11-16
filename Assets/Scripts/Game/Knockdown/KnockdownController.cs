@@ -179,12 +179,6 @@ namespace MyDongari.Game.Knockdown
             OnKnockdownStarted?.Invoke();
         }
 
-        private void Update()
-        {
-            // 감속 요청은 MechController가 LateUpdate에서 모아 쓰므로 매 프레임 넣는다 (넉다운이 끝난 뒤 남는 속도까지 감속으로 줄지 않게)
-            if (IsKnockedDown && _controller != null) _controller.RequestDamping(0f, priority: 100);
-        }
-
         /// <summary>
         /// 기상 대기 중 이번 틱의 입력 (전투 허브가 넣는다). attack = 공격 새 입력, jump = 점프 새 입력, mash = 레버·버튼을 연타한 틱.
         /// 공격 선입력은 대기 타이머가 wakeAttackWindow(12) 미만일 때만 받는다.
@@ -204,7 +198,9 @@ namespace MyDongari.Game.Knockdown
         public KnockTickResult CombatTick(bool hitStopped, bool dashHeld)
         {
             if (!IsKnockedDown || _rb == null) return KnockTickResult.None;
-            if (_controller == null) OverrideDamping();
+            // 감속 요청은 틱마다 (MechController가 다음 틱 맨 앞에 확정한다). 예전엔 Update에서 넣어 화면 프레임률을 탔다
+            if (_controller != null) _controller.RequestDamping(0f, priority: 100);
+            else OverrideDamping();
             VoCombatSpec c = C;
             if (hitStopped)
             {

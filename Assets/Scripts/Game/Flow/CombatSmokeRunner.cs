@@ -677,7 +677,8 @@ namespace MyDongari.Game.Flow
             Debug.Log($"{LogTag} 봇: 명중·가드됨 {_botHitsLanded} / 패리 {_botParries} ({(botOk ? "다가가 공격함 — 정상" : "공격만 모드가 다가가 공격해야 함")})");
             Debug.Log($"{LogTag} VERSUS 60fps: {versus60 ?? "정상"}");
             Debug.Log($"{LogTag} VERSUS 30fps: {versus30 ?? "정상"}");
-            Debug.Log($"{LogTag} VERSUS 60fps·30fps 비교: {fpsDiff ?? "반응·최종 체력 같음"}");
+            float worstMm = _versus60 != null && _versus30 != null ? VersusSmokeScenes.MaxPositionDifferenceMm(_versus60, _versus30) : -1f;
+            Debug.Log($"{LogTag} VERSUS 60fps·30fps 비교: {fpsDiff ?? "반응·최종 체력·밀림 같음"} (밀림·끝난 자리 최대 차이 {worstMm:0.000}mm, 허용 {VersusSmokeScenes.FpsPositionTolerance * 1000f:0}mm)");
             if (setupFailure != null) Debug.Log($"{LogTag} 준비 실패: {setupFailure}");
             if (missing.Length > 0) Debug.Log($"{LogTag} 횟수 0인 반응:{missing}");
             if (_firstProblems.Length > 0) Debug.Log($"{LogTag} 첫 오류 로그{_firstProblems}");

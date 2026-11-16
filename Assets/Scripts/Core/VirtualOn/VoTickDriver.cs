@@ -28,7 +28,7 @@ namespace MyDongari.Core.VirtualOn
 
     /// <summary>
     /// 고정 틱 (이동 사양서 1.1, 전투 사양서 4.1). 이동기·전투 기체가 하나라도 있으면 물리 주기를 60Hz로 바꾸고, 물리 스텝마다
-    /// 카메라 → 피격 판단(전원) → 1P 전체 → 2P 전체 → 근접 판정 모으기(전원) 순서로 돌린다.
+    /// 틱 준비(전원) → 카메라 → 피격 판단(전원) → 1P 전체 → 2P 전체 → 근접 판정 모으기(전원) 순서로 돌린다.
     /// 원본은 1P 근접 판정 → 2P 갱신 → 2P 근접 판정이라 같은 틱 맞교환에서 1P가 이긴다. 우리는 두 기체의 판정을 모두 모은 뒤
     /// 다음 틱에 동시에 반영한다(편차 — PLAN_CLEANUP 3절). 위치는 여전히 1P가 2P의 지난 틱을, 2P가 1P의 이번 틱을 본다.
     /// 전투의 모든 시간은 이 틱 수로 센다 — 화면 프레임률과 무관하다. 처음 등록될 때 스스로 만들어진다(씬 배선 없음).
@@ -117,6 +117,12 @@ namespace MyDongari.Core.VirtualOn
             Units.Sort((a, b) => Order(a.PlayerIndex).CompareTo(Order(b.PlayerIndex)));
             TickCount++;
 
+            // 0) 틱 준비: 호스트가 틱으로 세는 것(넉백 유지·감속 값)을 전원 먼저 — 1P·2P가 같은 시점 값으로 움직이게
+            foreach (VoMotor motor in Motors)
+            {
+                if (!IsLive(motor)) continue;
+                ErrorLog.Run(() => motor.Host.BeginTick(motor), "VoTickDriver.begin");
+            }
             // 1) 카메라: 지난 틱 기체 상태로
             foreach (VoMotor motor in Motors)
             {

@@ -74,6 +74,10 @@ namespace MyDongari.Bridge
             return Melee != null && Melee.IsGuarding;
         }
 
+        // ---- 틱 ----
+        /// <summary>틱 맨 앞: 넉백 유지 시간을 한 틱 줄이고, 지난 틱까지 들어온 감속 요청을 이번 틱 값으로 확정한다.</summary>
+        public void BeginTick(VoMotor motor) => _controller.BeginTick();
+
         // ---- 전투 ----
         /// <summary>이동기 틱 안의 "피격 정산" 자리: 전투 허브의 한 틱 (피격 적용 → 가드·패리 → 스킬·공격 입력 → 공격 진행).</summary>
         public void SettleHits(VoMotor motor)

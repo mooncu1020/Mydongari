@@ -102,11 +102,12 @@ namespace MyDongari.Bridge
 
         // ---- Rigidbody 댐핑 소유권 조정 ----
         // 런지(돌진·박기)·넉다운과 Guard(방어 자세)가 각자 rb.linearDamping을
-        // 직접 덮어쓰면 같은 프레임에 겹칠 때 실행 순서에 따라 결과가 달라진다.
-        // 그래서 직접 대입 대신 매 프레임 "이 값으로 써달라"고 요청만 하게 하고,
-        // 여기서 우선순위가 제일 높은 요청 하나만 실제로 적용한다.
-        // 요청은 매 프레임 다시 해야 유지된다 (안 하면 자동으로 기본값으로 복귀).
+        // 직접 덮어쓰면 같은 틱에 겹칠 때 실행 순서에 따라 결과가 달라진다.
+        // 그래서 직접 대입 대신 매 틱 "이 값으로 써달라"고 요청만 하게 하고,
+        // 틱 맨 앞(BeginTick)에서 우선순위가 제일 높은 요청 하나만 실제로 적용한다.
+        // 요청은 매 틱 다시 해야 유지된다 (안 하면 다음 틱에 기본값으로 복귀).
         // 이동기의 외부 속도(넉백·런지·넉다운) 감속이 이 값을 읽는다.
+        // 예전엔 LateUpdate(화면 프레임)에서 적용해서, 30fps에서는 요청이 한 틱 늦게 먹고 한 틱 더 남았다.
         private float? _requestedDamping;
         private int _requestedDampingPriority = int.MinValue;
 
@@ -128,12 +129,24 @@ namespace MyDongari.Bridge
             _defaultDamping = value;
         }
 
-        private void FixedUpdate()
+        /// <summary>
+        /// 틱 맨 앞 (이동기가 켜진 기체는 VoTickDriver가 모든 기체에 대해 먼저 부른다): 넉백 유지 시간을 한 틱 줄이고,
+        /// 지난 틱까지 들어온 감속 요청을 이번 틱의 감속 값으로 확정한다.
+        /// </summary>
+        public void BeginTick()
         {
-            // 물리 스텝 = 전투 틱 (60Hz 고정)이라 스텝마다 1씩 줄인다
             if (_moveHoldTimer > 0) _moveHoldTimer--;
+            Rb.linearDamping = _requestedDamping ?? _defaultDamping;
+            _requestedDamping = null;
+            _requestedDampingPriority = int.MinValue;
             // 지면은 이동기가 직접 본다
             if (Motor.IsActive) IsGrounded = Motor.IsGrounded;
+        }
+
+        private void FixedUpdate()
+        {
+            // 이동기가 꺼진 기체(입력 없는 기체)는 틱 드라이버가 부르지 않으니 물리 스텝(= 전투 틱)마다 직접
+            if (!Motor.IsActive) BeginTick();
         }
 
         /// <summary>몸 충돌 반동: 대시를 끝내고 direction 쪽으로 bumpSpeed만큼 밀린다(넉백처럼 잠깐 이동 입력을 막음).</summary>
@@ -160,10 +173,6 @@ namespace MyDongari.Bridge
 
         private void LateUpdate()
         {
-            Rb.linearDamping = _requestedDamping ?? _defaultDamping;
-            _requestedDamping = null;
-            _requestedDampingPriority = int.MinValue;
-
             if (InputTrace.ShouldLog(this, "5 MechController"))
             {
                 InputTrace.Log("5 MechController", $"{gameObject.name} reader={(InputReader != null ? InputReader.gameObject.name : "없음")} " +

@@ -712,3 +712,8 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] 예비 동작 때 화면이 너무 휙 돌지 않는지 (상대가 등 뒤에 있을 때 뛰어서 써 본다)
 - [ ] (외형) 예비 = 주먹을 허리춤으로 당긴 자세, 내리꽂기 = 주먹을 아래로 내리친 자세가 땅에 닿을 때까지 유지
 - [ ] (로그) `divestrike_start`, 착지 때 `divestrike_land_hit,12f` 또는 `divestrike_land_miss,30f`
+
+### 종결1 30fps 넉백
+
+- [ ] (스모크) `Tools/Combat Smoke Test` 결과에 `VERSUS 60fps·30fps 비교: 반응·최종 체력·밀림 같음 (… 최대 차이 0.000mm, 허용 1mm)`
+- [ ] (에디터, 선택) Game 뷰에서 프레임을 30으로 제한(`FrameRateTester`)하고 맞딜·런지 박기·넉다운을 해 봐도 밀리는 거리가 60fps 때와 눈으로 같다

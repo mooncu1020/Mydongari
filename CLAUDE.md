@@ -16,7 +16,7 @@
 
 | 경로 | 역할 |
 | --- | --- |
-| `Assets/Scripts/Core/VirtualOn/` | 버추얼온식 이동기 — 원본 사양(`docs/REFERENCE_MOVEMENT.md`) 그대로. `VoSpec`(수치, 기본값 = 원본), `VoTickDriver`(60Hz: 카메라 → 1P → 2P), `VoMotor`(한 틱: 입력 → 보조 → 자동 선회 → 메인 → 이동 적분, `VoMotor.Collision`은 지면·벽), `VoLever`, `VoCameraRig`, `States/`(서기·걷기·근접 스텝·지상 대시·대시 정지·점프·공중 대시·급강하), 바깥과의 접점 `IVoHost`·`IVoMachine`·`IVoDashAttack`·`IDashMove` |
+| `Assets/Scripts/Core/VirtualOn/` | 버추얼온식 이동기 — 원본 사양(`docs/REFERENCE_MOVEMENT.md`) 그대로. `VoSpec`(수치, 기본값 = 원본), `VoTickDriver`(60Hz: 틱 준비 → 카메라 → 1P → 2P), `VoMotor`(한 틱: 입력 → 보조 → 자동 선회 → 메인 → 이동 적분, `VoMotor.Collision`은 지면·벽), `VoLever`, `VoCameraRig`, `States/`(서기·걷기·근접 스텝·지상 대시·대시 정지·점프·공중 대시·급강하), 바깥과의 접점 `IVoHost`·`IVoMachine`·`IVoDashAttack`·`IDashMove` |
 | `Assets/Scripts/Core/` | 공용 유틸: `ErrorLog`, `GroundLayers`, `AppRuntime`, `MechFacing`, `AsteroidArenaConfig` |
 | `Assets/Scripts/Bridge/` | 코어와 게임의 연결. `MotionBridge`(전투 → 외부 속도), `VoHostAdapter`·`VoInputAdapter`(`IVoHost` 구현: 입력·스턴·가드 자동 선회·기체끼리 분리), `MechStateMachine`(`IVoMachine` 구현 + 게임 상태 호스팅), `MechController`(참조 모음·넉백 유지·감속 요청·몸 충돌 반동), `DashAttackRunner`, `MechCamera`, `StyleOverrides`(우리 스타일 수치), `MechIdentity`, `ExternalControlLock`, `GameState` |
 | `Assets/Scripts/Core/VirtualOn/` (전투 뼈대) | 원본 전투 사양(`docs/REFERENCE_COMBAT.md`): `VoCombatSpec`(전투 수치, 기본값 = 원본)·`VoMeleeZone`(근접 구역), `VoMeleeDrive`(파고들기 구동 — 순수 계산), `States/VoMeleeState`(지상 근접의 이동), `IVoTickUnit`(전투 틱 참여자: 판단 → 1P → 2P → 판정 모으기) |
@@ -39,7 +39,7 @@
 - 맞히는 쪽은 `MeleeSystem.QueueHit`로 상대의 피격 기록에 쌓기만 한다(판단·반응은 다음 틱 — 1P·2P 대칭). 그 자리에서 결과를 받아 처리하지 않는다. 결과가 필요하면 `MeleeSystem.OnAttackResolved`.
 - 순수 로직(`Core`의 `VoMeleeDrive`·`VoMeleeZone`, `Game/Combat`의 `CombatLedger`·`HitRules`·`ReactionTimers`·`HitGeometry`·`DiveStrikeMath`)을 고치면 `Assets/Editor/Tests/CombatRulesTests.cs`(EditMode)를 같이 고치고 돌린다.
 - Unity 6 API를 쓴다: `Rigidbody.linearVelocity`, `linearDamping` (`velocity`, `drag` 금지).
-- 리지드바디 감속은 `MechController.RequestDamping(value, priority)` / `SetBaselineDamping()`을 거친다. 직접 `linearDamping`을 쓰지 않는다.
+- 리지드바디 감속은 `MechController.RequestDamping(value, priority)` / `SetBaselineDamping()`을 거친다. 직접 `linearDamping`을 쓰지 않는다. 요청은 **틱마다**(전투 틱 안에서) 넣는다 — 틱 맨 앞(`IVoHost.BeginTick` → `MechController.BeginTick`)에서 확정된다. `Update`·`LateUpdate`에서 넣거나 적용하면 30fps와 60fps의 결과가 달라진다.
 - 전투 코드가 기체를 밀 때는 `MotionBridge`(SetVelocity·AddImpulse·Teleport)를 거친다. 기체 리지드바디는 키네마틱이라 `linearVelocity`·`AddForce`를 직접 쓰면 안 움직인다 (이동기가 없는 기체만 다이내믹 — MotionBridge가 알아서 나눈다. 연습 봇도 이제 이동기를 쓴다).
 - 외부에서 상대 기체를 움직일 땐 `ExternalControlLock.Acquire()/Release()` 짝을 반드시 맞춘다.
 - **입력은 반드시 `InputReader`를 거친다.** `Mouse.current`, `Keyboard.current`, `Gamepad.current`를 게임 로직에서 직접 읽지 않는다 (2인 플레이가 깨진다).

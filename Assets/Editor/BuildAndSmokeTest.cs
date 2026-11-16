@@ -29,7 +29,7 @@ namespace MyDongari.EditorTools
         public const string SmokeTestArgument = "-smokeTest";
 
         // 전투 스모크 테스트: 빌드가 스스로 2분쯤 돌고 끝난다 (PRACTICE 30초 + VERSUS 35초 × 60fps·30fps + 카운트다운 셋). 이 시간이 지나도 안 끝나면 닫는다
-        private const float CombatRunSeconds = 200f;
+        private const float CombatRunSeconds = 300f;
         private static bool _combat;
         private static float CurrentRunSeconds => _combat ? CombatRunSeconds : RunSeconds;
 

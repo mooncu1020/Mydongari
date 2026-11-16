@@ -260,7 +260,9 @@ namespace MyDongari.Core.VirtualOn
             _external = new Vector3(horizontal.x, _external.y, horizontal.z);
         }
 
-        // 이번 틱 외부 속도 적분에서 감속 흉내를 건너뛸지 (틱마다 속도를 정해 주는 피격 반응용)
+        // 이번 틱 외부 속도 적분에서 감속 흉내를 건너뛸지 (틱마다 속도를 정해 주는 피격 반응용).
+        // 반드시 틱 끝에 지운다: 외부 적분이 안 도는 틱(넉다운·경직이 끝나는 틱, 히트스톱 틱)에 세워진 표시가 남으면
+        // 한참 뒤 다음 넉백의 첫 틱이 감속 없이 적분돼 밀림이 한 틱 치(맞딜 0.498m → 0.514m) 늘어난다.
         private bool _skipExternalDamping;
 
         /// <summary>이번 틱은 외부 속도를 감속 없이 그대로 적분한다.</summary>
@@ -484,6 +486,8 @@ namespace MyDongari.Core.VirtualOn
 
             Velocity = (_position - start) / Dt;
             Commit();
+            // "이번 틱만"인 표시는 외부 적분이 돌았든 아니든 여기서 끝난다
+            _skipExternalDamping = false;
             Host.EndTick(this);
 
             if (debugLog && StateMachine.CurrentState is VoState now && now != _lastLoggedState)
@@ -775,8 +779,8 @@ namespace MyDongari.Core.VirtualOn
             float gravity = v.gravity * U / (dt * dt);
             if (!IsGrounded && Rb.useGravity) vel.y -= gravity * dt;
             // 리지드바디 감속을 흉내 (PhysX: v × 1 / (1 + dt × damping))
+            // 감속 값은 호스트가 틱 맨 앞(BeginTick)에 정해 리지드바디에 적어 둔 것 — 화면 프레임이 아니라 틱마다 바뀐다
             float damping = _skipExternalDamping ? 0f : Mathf.Max(0f, Rb.linearDamping);
-            _skipExternalDamping = false;
             float k = 1f / (1f + dt * damping);
             vel.x *= k;
             vel.z *= k;

@@ -11,20 +11,27 @@ namespace MyDongari.Game.Flow
 {
     /// <summary>
     /// 전투 스모크의 VERSUS 장면 (CombatSmokeRunner가 PRACTICE 장면 뒤에 돌린다). 1P·2P 둘 다 InputReader 스크립트 입력으로:
-    /// ① 같은 틱 동시 펀치 → 맞딜이 대칭인지 (1P·2P 자리를 바꿔 두 번)
+    /// ① 같은 틱 동시 펀치 → 맞딜이 대칭인지 (같은 자리로 세 번 — 장면 이력에 따라 밀림이 달라지는지 본다 — 그리고 1P·2P 자리를 바꿔 한 번)
     /// ② 1P 대시 공격이 맞는 동안 1P는 안 멈추는지 (기체별 히트스톱 — 화면 전체 timeScale도 1 그대로)
     /// ③ 벽 2m 앞에 선 2P를 런지로 날림 → 벽에 끼거나 뚫고 나가지 않는지 (장면이 벽을 잠깐 세운다)
     /// ④ 1P 대시 공격이 다가오면 2P가 점프 → 공중 다운 → 착지 → 기상 선입력 대시 (점프하는 거리를 세 가지로 — 하나라도 되면 됨).
     ///    런지는 강타라 공중이어도 날아감이 먼저다(전투 사양서 2.1 5번) — 그래서 강타가 아닌 대시 공격(근접 계열 2, 1100)을 쓴다.
     /// 맞딜 대칭은 맞딜이 난 뒤 밀린 거리로 본다. 그 전의 파고들기는 1P가 먼저 움직이고 2P가 1P의 이번 틱 위치를 보는
     /// 원본 순서(이동 사양서 1.1) 때문에 마지막 한 틱만큼 1P가 더 들어간다 — 그 차이는 로그에만 남긴다.
-    /// 같은 장면을 60fps·30fps로 한 번씩 돌려 장면별 반응·최종 체력이 같은지도 본다. 시간은 전부 물리 스텝(= 전투 틱) 수.
+    /// 같은 장면을 60fps·30fps로 한 번씩 돌려 장면별 반응·최종 체력이 같고, 두 기체가 밀린 거리·끝난 자리가 1mm 안으로 같은지도 본다
+    /// (전투는 틱으로만 돌아야 한다 — 화면 프레임률이 결과를 바꾸면 안 된다). 시간은 전부 물리 스텝(= 전투 틱) 수.
     /// </summary>
     public class VersusSmokeScenes
     {
         public const int SceneTicks = 300;
-        // 장면: 0 맞딜 A, 1 맞딜 B(자리 바꿈), 2 대시 공격 히트스톱, 3 벽 앞 런지, 4~6 공중 다운 + 기상 대시(점프 시점 셋)
-        public const int SceneCount = 7;
+        // 장면 종류: 0 맞딜 A, 1 맞딜 B(자리 바꿈), 2 대시 공격 히트스톱, 3 벽 앞 런지, 4~6 공중 다운 + 기상 대시(점프 시점 셋)
+        // 도는 순서 — 맞딜 A는 세 번 (첫 번째만 앞 단계의 이력을 물려받는다)
+        private static readonly int[] Kinds = { 0, 0, 0, 1, 2, 3, 4, 5, 6 };
+        public static int SceneCount => Kinds.Length;
+        /// <summary>지금 장면의 종류.</summary>
+        private int Kind => Kinds[Mathf.Clamp(_scene, 0, Kinds.Length - 1)];
+        /// <summary>60fps·30fps 결과의 위치 허용 오차(m): 1mm.</summary>
+        public const float FpsPositionTolerance = 0.001f;
         private const float ClashDistance = 3f;
         private const float DashDistance = 10f;
         private const float LungeDistance = 7f;
@@ -65,6 +72,9 @@ namespace MyDongari.Game.Flow
             public float P2Health;
             public string Problem;
             public bool AirDownWakeDash;
+            // 첫 반응 뒤 밀린 거리(m)와 장면이 끝났을 때 자리(장면 시작 자리 기준, m) — 60fps·30fps 비교용
+            public float P1Push, P2Push;
+            public Vector3 P1End, P2End;
         }
 
         private readonly Mech _p1 = new Mech();
@@ -185,9 +195,10 @@ namespace MyDongari.Game.Flow
             if (_origin == Vector3.zero) _origin = _p1.Rb.position;
             DestroyWall();
 
-            float distance = scene <= 1 ? ClashDistance : scene == 3 ? LungeDistance : DashDistance;
+            int kind = Kind;
+            float distance = kind <= 1 ? ClashDistance : kind == 3 ? LungeDistance : DashDistance;
             // 맞딜 B는 자리를 바꾼다: 2P가 1P 자리에, 1P가 2P 자리에
-            bool swapped = scene == 1;
+            bool swapped = kind == 1;
             Mech near = swapped ? _p2 : _p1;
             Mech far = swapped ? _p1 : _p2;
             Vector3 farPos = _origin + _forward * distance;
@@ -196,7 +207,7 @@ namespace MyDongari.Game.Flow
             nearPos.y = near.Rb.position.y;
             Place(near, nearPos, Quaternion.LookRotation(_forward, Vector3.up));
             Place(far, farPos, Quaternion.LookRotation(-_forward, Vector3.up));
-            if (scene == 3) BuildWall(farPos, far);
+            if (kind == 3) BuildWall(farPos, far);
 
             _p1Start = _p1.Rb.position;
             _p2Start = _p2.Rb.position;
@@ -246,7 +257,7 @@ namespace MyDongari.Game.Flow
 
         private void Drive(int t)
         {
-            switch (_scene)
+            switch (Kind)
             {
                 case 0:
                 case 1:
@@ -281,7 +292,7 @@ namespace MyDongari.Game.Flow
                     }
                     if (_p2.Events.Count == 0 && t >= 28 && t <= 60 && t % 3 == 0) _p1.Reader.ScriptPressAttack();
                     if (t == 90) _p1.Reader.ScriptState(Vector2.zero, false, false, false);
-                    if (!_p2Jumped && t > 10 && Flat(_p1.Rb.position - _p2.Rb.position) < JumpDistances[_scene - 4])
+                    if (!_p2Jumped && t > 10 && Flat(_p1.Rb.position - _p2.Rb.position) < JumpDistances[Kind - 4])
                     {
                         _p2Jumped = true;
                         _jumpTick = t;
@@ -320,20 +331,20 @@ namespace MyDongari.Game.Flow
             if (!Mathf.Approximately(Time.timeScale, 1f)) _timeScaleTicks++;
             bool p2Stop = _p2.Melee.IsHitStopped;
             bool p1Stop = _p1.Melee.IsHitStopped;
-            if (_scene == 2 && p2Stop)
+            if (Kind == 2 && p2Stop)
             {
                 _p2StopTicks++;
                 if (p1Stop) _p1StopTicksWhileP2Stop++;
                 _p1MoveDuringP2Stop += MotionBridge.GetVelocity(_p1.Rb).magnitude / CombatTime.TickRate;
             }
-            if (_scene == 3 && _wall != null)
+            if (Kind == 3 && _wall != null)
             {
                 Vector3 c = _p2.Rb.position;
                 float d = Vector3.Dot(_wallFace - c, _forward);
                 _maxPenetration = Mathf.Max(_maxPenetration, _p2.Radius - d);
                 if (d < -_p2.Radius) _passedThrough = true;
             }
-            if (_scene >= 4)
+            if (Kind >= 4)
             {
                 bool down = _p2.Knockdown != null && _p2.Knockdown.IsKnockedDown;
                 if (down)
@@ -354,6 +365,10 @@ namespace MyDongari.Game.Flow
             var r = new SceneResult
             {
                 Name = SceneName(_scene),
+                P1Push = _eventSeen ? Flat(_p1.Rb.position - _p1AtEvent) : 0f,
+                P2Push = _eventSeen ? Flat(_p2.Rb.position - _p2AtEvent) : 0f,
+                P1End = _p1.Rb.position - _p1Start,
+                P2End = _p2.Rb.position - _p2Start,
                 P1Events = string.Join(",", _p1.Events),
                 P2Events = string.Join(",", _p2.Events),
                 P1Health = _p1.Health.CurrentHealth,
@@ -361,7 +376,7 @@ namespace MyDongari.Game.Flow
             };
             var problem = new StringBuilder();
             if (_timeScaleTicks > 0) problem.Append($" timeScale≠1 {_timeScaleTicks}틱");
-            switch (_scene)
+            switch (Kind)
             {
                 case 0:
                 case 1:
@@ -398,6 +413,7 @@ namespace MyDongari.Game.Flow
                     break;
             }
             r.Problem = problem.Length > 0 ? problem.ToString().Trim() : null;
+            if (Kind >= 2) r.Name += $" [첫 반응 뒤 밀림 1P {r.P1Push:0.000}m / 2P {r.P2Push:0.000}m]";
             Results.Add(r);
             Debug.Log($"{CombatSmokeRunner.LogTag} {Label} {r.Name}: 1P [{r.P1Events}] 체력 {r.P1Health:0.0} / 2P [{r.P2Events}] 체력 {r.P2Health:0.0}" +
                       (r.Problem != null ? $" — 문제: {r.Problem}" : ""));
@@ -421,13 +437,14 @@ namespace MyDongari.Game.Flow
 
         private static string SceneName(int scene)
         {
-            switch (scene)
+            int kind = Kinds[scene];
+            switch (kind)
             {
-                case 0: return "V1 맞딜 A";
-                case 1: return "V2 맞딜 B(자리 바꿈)";
-                case 2: return "V3 대시 공격 히트스톱";
-                case 3: return "V4 벽 앞 런지";
-                default: return $"V{scene + 1} 공중 다운 + 기상 대시({JumpDistances[scene - 4]:0.0}m에서 점프)";
+                case 0: return $"V{scene + 1} 맞딜 A";
+                case 1: return $"V{scene + 1} 맞딜 B(자리 바꿈)";
+                case 2: return $"V{scene + 1} 대시 공격 히트스톱";
+                case 3: return $"V{scene + 1} 벽 앞 런지";
+                default: return $"V{scene + 1} 공중 다운 + 기상 대시({JumpDistances[kind - 4]:0.0}m에서 점프)";
             }
         }
 
@@ -458,8 +475,27 @@ namespace MyDongari.Game.Flow
                 if (x.P1Events != y.P1Events || x.P2Events != y.P2Events) sb.Append($" [V{i + 1} 반응 1P {x.P1Events}|{y.P1Events} 2P {x.P2Events}|{y.P2Events}]");
                 if (Mathf.Abs(x.P1Health - y.P1Health) > HealthTolerance || Mathf.Abs(x.P2Health - y.P2Health) > HealthTolerance)
                     sb.Append($" [V{i + 1} 체력 {x.P1Health:0.0}/{x.P2Health:0.0} | {y.P1Health:0.0}/{y.P2Health:0.0}]");
+                // 밀린 거리와 끝난 자리: 화면 프레임률이 달라도 1mm 안으로 같아야 한다
+                float push = Mathf.Max(Mathf.Abs(x.P1Push - y.P1Push), Mathf.Abs(x.P2Push - y.P2Push));
+                float end = Mathf.Max((x.P1End - y.P1End).magnitude, (x.P2End - y.P2End).magnitude);
+                if (push > FpsPositionTolerance || end > FpsPositionTolerance)
+                    sb.Append($" [V{i + 1} 밀림 1P {x.P1Push:0.0000}|{y.P1Push:0.0000} 2P {x.P2Push:0.0000}|{y.P2Push:0.0000}m, 끝난 자리 차이 1P {(x.P1End - y.P1End).magnitude * 1000f:0.0}mm 2P {(x.P2End - y.P2End).magnitude * 1000f:0.0}mm]");
             }
             return sb.Length > 0 ? sb.ToString().Trim() : null;
+        }
+
+        /// <summary>두 번 돌린 결과에서 밀린 거리·끝난 자리가 가장 크게 다른 값(mm). 로그용.</summary>
+        public static float MaxPositionDifferenceMm(VersusSmokeScenes a, VersusSmokeScenes b)
+        {
+            float worst = 0f;
+            int n = Mathf.Min(a.Results.Count, b.Results.Count);
+            for (int i = 0; i < n; i++)
+            {
+                SceneResult x = a.Results[i], y = b.Results[i];
+                worst = Mathf.Max(worst, Mathf.Abs(x.P1Push - y.P1Push), Mathf.Abs(x.P2Push - y.P2Push));
+                worst = Mathf.Max(worst, (x.P1End - y.P1End).magnitude, (x.P2End - y.P2End).magnitude);
+            }
+            return worst * 1000f;
         }
     }
 }

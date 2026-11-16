@@ -59,6 +59,14 @@ namespace MyDongari.Core.VirtualOn
         /// </summary>
         bool TryGetAutoTurnToOpponent(out float insideRateUnits, out float outsideRateUnits);
 
+        // ---- 틱 ----
+        /// <summary>
+        /// 틱 맨 앞, 어느 기체도 움직이기 전에 모든 기체에 대해 한 번 (카메라보다도 먼저).
+        /// 호스트가 틱으로 세는 것(넉백 유지 시간, 외부 속도 감속 값 확정)을 여기서 한 틱 진행한다 — 화면 프레임(Update·LateUpdate)에서 하면
+        /// 30fps와 60fps의 결과가 달라진다.
+        /// </summary>
+        void BeginTick(VoMotor motor);
+
         // ---- 전투 (전투 사양서 4.2) ----
         /// <summary>
         /// 기체 한 대 갱신의 "피격 정산" 자리: 상대 관계·자동 선회 뒤, 상태 본 처리 전에 한 번.
