@@ -118,6 +118,8 @@ namespace MyDongari.Game.Feedback
             public bool WasOverheated;
             // 흰색 번쩍임이 끝나는 실제 시각 (N1, 히트스톱 중에도 보이게 실제 시간)
             public float FlashUntil = -1f;
+            // 히트스톱이 끝날 때까지 번쩍임을 유지할지 (맞은 근접 피격)
+            public bool FlashHold;
             public Color FlashColor = Color.white;
             public float FlashStrength;
             public float FlashEmission;
@@ -332,21 +334,44 @@ namespace MyDongari.Game.Feedback
         }
 
         /// <summary>
-        /// 타격감 (N1, 피격자 fb 기준): 흰색 번쩍임(그대로 맞음·가드 브레이크), 타격 지점 불꽃·섬광(등급별 크기, 막으면 파란 불꽃·작게),
-        /// 맞은 쪽 화면은 타격 방향으로 밀렸다 출렁이고 때린 쪽은 짧게 흔들린다. 패리는 아무것도 안 한다.
+        /// 타격감 (피격자 fb 기준): 맞은 기체는 히트스톱 동안 하얗게 번쩍이고(그대로 맞음·가드 브레이크), 타격 지점에 불꽃·섬광,
+        /// 맞은 쪽 화면은 타격 방향으로 크게 밀렸다 출렁이고 때린 쪽 화면은 작게 흔들린다(화면 분할 — 각자 자기 카메라만).
+        /// 크기는 맞은 쪽 반응을 따른다: 반응 없음 &lt; 경직 &lt; 다운 &lt; 날아감. 가드 경직은 파란 불꽃 + 작은 흔들림, 패리는 짧고 밝은 섬광만,
+        /// 무적으로 무시된 타격은 회색 작은 불꽃, 대시 슈퍼아머는 노란 불꽃.
         /// </summary>
         private void ApplyHitFeel(MechFeedback fb, HitInfo info, HitResult result)
         {
-            if (result == HitResult.Parried || fb.Mech == null) return;
+            if (fb.Mech == null) return;
             BernardTuning.HitFeelValues feel = TuningOf(fb.Mech).HitFeel;
+            if (result == HitResult.Parried)
+            {
+                // 패리: 짧고 밝은 섬광 (번쩍임·흔들림 없음)
+                var parry = new HitSparkFx.Style
+                {
+                    Spark = feel.parryFlashColor,
+                    Flash = feel.parryFlashColor,
+                    SparkSize = feel.sparkSize,
+                    SparkCount = feel.sparkCount,
+                    SparkSpeed = feel.sparkSpeed,
+                    // SpawnHit이 섬광 크기에 배율을 곱하므로 미리 나눠 둔다
+                    FlashSize = feel.parryFlashSize / Mathf.Max(0.05f, feel.parrySparkScale),
+                    FlashTime = feel.parryFlashTime
+                };
+                SpawnHitSpark(fb, info, feel.hitHeight, feel.parrySparkScale, parry);
+                return;
+            }
             if (result == HitResult.Invulnerable)
             {
                 // 무적이라 무시된 타격: 회색 작은 불꽃만 (번쩍임·흔들림 없음) — 닿긴 닿았다는 표시
-                SpawnHitSpark(fb, info, feel, feel.light.effectScale * feel.invulnSparkScale, feel.invulnSparkColor);
+                SpawnHitSpark(fb, info, feel.hitHeight, feel.light.effectScale * feel.invulnSparkScale, SparkStyle(feel, feel.invulnSparkColor));
                 return;
             }
-            BernardTuning.HitGradeValues grade = feel.Grade(result == HitResult.Clash ? AttackStrength.Light : info.Strength);
+            // 크기: 맞은 쪽 반응으로 (날아감 강 / 다운 중 / 경직 약 / 반응 없음 약 × 배율). 맞딜은 약, 막으면 약 × guardedScale
+            BernardTuning.HitGradeValues grade = result == HitResult.Clash ? feel.light
+                : feel.gradeByReaction ? feel.GradeFor(info.Reaction) : feel.Grade(info.Strength);
             float scale = result == HitResult.Guarded ? feel.guardedScale : 1f;
+            bool noReaction = info.Reaction == Reaction.None || info.Reaction == Reaction.InvulnOnly;
+            if (feel.gradeByReaction && result == HitResult.Hit && noReaction) scale *= feel.noReactionScale;
             // 화면 흔들림 길이는 히트스톱을 따른다 (근접 피격 = 15틱). 맞딜·사격처럼 히트스톱이 없는 것만 등급 값
             float shakeTime = info.IsMelee && result != HitResult.Clash
                 ? CombatTime.Seconds(StyleOverrides.Current.EffectiveCombat.hitStopFrames) : grade.shakeTime;
@@ -354,6 +379,8 @@ namespace MyDongari.Game.Feedback
             if (result == HitResult.Hit || result == HitResult.GuardBroken)
             {
                 fb.FlashUntil = Time.unscaledTime + feel.flashTime;
+                // 근접 피격은 맞은 쪽에 히트스톱이 걸린다 — 그동안 계속 하얗게
+                fb.FlashHold = feel.flashDuringHitStop && info.IsMelee;
                 fb.FlashColor = feel.flashColor;
                 fb.FlashStrength = feel.flashStrength;
                 fb.FlashEmission = feel.flashEmission;
@@ -365,7 +392,7 @@ namespace MyDongari.Game.Feedback
             Vector3 attackerPosition = info.Attacker != null ? info.Attacker.transform.position : fb.Mech.transform.position + fb.Mech.transform.forward;
             // 슈퍼아머(대시)로 버틴 타격은 노란 불꽃
             Color sparkColor = result == HitResult.Guarded ? feel.guardSparkColor : (info.ArmoredByDash ? feel.armorSparkColor : feel.sparkColor);
-            SpawnHitSpark(fb, info, feel, grade.effectScale * scale, sparkColor);
+            SpawnHitSpark(fb, info, feel.hitHeight, grade.effectScale * scale, SparkStyle(feel, sparkColor));
 
             Vector3 hitDirection = fb.Mech.transform.position - attackerPosition;
             hitDirection.y = 0f;
@@ -382,15 +409,15 @@ namespace MyDongari.Game.Feedback
         }
 
         /// <summary>타격 지점(때린 쪽 가슴 높이에서 본 맞은 기체 콜라이더 표면)에 불꽃을 띄운다.</summary>
-        private static void SpawnHitSpark(MechFeedback fb, HitInfo info, BernardTuning.HitFeelValues feel, float scale, Color color)
+        private static void SpawnHitSpark(MechFeedback fb, HitInfo info, float hitHeight, float scale, HitSparkFx.Style style)
         {
             Vector3 attackerPosition = info.Attacker != null ? info.Attacker.transform.position : fb.Mech.transform.position + fb.Mech.transform.forward;
-            Vector3 source = attackerPosition + Vector3.up * feel.hitHeight;
+            Vector3 source = attackerPosition + Vector3.up * hitHeight;
             Collider body = fb.Mech.GetComponent<Collider>();
-            Vector3 point = body != null ? body.ClosestPoint(source) : fb.Mech.transform.position + Vector3.up * feel.hitHeight;
+            Vector3 point = body != null ? body.ClosestPoint(source) : fb.Mech.transform.position + Vector3.up * hitHeight;
             Vector3 sparkDirection = source - point;
             if (sparkDirection.sqrMagnitude < 0.0001f) sparkDirection = attackerPosition - fb.Mech.transform.position;
-            HitSparkFx.SpawnHit(point, sparkDirection, scale, SparkStyle(feel, color));
+            HitSparkFx.SpawnHit(point, sparkDirection, scale, style);
         }
 
         private void RegisterFootsteps(GameObject mech)
@@ -643,9 +670,11 @@ namespace MyDongari.Game.Feedback
                 return;
             }
 
-            if (Time.unscaledTime < fb.FlashUntil)
+            // 히트스톱이 끝나면 번쩍임 유지도 끝
+            if (fb.FlashHold && !(fb.Melee != null && fb.Melee.IsHitStopped) && Time.unscaledTime >= fb.FlashUntil) fb.FlashHold = false;
+            if (fb.FlashHold || Time.unscaledTime < fb.FlashUntil)
             {
-                // 맞은 순간 흰색 번쩍임이 다른 틴트보다 우선 (N1)
+                // 맞은 순간부터 히트스톱이 끝날 때까지 흰색 번쩍임이 다른 틴트보다 우선
                 fb.Tint.Apply(fb.FlashColor, fb.FlashStrength, fb.FlashEmission);
             }
             else if (stunned)

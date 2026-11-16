@@ -507,3 +507,4 @@
 - [x] **종결2** 안 찍혀 본 로그 확인. 전투 스모크 PRACTICE에 로그 확인 장면 6개: 착지 경직 중 피격(봇이 뛰고, 떨어지는 봇이 1.6m 아래로 오면 P1 펀치 → 판정이 착지 12틱 안에 열림) / 기상 대기 중 공격·점프·대시 선입력 / 아무것도 안 누르는 기상 / 펀치 근접 취소(① 중 점프). 장면마다 `PlayLogger`가 events CSV에 남긴 줄을 세어(`PlayLogger.OnEventLogged` — CSV 줄을 붙이는 바로 그 자리에서 알림) 해당 이벤트가 **정확히 1번**이 아니면 FAIL. 결과: `hit_while_landing`·`wake_attack`·`wake_jump`·`wake_dash`·`wake_normal`·`melee_cancel` 모두 1번.
   - 이름 변경: `wake_plain` → `wake_normal` (events·summary CSV).
   - 장면을 만들다 찾은 것: 리셋 직후 한두 틱은 기체가 낙하 상태(`VoJumpState` 하강)로 잡힌다 — 그 틱에 공격을 누르면 내려찍기가 나간다. 실제 라운드는 카운트다운 동안 입력을 버리므로 문제없지만, 발판 끝에서 걸어 떨어지는 중의 공격도 내려찍기가 된다(공중 공격 = 내려찍기 규칙 그대로).
+- [x] **종결3** 타격 연출 (틴트·불꽃·카메라만, 모션 코드 안 건드림). 맞은 기체는 히트스톱 내내 하얗게(`flashDuringHitStop`), 불꽃·흔들림 크기는 맞은 쪽 반응으로(`gradeByReaction`: 반응 없음 = 약 × `noReactionScale` < 경직 약 < 다운 중 < 날아감 강), 가드 경직은 파란 불꽃 + 약 × `guardedScale`, 패리는 짧고 밝은 섬광(`parryFlash…`). 값은 전부 `BernardTuning.HitFeel`. 빌드 스모크는 이 커밋에서 못 돌림(전투 스모크·EditMode는 통과) — 화면 확인도 아직.

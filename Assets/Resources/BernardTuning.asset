@@ -166,6 +166,9 @@ MonoBehaviour:
       reactTime: 0.5
       effectScale: 1.6
     guardedScale: 0.5
+    gradeByReaction: 1
+    noReactionScale: 0.6
+    flashDuringHitStop: 1
     flashTime: 0.05
     flashColor: {r: 1, g: 1, b: 1, a: 1}
     flashStrength: 0.85
@@ -184,6 +187,10 @@ MonoBehaviour:
     sparkSpeed: 9
     flashFxSize: 0.8
     flashFxTime: 0.06
+    parryFlashColor: {r: 0.85, g: 1, b: 1, a: 1}
+    parryFlashSize: 2.4
+    parryFlashTime: 0.05
+    parrySparkScale: 0.4
     dashBurstColor: {r: 1, g: 0.7, b: 0.35, a: 0.95}
     dashBurstSize: 4.5
     dashBurstTime: 0.03

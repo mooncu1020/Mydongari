@@ -467,7 +467,17 @@ namespace MyDongari.Game.Tuning
             [Tooltip("가드로 막았을 때 화면 흔들림·이펙트 배율 (번쩍임·피격 반응은 없음)")]
             [Range(0f, 1f)] public float guardedScale = 0.5f;
 
+            [Header("반응 종류별 크기 (불꽃·화면 흔들림: 반응 없음 < 경직 < 다운 < 날아감)")]
+            [Tooltip("켜면 불꽃 크기·화면 흔들림을 맞은 쪽 반응으로 고른다: 날아감 = 강 등급, 다운·공중 다운 = 중 등급, 경직 = 약 등급, " +
+                     "반응 없음 = 약 등급 × noReactionScale. 끄면 예전처럼 공격 세기(원·투 약 / 쓰리·대시 어택 중 / 런지·태클 강)로 고른다")]
+            public bool gradeByReaction = true;
+            [Tooltip("반응 없는 피격(약한 타격·대시 슈퍼아머·점프 중 무적만)의 불꽃·흔들림 배율 (약 등급 기준)")]
+            [Range(0f, 1f)] public float noReactionScale = 0.6f;
+
             [Header("흰색 번쩍임 (그대로 맞음·가드 브레이크)")]
+            [Tooltip("켜면 맞은 쪽 기체가 히트스톱(15틱 = 0.25초) 내내 하얗게 번쩍인다. 끄면 flashTime 동안만")]
+            public bool flashDuringHitStop = true;
+            [Tooltip("번쩍임 최소 시간(초). 히트스톱이 없는 피격(사격)은 이 시간만")]
             public float flashTime = 0.05f;
             public Color flashColor = Color.white;
             [Range(0f, 1f)] public float flashStrength = 0.85f;
@@ -499,6 +509,15 @@ namespace MyDongari.Game.Tuning
             public float sparkSpeed = 9f;
             public float flashFxSize = 0.8f;
             public float flashFxTime = 0.06f;
+
+            [Header("패리 섬광 (짧고 밝게 — 맞은 것·막은 것과 구분)")]
+            public Color parryFlashColor = new Color(0.85f, 1f, 1f, 1f);
+            [Tooltip("섬광 크기(m)")]
+            public float parryFlashSize = 2.4f;
+            [Tooltip("섬광 시간(초). 0.05 = 3프레임")]
+            public float parryFlashTime = 0.05f;
+            [Tooltip("섬광과 같이 튀는 불꽃 배율 (타격 불꽃 기준). 0이면 섬광도 안 나온다")]
+            [Range(0.05f, 1f)] public float parrySparkScale = 0.4f;
 
             [Header("대시 연출 (V3.1)")]
             [Tooltip("출발 순간 기체를 덮는 분사 섬광 색")]
@@ -537,6 +556,18 @@ namespace MyDongari.Game.Tuning
             public float dustConeAngle = 55f;
             [Tooltip("바닥·바위에 닿으면 튕기고 멈춤 (끄면 바닥을 뚫고 떨어지다 사라짐)")]
             public bool dustCollision = true;
+
+            /// <summary>맞은 쪽 반응으로 고른 등급: 날아감 = 강, 다운·공중 다운 = 중, 그 밖(경직·가드 경직·반응 없음) = 약.</summary>
+            public HitGradeValues GradeFor(Reaction reaction)
+            {
+                switch (reaction)
+                {
+                    case Reaction.Blown: return heavy;
+                    case Reaction.Down:
+                    case Reaction.AirDown: return medium;
+                    default: return light;
+                }
+            }
 
             public HitGradeValues Grade(AttackStrength strength)
             {
