@@ -38,13 +38,23 @@ namespace MyDongari.Game.Flow
         private float _fps;
         private GUIStyle _style;
         private GUIStyle _shadow;
+        // F9·F10을 한 번이라도 눌렀는지 (그 전에는 표시를 숨길 수 있다)
+        private bool _keyUsed;
 
         private void Awake()
         {
             _cycleAction = new InputAction("FrameRateCycle", InputActionType.Button, "<Keyboard>/f9");
-            _cycleAction.performed += _ => Cycle();
+            _cycleAction.performed += _ =>
+            {
+                _keyUsed = true;
+                Cycle();
+            };
             _outlineAction = new InputAction("OutlineToggle", InputActionType.Button, "<Keyboard>/f10");
-            _outlineAction.performed += _ => ToggleOutline();
+            _outlineAction.performed += _ =>
+            {
+                _keyUsed = true;
+                ToggleOutline();
+            };
             FindOutlineFeatures();
         }
 
@@ -140,6 +150,8 @@ namespace MyDongari.Game.Flow
         private void OnGUI()
         {
             if (!showOverlay) return;
+            // 발표 화면에는 안 보이게: F9·F10을 한 번이라도 누르기 전에는 숨긴다 (ArenaLook에서 끌 수 있다)
+            if (!_keyUsed && Visual.ArenaLook.Current.hideFpsOverlayUntilKey) return;
             float scale = Screen.height / 1080f;
             if (_style == null)
             {

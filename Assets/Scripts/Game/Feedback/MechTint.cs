@@ -6,6 +6,8 @@ namespace MyDongari.Game.Feedback
     /// <summary>
     /// 기체 전체 색 틴트. 머티리얼(공유 에셋)은 절대 건드리지 않고 MaterialPropertyBlock으로 색만 덮어쓴다.
     /// 그래서 Clear()로 블록을 비우면 언제든 원래 머티리얼 색으로 돌아간다 (에디터에서 머티리얼 에셋이 오염될 일도 없음).
+    /// 바탕색(SetBase — 1P·2P 팀 색)을 정해 두면 "원래 색"이 그만큼 팀 색 쪽으로 옮겨진다: Clear()는 바탕색으로 돌아가고,
+    /// 상태 틴트(Apply)는 바탕색에서 틴트 쪽으로 섞는다.
     /// </summary>
     public class MechTint
     {
@@ -28,6 +30,47 @@ namespace MyDongari.Game.Feedback
         private readonly List<Slot> _slots = new List<Slot>();
         private readonly MaterialPropertyBlock _block = new MaterialPropertyBlock();
         private bool _applied;
+        // 바탕색 (팀 색). 세기 0이면 없음
+        private Color _base;
+        private float _baseStrength;
+
+        /// <summary>
+        /// 바탕색을 정한다 (1P·2P 구분). strength = 원래 색에서 바탕색 쪽으로 섞는 비율, 0이면 바탕색 없음. 같은 값이면 아무것도 안 한다.
+        /// </summary>
+        public void SetBase(Color color, float strength)
+        {
+            strength = Mathf.Clamp01(strength);
+            if (Mathf.Approximately(strength, _baseStrength) && (strength <= 0f || color == _base)) return;
+            _base = color;
+            _baseStrength = strength;
+            // 상태 틴트가 덮고 있지 않으면 지금 바로 보이게 (덮고 있으면 다음 Apply·Clear가 반영한다)
+            if (!_applied) WriteBase();
+        }
+
+        private Color BaseOf(Slot slot)
+        {
+            if (_baseStrength <= 0f) return slot.Original;
+            Color color = Color.Lerp(slot.Original, _base, _baseStrength);
+            color.a = slot.Original.a;
+            return color;
+        }
+
+        /// <summary>상태 틴트 없이 바탕색만 칠한다. 바탕색이 없으면 블록을 비워 머티리얼 원래 색으로.</summary>
+        private void WriteBase()
+        {
+            foreach (Slot slot in _slots)
+            {
+                if (slot.Renderer == null) continue;
+                _block.Clear();
+                if (_baseStrength > 0f)
+                {
+                    Color color = BaseOf(slot);
+                    if (slot.HasBaseColor) _block.SetColor(BaseColorId, color);
+                    if (slot.HasColor) _block.SetColor(ColorId, color);
+                }
+                slot.Renderer.SetPropertyBlock(_block, slot.MaterialIndex);
+            }
+        }
 
         public MechTint(GameObject mech)
         {
@@ -69,7 +112,7 @@ namespace MyDongari.Game.Feedback
             foreach (Slot slot in _slots)
             {
                 if (slot.Renderer == null) continue;
-                Color color = Color.Lerp(slot.Original, tint, strength);
+                Color color = Color.Lerp(BaseOf(slot), tint, strength);
                 color.a = slot.Original.a;
 
                 _block.Clear();
@@ -81,16 +124,12 @@ namespace MyDongari.Game.Feedback
             _applied = true;
         }
 
-        /// <summary>덮어쓴 색을 지워 머티리얼 원래 색으로 되돌린다. 이미 원래 색이면 아무것도 안 한다.</summary>
+        /// <summary>상태 틴트를 지워 바탕색(없으면 머티리얼 원래 색)으로 되돌린다. 이미 그 상태면 아무것도 안 한다.</summary>
         public void Clear()
         {
             if (!_applied) return;
-            _block.Clear();
-            foreach (Slot slot in _slots)
-            {
-                // 빈 블록을 넣으면 덮어쓴 값이 전부 사라진다
-                if (slot.Renderer != null) slot.Renderer.SetPropertyBlock(_block, slot.MaterialIndex);
-            }
+            // 바탕색이 있으면 바탕색으로, 없으면 빈 블록(머티리얼 원래 색)으로
+            WriteBase();
             _applied = false;
         }
     }

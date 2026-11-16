@@ -52,6 +52,8 @@ namespace MyDongari.Game.Feedback
         public static StatusPopup Spawn(Transform follow, float heightOffset, string label, Color color, PopupStyle style)
         {
             if (follow == null || string.IsNullOrEmpty(label)) return null;
+            // HUD 공용 폰트 (ArenaLook — 한글 포함). 꺼져 있거나 없으면 기본 폰트
+            if (_font == null) _font = Visual.ArenaLook.HudFont;
             if (_font == null) _font = Resources.GetBuiltinResource<Font>(BuiltinFontName);
 
             int stack = 0;

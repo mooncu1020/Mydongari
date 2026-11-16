@@ -606,6 +606,17 @@ namespace MyDongari.Game.Flow
             MenuIndex = 0;
         }
 
+        /// <summary>조작법 화면이 열려 있는지 (MenuUI가 그린다). 열려 있는 동안 메뉴 고르기는 멈추고, 확인 버튼으로 닫는다.</summary>
+        public bool IsControlsOpen { get; private set; }
+
+        /// <summary>조작법 화면을 열고 닫는다. 열고 닫은 직후의 확인 입력은 메뉴와 같은 시간만큼 버린다.</summary>
+        public void SetControlsOpen(bool open)
+        {
+            IsControlsOpen = open;
+            _menuOpenedFrame = Time.frameCount;
+            _menuOpenedTime = Time.unscaledTime;
+        }
+
         private void HandleMenuInput()
         {
             if (MenuOptions == null || Time.frameCount == _menuOpenedFrame) return;

@@ -39,7 +39,9 @@ namespace MyDongari.Game.UI
 
         private void Awake()
         {
-            _font = Resources.GetBuiltinResource<Font>(BuiltinFontName);
+            // HUD 공용 폰트 (ArenaLook — 한글 포함). 꺼져 있거나 없으면 기본 폰트
+            _font = Visual.ArenaLook.HudFont;
+            if (_font == null) _font = Resources.GetBuiltinResource<Font>(BuiltinFontName);
             BuildCanvas();
         }
 

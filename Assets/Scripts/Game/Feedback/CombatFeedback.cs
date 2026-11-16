@@ -664,6 +664,11 @@ namespace MyDongari.Game.Feedback
 
         private void UpdateTint(MechFeedback fb, bool stunned, bool overheated, bool guarding)
         {
+            // 1P·2P 기체 색 (ArenaLook): 상태 틴트의 바탕. 플레이어 번호는 GameManager가 나중에 정하기도 해서 매번 본다(같으면 아무 일도 안 한다)
+            ArenaLook look = ArenaLook.Current;
+            MechIdentity identity = fb.Mech.GetComponent<MechIdentity>();
+            fb.Tint.SetBase(look.TeamColor(identity != null ? identity.PlayerIndex : 2), look.teamTintEnabled ? look.teamTintStrength : 0f);
+
             if (!enableTint)
             {
                 fb.Tint.Clear();
@@ -690,7 +695,9 @@ namespace MyDongari.Game.Feedback
             }
             else if (guarding)
             {
-                fb.Tint.Apply(guardTint, tintStrength);
+                // 팀 색이 켜져 있으면 가드 틴트는 팀 색과 겹치지 않는 옅은 색으로 (ArenaLook)
+                if (look.teamTintEnabled) fb.Tint.Apply(look.guardTint, look.guardTintStrength);
+                else fb.Tint.Apply(guardTint, tintStrength);
             }
             else
             {
@@ -722,8 +729,12 @@ namespace MyDongari.Game.Feedback
 
         private void OnDisable()
         {
-            // 꺼지거나 씬이 끝날 때 틴트가 남지 않게 원래 색으로
-            foreach (MechFeedback fb in _mechs) fb.Tint.Clear();
+            // 꺼지거나 씬이 끝날 때 틴트가 남지 않게 원래 색으로 (팀 색도 걷는다)
+            foreach (MechFeedback fb in _mechs)
+            {
+                fb.Tint.Clear();
+                fb.Tint.SetBase(Color.white, 0f);
+            }
         }
 
         private void OnDestroy()
