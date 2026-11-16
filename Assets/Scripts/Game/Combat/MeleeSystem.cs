@@ -75,6 +75,11 @@ namespace MyDongari.Game.Combat
         /// <summary>내 대시 공격·차징 태클이 끝났을 때 (landed = 상대에게 닿아 기록에 쌓았는지 — false면 빗나감). 로그용.</summary>
         public event Action<AttackType, bool> OnTackleEnded;
 
+        /// <summary>
+        /// 공격 버튼 한 번의 진단 기록이 끝났을 때 (펀치 휘두르기마다 한 번 + 펀치가 안 나간 누름). 로그·스모크용.
+        /// </summary>
+        public event Action<PunchTrace> OnPunchTraced;
+
         /// <summary>대시 공격 진행기(DashAttackRunner)가 공격을 끝냈다고 알린다.</summary>
         public void NotifyTackleEnded(AttackType type, bool landed) => OnTackleEnded?.Invoke(type, landed);
 
@@ -280,6 +285,7 @@ namespace MyDongari.Game.Combat
             {
                 // 휘두르기가 끝났다(후딜 끝·점프/대시 취소)
                 _comboStep = 0;
+                CloseTrace("move");
                 return;
             }
             if (drive.Step != _comboStep) BeginSwing(drive.Step);
@@ -316,6 +322,7 @@ namespace MyDongari.Game.Combat
         {
             HitInfo info = decision.Info;
             info.Reaction = decision.Reaction;
+            info.ArmoredByDash = decision.ArmoredByDash;
             switch (decision.Result)
             {
                 case HitResult.Clash:
@@ -496,6 +503,12 @@ namespace MyDongari.Game.Combat
         {
             // 패리·맞딜당한 대시 공격은 공격자 경직이 없다 (되돌아온 넉백이 벌이다)
             if ((result == HitResult.Parried || result == HitResult.Clash) && info.ClashFamily == 2) _stunFrames = 0;
+            if (info.Type == AttackType.Punch && _hasPendingTrace)
+            {
+                _hasPendingTrace = false;
+                _pendingTrace.Result = PunchTrace.ResultOf(info, result);
+                OnPunchTraced?.Invoke(_pendingTrace);
+            }
             OnAttackResolved?.Invoke(info, result);
         }
 
@@ -829,7 +842,7 @@ namespace MyDongari.Game.Combat
             // 펀치 콤보 단계와 같은 칸을 쓴다 (1 = 휘두르는 중) — 히트·콤보 알림은 펀치 전용이라 여기서 직접 시작한다
             _comboStep = 1;
             _swingHit = false;
-            _hasLastSpherePoint = false;
+            _hasLastCapsule = false;
             OnAttackStarted?.Invoke(AttackType.JumpSlash);
             return true;
         }
@@ -909,9 +922,12 @@ namespace MyDongari.Game.Combat
         /// <summary>휘두르기 하나의 시작 (원, 또는 콤보로 넘어간 투·쓰리): 히트 증가, 알림, 한 번 맞기 표시 초기화.</summary>
         private void BeginSwing(int step)
         {
+            // 앞 휘두르기가 판정 없이 끝났으면(콤보로 넘어감) 그 기록부터 닫는다
+            CloseTrace(null);
             _comboStep = step;
             _swingHit = false;
-            _hasLastSpherePoint = false;
+            _hasLastCapsule = false;
+            OpenTrace(step);
             OnComboStep?.Invoke(step);
             // 맞든 빗나가든 휘두른 순간 히트가 오른다
             if (_heatGauge != null) _heatGauge.AddHeat(Punch.heatPerPunch);
@@ -940,6 +956,7 @@ namespace MyDongari.Game.Combat
                 _ownDrive.Cancel();
             }
             _comboStep = 0;
+            if (active) CloseTrace(reason);
             if (active && notify) OnAttackCanceled?.Invoke(AttackType.Punch);
         }
 
@@ -987,34 +1004,108 @@ namespace MyDongari.Game.Combat
             MotionBridge.SetHorizontalVelocity(_rb, forward.normalized * (speed * U * CombatTime.TickRate));
         }
 
-        // 공격 구의 지난 틱 위치 (쓸기 시작점). 휘두르는 동안 틱마다 갱신
-        private Vector3 _lastSpherePoint;
-        private bool _hasLastSpherePoint;
+        // ---------------- 공격 버튼 진단 ----------------
+
+        private PunchTrace _trace;
+        private bool _traceOpen;
+        // 명중을 상대 기록에 쌓고 결과(다음 틱 정산)를 기다리는 기록
+        private PunchTrace _pendingTrace;
+        private bool _hasPendingTrace;
+
+        /// <summary>상대까지 수평 거리(m)·정면에서 벗어난 각(°, 오른쪽 +)·높이차(나 − 상대, m). 상대가 없으면 false.</summary>
+        public bool TryGetOpponentRelationMeters(out float distance, out float angle, out float heightDiff)
+        {
+            distance = 0f;
+            angle = 0f;
+            heightDiff = 0f;
+            VoMotor motor = Motor;
+            if (motor != null && motor.IsActive)
+            {
+                if (!motor.HasOpponent) return false;
+                distance = motor.OpponentDistanceU * motor.U;
+                angle = motor.OpponentAngleOff;
+                heightDiff = motor.OpponentHeightDiffU * motor.U;
+                return true;
+            }
+            if (!TryGetOpponentRelation(out float distanceU, out angle)) return false;
+            distance = distanceU * U;
+            heightDiff = transform.position.y - _identity.Opponent.transform.position.y;
+            return true;
+        }
+
+        private PunchTrace NewTrace(int step)
+        {
+            var trace = new PunchTrace { Step = step, MinGap = float.MaxValue, InZone = IsOpponentInMeleeZone() };
+            TryGetOpponentRelationMeters(out trace.StartDistance, out trace.StartAngle, out trace.StartHeightDiff);
+            return trace;
+        }
+
+        private void OpenTrace(int step)
+        {
+            _trace = NewTrace(step);
+            _traceOpen = true;
+        }
 
         /// <summary>
-        /// 펀치 판정 (틱 끝, 모든 기체가 움직인 뒤). 우리 근사: 공격 구(기체 중심 + 정면 × 사거리, 손 높이)를 지난 틱 위치 → 이번 틱 위치로
-        /// 쓸어서 상대 피격 캡슐과 겹치면 명중. 판정 창이 열린 틱에만 보고, 한 번 휘두를 때 한 상대에게 한 번만 맞는다.
+        /// 맞히지 못하고 끝난 휘두르기의 기록을 닫는다. 판정 창을 한 틱이라도 지났으면 사거리 밖(miss_range),
+        /// 창이 열리기 전에 끊겼으면 끊긴 이유(canceled_…). cancelReason이 null이면 창을 다 지나고 끝난 것.
+        /// </summary>
+        private void CloseTrace(string cancelReason)
+        {
+            if (!_traceOpen) return;
+            _traceOpen = false;
+            _trace.Result = _trace.WindowTicks > 0 || cancelReason == null ? PunchTrace.MissRange : "canceled_" + cancelReason;
+            OnPunchTraced?.Invoke(_trace);
+        }
+
+        /// <summary>
+        /// 공격 버튼을 눌렀는데 펀치가 아닌 것이 됐을 때의 기록 (WeaponSystem이 부른다):
+        /// 근접 구역 밖이라 런지로 바뀜(zone_out_lunge) / 런지 쿨다운이라 아무것도 안 나감(lunge_cooldown).
+        /// </summary>
+        public void TraceAttackPress(string result)
+        {
+            PunchTrace trace = NewTrace(0);
+            trace.Result = result;
+            OnPunchTraced?.Invoke(trace);
+        }
+
+        // 공격 캡슐 축의 지난 틱 위치 (쓸기 시작). 휘두르는 동안 틱마다 갱신
+        private Vector3 _lastCapsuleNear, _lastCapsuleFar;
+        private bool _hasLastCapsule;
+
+        /// <summary>
+        /// 펀치 판정 (틱 끝, 모든 기체가 움직인 뒤). 우리 근사: 몸 앞 start(m)부터 사거리 끝까지 이어진 공격 캡슐(손 높이)을
+        /// 지난 틱 위치 → 이번 틱 위치로 쓸어서 상대 피격 캡슐과 겹치면 명중. 판정 창이 열린 틱에만 보고, 한 번 휘두를 때 한 상대에게 한 번만 맞는다.
+        /// 예전엔 사거리 끝(1.8m)의 구 하나라, 1m 안에 붙은 상대가 정면에서 26° 넘게 벗어나면 구가 닿지 않았다.
         /// </summary>
         private void CollectPunchHit()
         {
             VoMeleeDrive drive = ActiveDrive;
             if (drive == null)
             {
-                _hasLastSpherePoint = false;
+                _hasLastCapsule = false;
                 return;
             }
             StyleOverrides style = StyleOverrides.Current;
             bool slash = IsJumpSlashing;
-            StyleOverrides.AttackSphere sphere = slash ? style.jumpSlashSphere : (_comboStep >= 3 ? style.thirdSphere : style.punchSphere);
-            Vector3 point = AttackSpherePoint(sphere.range);
-            Vector3 from = _hasLastSpherePoint ? _lastSpherePoint : point;
-            _lastSpherePoint = point;
-            _hasLastSpherePoint = true;
+            StyleOverrides.AttackCapsule shape = slash ? style.jumpSlashCapsule : (_comboStep >= 3 ? style.thirdCapsule : style.punchCapsule);
+            AttackCapsulePoints(shape.start, shape.range, out Vector3 near, out Vector3 far);
+            Vector3 fromNear = _hasLastCapsule ? _lastCapsuleNear : near;
+            Vector3 fromFar = _hasLastCapsule ? _lastCapsuleFar : far;
+            _lastCapsuleNear = near;
+            _lastCapsuleFar = far;
+            _hasLastCapsule = true;
             if (!drive.HitActiveThisTick || _swingHit) return;
 
             MechIdentity opponent = _identity.Opponent;
             if (opponent == null || !opponent.gameObject.activeInHierarchy) return;
-            if (!SweepHitsOpponent(from, point, sphere.radius, opponent.gameObject)) return;
+            float gap = SweepGapToOpponent(fromNear, fromFar, near, far, shape.radius, opponent.gameObject);
+            if (_traceOpen)
+            {
+                _trace.WindowTicks++;
+                _trace.MinGap = Mathf.Min(_trace.MinGap, gap);
+            }
+            if (gap > 0f) return;
 
             VoCombatSpec c = C;
             if (slash)
@@ -1034,10 +1125,17 @@ namespace MyDongari.Game.Combat
             info.ComboStep = _comboStep;
             QueueHit(opponent.gameObject, info);
             _swingHit = true;
+            if (_traceOpen)
+            {
+                // 결과(명중·막힘·무적·슈퍼아머)는 상대의 다음 틱 정산에서 온다
+                _traceOpen = false;
+                _pendingTrace = _trace;
+                _hasPendingTrace = true;
+            }
         }
 
-        /// <summary>지금 내 위치·정면 기준 공격 구 중심: 기체 중심에서 정면으로 range(m), 손 높이.</summary>
-        public Vector3 AttackSpherePoint(float range)
+        /// <summary>지금 내 위치·정면 기준 공격 캡슐 축의 두 끝: 손 높이에서 기체 중심 앞 start(m) ~ range(m).</summary>
+        public void AttackCapsulePoints(float start, float range, out Vector3 near, out Vector3 far)
         {
             VoMotor motor = Motor;
             bool live = motor != null && motor.IsActive;
@@ -1047,23 +1145,27 @@ namespace MyDongari.Game.Combat
             forward = forward.sqrMagnitude > 0.0001f ? forward.normalized : Vector3.forward;
             float feet = position.y + FootOffset;
             float height = BodyHeightMeters * StyleOverrides.Current.attackHandHeightRatio;
-            return new Vector3(position.x, feet + height, position.z) + forward * range;
+            Vector3 hand = new Vector3(position.x, feet + height, position.z);
+            near = hand + forward * start;
+            far = hand + forward * range;
         }
 
-        /// <summary>공격 구가 from → to로 쓸고 간 자취가 target의 피격 캡슐과 겹치는지.</summary>
-        public static bool SweepHitsOpponent(Vector3 from, Vector3 to, float radius, GameObject target)
+        /// <summary>
+        /// 공격 캡슐(축 near-far)이 from → to로 쓸고 간 자취와 target의 피격 캡슐 사이의 틈(m). 0 이하면 명중.
+        /// </summary>
+        public static float SweepGapToOpponent(Vector3 fromNear, Vector3 fromFar, Vector3 toNear, Vector3 toFar, float radius, GameObject target)
         {
             MeleeSystem defender = target.GetComponent<MeleeSystem>();
             if (defender != null)
             {
                 defender.GetHurtCapsule(out Vector3 a, out Vector3 b, out float r);
-                return HitGeometry.SweptSphereHitsCapsule(from, to, radius, a, b, r);
+                return HitGeometry.SweptCapsuleGap(fromNear, fromFar, toNear, toFar, radius, a, b, r);
             }
-            // 전투 허브가 없는 대상: 콜라이더 표면까지의 거리로
+            // 전투 허브가 없는 대상: 콜라이더 표면까지의 거리로 (축의 가운데에서)
             Collider col = target.GetComponent<Collider>();
-            if (col == null) return false;
-            Vector3 closest = col.ClosestPoint(to);
-            return (closest - to).sqrMagnitude <= radius * radius;
+            if (col == null) return float.MaxValue;
+            Vector3 mid = (toNear + toFar) * 0.5f;
+            return (col.ClosestPoint(mid) - mid).magnitude - radius - (toFar - toNear).magnitude * 0.5f;
         }
 
         private CapsuleCollider _capsule;

@@ -687,3 +687,15 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 | `dash_attack_evaded` | 상대 대시 공격을 피함 (피한 쪽) | 그 순간 내 상태 (`VoJumpState` = 점프로 피함 등) |
 
 - [ ] (로그) 2인 대전 한 판 뒤 `events_*.csv`에 위 이벤트가 나옴: 펀치를 점프·대시로 끊으면 `melee_cancel,jump|dash`, 맞딜이면 `melee_cancel,clash`, 다운을 당하고 연타·선입력에 따라 `wake_attack|dash|jump|plain`, 대시 공격을 점프로 피하면 `dash_attack_evaded,VoJumpState`. `summary_*.csv`에 `reaction_*`·`hitstop_start`·`wake_*` 줄이 0이어도 항상 나옴
+
+---
+
+## 발표 전 종결 (2026-11-16)
+
+### 종결A 펀치 판정
+
+- [ ] 상대에게 몸이 닿을 만큼 붙어서(1m 안) 정면이 조금 틀어진 채 □ → 원이 맞는다. 이어서 연타하면 투·쓰리도 맞고 다운으로 끝난다
+- [ ] 상대가 완전히 등 뒤에 있을 때 □ → 헛친다(불꽃 없음)
+- [ ] 다운된 상대·기상 직후(무적) 상대를 치면 **회색 작은 불꽃**만 튄다 (피해·흔들림 없음)
+- [ ] 대시 중인 상대를 원·투로 치면 **노란 불꽃**이 튀고 상대는 경직 없이 계속 달린다 (피해는 들어감)
+- [ ] (로그) `events_*.csv`에 펀치마다 `punch_trace` 줄: `결과 step=단계 d=시작 거리 a=각도 h=높이차 zone=구역 gap=최소 틈 window=판정 틱`. 안 맞았을 때 `miss_range`(사거리 밖) / `invulnerable`(상대 무적) / `super_armor`(대시 슈퍼아머) / `zone_out_lunge`(구역 밖이라 런지) / `lunge_cooldown`(런지 쿨다운) 중 무엇인지 보인다. `summary_*.csv`에는 `punch_trace_<결과>` 수

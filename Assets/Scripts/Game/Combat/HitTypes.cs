@@ -77,6 +77,8 @@ namespace MyDongari.Game.Combat
         public Reaction Reaction;
         /// <summary>날아가기 전 대기(틱). 파일 드라이버가 외형 어퍼컷이 닿는 순간에 맞추려고 쓴다.</summary>
         public int LaunchDelayFrames;
+        /// <summary>지상 대시의 슈퍼아머로 버텼다 (경직급인데 반응 없이 무적만). 피격자가 적용할 때 채운다 (연출·로그용).</summary>
+        public bool ArmoredByDash;
 
         /// <summary>이 타격의 세기 등급 (연출용).</summary>
         public AttackStrength Strength => StrengthOf(Type, ComboStep);
@@ -106,6 +108,54 @@ namespace MyDongari.Game.Combat
         public int ClashFamily => Type == AttackType.Punch ? 1 : (Type == AttackType.DashAttack || Type == AttackType.Tackle ? 2 : 0);
         /// <summary>패리하면 공격자에게 피해·넉백을 되돌리는 종류 (런지·태클·대시 어택).</summary>
         public bool ReflectsOnParry => Type == AttackType.Tackle || Type == AttackType.DashAttack || Type == AttackType.Lunge;
+    }
+
+    /// <summary>
+    /// 공격 버튼 한 번의 진단 기록 (펀치가 왜 안 맞았는지 가리는 용도). 펀치 휘두르기마다 하나, 펀치가 안 나간 누름에도 하나.
+    /// 결과: hit·guarded·guard_broken·parried·clash / miss_range(사거리 밖) / invulnerable(상대 무적) / super_armor(대시 슈퍼아머)
+    /// / canceled_…(판정 창 전에 끊김) / zone_out_lunge(구역 밖이라 런지) / lunge_cooldown(런지 쿨다운이라 아무것도 안 나감).
+    /// </summary>
+    public struct PunchTrace
+    {
+        public const string MissRange = "miss_range";
+        public const string ZoneOutLunge = "zone_out_lunge";
+        public const string LungeCooldown = "lunge_cooldown";
+
+        /// <summary>콤보 단계 (1 원, 2 투, 3 쓰리). 펀치가 안 나간 누름은 0.</summary>
+        public int Step;
+        /// <summary>시작 틱의 상대까지 수평 거리(m)·정면에서 벗어난 각(°)·높이차(나 − 상대, m).</summary>
+        public float StartDistance;
+        public float StartAngle;
+        public float StartHeightDiff;
+        /// <summary>시작 틱에 상대가 근접 구역 안이었는지.</summary>
+        public bool InZone;
+        /// <summary>판정 창 동안 공격 캡슐과 상대 피격 캡슐 사이의 가장 작은 틈(m). 0 이하 = 닿음. 창이 안 열렸으면 큰 값.</summary>
+        public float MinGap;
+        /// <summary>판정을 본 틱 수.</summary>
+        public int WindowTicks;
+        public string Result;
+
+        /// <summary>닿은 타격의 판단 결과를 진단 이름으로.</summary>
+        public static string ResultOf(HitInfo info, HitResult result)
+        {
+            switch (result)
+            {
+                case HitResult.Invulnerable: return "invulnerable";
+                case HitResult.Guarded: return "guarded";
+                case HitResult.GuardBroken: return "guard_broken";
+                case HitResult.Parried: return "parried";
+                case HitResult.Clash: return "clash";
+                default: return info.ArmoredByDash ? "super_armor" : "hit";
+            }
+        }
+
+        public override string ToString()
+        {
+            System.Globalization.CultureInfo c = System.Globalization.CultureInfo.InvariantCulture;
+            string gap = WindowTicks > 0 ? MinGap.ToString("0.00", c) : "-";
+            return string.Format(c, "{0} step={1} d={2:0.00} a={3:0} h={4:0.00} zone={5} gap={6} window={7}",
+                Result, Step, StartDistance, StartAngle, StartHeightDiff, InZone ? 1 : 0, gap, WindowTicks);
+        }
     }
 
     /// <summary>전투 시간 환산. 전투의 모든 시간은 60Hz 틱 수로 센다 — 초는 외형·표시에만 쓴다.</summary>

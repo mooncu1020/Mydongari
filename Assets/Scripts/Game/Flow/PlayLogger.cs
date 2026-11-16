@@ -176,11 +176,21 @@ namespace MyDongari.Game.Flow
                 Action<bool> onStop = asAttacker => ErrorLog.Run(() => Count(index, "hitstop_start", asAttacker ? "attacker" : "defender"), "PlayLogger.onHitStop");
                 Action<KnockTickResult> onWake = kind => ErrorLog.Run(() => Count(index, "wake_" + WakeKey(kind)), "PlayLogger.onWake");
                 Action<AttackType, bool> onTackleEnd = (type, landed) => ErrorLog.Run(() => OnTackleEnded(index, type, landed), "PlayLogger.onTackleEnd");
+                // 공격 버튼 진단: 펀치마다 시작 거리·각도·높이차·구역·판정 창 동안의 최소 틈·결과 (안 맞은 이유를 가리는 용도)
+                Action<PunchTrace> onTrace = trace => ErrorLog.Run(() =>
+                {
+                    LogEvent(index, "punch_trace", trace.ToString());
+                    // 맞지 않은 것만 요약에 센다 (명중·막힘은 punch_hit 등으로 이미 센다)
+                    if (trace.Result != "hit" && trace.Result != "guarded" && trace.Result != "guard_broken" &&
+                        trace.Result != "parried" && trace.Result != "clash") CountSilent(index, "punch_trace_" + trace.Result);
+                }, "PlayLogger.onTrace");
+                melee.OnPunchTraced += onTrace;
                 melee.OnHitStopStarted += onStop;
                 melee.OnWokeUp += onWake;
                 melee.OnTackleEnded += onTackleEnd;
                 _unsubscribers.Add(() =>
                 {
+                    melee.OnPunchTraced -= onTrace;
                     melee.OnAttackStarted -= onStart;
                     melee.OnAttackCanceled -= onCancel;
                     melee.OnHitResolved -= onHit;

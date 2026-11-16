@@ -4,10 +4,39 @@ namespace MyDongari.Game.Combat
 {
     /// <summary>
     /// 근접 명중 판정의 기하 (순수 계산). 원본은 칼끝이 한 틱 동안 쓸고 지나간 면과 피격 구 7개의 겹침인데(전투 사양서 1.4·6.1·6.2),
-    /// 골격 길이를 확정하지 못해 우리 근사를 쓴다: 공격 구를 지난 틱 위치 → 이번 틱 위치로 쓸어서 상대 피격 캡슐과 겹치는지 본다.
+    /// 골격 길이를 확정하지 못해 우리 근사를 쓴다: 몸 앞에서 사거리 끝까지 이어진 공격 캡슐(원본의 칼 밑동 ~ 칼끝)을
+    /// 지난 틱 위치 → 이번 틱 위치로 쓸어서 상대 피격 캡슐과 겹치는지 본다. (예전엔 사거리 끝의 구 하나라 붙은 상대가 빠졌다.)
     /// </summary>
     public static class HitGeometry
     {
+        /// <summary>쓸기를 몇 조각으로 나눠 보는지. 한 틱 이동(최대 0.7m)·회전(최대 14°)을 반지름 합(1m 안팎)보다 촘촘히 자른다.</summary>
+        public const int SweepSteps = 4;
+
+        /// <summary>
+        /// 공격 캡슐(축 fromA-fromB, 반지름 radius)이 한 틱 동안 toA-toB로 움직인 자취와 피격 캡슐 사이의 틈(m).
+        /// 0 이하면 겹침(명중), 양수면 그만큼 모자람. 축의 두 끝을 같은 비율로 보간한 선분들로 자취를 근사한다.
+        /// </summary>
+        public static float SweptCapsuleGap(Vector3 fromA, Vector3 fromB, Vector3 toA, Vector3 toB, float radius,
+            Vector3 capsuleA, Vector3 capsuleB, float capsuleRadius, int steps = SweepSteps)
+        {
+            steps = Mathf.Max(1, steps);
+            float best = float.MaxValue;
+            for (int i = 0; i <= steps; i++)
+            {
+                float t = i / (float)steps;
+                float sqr = SegmentSegmentSqrDistance(Vector3.Lerp(fromA, toA, t), Vector3.Lerp(fromB, toB, t), capsuleA, capsuleB);
+                if (sqr < best) best = sqr;
+            }
+            return Mathf.Sqrt(best) - radius - capsuleRadius;
+        }
+
+        /// <summary>공격 캡슐이 쓸고 간 자취가 피격 캡슐과 겹치는지.</summary>
+        public static bool SweptCapsuleHitsCapsule(Vector3 fromA, Vector3 fromB, Vector3 toA, Vector3 toB, float radius,
+            Vector3 capsuleA, Vector3 capsuleB, float capsuleRadius)
+        {
+            return SweptCapsuleGap(fromA, fromB, toA, toB, radius, capsuleA, capsuleB, capsuleRadius) <= 0f;
+        }
+
         /// <summary>
         /// 반지름 sphereRadius인 구가 from → to로 움직인 자취가 캡슐(축 capsuleA ~ capsuleB, 반지름 capsuleRadius)과 겹치는지.
         /// = 두 선분 사이 최단 거리 ≤ 반지름 합.

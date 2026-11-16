@@ -227,9 +227,14 @@ namespace MyDongari.Game.Combat
                 {
                     _discardAttackInput = true;
                     _thrusterLunge.NotifyCooldownDenied();
+                    // 진단: 붙어 있는 것 같은데 아무것도 안 나갔다면 이 줄이 남는다 (구역 밖 + 런지 쿨다운)
+                    if (_meleeSystem != null) _meleeSystem.TraceAttackPress(PunchTrace.LungeCooldown);
                     return null;
                 }
-                return _thrusterLunge.TryLunge() ? AttackType.Lunge : (AttackType?)null;
+                if (!_thrusterLunge.TryLunge()) return null;
+                // 진단: 펀치를 기대했는데 런지가 나갔다면 이 줄이 남는다 (구역 밖)
+                if (_meleeSystem != null) _meleeSystem.TraceAttackPress(PunchTrace.ZoneOutLunge);
+                return AttackType.Lunge;
             }
             return null;
         }

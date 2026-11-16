@@ -517,6 +517,75 @@ namespace MyDongari.EditorTools.Tests
             Assert.IsFalse(HitGeometry.SweptSphereHitsCapsule(low, low, 0.5f, sa, sb, sr));
         }
 
+        /// <summary>공격자가 원점에서 +z를 보고 설 때 손 높이의 공격 캡슐 축 (코드 기본값: 몸 앞 0.3m ~ 사거리 끝).</summary>
+        private static void PunchCapsule(float yaw, out Vector3 near, out Vector3 far, out float radius)
+        {
+            StyleOverrides style = ScriptableObject.CreateInstance<StyleOverrides>();
+            StyleOverrides.AttackCapsule shape = style.punchCapsule;
+            float hand = 1.93f * style.attackHandHeightRatio;
+            Object.DestroyImmediate(style);
+            Vector3 forward = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+            near = new Vector3(0f, hand, 0f) + forward * shape.start;
+            far = new Vector3(0f, hand, 0f) + forward * shape.range;
+            radius = shape.radius;
+        }
+
+        private static bool PunchReaches(float distance, float yaw)
+        {
+            PunchCapsule(yaw, out Vector3 near, out Vector3 far, out float radius);
+            HitGeometry.UprightCapsule(new Vector3(0f, 0f, distance), 0f, 2f, 0.5f, 1f, out Vector3 a, out Vector3 b, out float r);
+            // 제자리 휘두르기 (지난 틱 = 이번 틱)
+            return HitGeometry.SweptCapsuleHitsCapsule(near, far, near, far, radius, a, b, r);
+        }
+
+        [Test]
+        public void PunchCapsule_HitsAt_0_6_1_1_And_1_8_Meters()
+        {
+            Assert.IsTrue(PunchReaches(0.6f, 0f), "0.6m (몸이 겹칠 만큼 붙음)");
+            Assert.IsTrue(PunchReaches(1.1f, 0f), "1.1m (정지 거리)");
+            Assert.IsTrue(PunchReaches(1.8f, 0f), "1.8m (사거리 끝)");
+            Assert.IsFalse(PunchReaches(3.0f, 0f), "3m는 사거리 밖");
+        }
+
+        [Test]
+        public void PunchCapsule_HitsCloseOpponent_EvenWhenOffAxis()
+        {
+            // 예전 판정(사거리 끝 1.8m의 구, 반지름 0.5)은 1m에 붙은 상대가 26° 넘게 벗어나면 빗나갔다
+            PunchCapsule(40f, out _, out Vector3 far, out float radius);
+            HitGeometry.UprightCapsule(new Vector3(0f, 0f, 1f), 0f, 2f, 0.5f, 1f, out Vector3 a, out Vector3 b, out float r);
+            Assert.IsFalse(HitGeometry.SweptSphereHitsCapsule(far, far, radius, a, b, r), "예전 구 판정은 빗나감");
+            Assert.IsTrue(PunchReaches(1.0f, 40f), "캡슐 판정은 명중");
+            Assert.IsTrue(PunchReaches(0.6f, 60f));
+            // 등 뒤는 여전히 안 맞는다
+            Assert.IsFalse(PunchReaches(1.0f, 150f));
+        }
+
+        [Test]
+        public void SweptCapsule_CatchesOpponentPassedDuringTheTick()
+        {
+            // 한 틱 사이에 캡슐이 상대를 건너뛰었다(시작·끝은 안 닿고 쓸고 간 길만 닿는다)
+            Vector3 a = new Vector3(0f, 0.5f, 3f);
+            Vector3 b = new Vector3(0f, 1.5f, 3f);
+            Vector3 fromNear = new Vector3(-2.4f, 1f, 2.5f), fromFar = new Vector3(-2.4f, 1f, 3.5f);
+            Vector3 toNear = new Vector3(2.4f, 1f, 2.5f), toFar = new Vector3(2.4f, 1f, 3.5f);
+            Assert.Greater(HitGeometry.SweptCapsuleGap(fromNear, fromFar, fromNear, fromFar, 0.5f, a, b, 0.5f), 0f);
+            Assert.Greater(HitGeometry.SweptCapsuleGap(toNear, toFar, toNear, toFar, 0.5f, a, b, 0.5f), 0f);
+            Assert.IsTrue(HitGeometry.SweptCapsuleHitsCapsule(fromNear, fromFar, toNear, toFar, 0.5f, a, b, 0.5f));
+        }
+
+        [Test]
+        public void DashSuperArmor_IsMarkedOnTheDecision()
+        {
+            VoCombatSpec c = Spec();
+            HitDecision dashing = HitRules.Decide(c, Punch(c, 1), new DefenderPosture { Dashing = true }, 0f, false);
+            Assert.AreEqual(Reaction.InvulnOnly, dashing.Reaction);
+            Assert.IsTrue(dashing.ArmoredByDash, "대시 중 경직급 = 슈퍼아머 표시");
+            HitDecision standing = HitRules.Decide(c, Punch(c, 1), new DefenderPosture(), 0f, false);
+            Assert.IsFalse(standing.ArmoredByDash);
+            HitDecision jumping = HitRules.Decide(c, Punch(c, 1), new DefenderPosture { Airborne = true }, 0f, false);
+            Assert.IsFalse(jumping.ArmoredByDash, "점프 중 무적만은 슈퍼아머가 아니다");
+        }
+
         // ---------------- 지연 표적 (이동 사양서 1.2 ②-1) ----------------
 
         /// <summary>

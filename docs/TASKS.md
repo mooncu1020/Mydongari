@@ -480,3 +480,15 @@
   - 찾은 것: ① 맞딜 자체는 대칭(밀림 0.498m 같음)이지만 파고들기 마지막 틱에서 1P가 0.25m 더 들어간다 — 1P가 먼저 움직이고 2P가 1P의 이번 틱 위치를 보는 원본 순서(이동 사양서 1.1). 고치지 않음. ② 런지(강타)는 공중이어도 날아감이 먼저라 공중 다운이 안 난다 — 원본 규칙(전투 사양서 2.1 5번)이라 장면을 대시 공격으로 바꿈. ③ 30fps 단계 첫 맞딜 장면에서만 2P 밀림이 0.514m(60fps 0.498m) — 반응·체력은 같고 허용 오차(5cm) 안. 원인 미확정(프레임 의존인지 장면 이력인지).
 - [x] **로그 항목** `PlayLogger`: 대시 시작(지상·공중)·끝(이유 + 틱 수), 착지 경직 중 피격, 근접 취소(무엇으로), 반응 종류 + 충격치 누적값, 히트스톱 시작(때린 쪽·맞은 쪽), 기상 방식, 대시 공격 빗나감·피함. 훅: `MeleeSystem.OnHitStopStarted`·`OnWokeUp`·`OnTackleEnded`·`LastMeleeCancelReason`, `VoMeleeState`/`VoJumpMeleeState.ExitedMidSwing`, `DashAttackRunner.Finish`가 빗나감을 알림. 열 설명은 TEST_CHECKLIST "로그 CSV 열".
   - 남은 위험: `hit_while_landing`·`wake_attack`·`wake_jump`는 스모크에서 한 번도 안 나와 실제 기록은 확인 못 함. 근접 취소 이유를 못 가린 경우 `other`(스모크에서 1건).
+
+---
+
+## 발표 전 종결 (2026-11-16)
+
+패드 테스트에서 찾은 문제 A·B를 먼저, 그다음 1~5. 항목마다 커밋, 커밋 전에 빌드 스모크·전투 스모크·EditMode 테스트.
+
+- [x] **종결A** 붙어서 때려도 펀치가 안 맞던 것. 원인: 공격 판정이 "중심에서 1.8m 앞의 구(반지름 0.5m)" 하나라, 1m 안에 붙은 상대가 정면에서 26° 넘게 벗어나면 구가 닿지 않았다(안쪽 원 12.5u 안에서는 추적 회전도 없다). 판정을 "손 높이에서 몸 앞 0.3m ~ 사거리 끝까지 이어진 캡슐"로 바꿔 지난 틱 → 이번 틱으로 쓸어 검사한다(`HitGeometry.SweptCapsuleGap`, `StyleOverrides.punchCapsule/thirdCapsule` — 예전 `…Sphere` 값은 `FormerlySerializedAs`로 이어받고 `start` 0.3만 새로 생김).
+  - 진단 로그: 공격 버튼마다 `events_*.csv`에 `punch_trace` 한 줄(시작 거리·각도·높이차, 구역 여부, 판정 창 동안 최소 틈, 결과). 결과 = `hit`·`guarded`·`parried`·`clash` / `miss_range` 사거리 밖 / `invulnerable` 상대 무적 / `super_armor` 대시 슈퍼아머 / `zone_out_lunge` 구역 밖이라 런지 / `lunge_cooldown` 런지 쿨다운이라 아무것도 안 나감 / `canceled_<이유>` 판정 창 전에 끊김. 훅 `MeleeSystem.OnPunchTraced`·`TraceAttackPress`, `HitDecision/HitInfo.ArmoredByDash`.
+  - 표시: 무적이라 무시된 타격 = 회색 작은 불꽃, 슈퍼아머로 버틴 타격 = 노란 불꽃 (`BernardTuning.HitFeel.invulnSparkColor/invulnSparkScale/armorSparkColor`).
+  - 스모크: PRACTICE 장면을 이름표(`PracticeScene`)로 바꾸고 "밀착 원투쓰리"(0.8m, P1을 40° 비스듬히) 추가 — 3타 모두 명중해야 PASS. P1 펀치마다 진단 줄을 Player.log에 남긴다. EditMode 테스트 4개 추가(0.6/1.1/1.8m 명중, 비스듬한 밀착, 쓸기, 슈퍼아머 표시).
+  - 남은 위험: 캡슐이 몸 앞 0.3m부터라 옆(정면에서 약 80°까지)에 붙은 상대도 맞는다 — 등 뒤는 여전히 안 맞음. 런지·슬램·대시 공격 판정(겹침 구)은 그대로다.

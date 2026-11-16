@@ -77,6 +77,8 @@ namespace MyDongari.Game.Combat
         public Reaction Reaction;
         /// <summary>이 타격으로 때린 쪽도 히트스톱이 걸리는지.</summary>
         public bool StopsAttacker;
+        /// <summary>지상 대시의 슈퍼아머로 버틴 타격 (경직급인데 반응 없이 무적만). 연출·로그용.</summary>
+        public bool ArmoredByDash;
     }
 
     /// <summary>
@@ -166,6 +168,7 @@ namespace MyDongari.Game.Combat
             if (total < c.downThreshold)
             {
                 d.Reaction = p.Dashing ? Reaction.InvulnOnly : Reaction.Stagger;
+                d.ArmoredByDash = p.Dashing;
                 return d;
             }
             // 9) 다운 / 10) 날아감

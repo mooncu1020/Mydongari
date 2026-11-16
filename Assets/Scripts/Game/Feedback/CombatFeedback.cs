@@ -337,8 +337,14 @@ namespace MyDongari.Game.Feedback
         /// </summary>
         private void ApplyHitFeel(MechFeedback fb, HitInfo info, HitResult result)
         {
-            if (result == HitResult.Parried || result == HitResult.Invulnerable || fb.Mech == null) return;
+            if (result == HitResult.Parried || fb.Mech == null) return;
             BernardTuning.HitFeelValues feel = TuningOf(fb.Mech).HitFeel;
+            if (result == HitResult.Invulnerable)
+            {
+                // 무적이라 무시된 타격: 회색 작은 불꽃만 (번쩍임·흔들림 없음) — 닿긴 닿았다는 표시
+                SpawnHitSpark(fb, info, feel, feel.light.effectScale * feel.invulnSparkScale, feel.invulnSparkColor);
+                return;
+            }
             BernardTuning.HitGradeValues grade = feel.Grade(result == HitResult.Clash ? AttackStrength.Light : info.Strength);
             float scale = result == HitResult.Guarded ? feel.guardedScale : 1f;
             // 화면 흔들림 길이는 히트스톱을 따른다 (근접 피격 = 15틱). 맞딜·사격처럼 히트스톱이 없는 것만 등급 값
@@ -357,13 +363,9 @@ namespace MyDongari.Game.Feedback
             if (info.Type == AttackType.PileDriver && MechVisualRig.HandlesPileDriverImpactOf(info.Attacker)) return;
 
             Vector3 attackerPosition = info.Attacker != null ? info.Attacker.transform.position : fb.Mech.transform.position + fb.Mech.transform.forward;
-            Vector3 source = attackerPosition + Vector3.up * feel.hitHeight;
-            Collider body = fb.Mech.GetComponent<Collider>();
-            Vector3 point = body != null ? body.ClosestPoint(source) : fb.Mech.transform.position + Vector3.up * feel.hitHeight;
-            Vector3 sparkDirection = source - point;
-            if (sparkDirection.sqrMagnitude < 0.0001f) sparkDirection = attackerPosition - fb.Mech.transform.position;
-            Color sparkColor = result == HitResult.Guarded ? feel.guardSparkColor : feel.sparkColor;
-            HitSparkFx.SpawnHit(point, sparkDirection, grade.effectScale * scale, SparkStyle(feel, sparkColor));
+            // 슈퍼아머(대시)로 버틴 타격은 노란 불꽃
+            Color sparkColor = result == HitResult.Guarded ? feel.guardSparkColor : (info.ArmoredByDash ? feel.armorSparkColor : feel.sparkColor);
+            SpawnHitSpark(fb, info, feel, grade.effectScale * scale, sparkColor);
 
             Vector3 hitDirection = fb.Mech.transform.position - attackerPosition;
             hitDirection.y = 0f;
@@ -377,6 +379,18 @@ namespace MyDongari.Game.Feedback
             {
                 attackerId.MechCamera.AddShake(grade.attackerShake * scale, shakeTime);
             }
+        }
+
+        /// <summary>타격 지점(때린 쪽 가슴 높이에서 본 맞은 기체 콜라이더 표면)에 불꽃을 띄운다.</summary>
+        private static void SpawnHitSpark(MechFeedback fb, HitInfo info, BernardTuning.HitFeelValues feel, float scale, Color color)
+        {
+            Vector3 attackerPosition = info.Attacker != null ? info.Attacker.transform.position : fb.Mech.transform.position + fb.Mech.transform.forward;
+            Vector3 source = attackerPosition + Vector3.up * feel.hitHeight;
+            Collider body = fb.Mech.GetComponent<Collider>();
+            Vector3 point = body != null ? body.ClosestPoint(source) : fb.Mech.transform.position + Vector3.up * feel.hitHeight;
+            Vector3 sparkDirection = source - point;
+            if (sparkDirection.sqrMagnitude < 0.0001f) sparkDirection = attackerPosition - fb.Mech.transform.position;
+            HitSparkFx.SpawnHit(point, sparkDirection, scale, SparkStyle(feel, color));
         }
 
         private void RegisterFootsteps(GameObject mech)

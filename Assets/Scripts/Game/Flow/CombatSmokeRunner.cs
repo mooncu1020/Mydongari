@@ -11,8 +11,8 @@ namespace MyDongari.Game.Flow
 {
     /// <summary>
     /// 전투 스모크 테스트 (메뉴 Tools/Combat Smoke Test가 빌드를 -combatSmoke로 실행하면 스스로 생긴다).
-    /// PRACTICE 모드에서 플레이어 자리에 자동 입력(InputReader 스크립트 입력)을 넣고 연습 봇을 상대로 30초(1800틱) 동안
-    /// 장면 여섯 개를 차례로 돌린다: 원투쓰리 / 가드에 펀치 / 동시 펀치(맞딜) / 런지 / 대시 공격 / 뛰어 베기.
+    /// PRACTICE 모드에서 플레이어 자리에 자동 입력(InputReader 스크립트 입력)을 넣고 연습 봇을 상대로 장면(PracticeScene)을 차례로 돌린다:
+    /// 원투쓰리 / 가드에 펀치 / 동시 펀치(맞딜) / 런지 / 대시 공격 / 뛰어 베기 / 밀착 원투쓰리(0.8m, 40° 비스듬히 — 3타 모두 명중해야 한다).
     /// 이어서 봇 장면 세 개(P1은 가만히 또는 가끔 펀치): 공격만 모드 12m / 패리 모드 3m / 섞어서 모드 6m — 봇이 이동기로 다가가 공격하는지 본다.
     /// 그다음 VERSUS 모드로 바꿔 1P·2P 둘 다 자동 입력인 장면(VersusSmokeScenes)을 60fps로 한 번, 30fps로 한 번 돌리고 두 결과가 같은지 본다.
     /// 장면마다 두 기체를 리셋하고 정해진 거리(기본 3m, 런지·대시는 그보다 멀리)에 마주 세운다.
@@ -27,15 +27,33 @@ namespace MyDongari.Game.Flow
         /// <summary>결과 로그 머리말 (에디터 쪽이 Player.log에서 이 줄들을 찾는다).</summary>
         public const string LogTag = "[CombatSmoke]";
 
-        // 장면 하나의 길이(틱)와 장면 수 — 200 × 9 = 1800틱 = 30초
+        /// <summary>PRACTICE 장면. 도는 순서는 SceneOrder.</summary>
+        private enum PracticeScene
+        {
+            Combo, Guard, Clash, Lunge, DashAttack, JumpSlash,
+            /// <summary>밀착 원투쓰리: 0.8m에 붙여 세우고 P1을 40° 비스듬히 돌린다 (예전 판정 구로는 빗나가던 배치).</summary>
+            CloseCombo,
+            BotApproach, BotParry, BotMixed
+        }
+
+        private static readonly PracticeScene[] SceneOrder =
+        {
+            PracticeScene.Combo, PracticeScene.Guard, PracticeScene.Clash, PracticeScene.Lunge, PracticeScene.DashAttack,
+            PracticeScene.JumpSlash, PracticeScene.CloseCombo,
+            PracticeScene.BotApproach, PracticeScene.BotParry, PracticeScene.BotMixed
+        };
+
+        // 장면 하나의 기본 길이(틱)
         private const int SceneTicks = 200;
-        private const int SceneCount = 9;
-        // 봇 장면 (6 = 공격만, 7 = 패리, 8 = 섞어서)
-        private const int FirstBotScene = 6;
+        private static int TicksOf(PracticeScene scene) => SceneTicks;
+
         private const float BotApproachDistance = 12f;
         private const float BotMixedDistance = 6f;
         // 기본 거리(m)와 런지·대시 공격을 거는 거리(근접 구역 6.1m 밖)
         private const float CloseDistance = 3f;
+        // 밀착 장면: 거리(m)와 P1을 상대에게서 돌려 세우는 각(°)
+        private const float TouchDistance = 0.8f;
+        private const float TouchAngle = 40f;
         private const float LungeDistance = 9f;
         private const float DashDistance = 10f;
         // 시작한 자리에서 이만큼 벗어나거나 떨어지면 맵 밖
@@ -80,9 +98,14 @@ namespace MyDongari.Game.Flow
         private bool _modeRequested;
         private int _waitTicks;
         private int _tick;
-        private int _scene = -1;
+        private int _sceneIndex = -1;
+        private PracticeScene _scene;
         private int _sceneTick;
         private bool _sceneDone;
+        private bool IsBotScene => _sceneIndex >= 0 && _scene >= PracticeScene.BotApproach && _scene <= PracticeScene.BotMixed;
+        // 밀착 원투쓰리 장면에서 명중한 콤보 단계 (비트 1·2·4)
+        private int _closeComboHits;
+        private bool _closeComboRan;
         private Vector3 _origin;
         private Vector3 _forward;
 
@@ -140,14 +163,16 @@ namespace MyDongari.Game.Flow
                 return;
             }
             Measure();
-            if (_tick >= SceneTicks * SceneCount)
+            if (_sceneIndex < 0 || _sceneTick >= TicksOf(_scene))
             {
-                _practiceDone = true;
-                _reader.SetScripted(false);
-                return;
+                if (_sceneIndex + 1 >= SceneOrder.Length)
+                {
+                    _practiceDone = true;
+                    _reader.SetScripted(false);
+                    return;
+                }
+                BeginScene(_sceneIndex + 1);
             }
-            int scene = _tick / SceneTicks;
-            if (scene != _scene) BeginScene(scene);
             RunScene();
             if (_sceneTick % 40 == 39) LogSceneState();
             _sceneTick++;
@@ -183,16 +208,26 @@ namespace MyDongari.Game.Flow
             _reader.SetScripted(true);
             _p1Melee.OnHitResolved += OnHit;
             _botMelee.OnHitResolved += OnHit;
+            _p1Melee.OnPunchTraced += OnP1PunchTraced;
             _ready = true;
-            Debug.Log($"{LogTag} 시작: P1 {_p1.name} vs 봇 {_bot.name}, {SceneCount}장면 × {SceneTicks}틱");
+            Debug.Log($"{LogTag} 시작: P1 {_p1.name} vs 봇 {_bot.name}, {SceneOrder.Length}장면");
             return true;
+        }
+
+        /// <summary>P1 펀치 진단 한 줄 (왜 안 맞았는지 로그만 보고 가릴 수 있게).</summary>
+        private void OnP1PunchTraced(PunchTrace trace)
+        {
+            if (_sceneIndex < 0 || _practiceDone) return;
+            Debug.Log($"{LogTag} 장면 {_scene} t{_sceneTick} P1 펀치 진단: {trace}");
         }
 
         private void OnHit(HitInfo info, HitResult result)
         {
             // 봇 장면: P1이 때린 걸 봇이 패리 / 봇이 때려 P1에게 닿음
-            if (_scene >= FirstBotScene && result == HitResult.Parried && info.Attacker == _p1) _botParries++;
-            if (_scene >= FirstBotScene && info.Attacker == _bot && (result == HitResult.Hit || result == HitResult.Guarded)) _botHitsLanded++;
+            if (IsBotScene && result == HitResult.Parried && info.Attacker == _p1) _botParries++;
+            if (IsBotScene && info.Attacker == _bot && (result == HitResult.Hit || result == HitResult.Guarded)) _botHitsLanded++;
+            if (_scene == PracticeScene.CloseCombo && info.Attacker == _p1 && info.Type == AttackType.Punch && result == HitResult.Hit && info.ComboStep >= 1)
+                _closeComboHits |= 1 << (info.ComboStep - 1);
             if (result == HitResult.Clash)
             {
                 _clash++;
@@ -212,33 +247,41 @@ namespace MyDongari.Game.Flow
             if (info.Reaction == Reaction.Down || info.Reaction == Reaction.AirDown || info.Reaction == Reaction.Blown)
             {
                 _sceneDone = true;
-                if (_scene == 0 && _comboEnd == Reaction.None) _comboEnd = info.Reaction;
+                if (_scene == PracticeScene.Combo && _comboEnd == Reaction.None) _comboEnd = info.Reaction;
             }
         }
 
         // ---------------- 장면 ----------------
 
-        private void BeginScene(int scene)
+        private void BeginScene(int index)
         {
-            _scene = scene;
+            _sceneIndex = index;
+            _scene = SceneOrder[index];
             _sceneTick = 0;
             _sceneDone = false;
-            if (scene >= FirstBotScene)
+            switch (_scene)
             {
-                BotMode botMode = scene == FirstBotScene ? BotMode.Approach : scene == FirstBotScene + 1 ? BotMode.Parrier : BotMode.Mixed;
-                Arrange(scene == FirstBotScene ? BotApproachDistance : scene == FirstBotScene + 1 ? CloseDistance : BotMixedDistance, botMode);
-                return;
+                case PracticeScene.BotApproach: Arrange(BotApproachDistance, BotMode.Approach); break;
+                case PracticeScene.BotParry: Arrange(CloseDistance, BotMode.Parrier); break;
+                case PracticeScene.BotMixed: Arrange(BotMixedDistance, BotMode.Mixed); break;
+                case PracticeScene.Guard: Arrange(CloseDistance, BotMode.AlwaysGuard); break;
+                case PracticeScene.Lunge: Arrange(LungeDistance, BotMode.Idle); break;
+                case PracticeScene.DashAttack: Arrange(DashDistance, BotMode.Idle); break;
+                case PracticeScene.CloseCombo:
+                    // 붙어서, 상대를 정면에서 40° 벗어나게 두고 친다 — 안쪽 원이라 추적 회전도 없다
+                    Arrange(TouchDistance, BotMode.Idle, TouchAngle);
+                    _closeComboRan = true;
+                    break;
+                default: Arrange(CloseDistance, BotMode.Idle); break;
             }
-            float distance = scene == 3 ? LungeDistance : scene == 4 ? DashDistance : CloseDistance;
-            Arrange(distance, scene == 1 ? BotMode.AlwaysGuard : BotMode.Idle);
         }
 
         /// <summary>두 기체를 라운드 시작 상태로 되돌리고, P1 스폰 자리에서 정면으로 distance(m) 떨어뜨려 마주 세운다.</summary>
-        private void Arrange(float distance, BotMode mode)
+        private void Arrange(float distance, BotMode mode, float p1YawOffset = 0f)
         {
             _reader.ScriptState(Vector2.zero, false, false, false);
             _gm.ResetPracticeNow();
-            if (_scene == 0 || _forward == Vector3.zero)
+            if (_sceneIndex == 0 || _forward == Vector3.zero)
             {
                 _origin = _p1Rb.position;
                 Vector3 forward = _p1Rb.rotation * Vector3.forward;
@@ -248,7 +291,7 @@ namespace MyDongari.Game.Flow
             float botY = _botRb.position.y;
             Vector3 botPosition = _origin + _forward * distance;
             botPosition.y = botY;
-            Place(_p1, _p1Rb, _origin, Quaternion.LookRotation(_forward, Vector3.up));
+            Place(_p1, _p1Rb, _origin, Quaternion.Euler(0f, p1YawOffset, 0f) * Quaternion.LookRotation(_forward, Vector3.up));
             Place(_bot, _botRb, botPosition, Quaternion.LookRotation(-_forward, Vector3.up));
             _botBrain.SetMode(mode);
         }
@@ -268,15 +311,16 @@ namespace MyDongari.Game.Flow
             int t = _sceneTick;
             switch (_scene)
             {
-                case 0:
+                case PracticeScene.Combo:
+                case PracticeScene.CloseCombo:
                     // 원투쓰리: 공격을 3틱마다 눌러 ② 단계에 걸리게 한다 (① 중의 입력은 4f 버퍼 뒤 버려진다)
                     if (!_sceneDone && t >= 20 && t <= 170 && t % 3 == 0) _reader.ScriptPressAttack();
                     break;
-                case 1:
+                case PracticeScene.Guard:
                     // 가드: 봇이 가드를 올린 뒤(패리 창 9f가 지난 뒤) 펀치 한 번
                     if (t == 60) _reader.ScriptPressAttack();
                     break;
-                case 2:
+                case PracticeScene.Clash:
                     // 맞딜: 같은 틱에 둘 다 펀치
                     if (t == 30)
                     {
@@ -284,11 +328,11 @@ namespace MyDongari.Game.Flow
                         _botPad.ScriptPressAttack();
                     }
                     break;
-                case 3:
+                case PracticeScene.Lunge:
                     // 런지: 근접 구역 밖에서 공격
                     if (t == 20) _reader.ScriptPressAttack();
                     break;
-                case 4:
+                case PracticeScene.DashAttack:
                     // 대시 공격: 앞 대시(○ + 스틱 앞) → 지속 단계에서 공격
                     if (t == 10)
                     {
@@ -298,18 +342,18 @@ namespace MyDongari.Game.Flow
                     if (!_sceneDone && t >= 28 && t <= 60 && t % 3 == 0) _reader.ScriptPressAttack();
                     if (t == 90) _reader.ScriptState(Vector2.zero, false, false, false);
                     break;
-                case 6:
-                case 8:
+                case PracticeScene.BotApproach:
+                case PracticeScene.BotMixed:
                     // 봇 장면: P1은 가만히 (봇이 다가와 공격). 섞어서 장면은 P1이 가끔 펀치를 내 봇의 대응을 본다
-                    if (_scene == 8 && t % 50 == 25) _reader.ScriptPressAttack();
+                    if (_scene == PracticeScene.BotMixed && t % 50 == 25) _reader.ScriptPressAttack();
                     RecordBot();
                     break;
-                case 7:
+                case PracticeScene.BotParry:
                     // 패리 장면: P1이 일정 간격으로 펀치
                     if (t % 60 == 20) _reader.ScriptPressAttack();
                     RecordBot();
                     break;
-                case 5:
+                case PracticeScene.JumpSlash:
                     // 뛰어 베기: △ 뒤 8f 안에 공격
                     if (t == 20)
                     {
@@ -324,7 +368,7 @@ namespace MyDongari.Game.Flow
 
         private void RecordBot()
         {
-            int i = _scene - FirstBotScene;
+            int i = _scene - PracticeScene.BotApproach;
             MechStateMachine sm = _bot.GetComponent<MechStateMachine>();
             if (sm != null) _botStates[i].Add(sm.CurrentStateName.Replace("State", "").Replace("Vo", ""));
             _botOrders[i].Add(_botBrain.CurrentOrder.ToString());
@@ -339,7 +383,7 @@ namespace MyDongari.Game.Flow
             Vector3 offset = _botRb.position - _p1Rb.position;
             float dy = offset.y;
             offset.y = 0f;
-            Debug.Log($"{LogTag} 장면 {_scene + 1} t{_sceneTick + 1}: 거리 {offset.magnitude:0.00}m 높이차 {dy:0.00}m, P1 {(sm != null ? sm.CurrentStateName : "-")}" +
+            Debug.Log($"{LogTag} 장면 {_sceneIndex + 1} {_scene} t{_sceneTick + 1}: 거리 {offset.magnitude:0.00}m 높이차 {dy:0.00}m, P1 {(sm != null ? sm.CurrentStateName : "-")}" +
                       $" 구역 {_p1Melee.IsOpponentInMeleeZone()} 펀치중 {_p1Melee.IsMeleeActive} 경직 {_p1Melee.IsStunned}, 봇 펀치중 {_botMelee.IsMeleeActive} 가드 {_botMelee.IsGuarding}" +
                       $" 넉다운 {_botMelee.IsKnockedDown}, 체력 {(h1 != null ? h1.CurrentHealth : -1f):0.0}/{(h2 != null ? h2.CurrentHealth : -1f):0.0}");
         }
@@ -439,6 +483,8 @@ namespace MyDongari.Game.Flow
             return offset.magnitude > MaxHorizontal;
         }
 
+        private string Mark(int bit) => (_closeComboHits & bit) != 0 ? "명중" : "빗나감";
+
         private static bool IsFinite(Vector3 v) =>
             !float.IsNaN(v.x) && !float.IsNaN(v.y) && !float.IsNaN(v.z) &&
             !float.IsInfinity(v.x) && !float.IsInfinity(v.y) && !float.IsInfinity(v.z);
@@ -464,6 +510,7 @@ namespace MyDongari.Game.Flow
             if (_versusActive != null) _versusActive.Release();
             if (_p1Melee != null) _p1Melee.OnHitResolved -= OnHit;
             if (_botMelee != null) _botMelee.OnHitResolved -= OnHit;
+            if (_p1Melee != null) _p1Melee.OnPunchTraced -= OnP1PunchTraced;
 
             var missing = new StringBuilder();
             if (_stagger == 0) missing.Append(" 경직");
@@ -483,11 +530,14 @@ namespace MyDongari.Game.Flow
             string versus30 = _versus30 != null ? _versus30.Problems() : "30fps 장면을 안 돌림";
             string fpsDiff = _versus60 != null && _versus30 != null ? VersusSmokeScenes.Compare(_versus60, _versus30) : "비교할 결과 없음";
             bool versusOk = versus60 == null && versus30 == null && fpsDiff == null;
-            bool pass = setupFailure == null && missing.Length == 0 && comboOk && botOk && versusOk && _exceptions == 0 && _nanTicks == 0 && _outOfMapTicks == 0;
+            // 밀착 원투쓰리: 세 타 모두 명중해야 한다
+            bool closeOk = _closeComboRan && _closeComboHits == 7;
+            bool pass = setupFailure == null && missing.Length == 0 && comboOk && closeOk && botOk && versusOk && _exceptions == 0 && _nanTicks == 0 && _outOfMapTicks == 0;
 
             Debug.Log($"{LogTag} 반응: 경직 {_stagger} / 다운 {_down} / 날아감 {_blown} / 가드경직 {_guardStagger} / 맞딜 {_clash} (무적만 {_invulnOnly}, 명중 {_hits})");
             Debug.Log($"{LogTag} 안정성: 예외·오류 로그 {_exceptions} / 좌표 깨짐 틱 {_nanTicks} / 겹친 틱 {_overlapTicks} / 맵 밖 틱 {_outOfMapTicks} / 돌린 틱 {_tick}");
             Debug.Log($"{LogTag} 원투쓰리 끝 반응: {_comboEnd} ({(comboOk ? "다운 — 정상" : "다운이어야 함")})");
+            Debug.Log($"{LogTag} 밀착 원투쓰리({TouchDistance:0.0}m, {TouchAngle:0}° 비스듬히): 원 {Mark(1)} / 투 {Mark(2)} / 쓰리 {Mark(4)} ({(closeOk ? "3타 명중 — 정상" : "3타 모두 명중해야 함")})");
             string[] names = { "공격만", "패리", "섞어서" };
             for (int i = 0; i < 3; i++)
             {

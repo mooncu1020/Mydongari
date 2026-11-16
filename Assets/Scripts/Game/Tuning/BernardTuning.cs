@@ -487,6 +487,12 @@ namespace MyDongari.Game.Tuning
             public float hitHeight = 1.3f;
             public Color sparkColor = new Color(1f, 0.8f, 0.35f);
             public Color guardSparkColor = new Color(0.5f, 0.8f, 1f);
+            [Tooltip("상대가 무적(근접 무적·다운 중)이라 무시된 타격의 불꽃 색 — 헛친 것(불꽃 없음)과 구분하려고 회색으로 작게")]
+            public Color invulnSparkColor = new Color(0.62f, 0.62f, 0.66f);
+            [Tooltip("무적으로 무시된 타격의 불꽃 배율 (약 등급 기준)")]
+            public float invulnSparkScale = 0.6f;
+            [Tooltip("대시 슈퍼아머로 버틴 타격의 불꽃 색 (피해는 들어가지만 경직하지 않는다)")]
+            public Color armorSparkColor = new Color(1f, 0.92f, 0.1f);
             public Color flashFxColor = new Color(1f, 1f, 0.9f, 0.9f);
             public float sparkSize = 0.06f;
             public int sparkCount = 18;
