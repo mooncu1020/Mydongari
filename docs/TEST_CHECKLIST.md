@@ -736,3 +736,10 @@ Claude Code가 태스크마다 항목을 추가한다. 사용자는 플레이 �
 - [ ] 외곽선이 조금 굵어졌고, 양쪽 화면 모두 자기 기체 등이 그늘에 묻히지 않는다
 - [ ] HUD·메뉴·머리 위 팝업 글자가 같은 폰트(맑은 고딕)다. 오른쪽 위 fps 표시는 F9를 누르기 전엔 안 보인다
 - [ ] 에셋의 묶음별 "적용" 칸(teamTintEnabled·skyEnabled·arenaEnabled·outlineEnabled·sunEnabled·hudEnabled)을 끄고 다시 플레이하면 그 묶음만 예전 모습으로 돌아간다
+
+### 종결5 조작법 화면·발표 빌드
+
+- [ ] 타이틀에서 아래로 내려 `CONTROLS` → 조작법 화면(한글)이 화면 전체에 뜬다. ✕(A) 또는 Enter로 닫으면 타이틀 메뉴로 돌아온다
+- [ ] 연습 모드에서 OPTIONS → `CONTROLS` → 같은 화면, 닫으면 일시정지 메뉴로
+- [ ] 패드 버튼 이름(PS4·엑스박스)과 실제 동작이 표와 같다
+- [ ] `Builds/Demo_날짜/Mydongari.exe`를 직접 실행해 전체 화면·패드 2개로 한 판

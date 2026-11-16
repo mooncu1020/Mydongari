@@ -23,6 +23,24 @@ namespace MyDongari.Game.UI
         [TextArea] [SerializeField] private string practiceHint =
             "TAB / SELECT : BOT MODE    BACKSPACE / HOLD SELECT : RESET\n1-4 : MY HEAT 0 / 50 / 90 / 100%    START : MENU";
 
+        [Header("조작법 화면 (타이틀·연습 일시정지 메뉴의 CONTROLS) — 기준: docs/GAME_SPEC_V3.md 조작표")]
+        [SerializeField] private string controlsTitle = "조작법";
+        [Tooltip("왼쪽 열: 패드 버튼 (PS4 이름, 괄호 안은 엑스박스)")]
+        [TextArea(10, 14)] [SerializeField] private string controlsPad =
+            "L스틱\nR스틱 좌우\n○ (B)\n△ (Y)\n□ (X) · R2 (RT)\n✕ (A)\nL1 (LB)\nR1 (RB)\nOPTIONS (MENU)\nSHARE (VIEW)";
+        [Tooltip("가운데 열: 하는 일")]
+        [TextArea(10, 14)] [SerializeField] private string controlsAction =
+            "이동\n몸 회전 (가까우면 자동으로 상대를 본다)\n대시 — 방향 + ○, 대시 중 다시 누르면 정지\n점프 — 하강 중 누르고 있으면 호버\n공격\n땅: 가드 · 누르는 순간 패리 / 공중: 급강하\n앵커 클로\n임팩트 슬램\n메뉴 (연습 모드)\n연습 모드: 봇 모드 바꾸기 · 길게 누르면 리셋";
+        [Tooltip("오른쪽 열: 키보드·마우스")]
+        [TextArea(10, 14)] [SerializeField] private string controlsKeyboard =
+            "W A S D\n마우스 좌우\nSpace\nF\n마우스 왼쪽\n마우스 오른쪽\nQ\nE\nEnter\nTab · Backspace";
+        [Tooltip("공격 규칙 한 줄 요약")]
+        [TextArea(2, 4)] [SerializeField] private string controlsAttackRule =
+            "공격 버튼 하나로 —  가까우면(근접 구역 안) 펀치, 연타하면 원투쓰리  ·  멀면 런지  ·  대시 중이면 대시 공격  ·  점프 중이면 내려찍기";
+        [SerializeField] private string controlsClose = "✕ (A) / ENTER : 닫기";
+        [SerializeField] private Color controlsBackground = new Color(0.03f, 0.05f, 0.09f, 0.94f);
+        [SerializeField] private Color controlsHeaderColor = new Color(1f, 0.82f, 0.29f);
+
         [Header("모양")]
         [SerializeField] private Color selectedColor = new Color(1f, 0.82f, 0.29f);
         [SerializeField] private Color titleBackground = new Color(0f, 0f, 0f, 0.85f);
@@ -36,6 +54,7 @@ namespace MyDongari.Game.UI
         private Text _titleOptions;
         private Text _menuOptions;
         private Text _practiceLabel;
+        private GameObject _controlsRoot;
 
         private void Awake()
         {
@@ -71,6 +90,8 @@ namespace MyDongari.Game.UI
             _menuOptions = CreateText(_menuRoot.transform, "Options", "", 52, new Vector2(0.5f, 0.5f), new Vector2(0f, 20f), new Vector2(600f, 160f));
             CreateText(_menuRoot.transform, "Hint", "A / START / ENTER", 24, new Vector2(0.5f, 0f), new Vector2(0f, 24f), new Vector2(600f, 36f));
 
+            BuildControls(root);
+
             // 연습 모드 봇 표시: 왼쪽 위 구석 (HUD와 겹치지 않게 작게)
             _practiceLabel = CreateText(root, "PracticeLabel", "", 28, new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(900f, 160f));
             RectTransform labelRect = (RectTransform)_practiceLabel.transform;
@@ -78,16 +99,53 @@ namespace MyDongari.Game.UI
             _practiceLabel.alignment = TextAnchor.UpperLeft;
         }
 
+        /// <summary>
+        /// 조작법 화면: 화면 전체를 덮는 패널에 세 열(패드 / 하는 일 / 키보드) + 공격 규칙 한 줄. 문구는 인스펙터 칸에서 고친다.
+        /// 열마다 같은 줄 수의 글자를 줄바꿈으로 넣어 줄을 맞춘다.
+        /// </summary>
+        private void BuildControls(Transform root)
+        {
+            _controlsRoot = CreatePanel(root, "Controls", controlsBackground, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            Transform t = _controlsRoot.transform;
+            CreateText(t, "Title", controlsTitle, 72, new Vector2(0.5f, 1f), new Vector2(0f, -90f), new Vector2(1200f, 100f));
+            const float top = -190f;
+            Text padHeader = Column(t, "PadHeader", "패드  PS4 (엑스박스)", 34, -760f, top, 480f, 50f);
+            Text actionHeader = Column(t, "ActionHeader", "하는 일", 34, -250f, top, 760f, 50f);
+            Text keyHeader = Column(t, "KeyHeader", "키보드 · 마우스", 34, 560f, top, 400f, 50f);
+            padHeader.color = actionHeader.color = keyHeader.color = controlsHeaderColor;
+            Column(t, "Pad", controlsPad, 34, -760f, top - 64f, 480f, 560f);
+            Column(t, "Action", controlsAction, 34, -250f, top - 64f, 760f, 560f);
+            Column(t, "Keyboard", controlsKeyboard, 34, 560f, top - 64f, 400f, 560f);
+            Text rule = CreateText(t, "AttackRule", controlsAttackRule, 29, new Vector2(0.5f, 0f), new Vector2(0f, 170f), new Vector2(1800f, 90f));
+            rule.color = controlsHeaderColor;
+            CreateText(t, "Close", controlsClose, 28, new Vector2(0.5f, 0f), new Vector2(0f, 70f), new Vector2(1200f, 50f));
+        }
+
+        /// <summary>조작법 화면의 열 하나: 화면 위쪽 가운데 기준 (x, y)에서 시작하는 왼쪽 정렬 글자.</summary>
+        private Text Column(Transform parent, string name, string value, int size, float x, float y, float width, float height)
+        {
+            Text text = CreateText(parent, name, value, size, new Vector2(0.5f, 1f), new Vector2(x, y), new Vector2(width, height));
+            ((RectTransform)text.transform).pivot = new Vector2(0f, 1f);
+            text.alignment = TextAnchor.UpperLeft;
+            text.fontStyle = FontStyle.Normal;
+            text.lineSpacing = 1.25f;
+            return text;
+        }
+
         private void Update()
         {
             GameManager gm = GameManager.Instance;
             if (gm == null) return;
 
+            // 조작법 화면이 열려 있으면 그것만 보인다
+            bool controls = gm.IsControlsOpen;
+            SetActive(_controlsRoot, controls);
+
             bool title = gm.Phase == MatchPhase.Title;
-            SetActive(_titleRoot, title);
+            SetActive(_titleRoot, title && !controls);
             if (title) _titleOptions.text = OptionsText(gm.MenuOptions, gm.MenuIndex);
 
-            bool menu = !title && gm.IsMenuOpen;
+            bool menu = !title && gm.IsMenuOpen && !controls;
             SetActive(_menuRoot, menu);
             if (menu) _menuOptions.text = OptionsText(gm.MenuOptions, gm.MenuIndex);
 

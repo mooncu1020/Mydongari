@@ -144,10 +144,34 @@ namespace MyDongari.EditorTools
             EditorApplication.Exit(exitCode);
         }
 
+        // 빌드 폴더 이름을 정해 주면 Builds/날짜_시간 대신 그 이름으로 (발표용 빌드)
+        private static string _folderName;
+
+        /// <summary>
+        /// 명령줄(batchmode)용 발표 빌드: Builds/Demo_날짜(yyyyMMdd) 폴더로 Windows exe를 빌드하고, 그 exe로 빌드 스모크(10초 실행, Player.log 검사)를 돌린다.
+        /// 같은 날 다시 돌리면 같은 폴더에 덮어쓴다. 종료 코드는 RunFromCommandLine과 같다.
+        /// 예: Unity.exe -batchmode -projectPath . -executeMethod MyDongari.EditorTools.BuildAndSmokeTest.RunDemoFromCommandLine -logFile build.log
+        /// </summary>
+        public static void RunDemoFromCommandLine()
+        {
+            _combat = false;
+            _folderName = "Demo_" + DateTime.Now.ToString("yyyyMMdd");
+            RunFromCommandLine();
+        }
+
+        [MenuItem("Tools/Build Demo (Builds/Demo_날짜) And Smoke Test")]
+        private static void RunDemo()
+        {
+            _combat = false;
+            _folderName = "Demo_" + DateTime.Now.ToString("yyyyMMdd");
+            Run();
+            _folderName = null;
+        }
+
         // 2) 빌드: Builds/날짜_시간/제품명.exe
         private static bool TryBuild(out string exePath)
         {
-            string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            string stamp = _folderName ?? DateTime.Now.ToString("yyyyMMdd_HHmmss");
             _buildFolder = Path.GetFullPath(Path.Combine(BuildsFolder, stamp));
             Directory.CreateDirectory(_buildFolder);
             string exeName = SafeFileName(PlayerSettings.productName) + ".exe";

@@ -191,6 +191,8 @@ namespace MyDongari.Game.Flow
         private const string OptionRematch = "REMATCH";
         private const string OptionTitle = "TITLE";
         private const string OptionContinue = "CONTINUE";
+        /// <summary>조작법 화면 (타이틀·연습 일시정지 메뉴).</summary>
+        private const string OptionControls = "CONTROLS";
 
         [Header("메뉴 입력 (V9d)")]
         [Tooltip("메뉴(타이틀·매치 종료·연습 일시정지)가 뜬 뒤 이 시간(초, 실제 시간) 동안 확인 입력을 무시한다. ✕가 가드와 확인을 같이 맡아서, 싸우다 누른 ✕로 메뉴가 바로 넘어가지 않게. 위아래 고르기는 바로 된다")]
@@ -346,6 +348,8 @@ namespace MyDongari.Game.Flow
             var options = new List<string>();
             if (CanStartVersus) options.Add(OptionVersus);
             if (CanStartPractice) options.Add(OptionPractice);
+            options.Add(OptionControls);
+            IsControlsOpen = false;
             OpenMenu(MenuKind.Title, options.ToArray());
 
             OnReturnedToTitle?.Invoke();
@@ -584,7 +588,7 @@ namespace MyDongari.Game.Flow
             // 메뉴가 열린 동안은 봇도 멈추고(라운드 비활성) 게임 입력도 잠근다
             _roundActive = false;
             SetPlayersInputLocked(true);
-            OpenMenu(MenuKind.PracticePause, new[] { OptionContinue, OptionTitle });
+            OpenMenu(MenuKind.PracticePause, new[] { OptionContinue, OptionControls, OptionTitle });
         }
 
         // ---------------- 메뉴 입력 ----------------
@@ -602,6 +606,7 @@ namespace MyDongari.Game.Flow
         private void CloseMenu()
         {
             _menu = MenuKind.None;
+            IsControlsOpen = false;
             MenuOptions = null;
             MenuIndex = 0;
         }
@@ -633,6 +638,13 @@ namespace MyDongari.Game.Flow
                 confirm |= input.MenuConfirmPressed;
             }
 
+            // 조작법 화면이 열려 있으면 확인 버튼으로 닫기만 한다 (메뉴는 그대로 남아 있다)
+            if (IsControlsOpen)
+            {
+                if (confirm && Time.unscaledTime - _menuOpenedTime >= menuConfirmDelay) SetControlsOpen(false);
+                return;
+            }
+
             int count = MenuOptions.Length;
             if (vertical != 0) MenuIndex = ((MenuIndex - Math.Sign(vertical)) % count + count) % count;
             // V9d: 메뉴가 뜬 직후의 확인은 버린다. 확인은 "새로 누른 순간"만 읽으므로(MenuConfirmPressed),
@@ -657,6 +669,9 @@ namespace MyDongari.Game.Flow
                 case OptionTitle:
                     CloseMenu();
                     EnterTitle();
+                    break;
+                case OptionControls:
+                    SetControlsOpen(true);
                     break;
                 case OptionContinue:
                     CloseMenu();

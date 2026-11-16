@@ -515,3 +515,6 @@
   - HUD: 폰트를 운영체제의 맑은 고딕(동적 폰트, 한글 포함)으로 통일 — 씬 Text 전부 + 메뉴 + 머리 위 팝업. 글자 색은 일반·경고 두 가지로. 오른쪽 위 fps 표시는 F9·F10을 누르기 전엔 숨김.
   - 확인 도구: 빌드를 `-lookShots <폴더>`로 실행하면 타이틀·조작법·VERSUS 장면을 PNG로 남기고 종료(`Game/Flow/LookShotRunner`). 이걸로 찍어서 색 구분·하늘·바닥·폰트를 확인함.
   - 남은 위험: 2P 주황은 어두운 기체 머티리얼 위라 갈색에 가깝다 — `player2Color`·`teamTintStrength`로 조정. 맑은 고딕이 없는 PC는 기본 폰트로 돌아간다. 고지대 벽(주황 → 살구색)이 아직 화면에서 큰 면적을 차지한다.
+- [x] **종결5** 발표 준비. ① 조작법 화면: 타이틀 메뉴와 연습 일시정지 메뉴에 `CONTROLS` 항목 → 화면 전체에 패드(PS4 이름 + 엑스박스 이름)·하는 일·키보드 세 열과 공격 규칙 한 줄(가까우면 펀치 / 멀면 런지 / 대시 중 대시 공격 / 점프 중 내려찍기). ✕(A)·Enter로 닫는다. `GameManager.IsControlsOpen/SetControlsOpen`, 문구는 `MenuUI` 인스펙터 칸. GAME_SPEC_V3 조작표 기준이되 "△ 직후 뛰어 베기"는 종결B에 맞춰 "점프 중 내려찍기"로 적었다(스펙 문서는 안 건드림). 공격 버튼은 실제 바인딩대로 □(X)·R2(RT) 둘 다 적음.
+  - ② 발표 빌드: `BuildAndSmokeTest.RunDemoFromCommandLine`(메뉴 `Tools/Build Demo …`) — `Builds/Demo_날짜`로 빌드하고 그 exe로 빌드 스모크. 결과는 같은 폴더의 `SmokeTestSummary.txt`.
+  - 남은 위험: VERSUS 중에는 일시정지 메뉴가 없어 조작법은 타이틀에서만 볼 수 있다(연습 모드는 OPTIONS → CONTROLS). 맑은 고딕에 없는 기호(✕)는 운영체제 대체 폰트로 나온다.

@@ -117,6 +117,8 @@ namespace MyDongari.Game.Visual
             foreach (Text text in FindObjectsByType<Text>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 if (font != null) text.font = font;
+                // 메뉴·조작법 화면은 자기 색(머리글 강조색 등)을 직접 정한다 — 폰트만 맞춘다
+                if (text.GetComponentInParent<UI.MenuUI>(true) != null) continue;
                 Color.RGBToHSV(text.color, out _, out float saturation, out _);
                 Color target = saturation > 0.3f ? look.hudWarningColor : look.hudTextColor;
                 target.a = text.color.a;
