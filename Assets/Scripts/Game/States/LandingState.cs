@@ -23,9 +23,16 @@ namespace MyDongari.Game.States
         {
         }
 
-        /// <summary>MechStateMachine.Land가 Enter 직전에 경직 길이(틱)를 정한다.</summary>
-        public void Prepare(int frames)
+        /// <summary>
+        /// 이 착지 경직을 지상 공격으로 취소할 수 있는지 (원본의 착지 12f는 무기 입력으로 취소된다).
+        /// 빗나간 내려찍기의 긴 경직은 취소할 수 없다 — 그게 벌이다.
+        /// </summary>
+        public bool AllowsAttackCancel { get; private set; } = true;
+
+        /// <summary>MechStateMachine.Land가 Enter 직전에 경직 길이(틱)와 공격 취소 여부를 정한다.</summary>
+        public void Prepare(int frames, bool attackCancel = true)
         {
+            AllowsAttackCancel = attackCancel;
             _duration = frames;
             _timer = 0;
             OnLanded?.Invoke(frames / 60f);

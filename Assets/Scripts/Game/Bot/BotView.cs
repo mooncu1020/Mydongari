@@ -15,7 +15,7 @@ namespace MyDongari.Game.Bot
         AirDash,
         Dive,
         Melee,
-        JumpMelee,
+        DiveStrike,
         Lunge,
         Landing,
         Guard,
@@ -39,8 +39,8 @@ namespace MyDongari.Game.Bot
         public int ActionFrames;
         public bool Airborne;
 
-        /// <summary>공격 동작 중인지 (펀치·뛰어 베기·런지·대시 공격).</summary>
-        public bool Attacking => Action == SeenAction.Melee || Action == SeenAction.JumpMelee ||
+        /// <summary>공격 동작 중인지 (펀치·내려찍기·런지·대시 공격).</summary>
+        public bool Attacking => Action == SeenAction.Melee || Action == SeenAction.DiveStrike ||
                                  Action == SeenAction.Lunge || Action == SeenAction.DashAttack;
     }
 

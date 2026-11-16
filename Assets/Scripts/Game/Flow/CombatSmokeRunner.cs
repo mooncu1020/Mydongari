@@ -12,7 +12,8 @@ namespace MyDongari.Game.Flow
     /// <summary>
     /// 전투 스모크 테스트 (메뉴 Tools/Combat Smoke Test가 빌드를 -combatSmoke로 실행하면 스스로 생긴다).
     /// PRACTICE 모드에서 플레이어 자리에 자동 입력(InputReader 스크립트 입력)을 넣고 연습 봇을 상대로 장면(PracticeScene)을 차례로 돌린다:
-    /// 원투쓰리 / 가드에 펀치 / 동시 펀치(맞딜) / 런지 / 대시 공격 / 뛰어 베기 / 밀착 원투쓰리(0.8m, 40° 비스듬히 — 3타 모두 명중해야 한다).
+    /// 원투쓰리 / 가드에 펀치 / 동시 펀치(맞딜) / 런지 / 대시 공격 / 밀착 원투쓰리(0.8m, 40° 비스듬히 — 3타 모두 명중해야 한다)
+    /// / 내려찍기 셋(정점에서 명중 · 하강 중 명중 · 상대가 옆 대시로 피해 빗나감 → 착지 경직 30f).
     /// 이어서 봇 장면 세 개(P1은 가만히 또는 가끔 펀치): 공격만 모드 12m / 패리 모드 3m / 섞어서 모드 6m — 봇이 이동기로 다가가 공격하는지 본다.
     /// 그다음 VERSUS 모드로 바꿔 1P·2P 둘 다 자동 입력인 장면(VersusSmokeScenes)을 60fps로 한 번, 30fps로 한 번 돌리고 두 결과가 같은지 본다.
     /// 장면마다 두 기체를 리셋하고 정해진 거리(기본 3m, 런지·대시는 그보다 멀리)에 마주 세운다.
@@ -30,16 +31,18 @@ namespace MyDongari.Game.Flow
         /// <summary>PRACTICE 장면. 도는 순서는 SceneOrder.</summary>
         private enum PracticeScene
         {
-            Combo, Guard, Clash, Lunge, DashAttack, JumpSlash,
+            Combo, Guard, Clash, Lunge, DashAttack,
             /// <summary>밀착 원투쓰리: 0.8m에 붙여 세우고 P1을 40° 비스듬히 돌린다 (예전 판정 구로는 빗나가던 배치).</summary>
             CloseCombo,
+            /// <summary>내려찍기: 정점에서 눌러 명중 / 하강 중에 눌러 명중 / 봇이 옆 대시로 피해 빗나감.</summary>
+            DiveApex, DiveFalling, DiveEvade,
             BotApproach, BotParry, BotMixed
         }
 
         private static readonly PracticeScene[] SceneOrder =
         {
             PracticeScene.Combo, PracticeScene.Guard, PracticeScene.Clash, PracticeScene.Lunge, PracticeScene.DashAttack,
-            PracticeScene.JumpSlash, PracticeScene.CloseCombo,
+            PracticeScene.CloseCombo, PracticeScene.DiveApex, PracticeScene.DiveFalling, PracticeScene.DiveEvade,
             PracticeScene.BotApproach, PracticeScene.BotParry, PracticeScene.BotMixed
         };
 
@@ -54,6 +57,11 @@ namespace MyDongari.Game.Flow
         // 밀착 장면: 거리(m)와 P1을 상대에게서 돌려 세우는 각(°)
         private const float TouchDistance = 0.8f;
         private const float TouchAngle = 40f;
+        // 내려찍기 장면: 명중 장면 거리 / 피하기 장면 거리(m), 하강 중 장면은 정점 뒤 이 틱에 누른다, 봇은 예비를 본 뒤 이 틱에 옆 대시
+        private const float DiveHitDistance = 3f;
+        private const float DiveEvadeDistance = 8f;
+        private const int DiveFallingDelay = 20;
+        private const int DiveEvadeReaction = 5;
         private const float LungeDistance = 9f;
         private const float DashDistance = 10f;
         // 시작한 자리에서 이만큼 벗어나거나 떨어지면 맵 밖
@@ -106,6 +114,29 @@ namespace MyDongari.Game.Flow
         // 밀착 원투쓰리 장면에서 명중한 콤보 단계 (비트 1·2·4)
         private int _closeComboHits;
         private bool _closeComboRan;
+
+        /// <summary>내려찍기 장면 하나의 결과.</summary>
+        private class DiveResult
+        {
+            public bool Ran;
+            public bool Started;
+            public float VyAtPress;
+            public bool Landed;
+            public bool Connected;
+            public int LagFrames;
+            public int LandingTicks;
+            public string BotResult = "-";
+            public int P1StopTicks, BotStopTicks;
+            // 피하기 장면: 봇이 대시를 냈는지, 내리꽂는 동안 두 기체 중심의 가장 가까운 거리(m)
+            public bool BotDashed;
+            public float Closest = float.MaxValue;
+        }
+        private readonly DiveResult[] _dive = { new DiveResult(), new DiveResult(), new DiveResult() };
+        private DiveResult Dive => _dive[_scene - PracticeScene.DiveApex];
+        private bool IsDiveScene => _sceneIndex >= 0 && _scene >= PracticeScene.DiveApex && _scene <= PracticeScene.DiveEvade;
+        private int _apexTick, _diveSeenTick;
+        private bool _divePressed;
+        private MechStateMachine _p1Sm;
         private Vector3 _origin;
         private Vector3 _forward;
 
@@ -209,6 +240,8 @@ namespace MyDongari.Game.Flow
             _p1Melee.OnHitResolved += OnHit;
             _botMelee.OnHitResolved += OnHit;
             _p1Melee.OnPunchTraced += OnP1PunchTraced;
+            _p1Melee.OnDiveStrikeLanded += OnP1DiveLanded;
+            _p1Sm = _p1.GetComponent<MechStateMachine>();
             _ready = true;
             Debug.Log($"{LogTag} 시작: P1 {_p1.name} vs 봇 {_bot.name}, {SceneOrder.Length}장면");
             return true;
@@ -221,8 +254,17 @@ namespace MyDongari.Game.Flow
             Debug.Log($"{LogTag} 장면 {_scene} t{_sceneTick} P1 펀치 진단: {trace}");
         }
 
+        private void OnP1DiveLanded(bool connected, int lagFrames)
+        {
+            if (!IsDiveScene || _practiceDone) return;
+            Dive.Landed = true;
+            Dive.Connected = connected;
+            Dive.LagFrames = lagFrames;
+        }
+
         private void OnHit(HitInfo info, HitResult result)
         {
+            if (IsDiveScene && info.Attacker == _p1 && info.Type == AttackType.DiveStrike) Dive.BotResult = $"{result}/{info.Reaction}";
             // 봇 장면: P1이 때린 걸 봇이 패리 / 봇이 때려 P1에게 닿음
             if (IsBotScene && result == HitResult.Parried && info.Attacker == _p1) _botParries++;
             if (IsBotScene && info.Attacker == _bot && (result == HitResult.Hit || result == HitResult.Guarded)) _botHitsLanded++;
@@ -267,6 +309,15 @@ namespace MyDongari.Game.Flow
                 case PracticeScene.Guard: Arrange(CloseDistance, BotMode.AlwaysGuard); break;
                 case PracticeScene.Lunge: Arrange(LungeDistance, BotMode.Idle); break;
                 case PracticeScene.DashAttack: Arrange(DashDistance, BotMode.Idle); break;
+                case PracticeScene.DiveApex:
+                case PracticeScene.DiveFalling:
+                case PracticeScene.DiveEvade:
+                    Arrange(_scene == PracticeScene.DiveEvade ? DiveEvadeDistance : DiveHitDistance, BotMode.Idle);
+                    Dive.Ran = true;
+                    _apexTick = -1;
+                    _diveSeenTick = -1;
+                    _divePressed = false;
+                    break;
                 case PracticeScene.CloseCombo:
                     // 붙어서, 상대를 정면에서 40° 벗어나게 두고 친다 — 안쪽 원이라 추적 회전도 없다
                     Arrange(TouchDistance, BotMode.Idle, TouchAngle);
@@ -353,16 +404,56 @@ namespace MyDongari.Game.Flow
                     if (t % 60 == 20) _reader.ScriptPressAttack();
                     RecordBot();
                     break;
-                case PracticeScene.JumpSlash:
-                    // 뛰어 베기: △ 뒤 8f 안에 공격
-                    if (t == 20)
-                    {
-                        _reader.ScriptState(Vector2.zero, false, true, false);
-                        _reader.ScriptPressJump();
-                    }
-                    if (t == 23) _reader.ScriptPressAttack();
-                    if (t == 30) _reader.ScriptState(Vector2.zero, false, false, false);
+                case PracticeScene.DiveApex:
+                case PracticeScene.DiveFalling:
+                case PracticeScene.DiveEvade:
+                    RunDiveScene(t);
                     break;
+            }
+        }
+
+        /// <summary>
+        /// 내려찍기 장면: △로 뛰고, 정점(상승이 끝나 하강으로 바뀐 첫 틱) 또는 그 뒤 DiveFallingDelay틱에 공격을 누른다.
+        /// 피하기 장면은 봇이 P1의 예비 동작을 본 뒤 DiveEvadeReaction틱에 옆 대시를 낸다 (봇 두뇌는 Idle — 장면이 가상 패드를 대신 누른다.
+        /// 봇이 틱마다 패드를 떼므로 누르고 있는 값은 틱마다 다시 넣는다).
+        /// </summary>
+        private void RunDiveScene(int t)
+        {
+            DiveResult r = Dive;
+            if (t == 20)
+            {
+                _reader.ScriptState(Vector2.zero, false, true, false);
+                _reader.ScriptPressJump();
+            }
+            if (t == 30) _reader.ScriptState(Vector2.zero, false, false, false);
+
+            bool falling = _p1Sm.CurrentState is Core.VirtualOn.States.VoJumpState jump && jump.IsAirState && !jump.IsRising;
+            if (falling && _apexTick < 0 && t > 20) _apexTick = t;
+            int pressAt = _scene == PracticeScene.DiveFalling ? _apexTick + DiveFallingDelay : _apexTick;
+            if (_apexTick >= 0 && !_divePressed && t >= pressAt)
+            {
+                _divePressed = true;
+                r.VyAtPress = _p1Sm.Motor.Vy;
+                _reader.ScriptPressAttack();
+            }
+            if (_p1Sm.IsDiveStrike)
+            {
+                r.Started = true;
+                if (_diveSeenTick < 0) _diveSeenTick = t;
+            }
+            if (_p1Sm.IsDiveStrike) r.Closest = Mathf.Min(r.Closest, Vector3.Distance(_p1Rb.position, _botRb.position));
+            MechStateMachine botSm = _bot.GetComponent<MechStateMachine>();
+            if (botSm != null && botSm.IsDashing) r.BotDashed = true;
+            if (_p1Sm.IsLanding) r.LandingTicks++;
+            if (_p1Melee.IsHitStopped) r.P1StopTicks++;
+            if (_botMelee.IsHitStopped) r.BotStopTicks++;
+
+            if (_scene == PracticeScene.DiveEvade && _diveSeenTick >= 0)
+            {
+                int since = t - _diveSeenTick;
+                if (since == DiveEvadeReaction) _botPad.ScriptPressDash();
+                bool hold = since >= DiveEvadeReaction && since < DiveEvadeReaction + 40;
+                _botPad.ScriptState(hold ? Vector2.right : Vector2.zero, hold, false, false);
             }
         }
 
@@ -483,6 +574,35 @@ namespace MyDongari.Game.Flow
             return offset.magnitude > MaxHorizontal;
         }
 
+        /// <summary>내려찍기 세 장면의 검사. 문제가 없으면 null.</summary>
+        private string DiveProblems()
+        {
+            var sb = new StringBuilder();
+            int missLag = StyleOverrides.Current.diveStrikeMissLandingFrames;
+            int hitLag = StyleOverrides.Current.Effective.landingFrames;
+            string[] names = { "정점", "하강 중", "피함" };
+            for (int i = 0; i < _dive.Length; i++)
+            {
+                DiveResult d = _dive[i];
+                bool evade = i == 2;
+                if (!d.Ran || !d.Started) { sb.Append($" [{names[i]}: 내려찍기가 안 나감]"); continue; }
+                if (!d.Landed) { sb.Append($" [{names[i]}: 착지를 못 함]"); continue; }
+                if (evade)
+                {
+                    if (!d.BotDashed) sb.Append($" [{names[i]}: 봇이 옆 대시를 못 냄]");
+                    if (d.Connected || d.BotResult != "-") sb.Append($" [{names[i]}: 빗나가야 하는데 {d.BotResult}]");
+                    if (d.LagFrames != missLag || d.LandingTicks != missLag) sb.Append($" [{names[i]}: 착지 경직 {d.LagFrames}f(잰 값 {d.LandingTicks}) ≠ {missLag}]");
+                }
+                else
+                {
+                    if (!d.Connected || !d.BotResult.StartsWith("Hit/Down")) sb.Append($" [{names[i]}: 명중·다운이어야 하는데 {d.BotResult}]");
+                    if (d.LagFrames != hitLag || d.LandingTicks != hitLag) sb.Append($" [{names[i]}: 착지 경직 {d.LagFrames}f(잰 값 {d.LandingTicks}) ≠ {hitLag}]");
+                    if (d.P1StopTicks == 0 || d.BotStopTicks == 0) sb.Append($" [{names[i]}: 양쪽 히트스톱이어야 함 (P1 {d.P1StopTicks} / 봇 {d.BotStopTicks})]");
+                }
+            }
+            return sb.Length > 0 ? sb.ToString().Trim() : null;
+        }
+
         private string Mark(int bit) => (_closeComboHits & bit) != 0 ? "명중" : "빗나감";
 
         private static bool IsFinite(Vector3 v) =>
@@ -511,6 +631,7 @@ namespace MyDongari.Game.Flow
             if (_p1Melee != null) _p1Melee.OnHitResolved -= OnHit;
             if (_botMelee != null) _botMelee.OnHitResolved -= OnHit;
             if (_p1Melee != null) _p1Melee.OnPunchTraced -= OnP1PunchTraced;
+            if (_p1Melee != null) _p1Melee.OnDiveStrikeLanded -= OnP1DiveLanded;
 
             var missing = new StringBuilder();
             if (_stagger == 0) missing.Append(" 경직");
@@ -523,7 +644,7 @@ namespace MyDongari.Game.Flow
             // 봇(공격만 모드)은 이동기로 다가가(걷기·대시) 공격 동작(펀치·뛰어 베기·런지·대시 공격)을 해야 한다
             var approach = _botStates[0];
             bool botMoved = approach.Contains("Walk") || approach.Contains("GroundDash");
-            bool botAttacked = approach.Contains("Melee") || approach.Contains("JumpMelee") || approach.Contains("Lunge") || _botHitsLanded > 0;
+            bool botAttacked = approach.Contains("Melee") || approach.Contains("DiveStrike") || approach.Contains("Lunge") || _botHitsLanded > 0;
             bool botOk = botMoved && botAttacked;
             // VERSUS: 장면별 검사 + 60fps·30fps 결과가 같아야 한다
             string versus60 = _versus60 != null ? _versus60.Problems() : "60fps 장면을 안 돌림";
@@ -532,12 +653,22 @@ namespace MyDongari.Game.Flow
             bool versusOk = versus60 == null && versus30 == null && fpsDiff == null;
             // 밀착 원투쓰리: 세 타 모두 명중해야 한다
             bool closeOk = _closeComboRan && _closeComboHits == 7;
-            bool pass = setupFailure == null && missing.Length == 0 && comboOk && closeOk && botOk && versusOk && _exceptions == 0 && _nanTicks == 0 && _outOfMapTicks == 0;
+            // 내려찍기: 정점·하강 중 = 명중(다운) + 양쪽 히트스톱 + 착지 경직 12f / 피하기 = 빗나감 + 착지 경직 30f
+            string diveProblems = DiveProblems();
+            bool pass = setupFailure == null && missing.Length == 0 && comboOk && closeOk && diveProblems == null && botOk && versusOk && _exceptions == 0 && _nanTicks == 0 && _outOfMapTicks == 0;
 
             Debug.Log($"{LogTag} 반응: 경직 {_stagger} / 다운 {_down} / 날아감 {_blown} / 가드경직 {_guardStagger} / 맞딜 {_clash} (무적만 {_invulnOnly}, 명중 {_hits})");
             Debug.Log($"{LogTag} 안정성: 예외·오류 로그 {_exceptions} / 좌표 깨짐 틱 {_nanTicks} / 겹친 틱 {_overlapTicks} / 맵 밖 틱 {_outOfMapTicks} / 돌린 틱 {_tick}");
             Debug.Log($"{LogTag} 원투쓰리 끝 반응: {_comboEnd} ({(comboOk ? "다운 — 정상" : "다운이어야 함")})");
             Debug.Log($"{LogTag} 밀착 원투쓰리({TouchDistance:0.0}m, {TouchAngle:0}° 비스듬히): 원 {Mark(1)} / 투 {Mark(2)} / 쓰리 {Mark(4)} ({(closeOk ? "3타 명중 — 정상" : "3타 모두 명중해야 함")})");
+            string[] diveNames = { "정점", "하강 중", "옆 대시로 피함" };
+            for (int i = 0; i < _dive.Length; i++)
+            {
+                DiveResult d = _dive[i];
+                Debug.Log($"{LogTag} 내려찍기 {diveNames[i]}: 발동 {d.Started}(누를 때 vy {d.VyAtPress:0.00}u/f) / 상대 {d.BotResult} / 착지 {(d.Landed ? (d.Connected ? "맞힘" : "빗나감") : "안 함")}" +
+                          $" 경직 {d.LagFrames}f(잰 값 {d.LandingTicks}틱) / 히트스톱 P1 {d.P1StopTicks}틱·봇 {d.BotStopTicks}틱 / 봇 대시 {d.BotDashed} / 가장 가까운 거리 {d.Closest:0.00}m");
+            }
+            Debug.Log($"{LogTag} 내려찍기: {diveProblems ?? "정상"}");
             string[] names = { "공격만", "패리", "섞어서" };
             for (int i = 0; i < 3; i++)
             {

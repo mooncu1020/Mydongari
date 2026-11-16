@@ -58,7 +58,7 @@ namespace MyDongari.Bridge
             {
                 MechState state = StateMachine != null ? StateMachine.CurrentState : null;
                 return _controller.IsMoveHeld || _controller.IsExternallyControlled ||
-                       state is LungeState || state is KnockdownState || (Melee != null && Melee.IsPushed);
+                       state is LungeState || state is KnockdownState || state is DiveStrikeState || (Melee != null && Melee.IsPushed);
             }
         }
 

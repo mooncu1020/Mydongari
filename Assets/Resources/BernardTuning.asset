@@ -175,6 +175,9 @@ MonoBehaviour:
     hitHeight: 1.3
     sparkColor: {r: 1, g: 0.8, b: 0.35, a: 1}
     guardSparkColor: {r: 0.5, g: 0.8, b: 1, a: 1}
+    invulnSparkColor: {r: 0.62, g: 0.62, b: 0.66, a: 1}
+    invulnSparkScale: 0.6
+    armorSparkColor: {r: 1, g: 0.92, b: 0.1, a: 1}
     flashFxColor: {r: 1, g: 1, b: 0.9, a: 0.9}
     sparkSize: 0.06
     sparkCount: 18

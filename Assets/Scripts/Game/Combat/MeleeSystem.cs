@@ -200,6 +200,7 @@ namespace MyDongari.Game.Combat
             if (_slam != null) _slam.CollectHits();
             if (_claw != null) _claw.CollectHits();
             if (_stateMachine != null && _stateMachine.DashAttack != null) _stateMachine.DashAttack.CollectHits();
+            if (_stateMachine != null && _stateMachine.IsDiveStrike) _stateMachine.DiveStrikeState.CollectHits(this, _identity.Opponent);
         }
 
         // ---------------- 한 틱 ----------------
@@ -503,6 +504,7 @@ namespace MyDongari.Game.Combat
         {
             // 패리·맞딜당한 대시 공격은 공격자 경직이 없다 (되돌아온 넉백이 벌이다)
             if ((result == HitResult.Parried || result == HitResult.Clash) && info.ClashFamily == 2) _stunFrames = 0;
+            if (info.Type == AttackType.DiveStrike && _stateMachine != null) _stateMachine.DiveStrikeState.NotifyResult(result);
             if (info.Type == AttackType.Punch && _hasPendingTrace)
             {
                 _hasPendingTrace = false;
@@ -566,7 +568,7 @@ namespace MyDongari.Game.Combat
 
         /// <summary>
         /// 상대가 근접 구역 A 안인지 (전투 사양서 1.1: 바깥 70u, 안쪽 원 12.5u, 원뿔 반각 42.2°, 높이차 −24 ~ +13u).
-        /// 공격 버튼이 펀치가 되는 조건. ignoreHeight = 높이차 창을 보지 않는다(뛰어 베기).
+        /// 공격 버튼이 펀치가 되는 조건. ignoreHeight = 높이차 창을 보지 않는다(원본의 점프 이륙 예외 — 지금은 쓰는 곳 없음).
         /// 이동기가 있으면 이동기가 이번 틱 위치로 계산한 값, 없으면(연습 봇) 같은 식으로 직접 잰다.
         /// </summary>
         public bool IsOpponentInMeleeZone(bool ignoreHeight = false)
@@ -810,40 +812,27 @@ namespace MyDongari.Game.Combat
             return false;
         }
 
-        // ---------------- 뛰어 베기 ----------------
+        // ---------------- 내려찍기 ----------------
 
-        /// <summary>뛰어 베기 중인지.</summary>
-        public bool IsJumpSlashing => _stateMachine != null && _stateMachine.IsJumpMelee;
+        /// <summary>내려찍기 중인지 (예비 + 내리꽂기).</summary>
+        public bool IsDiveStriking => _stateMachine != null && _stateMachine.IsDiveStrike;
 
-        /// <summary>지금 뛰어 베기 입력 창 안인지: 점프 입력 후 8f 이내이고 점프 중(이륙·상승·하강)이거나 이번 틱에 점프를 누른 서기·걷기.</summary>
-        public bool InJumpSlashWindow
-        {
-            get
-            {
-                VoMotor motor = Motor;
-                if (_stateMachine == null || motor == null || !motor.IsActive) return false;
-                if (motor.JumpPressFrames > C.jumpMeleeInputFrames) return false;
-                MechState state = _stateMachine.CurrentState;
-                if (state is Core.VirtualOn.States.VoJumpState) return true;
-                return motor.JumpNew && (state is Core.VirtualOn.States.VoStandState || state is Core.VirtualOn.States.VoWalkState);
-            }
-        }
+        /// <summary>내려찍기가 땅에 닿아 끝났을 때 (connected = 맞혔거나 막힘, lagFrames = 걸린 착지 경직). 로그·스모크용.</summary>
+        public event Action<bool, int> OnDiveStrikeLanded;
+
+        /// <summary>내려찍기 상태가 착지를 알린다.</summary>
+        public void NotifyDiveStrikeLanded(bool connected, int lagFrames) => OnDiveStrikeLanded?.Invoke(connected, lagFrames);
 
         /// <summary>
-        /// 뛰어 베기 (원본 점프 근접, 전투 사양서 1.7): 점프 입력 후 8f 이내 + 근접 구역(높이차 창 무시)이면 발동.
-        /// 이동은 코어의 점프 근접 상태가(vy 3.80, 진로 정면, 추적 2560), 판정은 여기서(근접 계열 3 — 때린 쪽이 멈추지 않는다).
+        /// 내려찍기 (우리 규칙): 점프 중(상승·정점·하강) 아무 때나 공격 버튼. 점프 한 번에 한 번. 근접 구역과 무관하다.
+        /// 이동·판정은 DiveStrikeState가 한다. 시작했으면 true.
         /// </summary>
-        public bool TryJumpSlash()
+        public bool TryDiveStrike()
         {
             if (IsActionLocked || IsKnockedDown) return false;
-            if (!InJumpSlashWindow || !IsOpponentInMeleeZone(ignoreHeight: true)) return false;
-            if (IsGuarding) DropGuard(applyReraiseDelay: false);
-            _stateMachine.V8JumpMelee();
-            // 펀치 콤보 단계와 같은 칸을 쓴다 (1 = 휘두르는 중) — 히트·콤보 알림은 펀치 전용이라 여기서 직접 시작한다
-            _comboStep = 1;
-            _swingHit = false;
-            _hasLastCapsule = false;
-            OnAttackStarted?.Invoke(AttackType.JumpSlash);
+            if (_stateMachine == null || !_stateMachine.CanStartDiveStrike) return false;
+            _stateMachine.StartDiveStrike();
+            OnAttackStarted?.Invoke(AttackType.DiveStrike);
             return true;
         }
 
@@ -856,8 +845,7 @@ namespace MyDongari.Game.Combat
             {
                 if (_stateMachine != null)
                 {
-                    if (_stateMachine.IsMelee) return _stateMachine.VoMelee.Drive;
-                    return _stateMachine.IsJumpMelee ? _stateMachine.VoJumpMelee.Drive : null;
+                    return _stateMachine.IsMelee ? _stateMachine.VoMelee.Drive : null;
                 }
                 return _ownDrive.IsActive ? _ownDrive : null;
             }
@@ -895,8 +883,6 @@ namespace MyDongari.Game.Combat
             if (_heatGauge != null && !_heatGauge.CanPunch()) return false;
 
             VoMeleeDrive drive = ActiveDrive;
-            // 뛰어 베기는 콤보로 이어지지 않는다
-            if (IsJumpSlashing) return false;
             if (drive != null)
             {
                 if (drive.Step >= 3) return false;
@@ -1087,8 +1073,7 @@ namespace MyDongari.Game.Combat
                 return;
             }
             StyleOverrides style = StyleOverrides.Current;
-            bool slash = IsJumpSlashing;
-            StyleOverrides.AttackCapsule shape = slash ? style.jumpSlashCapsule : (_comboStep >= 3 ? style.thirdCapsule : style.punchCapsule);
+            StyleOverrides.AttackCapsule shape = _comboStep >= 3 ? style.thirdCapsule : style.punchCapsule;
             AttackCapsulePoints(shape.start, shape.range, out Vector3 near, out Vector3 far);
             Vector3 fromNear = _hasLastCapsule ? _lastCapsuleNear : near;
             Vector3 fromFar = _hasLastCapsule ? _lastCapsuleFar : far;
@@ -1108,15 +1093,6 @@ namespace MyDongari.Game.Combat
             if (gap > 0f) return;
 
             VoCombatSpec c = C;
-            if (slash)
-            {
-                // 뛰어 베기: 근접 계열 3, 다운급. 피해 = 원본 점프 근접 A
-                HitInfo slashInfo = NewHit(AttackType.JumpSlash, HitKind.Melee3, c.Damage(c.damageJumpMelee), opponent.gameObject);
-                slashInfo.Impact = c.impactJumpMelee;
-                QueueHit(opponent.gameObject, slashInfo);
-                _swingHit = true;
-                return;
-            }
             bool third = _comboStep == 3;
             // 피해 = 원본 A1 1타 / A1 2타 / C1 × 체력 스케일. 충격치: 원·투는 경직만(우리 값 280), 쓰리는 원본 C1 1100
             float damage = c.Damage(third ? c.damageC1 : (_comboStep == 2 ? c.damageA1Second : c.damageA1First));

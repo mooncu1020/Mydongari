@@ -19,9 +19,9 @@
 | `Assets/Scripts/Core/VirtualOn/` | 버추얼온식 이동기 — 원본 사양(`docs/REFERENCE_MOVEMENT.md`) 그대로. `VoSpec`(수치, 기본값 = 원본), `VoTickDriver`(60Hz: 카메라 → 1P → 2P), `VoMotor`(한 틱: 입력 → 보조 → 자동 선회 → 메인 → 이동 적분, `VoMotor.Collision`은 지면·벽), `VoLever`, `VoCameraRig`, `States/`(서기·걷기·근접 스텝·지상 대시·대시 정지·점프·공중 대시·급강하), 바깥과의 접점 `IVoHost`·`IVoMachine`·`IVoDashAttack`·`IDashMove` |
 | `Assets/Scripts/Core/` | 공용 유틸: `ErrorLog`, `GroundLayers`, `AppRuntime`, `MechFacing`, `AsteroidArenaConfig` |
 | `Assets/Scripts/Bridge/` | 코어와 게임의 연결. `MotionBridge`(전투 → 외부 속도), `VoHostAdapter`·`VoInputAdapter`(`IVoHost` 구현: 입력·스턴·가드 자동 선회·기체끼리 분리), `MechStateMachine`(`IVoMachine` 구현 + 게임 상태 호스팅), `MechController`(참조 모음·넉백 유지·감속 요청·몸 충돌 반동), `DashAttackRunner`, `MechCamera`, `StyleOverrides`(우리 스타일 수치), `MechIdentity`, `ExternalControlLock`, `GameState` |
-| `Assets/Scripts/Core/VirtualOn/` (전투 뼈대) | 원본 전투 사양(`docs/REFERENCE_COMBAT.md`): `VoCombatSpec`(전투 수치, 기본값 = 원본)·`VoMeleeZone`(근접 구역), `VoMeleeDrive`(파고들기 구동 — 순수 계산), `States/VoMeleeState`·`VoJumpMeleeState`(지상·점프 근접의 이동), `IVoTickUnit`(전투 틱 참여자: 판단 → 1P → 2P → 판정 모으기) |
-| `Assets/Scripts/Game/Combat/` | `MeleeSystem`(기체별 전투 허브: 전투 틱, 피격 정산·반응, 펀치 콤보·뛰어 베기, 가드·패리, 히트스톱), 순수 로직 `CombatLedger`(피격 기록·맞교환)·`HitRules`(충격치·반응 판정)·`ReactionTimers`(히트스톱·무적·경직)·`HitGeometry`(공격 구 vs 캡슐), `WeaponSystem`(공격 버튼 선택), `LockOnSystem`, `Health`, `ThrusterLunge`, `Projectile`, `Skills/`(`AnchorClaw`, `ImpactSlam`) |
-| `Assets/Scripts/Game/States/`, `Game/Knockdown/` | 이동 상태 위에 얹는 게임 상태: `LandingState`, `LungeState`, `KnockdownState` + `KnockdownController` |
+| `Assets/Scripts/Core/VirtualOn/` (전투 뼈대) | 원본 전투 사양(`docs/REFERENCE_COMBAT.md`): `VoCombatSpec`(전투 수치, 기본값 = 원본)·`VoMeleeZone`(근접 구역), `VoMeleeDrive`(파고들기 구동 — 순수 계산), `States/VoMeleeState`(지상 근접의 이동), `IVoTickUnit`(전투 틱 참여자: 판단 → 1P → 2P → 판정 모으기) |
+| `Assets/Scripts/Game/Combat/` | `MeleeSystem`(기체별 전투 허브: 전투 틱, 피격 정산·반응, 펀치 콤보·내려찍기, 가드·패리, 히트스톱), 순수 로직 `CombatLedger`(피격 기록·맞교환)·`HitRules`(충격치·반응 판정)·`ReactionTimers`(히트스톱·무적·경직)·`HitGeometry`(공격 캡슐 쓸기 vs 피격 캡슐)·`DiveStrikeMath`(내려찍기 궤적), `WeaponSystem`(공격 버튼 선택), `LockOnSystem`, `Health`, `ThrusterLunge`, `Projectile`, `Skills/`(`AnchorClaw`, `ImpactSlam`) |
+| `Assets/Scripts/Game/States/`, `Game/Knockdown/` | 이동 상태 위에 얹는 게임 상태: `LandingState`, `LungeState`, `DiveStrikeState`(내려찍기), `KnockdownState` + `KnockdownController` |
 | `Assets/Scripts/Game/Heat/`, `Game/Tuning/` | `HeatGauge` / `BernardTuning`(전투·외형 수치), `MechTuning` |
 | `Assets/Scripts/Game/Bot/` | 연습 봇: `MeleeDummy`(부품 부착·한 틱 순서), `BotSenses`(눈 — 상대는 반응 지연만큼 지난 장면), `BotBrain`(행동 선택), `BotPad`(입력 생성 — 가상 패드 `InputReader`에 스틱·버튼). 플레이어와 같은 V8 이동기·전투 코드로 움직인다 |
 | `Assets/Scripts/Game/Input/` | `InputReader` (PlayerInput 기반), `VersusInputPairing` |
@@ -35,9 +35,9 @@
 - 코어(`Core/VirtualOn`)가 게임에 물어야 할 것이 생기면 `IVoHost`/`IVoMachine`에 멤버를 추가하고 `Bridge`에서 구현한다. 코어에서 전투·입력 컴포넌트를 직접 부르지 않는다.
 - 조정할 수치는 전부 `[SerializeField] private` + `[Header("…")]`, 필요하면 `[Tooltip("…")]`. 매직 넘버를 코드에 박지 않는다. 기존 스타일대로 Header/Tooltip은 한국어로 쓴다.
 - **전투의 모든 시간(공격 단계·쿨타임·무적·경직·히트스톱·입력 창)은 `Time.time`·`deltaTime`이 아니라 전투 틱 수로 센다.** 전투는 `VoTickDriver`의 60Hz 틱에서만 돈다(`MeleeSystem.CombatTick`·`CollectHits`가 스킬·런지·넉다운의 틱을 부른다). 새 입력은 누름 횟수(`…PressCount`)로 본다. 우리 값도 틱(`…Frames`)으로 적는다.
-- **전투 수치: `Core/VirtualOn/VoCombatSpec`의 기본값은 `docs/REFERENCE_COMBAT.md` 원본값으로 고정한다.** 우리 값은 `StyleOverrides`(충격치·명중 판정·뛰어 베기 묶음)에서만 덮어쓰고, 원본과 다른 것은 `docs/PLAN_CLEANUP.md` 3절 (다)에 추가한다. 피해량 같은 게임 값은 `BernardTuning`.
+- **전투 수치: `Core/VirtualOn/VoCombatSpec`의 기본값은 `docs/REFERENCE_COMBAT.md` 원본값으로 고정한다.** 우리 값은 `StyleOverrides`(충격치·명중 판정·내려찍기 묶음)에서만 덮어쓰고, 원본과 다른 것은 `docs/PLAN_CLEANUP.md` 3절 (다)에 추가한다. 피해량 같은 게임 값은 `BernardTuning`.
 - 맞히는 쪽은 `MeleeSystem.QueueHit`로 상대의 피격 기록에 쌓기만 한다(판단·반응은 다음 틱 — 1P·2P 대칭). 그 자리에서 결과를 받아 처리하지 않는다. 결과가 필요하면 `MeleeSystem.OnAttackResolved`.
-- 순수 로직(`Core`의 `VoMeleeDrive`·`VoMeleeZone`, `Game/Combat`의 `CombatLedger`·`HitRules`·`ReactionTimers`·`HitGeometry`)을 고치면 `Assets/Editor/Tests/CombatRulesTests.cs`(EditMode)를 같이 고치고 돌린다.
+- 순수 로직(`Core`의 `VoMeleeDrive`·`VoMeleeZone`, `Game/Combat`의 `CombatLedger`·`HitRules`·`ReactionTimers`·`HitGeometry`·`DiveStrikeMath`)을 고치면 `Assets/Editor/Tests/CombatRulesTests.cs`(EditMode)를 같이 고치고 돌린다.
 - Unity 6 API를 쓴다: `Rigidbody.linearVelocity`, `linearDamping` (`velocity`, `drag` 금지).
 - 리지드바디 감속은 `MechController.RequestDamping(value, priority)` / `SetBaselineDamping()`을 거친다. 직접 `linearDamping`을 쓰지 않는다.
 - 전투 코드가 기체를 밀 때는 `MotionBridge`(SetVelocity·AddImpulse·Teleport)를 거친다. 기체 리지드바디는 키네마틱이라 `linearVelocity`·`AddForce`를 직접 쓰면 안 움직인다 (이동기가 없는 기체만 다이내믹 — MotionBridge가 알아서 나눈다. 연습 봇도 이제 이동기를 쓴다).

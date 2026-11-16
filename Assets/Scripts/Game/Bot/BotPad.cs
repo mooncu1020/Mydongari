@@ -27,8 +27,8 @@ namespace MyDongari.Game.Bot
         CloseStep,
         /// <summary>원투쓰리 (Count = 몇 타까지).</summary>
         Combo,
-        /// <summary>점프 → 8f 안 공격 = 뛰어 베기.</summary>
-        JumpSlash,
+        /// <summary>점프 → 떠오른 뒤 공격 = 내려찍기.</summary>
+        DiveStrike,
         /// <summary>그냥 점프.</summary>
         Jump,
         /// <summary>근접 구역 밖 공격 = 런지.</summary>
@@ -61,7 +61,7 @@ namespace MyDongari.Game.Bot
 
         /// <summary>한 번 하고 끝나는 행동인지 (끝날 때까지 다음 주문을 받지 않는다). 나머지는 두뇌가 틱마다 다시 고른다.</summary>
         public bool IsMacro => Kind == BotOrderKind.Parry || Kind == BotOrderKind.SideDash || Kind == BotOrderKind.DashAttack ||
-                               Kind == BotOrderKind.CloseStep || Kind == BotOrderKind.Combo || Kind == BotOrderKind.JumpSlash ||
+                               Kind == BotOrderKind.CloseStep || Kind == BotOrderKind.Combo || Kind == BotOrderKind.DiveStrike ||
                                Kind == BotOrderKind.Jump || Kind == BotOrderKind.Lunge;
     }
 
@@ -256,7 +256,7 @@ namespace MyDongari.Game.Bot
                     return false;
                 }
 
-                case BotOrderKind.JumpSlash:
+                case BotOrderKind.DiveStrike:
                     if (f == 0)
                     {
                         if (!self.Standing) return true;
@@ -264,10 +264,10 @@ namespace MyDongari.Game.Bot
                         _jump = true;
                         return false;
                     }
-                    _jump = f < t.jumpSlashAttackFrame;
-                    if (f == t.jumpSlashAttackFrame) _reader.ScriptPressAttack();
+                    _jump = f < t.diveStrikeAttackFrame;
+                    if (f == t.diveStrikeAttackFrame) _reader.ScriptPressAttack();
                     // 착지할 때까지 아무것도 안 누른다
-                    return f > t.jumpSlashAttackFrame && self.Grounded && !self.Airborne;
+                    return f > t.diveStrikeAttackFrame && self.Grounded && !self.Airborne;
 
                 case BotOrderKind.Jump:
                     if (f == 0)
@@ -314,8 +314,8 @@ namespace MyDongari.Game.Bot
         public int comboStartGraceFrames = 8;
         [Tooltip("콤보: 이 틱이 지나면 무조건 끝")]
         public int comboTimeoutFrames = 150;
-        [Tooltip("뛰어 베기: 점프를 누른 뒤 공격을 누르는 틱 (점프 입력 후 8틱 안이어야 한다)")]
-        public int jumpSlashAttackFrame = 3;
+        [Tooltip("내려찍기: 점프를 누른 뒤 공격을 누르는 틱 (점프 중 아무 때나 된다 — 늦을수록 높은 데서 꽂는다)")]
+        public int diveStrikeAttackFrame = 16;
         [Tooltip("그냥 점프: △를 누르고 있는 틱 (길면 더 높이)")]
         public int jumpHoldFrames = 10;
         [Tooltip("기상 대기: 연타 간격(틱)")]

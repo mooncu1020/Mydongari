@@ -103,9 +103,6 @@ namespace MyDongari.Bridge
         [Tooltip("쓰리의 공격 캡슐")]
         [FormerlySerializedAs("thirdSphere")]
         public AttackCapsule thirdCapsule = new AttackCapsule(0.3f, 2.0f, 0.6f);
-        [Tooltip("뛰어 베기의 공격 캡슐")]
-        [FormerlySerializedAs("jumpSlashSphere")]
-        public AttackCapsule jumpSlashCapsule = new AttackCapsule(0.3f, 2.0f, 0.7f);
         [Tooltip("공격 캡슐 높이 = 발 + 기체 키 × 이 비율 (손 높이)")]
         [Range(0f, 1f)] public float attackHandHeightRatio = 0.6f;
         [Tooltip("점프 상승 중 피격 캡슐의 높이·반지름 배율 (원본: 피격 구 7개 → 3개)")]
@@ -128,21 +125,23 @@ namespace MyDongari.Bridge
         [Tooltip("임팩트 슬램의 충격치 (원본에 대응 없음 — 일반 근접, 가드 가능, 다운급)")]
         public float slamImpact = 1100f;
 
-        [Header("뛰어 베기 — [미상] 원본 미확인이라 우리 값 (원본 확정: vy 3.80u/f, 추적 2560 단위/f, 점프 입력 후 8f)")]
-        [Tooltip("[미상] 기준 속력(u/f). 정면으로 파고드는 빠르기")]
-        public FloatOverride jumpMeleeSpeed = new FloatOverride(true, 4.0f);
-        [Tooltip("[미상] ① 파고들기 길이(틱)")]
-        public IntOverride jumpMeleeApproachFrames = new IntOverride(true, 12);
-        [Tooltip("[미상] ② 공격 길이(틱). 끝나면 일반 낙하")]
-        public IntOverride jumpMeleeAttackFrames = new IntOverride(true, 10);
-        [Tooltip("[미상] 판정 창 시작(② 단계 틱 번호)")]
-        public IntOverride jumpMeleeHitStart = new IntOverride(true, 2);
-        [Tooltip("[미상] 판정 창 끝(이 번호 직전까지 = 2~7f)")]
-        public IntOverride jumpMeleeHitEnd = new IntOverride(true, 8);
-        [Tooltip("[미상] 뛰어 베기 중 중력(u/f²). 점프 중력(0.074)이면 vy 3.80으로 6m까지 솟아 지상의 상대에게 안 닿아서, 다운 상태의 중력(0.451)을 빌려 썼다 — 정점 약 1.4m, 약 17틱 뒤 착지")]
-        public FloatOverride jumpMeleeGravity = new FloatOverride(true, 0.451f);
-        [Tooltip("[미상] 뛰어 베기 중 낙하 상한(u/f)")]
-        public FloatOverride jumpMeleeFallMaxVy = new FloatOverride(true, 4.001f);
+        [Header("내려찍기 — 우리 규칙 (점프 중 공격. 원본 점프 근접(이륙 8f 안 뛰어 베기) 대신. 피해·충격치·예비 선회율 2560은 원본 점프 근접 값)")]
+        [Tooltip("예비 길이(틱): 상승을 멈추고 공중에 멈칫, 몸을 상대 쪽으로 돌린다 (8f = 0.13초)")]
+        public int diveStrikeWindupFrames = 8;
+        [Tooltip("내리꽂는 속력(m/s). 예비가 끝난 순간 상대 위치를 향해 직선으로")]
+        public float diveStrikeSpeed = 40f;
+        [Tooltip("꽂히는 동안의 유도(각 단위/f — 65536 = 360°). 256 = 1.41°/f = 84°/s — 좌우 방위와 기울기를 각각 이만큼만 따라가서 옆 대시로 피할 수 있다")]
+        public float diveStrikeHomingRate = 256f;
+        [Tooltip("수평 이동 상한(m). 상대가 더 멀면 그 방향으로 이만큼 가서 떨어진다")]
+        public float diveStrikeMaxHorizontal = 15f;
+        [Tooltip("진로가 수평에서 아래로 최소 이 각도(°)는 기울어진다 — 상대가 나보다 위에 있어도 땅에 닿아 끝나게")]
+        [Range(1f, 89f)] public float diveStrikeMinAngle = 15f;
+        [Tooltip("주먹 캡슐: 기체 중심에서 진로 쪽으로 start ~ range(m), 반지름 radius. 지난 틱 → 이번 틱으로 쓸어 검사. " +
+                 "반지름이 회피 난이도를 정한다: 옆 대시(근접 감속 뒤 약 12.9m/s)가 유도를 벗어나는 거리는 1.15m쯤이고 상대 캡슐 반지름이 0.5m라, " +
+                 "0.35면 옆 대시는 0.1~0.3m 차이로 피하고 옆걸음(약 11m/s)은 맞는다. 0.5 이상이면 옆 대시로도 거의 못 피한다")]
+        public AttackCapsule diveStrikeCapsule = new AttackCapsule(0.2f, 1.2f, 0.35f);
+        [Tooltip("빗나갔을 때 착지 경직(틱, 30f = 0.5초 — 공격으로 취소 불가). 맞혔으면 일반 착지 경직(원본 12f)")]
+        public int diveStrikeMissLandingFrames = 30;
 
         // ---- 유효값 ----
         [NonSerialized] private VoSpec _effective;
@@ -165,13 +164,6 @@ namespace MyDongari.Bridge
             punch1Impact.Apply(ref c.impactA1First);
             punch2Impact.Apply(ref c.impactA1Second);
             punch3Impact.Apply(ref c.impactC1);
-            jumpMeleeSpeed.Apply(ref c.jumpMelee.baseSpeed);
-            jumpMeleeApproachFrames.Apply(ref c.jumpMelee.approachFrames);
-            jumpMeleeAttackFrames.Apply(ref c.jumpMelee.attackFrames);
-            jumpMeleeHitStart.Apply(ref c.jumpMelee.hitStart);
-            jumpMeleeHitEnd.Apply(ref c.jumpMelee.hitEnd);
-            jumpMeleeGravity.Apply(ref c.jumpMeleeGravity);
-            jumpMeleeFallMaxVy.Apply(ref c.jumpMeleeFallMaxVy);
             return c;
         }
 

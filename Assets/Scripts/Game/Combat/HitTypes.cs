@@ -12,13 +12,13 @@ namespace MyDongari.Game.Combat
         Slam,
         PileDriver,
         Projectile,
-        /// <summary>뛰어 베기 (원본 점프 근접).</summary>
-        JumpSlash
+        /// <summary>내려찍기 (점프 중 공격 — 우리 규칙. 원본 점프 근접 자리).</summary>
+        DiveStrike
     }
 
     /// <summary>
     /// 피격 판정 종류 (전투 사양서 2.1·2.4·6.3). 반응 단계와 히트스톱이 이걸로 갈린다.
-    /// 일반 근접·강타는 때린 쪽도 히트스톱, 근접 계열 2(대시 근접)·3(점프 근접)은 때린 쪽이 멈추지 않는다. 강타는 가드 불능 + 무조건 날아감.
+    /// 일반 근접·강타는 때린 쪽도 히트스톱, 근접 계열 2(대시 근접)·3(원본 점프 근접 — 지금은 쓰는 기술 없음)은 때린 쪽이 멈추지 않는다. 강타는 가드 불능 + 무조건 날아감.
     /// </summary>
     public enum HitKind
     {
@@ -32,7 +32,7 @@ namespace MyDongari.Game.Combat
 
     /// <summary>
     /// 공격 세기 등급 (N1). 화면 흔들림·피격 반응 포즈·이펙트 크기가 이걸로 갈린다 (연출 전용 — 히트스톱은 등급과 무관하게 15f).
-    /// 약 = 콤보 원·투, 중 = 쓰리·대시 어택, 강 = 런지·태클·파일 드라이버·슬램·뛰어 베기.
+    /// 약 = 콤보 원·투, 중 = 쓰리·대시 어택, 강 = 런지·태클·파일 드라이버·슬램·내려찍기.
     /// </summary>
     public enum AttackStrength
     {
@@ -92,7 +92,7 @@ namespace MyDongari.Game.Combat
                 case AttackType.Lunge:
                 case AttackType.Tackle:
                 case AttackType.PileDriver:
-                case AttackType.JumpSlash:
+                case AttackType.DiveStrike:
                 case AttackType.Slam: return AttackStrength.Heavy;
                 default: return AttackStrength.Light;
             }

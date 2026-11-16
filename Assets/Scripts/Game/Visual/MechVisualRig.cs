@@ -196,6 +196,9 @@ namespace MyDongari.Game.Visual
         private float _clawStart = None;
         private float _pileStart = None;
         private float _slamStart = None;
+        // 내려찍기: 시작·끝 시각 (기존 포즈를 이어 붙인다 — PoseDiveStrike)
+        private float _diveStart = None;
+        private float _diveEnd = None;
         // 숨쉬기 세기(0~1). 움직이거나 다른 동작 중이면 breathFadeTime에 걸쳐 0으로
         private float _breathWeight = 1f;
         // 걸음 동작 세기(0~1, G3). 0이면 대기 자세 다리가 그대로 나온다
@@ -1033,6 +1036,7 @@ namespace MyDongari.Game.Visual
             if (UseMotions && _lungeStart != None) return true;
             if (UseMotions && IsDefenseMotionActive()) return true;
             if (UseMotions && IsClawMotionActive()) return true;
+            if (UseMotions && _diveStart != None) return true;
             if (IsKnockedDownVisual) return true;
             if (_claw != null && _claw.Phase != AnchorClaw.ClawPhase.Ready) return true;
             if (InWindow(_punchStart, PunchVisualLength(v))) return true;
@@ -1105,6 +1109,7 @@ namespace MyDongari.Game.Visual
             {
                 PoseTackle();
                 PoseSlam();
+                PoseDiveStrike();
             }
             // 넉다운 (R2): 다른 모든 동작 위에 (맞은 쪽은 공격을 못 하므로 겹칠 일은 없다)
             if (motions) PoseKnockdown();

@@ -97,7 +97,7 @@ namespace MyDongari.Game.Bot
             MechStateMachine sm = _oppMachine;
             if (sm == null) return SeenAction.Stand;
             if (sm.IsLunging) return SeenAction.Lunge;
-            if (sm.IsJumpMelee) return SeenAction.JumpMelee;
+            if (sm.IsDiveStrike) return SeenAction.DiveStrike;
             if (sm.IsMelee) return SeenAction.Melee;
             if (sm.IsDashing && sm.ActiveDash != null && sm.ActiveDash.IsAttacking) return SeenAction.DashAttack;
             if (_oppMelee != null && _oppMelee.IsGuarding) return SeenAction.Guard;

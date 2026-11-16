@@ -639,6 +639,54 @@ namespace MyDongari.Game.Visual
             PlayMotion(t, 1f, false);
         }
 
+        /// <summary>
+        /// 내려찍기: 새 포즈 없이 있는 것을 이어 붙인다 — 예비(공중 멈칫) = 어퍼컷 준비 자세(ClawReel: 골반 낮추고 오른 주먹 허리춤),
+        /// 내리꽂기 = 주먹 아래로(SlamDown)를 땅에 닿을 때까지 유지, 착지하면 슬램 복귀 시간에 걸쳐 풀린다.
+        /// 상태는 전투 쪽(MeleeSystem.IsDiveStriking)을 그대로 따라간다.
+        /// </summary>
+        private void PoseDiveStrike()
+        {
+            if (_melee == null) return;
+            bool active = _melee.IsDiveStriking;
+            if (active && (_diveStart == None || _diveEnd != None))
+            {
+                _diveStart = _clock;
+                _diveEnd = None;
+            }
+            else if (!active && _diveStart != None && _diveEnd == None)
+            {
+                _diveEnd = _clock;
+            }
+            if (_diveStart == None) return;
+
+            BernardTuning.MotionValues m = M;
+            float windup = CombatTime.Seconds(StyleOverrides.Current.diveStrikeWindupFrames);
+            float strike = windup + m.slamDownTime;
+            float t = _clock - _diveStart;
+            BeginMotion();
+            Key(0f, null);
+            Key(windup, PoseNames.ClawReel, MechPoseLibrary.EaseSmooth);
+            Key(strike, PoseNames.SlamDown, MechPoseLibrary.EaseSnap);
+            if (_diveEnd != None)
+            {
+                float end = Mathf.Max(strike, _diveEnd - _diveStart);
+                if (t >= end + m.slamRecoverTime)
+                {
+                    _diveStart = None;
+                    _diveEnd = None;
+                    return;
+                }
+                Key(end, PoseNames.SlamDown, MechPoseLibrary.EaseLinear);
+                Key(end + m.slamRecoverTime, null, MechPoseLibrary.EaseHeavy);
+            }
+            else
+            {
+                // 땅에 닿을 때까지 내리꽂는 자세 그대로
+                Key(Mathf.Max(strike, t) + 1f, PoseNames.SlamDown, MechPoseLibrary.EaseLinear);
+            }
+            PlayMotion(t, 1f, false);
+        }
+
         // ---------------- N1 피격 반응 ----------------
 
         private float _reactStart = None;

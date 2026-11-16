@@ -66,6 +66,8 @@ namespace MyDongari.Game.Flow
             "dash_enter", "dash_exit_canceled", "dash_exit_bump", "dash_exit_wall", "dash_exit_timeout",
             // 점프(V5): 점프 수, 공중 대시 수, 착지 경직 수 (긴 경직은 V7c부터 항상 0)
             "jump", "air_dash", "landing_lag", "landing_lag_long",
+            // 내려찍기: 시작 수, 맞히고 착지(경직 12f) / 빗나가고 착지(경직 30f)
+            "divestrike_start", "divestrike_land_hit", "divestrike_land_miss",
             // 전투 반응·기상·근접 취소·대시 공격 회피 (events의 같은 이름 줄 수)
             "reaction_stagger", "reaction_down", "reaction_blown", "reaction_guard_stagger", "reaction_air_down",
             "hit_while_landing", "melee_cancel", "hitstop_start",
@@ -184,6 +186,10 @@ namespace MyDongari.Game.Flow
                     if (trace.Result != "hit" && trace.Result != "guarded" && trace.Result != "guard_broken" &&
                         trace.Result != "parried" && trace.Result != "clash") CountSilent(index, "punch_trace_" + trace.Result);
                 }, "PlayLogger.onTrace");
+                // 내려찍기가 땅에 닿아 끝남: 맞혔는지(막힘 포함) + 걸린 착지 경직
+                Action<bool, int> onDive = (connected, lag) => ErrorLog.Run(
+                    () => Count(index, connected ? "divestrike_land_hit" : "divestrike_land_miss", lag + "f"), "PlayLogger.onDive");
+                melee.OnDiveStrikeLanded += onDive;
                 melee.OnPunchTraced += onTrace;
                 melee.OnHitStopStarted += onStop;
                 melee.OnWokeUp += onWake;
@@ -191,6 +197,7 @@ namespace MyDongari.Game.Flow
                 _unsubscribers.Add(() =>
                 {
                     melee.OnPunchTraced -= onTrace;
+                    melee.OnDiveStrikeLanded -= onDive;
                     melee.OnAttackStarted -= onStart;
                     melee.OnAttackCanceled -= onCancel;
                     melee.OnHitResolved -= onHit;
@@ -281,7 +288,7 @@ namespace MyDongari.Game.Flow
                     else if (state is VoCloseStepState) Count(index, "close_step");
                     else if (state is VoDiveState) Count(index, "dive");
                     // 근접 취소: 휘두르는 도중 다른 상태로 나갔다 → 무엇으로 끊겼는지
-                    bool midSwing = (previous is VoMeleeState m && m.ExitedMidSwing) || (previous is VoJumpMeleeState jm && jm.ExitedMidSwing);
+                    bool midSwing = previous is VoMeleeState m && m.ExitedMidSwing;
                     if (midSwing) Count(index, "melee_cancel", MeleeCancelKey(state, stateMelee));
                     previous = state;
                 }, "PlayLogger.onState");
@@ -474,7 +481,6 @@ namespace MyDongari.Game.Flow
                 return melee.LastMeleeCancelReason;
             switch (next)
             {
-                case VoJumpMeleeState _: return "jump_slash";
                 case VoJumpState _: return "jump";
                 case VoCloseStepState _: return "close_step";
                 case VoGroundDashState _: return "dash";
@@ -518,7 +524,7 @@ namespace MyDongari.Game.Flow
                 case AttackType.Tackle: return "tackle";
                 case AttackType.Lunge: return "lunge";
                 case AttackType.Slam: return "slam";
-                case AttackType.JumpSlash: return "jumpslash";
+                case AttackType.DiveStrike: return "divestrike";
                 case AttackType.PileDriver: return "piledriver";
                 default: return "projectile";
             }

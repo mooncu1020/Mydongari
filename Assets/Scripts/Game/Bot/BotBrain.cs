@@ -9,7 +9,7 @@ namespace MyDongari.Game.Bot
         Idle,
         /// <summary>가드만 (✕를 계속 누름 — 가드 자동 선회로 상대를 본다).</summary>
         AlwaysGuard,
-        /// <summary>공격만: 걷기·앞 대시로 다가가 원투쓰리·뛰어 베기·근접 스텝 펀치, 중거리엔 런지·대시 공격. 가드는 안 한다.</summary>
+        /// <summary>공격만: 걷기·앞 대시로 다가가 원투쓰리·내려찍기·근접 스텝 펀치, 중거리엔 런지·대시 공격. 가드는 안 한다.</summary>
         Approach,
         /// <summary>거리를 두고(6~12m) 런지·대시 공격.</summary>
         Lunger,
@@ -226,7 +226,7 @@ namespace MyDongari.Game.Bot
                 _cooldown = _t.attackIntervalFrames;
                 float r = Next();
                 if (r < 0.55f) return new BotOrder(BotOrderKind.Combo, 1, r < 0.2f ? 2 : 3);
-                if (r < 0.75f) return new BotOrder(BotOrderKind.JumpSlash);
+                if (r < 0.75f) return new BotOrder(BotOrderKind.DiveStrike);
                 if (r < 0.9f && self.Standing) return new BotOrder(BotOrderKind.CloseStep, RandomSide());
                 return new BotOrder(BotOrderKind.Combo, 1, 1);
             }

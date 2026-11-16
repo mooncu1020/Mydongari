@@ -238,14 +238,18 @@ namespace MyDongari.EditorTools.Tests
         }
 
         [Test]
-        public void DashAttackAndJumpSlash_DoNotStopTheAttacker()
+        public void DashAttack_DoesNotStopTheAttacker_PunchAndDiveStrikeDo()
         {
             VoCombatSpec c = Spec();
             var posture = new DefenderPosture();
             HitInfo dash = new HitInfo { Type = AttackType.DashAttack, Kind = HitKind.Melee2, Damage = 20f, Impact = c.impactDashMelee, Direction = Vector3.forward };
-            HitInfo slash = new HitInfo { Type = AttackType.JumpSlash, Kind = HitKind.Melee3, Damage = 30f, Impact = c.impactJumpMelee, Direction = Vector3.forward };
+            HitInfo dive = new HitInfo { Type = AttackType.DiveStrike, Kind = HitKind.Melee, Damage = 30f, Impact = c.impactJumpMelee, Direction = Vector3.forward };
             Assert.IsFalse(HitRules.Decide(c, dash, posture, 0f, false).StopsAttacker, "대시 공격(근접 계열 2)");
-            Assert.IsFalse(HitRules.Decide(c, slash, posture, 0f, false).StopsAttacker, "뛰어 베기(근접 계열 3)");
+            HitDecision diveHit = HitRules.Decide(c, dive, posture, 0f, false);
+            Assert.IsTrue(diveHit.StopsAttacker, "내려찍기(일반 근접): 맞히면 양쪽 히트스톱");
+            Assert.AreEqual(Reaction.Down, diveHit.Reaction, "내려찍기 충격치 1100 = 다운");
+            Assert.AreEqual(HitResult.Guarded, HitRules.Decide(c, dive, new DefenderPosture { Guarding = true, FacingYaw = 180f }, 0f, false).Result, "내려찍기는 가드할 수 있다");
+            Assert.AreEqual(HitResult.Parried, HitRules.Decide(c, dive, new DefenderPosture { Parrying = true }, 0f, false).Result, "내려찍기는 패리할 수 있다");
             Assert.IsTrue(HitRules.Decide(c, Punch(c, 1), posture, 0f, false).StopsAttacker, "펀치(일반 근접)");
 
             // 기록으로: 대시 공격을 맞힌 공격자에게는 히트스톱 표시가 안 선다, 펀치를 맞힌 공격자에게는 선다
@@ -474,7 +478,7 @@ namespace MyDongari.EditorTools.Tests
             // 기술 사이의 비율은 원본 그대로 (A1 1타 290 기준)
             Assert.AreEqual(130f / 290f, c.Damage(c.damageA1Second) / c.Damage(c.damageA1First), 0.0001f, "투");
             Assert.AreEqual(380f / 290f, c.Damage(c.damageC1) / c.Damage(c.damageA1First), 0.0001f, "쓰리");
-            Assert.AreEqual(340f / 290f, c.Damage(c.damageJumpMelee) / c.Damage(c.damageA1First), 0.0001f, "뛰어 베기");
+            Assert.AreEqual(340f / 290f, c.Damage(c.damageJumpMelee) / c.Damage(c.damageA1First), 0.0001f, "내려찍기(원본 점프 근접 비율)");
             Assert.AreEqual(275f / 290f, c.Damage(c.damageDashMelee) / c.Damage(c.damageA1First), 0.0001f, "대시 공격");
             Assert.AreEqual(435f / 290f, c.Damage(c.damageA2) / c.Damage(c.damageA1First), 0.0001f, "런지");
             Assert.AreEqual(460f / 290f, c.Damage(c.damageC2) / c.Damage(c.damageA1First), 0.0001f, "차징 태클");
@@ -584,6 +588,76 @@ namespace MyDongari.EditorTools.Tests
             Assert.IsFalse(standing.ArmoredByDash);
             HitDecision jumping = HitRules.Decide(c, Punch(c, 1), new DefenderPosture { Airborne = true }, 0f, false);
             Assert.IsFalse(jumping.ArmoredByDash, "점프 중 무적만은 슈퍼아머가 아니다");
+        }
+
+        // ---------------- 내려찍기 궤적 ----------------
+
+        private static StyleOverrides DiveStyle() => ScriptableObject.CreateInstance<StyleOverrides>();
+
+        [Test]
+        public void DiveStrike_AimsStraightAtOpponent_ClampedTo15m_AndAlwaysDownward()
+        {
+            StyleOverrides style = DiveStyle();
+            Vector3 from = new Vector3(0f, 6f, 0f);
+            // 6m 위에서 8m 앞 상대: 그대로 직선
+            Vector3 aim = DiveStrikeMath.Aim(from, new Vector3(0f, 0f, 8f), style.diveStrikeMaxHorizontal, style.diveStrikeMinAngle);
+            Assert.AreEqual(0f, Vector3.Angle(aim, new Vector3(0f, -6f, 8f)), 0.01f);
+            // 30m 앞 상대: 15m 지점으로 (그 방향으로 짧게 떨어진다)
+            Vector3 far = DiveStrikeMath.Aim(from, new Vector3(0f, 0f, 30f), style.diveStrikeMaxHorizontal, style.diveStrikeMinAngle);
+            Assert.AreEqual(0f, Vector3.Angle(far, new Vector3(0f, -6f, 15f)), 0.01f);
+            // 나보다 위에 있는 상대: 그래도 최소 각도만큼 아래로
+            Vector3 up = DiveStrikeMath.Aim(from, new Vector3(0f, 9f, 8f), style.diveStrikeMaxHorizontal, style.diveStrikeMinAngle);
+            Assert.AreEqual(style.diveStrikeMinAngle, Mathf.Asin(-up.y) * Mathf.Rad2Deg, 0.01f);
+            // 바로 아래 상대: 똑바로 아래
+            Assert.AreEqual(Vector3.down, DiveStrikeMath.Aim(from, new Vector3(0f, 0f, 0f), style.diveStrikeMaxHorizontal, style.diveStrikeMinAngle));
+            Object.DestroyImmediate(style);
+        }
+
+        /// <summary>
+        /// 점프 정점 높이(약 4.6m)에서 distance(m) 앞 상대에게 내려찍기를 틱 단위로 흉내 낸다. 상대는 내리꽂기가 시작되는 틱부터 sideSpeed(m/s)로 옆으로 움직인다.
+        /// 주먹 캡슐과 상대 캡슐(서 있는 2m·반지름 0.5m) 사이의 가장 작은 틈(m)을 돌려준다 (0 이하 = 명중).
+        /// </summary>
+        private static float DiveGap(float distance, float sideSpeed, out float maxTurnPerTick)
+        {
+            StyleOverrides style = DiveStyle();
+            const float dt = 1f / 60f;
+            Vector3 position = new Vector3(0f, 5.6f, 0f);
+            Vector3 target = new Vector3(0f, 1f, distance);
+            float homing = VoUnits.AngleUnitsToDegrees(style.diveStrikeHomingRate);
+            Vector3 direction = DiveStrikeMath.Aim(position, target, style.diveStrikeMaxHorizontal, style.diveStrikeMinAngle);
+            StyleOverrides.AttackCapsule shape = style.diveStrikeCapsule;
+            Vector3 lastNear = position + direction * shape.start, lastFar = position + direction * shape.range;
+            float best = float.MaxValue;
+            maxTurnPerTick = 0f;
+            // 몸 중심이 땅(높이 1m)에 닿을 때까지
+            for (int tick = 0; tick < 120 && position.y > 1f; tick++)
+            {
+                target += Vector3.right * (sideSpeed * dt);
+                Vector3 steered = DiveStrikeMath.Steer(direction, position, target, homing, style.diveStrikeMaxHorizontal, style.diveStrikeMinAngle);
+                maxTurnPerTick = Mathf.Max(maxTurnPerTick, Vector3.Angle(direction, steered));
+                direction = steered;
+                position += direction * (style.diveStrikeSpeed * dt);
+                Vector3 near = position + direction * shape.start, far = position + direction * shape.range;
+                HitGeometry.UprightCapsule(new Vector3(target.x, 0f, target.z), 0f, 2f, 0.5f, 1f, out Vector3 a, out Vector3 b, out float r);
+                best = Mathf.Min(best, HitGeometry.SweptCapsuleGap(lastNear, lastFar, near, far, shape.radius, a, b, r));
+                lastNear = near;
+                lastFar = far;
+            }
+            Object.DestroyImmediate(style);
+            return best;
+        }
+
+        [Test]
+        public void DiveStrike_HitsStandingOpponent_ButSideDashEvadesIt()
+        {
+            Assert.LessOrEqual(DiveGap(3f, 0f, out _), 0f, "3m 앞에 서 있는 상대는 맞는다");
+            Assert.LessOrEqual(DiveGap(8f, 0f, out _), 0f, "8m 앞에 서 있는 상대는 맞는다");
+            // 유도는 틱당 1.41°뿐이라, 내리꽂기가 시작될 때 옆 대시를 낸 상대는 놓친다.
+            // 옆 대시 = 22.3m/s × 0.74(기체 키) × 0.78(근접 감속) ≈ 12.9m/s
+            float gap = DiveGap(8f, 12.9f, out float turn);
+            Assert.Greater(gap, 0.2f, "8m에서 옆 대시는 여유 있게 피한다");
+            Assert.LessOrEqual(turn, 2f * 1.41f + 0.01f, "유도는 방위·기울기 각각 틱당 1.41° 이하");
+            Assert.Greater(DiveGap(4f, 12.9f, out _), 0f, "4m에서도 옆 대시는 피한다");
         }
 
         // ---------------- 지연 표적 (이동 사양서 1.2 ②-1) ----------------

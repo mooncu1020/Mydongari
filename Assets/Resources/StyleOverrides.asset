@@ -40,15 +40,14 @@ MonoBehaviour:
   cameraFov: 35
   guardTurnInside: 400
   guardTurnOutside: 1092
-  punchSphere:
+  punchCapsule:
+    start: 0.3
     range: 1.8
     radius: 0.5
-  thirdSphere:
+  thirdCapsule:
+    start: 0.3
     range: 2
     radius: 0.6
-  jumpSlashSphere:
-    range: 2
-    radius: 0.7
   attackHandHeightRatio: 0.6
   jumpRisingHurtScale: 0.6
   jumpFallingHurtScale: 0.45
@@ -65,24 +64,13 @@ MonoBehaviour:
     enabled: 1
     value: 620
   slamImpact: 1100
-  jumpMeleeSpeed:
-    enabled: 1
-    value: 4
-  jumpMeleeApproachFrames:
-    enabled: 1
-    value: 12
-  jumpMeleeAttackFrames:
-    enabled: 1
-    value: 10
-  jumpMeleeHitStart:
-    enabled: 1
-    value: 2
-  jumpMeleeHitEnd:
-    enabled: 1
-    value: 8
-  jumpMeleeGravity:
-    enabled: 1
-    value: 0.451
-  jumpMeleeFallMaxVy:
-    enabled: 1
-    value: 4.001
+  diveStrikeWindupFrames: 8
+  diveStrikeSpeed: 40
+  diveStrikeHomingRate: 256
+  diveStrikeMaxHorizontal: 15
+  diveStrikeMinAngle: 15
+  diveStrikeCapsule:
+    start: 0.2
+    range: 1.2
+    radius: 0.35
+  diveStrikeMissLandingFrames: 30

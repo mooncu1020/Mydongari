@@ -60,6 +60,8 @@ namespace MyDongari.Bridge
         public LandingState LandingState { get; private set; }
         public LungeState LungeState { get; private set; }
         public KnockdownState KnockdownState { get; private set; }
+        /// <summary>내려찍기 (점프 중 공격 — 우리 규칙).</summary>
+        public DiveStrikeState DiveStrikeState { get; private set; }
 
         // ---- 이동 상태 ----
         /// <summary>이동기 (MechController가 붙인다).</summary>
@@ -81,7 +83,6 @@ namespace MyDongari.Bridge
         public VoAirDashState VoAirDash { get; private set; }
         public VoDiveState VoDive { get; private set; }
         public VoMeleeState VoMelee { get; private set; }
-        public VoJumpMeleeState VoJumpMelee { get; private set; }
         /// <summary>지금 상태.</summary>
         public MechState CurrentState => _currentState;
         /// <summary>상태가 돌고 있는지 (사망하면 꺼진다). 이동기가 본다.</summary>
@@ -125,7 +126,7 @@ namespace MyDongari.Bridge
             (_currentState is VoDashStopState s && s.AllowsAttack) ||
             (_currentState is VoGroundDashState g && g.EndAllowsAttack);
         /// <summary>공중 (점프·낙하·공중 대시). 가드·패리·앵커 클로·공격 불가, 외형 접지 보정 끔. 대공 판정의 "공중"도 이것.</summary>
-        public bool IsAirborne => _currentState is VoState vo && vo.IsAirState;
+        public bool IsAirborne => (_currentState is VoState vo && vo.IsAirState) || _currentState is DiveStrikeState;
         /// <summary>착지 경직 중. 이동·공격·대시·점프·가드 불가.</summary>
         public bool IsLanding => _currentState is LandingState;
 
@@ -134,8 +135,14 @@ namespace MyDongari.Bridge
 
         public bool IsRunning => _currentState is VoWalkState;
         public bool IsLunging => _currentState is LungeState;
-        /// <summary>뛰어 베기(점프 근접) 중.</summary>
-        public bool IsJumpMelee => _currentState is VoJumpMeleeState;
+        /// <summary>내려찍기 중 (예비 + 내리꽂기).</summary>
+        public bool IsDiveStrike => _currentState is DiveStrikeState;
+        /// <summary>점프 이륙 준비(2f) 중 — 아직 땅. 이때 누른 공격은 버퍼에 남았다가 뜨면 내려찍기가 된다.</summary>
+        public bool IsJumpTakeoff => _currentState is VoJumpState j && !j.IsAirState;
+        // 이번 체공에서 내려찍기를 이미 썼는지 (점프 한 번에 한 번). 땅에 닿으면 풀린다
+        private bool _diveStrikeUsed;
+        /// <summary>내려찍기를 시작할 수 있는 상태: 점프 중(상승·정점·하강)이고 이번 체공에서 아직 안 썼다. 공중 대시·급강하 중엔 불가.</summary>
+        public bool CanStartDiveStrike => _currentState is VoJumpState jump && jump.IsAirState && !_diveStrikeUsed;
         /// <summary>지상 근접(펀치 콤보) 중.</summary>
         public bool IsMelee => _currentState is VoMeleeState;
 
@@ -153,7 +160,7 @@ namespace MyDongari.Bridge
         /// <summary>스러스터 런지·펀치를 시작할 수 있는 상태(서기·걷기, 공격을 받는 대시 끝 단계). 다른 기동 중엔 불가.</summary>
         public bool CanStartLunge => _currentState is VoStandState || _currentState is VoWalkState ||
                                      // 착지 단계(12f)는 지상 공격으로 취소할 수 있다 (전투 사양서 8장)
-                                     _currentState is LandingState ||
+                                     (_currentState is LandingState && LandingState.AllowsAttackCancel) ||
                                      ((IsDashStopping) && DashEndAllowsAttack);
 
         public string CurrentStateName => _currentState != null ? _currentState.GetType().Name : "None";
@@ -166,6 +173,7 @@ namespace MyDongari.Bridge
             LandingState = new LandingState(this);
             LungeState = new LungeState(this);
             KnockdownState = new KnockdownState(this);
+            DiveStrikeState = new DiveStrikeState(this);
 
             VoStand = new VoStandState(this);
             VoWalk = new VoWalkState(this);
@@ -176,7 +184,6 @@ namespace MyDongari.Bridge
             VoAirDash = new VoAirDashState(this);
             VoDive = new VoDiveState(this);
             VoMelee = new VoMeleeState(this);
-            VoJumpMelee = new VoJumpMeleeState(this);
         }
 
         private void Start()
@@ -197,9 +204,14 @@ namespace MyDongari.Bridge
         /// </summary>
         public void Land(bool needsLag)
         {
-            int duration = needsLag ? Motor.V.landingFrames : 0;
-            LandingState.Prepare(duration);
-            if (duration > 0) ChangeState(LandingState);
+            LandFor(needsLag ? Motor.V.landingFrames : 0, attackCancel: true);
+        }
+
+        /// <summary>착지 경직을 frames틱으로 (내려찍기: 맞혔으면 12f, 빗나가면 30f — 빗나간 경직은 공격으로 취소 불가).</summary>
+        public void LandFor(int frames, bool attackCancel)
+        {
+            LandingState.Prepare(frames, attackCancel);
+            if (frames > 0) ChangeState(LandingState);
             else ToStandOrWalk();
         }
 
@@ -272,10 +284,11 @@ namespace MyDongari.Bridge
             ChangeState(VoDive);
         }
 
-        /// <summary>뛰어 베기(점프 근접) 시작.</summary>
-        public void V8JumpMelee()
+        /// <summary>내려찍기 시작 (CanStartDiveStrike일 때만 부른다).</summary>
+        public void StartDiveStrike()
         {
-            ChangeState(VoJumpMelee);
+            _diveStrikeUsed = true;
+            ChangeState(DiveStrikeState);
         }
 
         /// <summary>지상 근접 시작 (이동은 코어의 근접 상태가, 판정·충격치는 MeleeSystem이).</summary>
@@ -290,6 +303,8 @@ namespace MyDongari.Bridge
             _currentState?.Exit();
             _currentState = newState;
             _currentState.Enter();
+            // 땅에 닿았으면(또는 다운되면) 다음 체공에서 내려찍기를 다시 쓸 수 있다
+            if (!IsAirborne) _diveStrikeUsed = false;
             // Enter 안에서 다른 상태로 넘어갔으면 그쪽 호출이 이미 알렸다
             if (_currentState == newState) OnStateChanged?.Invoke(newState);
         }

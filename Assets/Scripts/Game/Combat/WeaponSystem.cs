@@ -116,14 +116,14 @@ namespace MyDongari.Game.Combat
                 return;
             }
 
-            // 공중: 공격·스킬 입력 무시 (버퍼에도 안 남긴다). 예외: 점프 입력 후 8f 이내의 뛰어 베기
+            // 공중: 공격 = 내려찍기 (점프 중 아무 때나, 점프 한 번에 한 번 — 우리 규칙). 스킬은 공중에서 못 쓴다.
+            // 지금 못 나가면(공중 대시 중 등) 선입력 4f 동안만 기억한다
             if (_stateMachine != null && _stateMachine.IsAirborne)
             {
                 _wasAirborne = true;
-                bool slashWindow = _meleeSystem != null && _meleeSystem.InJumpSlashWindow;
-                if (attackPressed && slashWindow && _meleeSystem.TryJumpSlash()) return;
-                if (!slashWindow) _attackBuffer.Clear();
-                else if (attackPressed) _attackBuffer.Press();
+                if (attackPressed) _attackBuffer.Press();
+                if (_attackBuffer.Tick(StyleOverrides.Current.EffectiveCombat.meleeBufferFrames, TryStartDiveStrike, out AttackType dive, out bool diveBuffered) && diveBuffered)
+                    OnBufferedAttack?.Invoke(dive);
                 return;
             }
             // 착지 순간: 공중에서 예약한 입력은 지운다 (전투 사양서 8장)
@@ -181,9 +181,9 @@ namespace MyDongari.Game.Combat
 
         /// <summary>
         /// 지금 상황으로 공격 버튼 한 번의 동작을 고르고 시작한다. 우선순위:
-        /// ① 앵커 클로로 끌어온 직후 → 파일 드라이버, ② 점프 입력 후 8f 이내 + 근접 구역(높이차 창 무시) → 뛰어 베기,
-        /// ③ 대시 중 → 대시 공격(48f 미만) / 차징 태클(이상), ④ 근접 구역 A 안 → 펀치 콤보, ⑤ 그 밖 → 스러스터 런지.
-        /// 그 밖의 공중 공격은 없다. 시작했으면 그 종류, 지금 못 하면(공격 중·런지 중·경직 등) null.
+        /// ① 앵커 클로로 끌어온 직후 → 파일 드라이버, ② 대시 중 → 대시 공격(48f 미만) / 차징 태클(이상),
+        /// ③ 근접 구역 A 안 → 펀치 콤보, ④ 그 밖 → 스러스터 런지. 공중의 공격 버튼은 내려찍기다(TryStartDiveStrike — CombatTick의 공중 갈래).
+        /// 시작했으면 그 종류, 지금 못 하면(공격 중·런지 중·경직 등) null.
         /// </summary>
         private AttackType? TryStartAttack()
         {
@@ -192,6 +192,8 @@ namespace MyDongari.Game.Combat
             // 대시 시작 단계(0.27초)와 끝 단계 처음 0.05초는 공격 불가 (V6b·V6.1) — 버퍼에 남았다가 가능해지면 나간다
             if (_stateMachine != null && _stateMachine.IsDashStopping && !_stateMachine.DashEndAllowsAttack) return null;
             if (_stateMachine != null && _stateMachine.IsDashing && _stateMachine.ActiveDash.IsInStartup) return null;
+            // 점프 이륙 준비(2f) 중에 누른 공격은 버퍼에 남겨 둔다 — 뜨는 틱에 내려찍기가 된다 (런지 쿨다운 입력으로 버려지지 않게)
+            if (_stateMachine != null && _stateMachine.IsJumpTakeoff) return null;
 
             if (_anchorClaw != null && _anchorClaw.IsPileDriverReady)
             {
@@ -204,17 +206,14 @@ namespace MyDongari.Game.Combat
                 return _meleeSystem.TryMeleeAttack() ? AttackType.Punch : (AttackType?)null;
             }
 
-            // ② 뛰어 베기: 점프 입력 후 8f 이내 + 근접 구역(높이차 창 무시)
-            if (_meleeSystem != null && _meleeSystem.TryJumpSlash()) return AttackType.JumpSlash;
-
             if (_stateMachine != null && _stateMachine.IsDashing)
             {
-                // ③ 대시 중 공격 버튼 = 48f 미만 유도 대시 어택 / 이상 차징 태클
+                // ② 대시 중 공격 버튼 = 48f 미만 유도 대시 어택 / 이상 차징 태클
                 if (!_stateMachine.ActiveDash.RequestTackle()) return null;
                 return _stateMachine.ActiveDash.IsTackleCharged ? AttackType.Tackle : AttackType.DashAttack;
             }
 
-            // ④·⑤ 근접 구역 A(원본: 바깥 70u·안쪽 원 12.5u·원뿔 42.2°·높이차 창) 안이면 펀치, 밖이면 런지
+            // ③·④ 근접 구역 A(원본: 바깥 70u·안쪽 원 12.5u·원뿔 42.2°·높이차 창) 안이면 펀치, 밖이면 런지
             if (_meleeSystem != null && _meleeSystem.IsOpponentInMeleeZone())
             {
                 return _meleeSystem != null && _meleeSystem.TryMeleeAttack() ? AttackType.Punch : (AttackType?)null;
@@ -237,6 +236,12 @@ namespace MyDongari.Game.Combat
                 return AttackType.Lunge;
             }
             return null;
+        }
+
+        /// <summary>공중의 공격 버튼: 내려찍기를 시작한다. 지금 못 하면 null.</summary>
+        private AttackType? TryStartDiveStrike()
+        {
+            return _meleeSystem != null && _meleeSystem.TryDiveStrike() ? AttackType.DiveStrike : (AttackType?)null;
         }
 
         private void TryFire()
