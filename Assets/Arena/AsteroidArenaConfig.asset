@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ef2d06c1f8647b0932f89579c88e94e, type: 3}
+  m_Name: AsteroidArenaConfig
+  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Core.AsteroidArenaConfig
+  groundHeight: -1.01
+  seed: 7
+  floorDiameter: 90
+  floorNoiseHeight: 0.08
+  floorNoiseScale: 0.12
+  floorRings: 36
+  floorSectors: 96
+  slopeWidth: 16
+  slopeHeight: 7
+  rimRockCount: 26
+  rimRockHeight: {x: 6, y: 13}
+  rimRockRadius: {x: 3, y: 6}
+  wallHeight: 30
+  wallThickness: 2
+  wallSegments: 48
+  rockCount: 4
+  rockHeight: {x: 2, y: 3}
+  rockRadius: {x: 1.6, y: 2.6}
+  rockClearRadius: 20
+  rockMaxRadius: 36
+  rockDistortion: 0.3
+  spawnDistance: 30
+  groundColor: {r: 0.41960785, g: 0.38039216, b: 0.34509805, a: 1}
+  rockColor: {r: 0.36078432, g: 0.32156864, b: 0.2901961, a: 1}
+  rimColor: {r: 0.39215687, g: 0.3529412, b: 0.31764707, a: 1}
+  planetRadius: 220
+  planetDistance: 760
+  planetAzimuth: 35
+  planetElevation: 10
+  planetColor: {r: 0.32, g: 0.45, b: 0.62, a: 1}
+  planetShadowColor: {r: 0.05, g: 0.07, b: 0.12, a: 1}
+  planetAtmosphereColor: {r: 0.45, g: 0.7, b: 1, a: 1}
+  planetRimIntensity: 1.6
+  planetRimPower: 3
+  sunElevation: 20
+  sunAzimuth: -40
+  sunIntensity: 2.2
+  sunColor: {r: 1, g: 1, b: 1, a: 1}
+  ambientColor: {r: 0.07, g: 0.09, b: 0.14, a: 1}

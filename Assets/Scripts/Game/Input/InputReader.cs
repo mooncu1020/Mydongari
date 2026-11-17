@@ -1,0 +1,423 @@
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+namespace MyDongari.Game.Input
+{
+    /// <summary>
+    /// 한 플레이어의 입력. 게임 로직은 장치를 직접 읽지 않고 전부 이걸 거친다.
+    /// 같은 기체에 PlayerInput이 없으면 "가상 패드"가 된다 — 장치 대신 스크립트(연습 봇)가 스틱·버튼을 넣고,
+    /// 이동기·전투는 사람 패드와 똑같은 값(누름 횟수·누르고 있기·스틱)을 읽는다. 가상 패드도 입력 잠금(카운트다운)을 따른다.
+    /// </summary>
+    public class InputReader : MonoBehaviour, ICombatInputSource
+    {
+        [Header("패드 왼쪽 스틱")]
+        [Tooltip("이동 입력 크기가 이 값 이상이면 달리기 시작. 속도는 이 값 ~ 끝을 0 ~ 최대로 다시 맞춘다 (키보드는 항상 1)")]
+        [SerializeField] private float moveDeadzone = 0.3f;
+
+        [Header("액션 맵")]
+        [Tooltip("게임 조작용 액션 맵 이름. 시작할 때와 패드 배정 때마다 PlayerInput의 현재 맵을 이걸로 맞추고 켠다")]
+        [SerializeField] private string gameplayActionMap = "Player";
+
+        [Header("메뉴")]
+        [Tooltip("메뉴 위아래 이동으로 인정하는 스틱·D패드 기울기")]
+        [SerializeField] private float menuNavigateThreshold = 0.5f;
+
+        [Header("연습 단축키")]
+        [Tooltip("패드 Select를 이 시간(초) 이상 누르면 리셋, 그보다 짧게 누르고 떼면 봇 모드 순환")]
+        [SerializeField] private float selectHoldTime = 0.6f;
+
+        public Vector2 MoveInput { get; private set; }
+        public Vector2 LookInput { get; private set; }
+        /// <summary>○ 대시 버튼(패드 B / 키보드 Space)을 누르고 있는지. 누르고 있는 동안 대시 유지.</summary>
+        public bool DashHeld { get; private set; }
+        /// <summary>○ 대시 버튼을 이번 프레임에 눌렀는지. 대시 시작·취소는 누른 순간만.</summary>
+        public bool DashPressedThisFrame { get; private set; }
+        /// <summary>△ 점프 버튼(패드 Y·△ / 키보드 F)을 이번 프레임에 눌렀는지.</summary>
+        public bool JumpPressedThisFrame { get; private set; }
+        /// <summary>△를 누르고 있는지 (V8 하강 호버).</summary>
+        public bool JumpHeld { get; private set; }
+        /// <summary>
+        /// ○·△·✕를 지금까지 누른 횟수 (V8). 60Hz 고정 틱은 화면 프레임과 어긋나므로 "이번 프레임에 눌렀나" 대신
+        /// 틱마다 이 값이 바뀌었는지로 새 입력을 본다 — 두 틱 사이 짧은 탭도 놓치지 않는다.
+        /// </summary>
+        public int DashPressCount { get; private set; }
+        public int JumpPressCount { get; private set; }
+        public int GuardPressCount { get; private set; }
+        public int AttackPressCount { get; private set; }
+        public int Skill1PressCount { get; private set; }
+        public int Skill2PressCount { get; private set; }
+        public bool Skill1Input { get; private set; }
+        public bool Skill2Input { get; private set; }
+
+        /// <summary>이동 입력이 달리기를 시작할 만큼 있는지. 상태들의 이동 시작/정지 판정은 이걸 쓴다.</summary>
+        public bool IsMoveInputActive => MoveInput.magnitude >= moveDeadzone;
+        /// <summary>이동 데드존. 달리기 속도는 이 값부터 0으로 시작한다.</summary>
+        public float MoveDeadzone => moveDeadzone;
+
+        public bool AttackHeld { get; private set; }
+        public bool AttackPressedThisFrame { get; private set; }
+        /// <summary>
+        /// ✕(패드 A / 마우스 오른쪽 버튼)를 누르고 있는지·이번 프레임에 눌렀는지 (V9a). 땅에서는 가드·패리, 공중에서는 급강하.
+        /// 예전 L2(Guard 액션)는 .inputactions에 남아 있지만 읽지 않는다 — L2는 비어 있다.
+        /// </summary>
+        public bool GuardHeld { get; private set; }
+        public bool GuardPressedThisFrame { get; private set; }
+        /// <summary>시작 버튼(패드 Start / 키보드 Enter). 입력 잠금 중에도 읽힌다 (재매치용).</summary>
+        public bool StartPressed { get; private set; }
+        /// <summary>메뉴 위아래: 이번 프레임에 새로 기울였으면 위 = 1, 아래 = -1. 이동 스틱·D패드·W/S·화살표. 잠금 중에도 읽힌다.</summary>
+        public int MenuVertical { get; private set; }
+        /// <summary>메뉴 결정: 패드 Start·A(South), 키보드 Enter. 잠금 중에도 읽힌다.</summary>
+        public bool MenuConfirmPressed { get; private set; }
+
+        // 연습 단축키. 쓸지 말지(연습 모드 Fight 중에만)는 PracticeHotkeys가 정한다
+        /// <summary>봇 행동 모드 순환: 패드 Select 짧게(뗄 때) 또는 키보드 Tab.</summary>
+        public bool BotCyclePressed { get; private set; }
+        /// <summary>두 기체 즉시 리셋: 패드 Select 길게(누른 지 selectHoldTime 되는 순간 한 번) 또는 키보드 Backspace.</summary>
+        public bool PracticeResetPressed { get; private set; }
+        /// <summary>히트 프리셋: 키보드 1~4 → 0~3, 안 눌렀으면 -1.</summary>
+        public int HeatPresetPressed { get; private set; } = -1;
+        /// <summary>이번 프레임에 이 플레이어 장치로 무엇이든 입력했는지 (잠금 중에도 읽힌다). 무입력 타이틀 복귀용.</summary>
+        public bool AnyInputThisFrame { get; private set; }
+        public bool IsInputLocked => _inputLocked;
+
+        /// <summary>
+        /// Look 입력이 스틱(패드)에서 오는지. 스틱은 "기울기"라 deltaTime을 곱해야 하고
+        /// 마우스는 이미 "이동량"이라 곱하면 안 되기 때문에 카메라가 이걸 보고 분기한다.
+        /// </summary>
+        public bool IsLookFromGamepad
+        {
+            get
+            {
+                // 스크립트·가상 패드의 선회는 R스틱 기울기로 넣는다
+                if (_scripted || _lookAction == null) return true;
+                InputControl control = _lookAction.activeControl;
+                if (control != null) return !(control.device is Pointer);
+                return _playerInput.currentControlScheme != KeyboardMouseScheme;
+            }
+        }
+
+        private const string KeyboardMouseScheme = "Keyboard&Mouse";
+
+        private PlayerInput _playerInput;
+        private InputAction _moveAction;
+        private InputAction _lookAction;
+        private InputAction _dashAction;
+        private InputAction _jumpAction;
+        private InputAction _skill1Action;
+        private InputAction _skill2Action;
+        private InputAction _attackAction;
+        private InputAction _guardAction;
+        private InputAction _startAction;
+        private InputAction _submitAction;
+        private InputAction _menuNavigateAction;
+        private int _menuHeldDirection;
+        private InputAction _selectAction;
+        private InputAction _botCycleAction;
+        private InputAction _practiceResetAction;
+        private readonly InputAction[] _heatPresetActions = new InputAction[4];
+        private float _selectDownTime = -1f;
+        private bool _selectHoldFired;
+        // 라운드 카운트다운·라운드 사이에 GameManager가 건다. 잠긴 동안 게임플레이 입력은 전부 0
+        private bool _inputLocked = false;
+
+        private bool _skill1Pending = false;
+        private bool _skill2Pending = false;
+
+        private void Awake()
+        {
+            _playerInput = GetComponent<PlayerInput>();
+            if (_playerInput == null)
+            {
+                // PlayerInput 없는 기체(연습 봇) = 가상 패드: 장치 액션 없이 스크립트 입력만 받는다
+                _virtualPad = true;
+                _scripted = true;
+                return;
+            }
+            _moveAction = _playerInput.actions["Move"];
+            _lookAction = _playerInput.actions["Look"];
+            // Run·Slide·Quickturn·Sprint·Guard·StepLeft·StepRight·MoveStick·LookStick 액션은 V3에서 읽지 않아 .inputactions에서 지웠다 (가드는 Cross 액션)
+            _dashAction = _playerInput.actions["Dash"];
+            _jumpAction = _playerInput.actions["Jump"];
+            _skill1Action = _playerInput.actions["Skill1"];
+            _skill2Action = _playerInput.actions["Skill2"];
+            _attackAction = _playerInput.actions["Attack"];
+            _guardAction = _playerInput.actions["Cross"];
+            _startAction = _playerInput.actions["Start"];
+            _submitAction = _playerInput.actions["Submit"];
+            _menuNavigateAction = _playerInput.actions["MenuNavigate"];
+            _selectAction = _playerInput.actions["Select"];
+            _botCycleAction = _playerInput.actions["BotCycle"];
+            _practiceResetAction = _playerInput.actions["PracticeReset"];
+            for (int i = 0; i < _heatPresetActions.Length; i++)
+            {
+                _heatPresetActions[i] = _playerInput.actions["HeatPreset" + (i + 1)];
+            }
+
+            _skill1Action.performed += _ => _skill1Pending = true;
+            _skill2Action.performed += _ => _skill2Pending = true;
+        }
+
+        private void Start()
+        {
+            // 모든 PlayerInput의 OnEnable이 끝난 뒤라 SwitchCurrentActionMap이 에러 없이 된다
+            EnsureGameplayActionMap();
+        }
+
+        /// <summary>
+        /// PlayerInput의 현재 액션 맵을 조작용 맵으로 맞추고 켠다.
+        /// 액션 에셋이 프로젝트 전역 액션이라, 원본을 받은 PlayerInput(먼저 초기화된 쪽)은 전역 자동 활성화로 동작하지만
+        /// 두 번째 PlayerInput은 복사본을 받고 Default Map이 비어 있으면 아무도 켜 주지 않아 입력이 전부 0이 된다 (L1).
+        /// 씬 설정(Default Map)에 기대지 않고 코드에서 매번 맞춘다.
+        /// </summary>
+        public void EnsureGameplayActionMap()
+        {
+            if (_playerInput == null || !_playerInput.isActiveAndEnabled || _playerInput.actions == null) return;
+
+            InputActionMap current = _playerInput.currentActionMap;
+            if (current == null || current.name != gameplayActionMap)
+            {
+                if (_playerInput.actions.FindActionMap(gameplayActionMap) == null)
+                {
+                    Debug.LogError($"[InputReader] 액션 맵 '{gameplayActionMap}'이 '{_playerInput.actions.name}'에 없습니다", this);
+                    return;
+                }
+                _playerInput.SwitchCurrentActionMap(gameplayActionMap);
+            }
+            else if (!current.enabled)
+            {
+                current.Enable();
+            }
+        }
+
+        /// <summary>VERSUS 진입 로그용 한 줄: PlayerInput 번호·사용자·액션 맵(켜짐)·장치.</summary>
+        public string DescribeBinding()
+        {
+            if (_playerInput == null) return "PlayerInput 없음";
+            InputActionMap map = _playerInput.currentActionMap;
+            string mapText = map != null ? $"{map.name}({(map.enabled ? "켜짐" : "꺼짐")})" : "없음";
+            string userText = _playerInput.user.valid ? $"#{_playerInput.user.index}" : "없음";
+            var devices = new System.Collections.Generic.List<string>();
+            foreach (InputDevice device in _playerInput.devices) devices.Add(device.displayName);
+            return $"PlayerInput #{_playerInput.playerIndex} (User {userText}, 오브젝트 {_playerInput.gameObject.name}), " +
+                   $"액션 맵 {mapText}, Move 켜짐 {_moveAction.enabled}, 장치 [{string.Join(", ", devices)}]";
+        }
+
+        // ---- 스크립트 입력 (전투 스모크 테스트용 자동 입력) ----
+        // 켜면 장치 대신 스크립트가 넣은 값이 이 플레이어의 입력이 된다. 전투·이동은 여전히 이 InputReader만 읽는다.
+        private bool _scripted;
+        // PlayerInput이 없어 늘 스크립트 입력인 가상 패드(연습 봇). 사람 패드처럼 입력 잠금을 따른다
+        private bool _virtualPad;
+        private Vector2 _scriptMove;
+        private Vector2 _scriptLook;
+        private bool _scriptDash, _scriptJump, _scriptGuard, _scriptAttack;
+
+        /// <summary>스크립트 입력 모드인지.</summary>
+        public bool IsScripted => _scripted;
+        /// <summary>PlayerInput 없이 스크립트만 받는 가상 패드(연습 봇)인지. 사람이 조작하는 기체는 false.</summary>
+        public bool IsVirtualPad => _virtualPad;
+        // 가상 패드는 잠금 중 누름을 세지 않는다 (사람 패드와 같게). 스모크 테스트의 스크립트 입력은 잠금을 무시한다
+        private bool ScriptBlocked => _virtualPad && _inputLocked;
+
+        /// <summary>스크립트 입력 모드를 켜고 끈다. 켜면 장치 입력은 읽지 않는다(입력 잠금도 무시). 가상 패드는 늘 켜져 있다.</summary>
+        public void SetScripted(bool on)
+        {
+            _scripted = on || _virtualPad;
+            ScriptState(Vector2.zero, false, false, false);
+            ScriptLook(Vector2.zero);
+        }
+
+        /// <summary>스크립트 입력: R스틱(선회). x = 좌우 선회 기울기.</summary>
+        public void ScriptLook(Vector2 look)
+        {
+            _scriptLook = look;
+            if (_scripted) ApplyScripted();
+        }
+
+        /// <summary>스크립트 입력: 공격 버튼을 누르고 있는지 (새 누름은 ScriptPressAttack).</summary>
+        public void ScriptAttackHeld(bool held)
+        {
+            _scriptAttack = held;
+            if (_scripted) ApplyScripted();
+        }
+
+        /// <summary>스크립트 입력: 스틱과 누르고 있는 버튼. 바로 반영된다(다음 전투 틱이 읽는다).</summary>
+        public void ScriptState(Vector2 move, bool dashHeld, bool jumpHeld, bool guardHeld)
+        {
+            _scriptMove = move;
+            _scriptDash = dashHeld;
+            _scriptJump = jumpHeld;
+            _scriptGuard = guardHeld;
+            if (_scripted) ApplyScripted();
+        }
+
+        /// <summary>스크립트 입력: 버튼을 새로 누름 (누름 횟수를 바로 올린다 — 다음 전투 틱이 새 입력으로 읽는다).</summary>
+        public void ScriptPressAttack() { if (_scripted && !ScriptBlocked) AttackPressCount++; }
+        public void ScriptPressDash() { if (_scripted && !ScriptBlocked) DashPressCount++; }
+        public void ScriptPressJump() { if (_scripted && !ScriptBlocked) JumpPressCount++; }
+        public void ScriptPressGuard() { if (_scripted && !ScriptBlocked) GuardPressCount++; }
+
+        private void ApplyScripted()
+        {
+            bool blocked = ScriptBlocked;
+            MoveInput = blocked ? Vector2.zero : _scriptMove;
+            LookInput = blocked ? Vector2.zero : _scriptLook;
+            DashHeld = !blocked && _scriptDash;
+            JumpHeld = !blocked && _scriptJump;
+            GuardHeld = !blocked && _scriptGuard;
+            AttackHeld = !blocked && _scriptAttack;
+            DashPressedThisFrame = false;
+            JumpPressedThisFrame = false;
+            AttackPressedThisFrame = false;
+            GuardPressedThisFrame = false;
+            Skill1Input = false;
+            Skill2Input = false;
+            AnyInputThisFrame = false;
+            StartPressed = false;
+            MenuVertical = 0;
+            MenuConfirmPressed = false;
+            BotCyclePressed = false;
+            PracticeResetPressed = false;
+            HeatPresetPressed = -1;
+        }
+
+        private void Update()
+        {
+            if (_scripted)
+            {
+                ApplyScripted();
+                return;
+            }
+            MoveInput = _moveAction.ReadValue<Vector2>();
+            LookInput = _lookAction.ReadValue<Vector2>();
+            if (InputTrace.ShouldLog(this, "1 PlayerInput"))
+            {
+                InputActionMap map = _playerInput.currentActionMap;
+                InputTrace.Log("1 PlayerInput", $"{gameObject.name} map={(map != null ? map.name : "없음")} " +
+                    $"mapEnabled={(map != null && map.enabled)} moveEnabled={_moveAction.enabled} raw={MoveInput} " +
+                    $"projectWideAsset={ReferenceEquals(_playerInput.actions, InputSystem.actions)}");
+            }
+            AnyInputThisFrame = DetectAnyInput();
+
+            DashHeld = _dashAction.IsPressed();
+            DashPressedThisFrame = _dashAction.WasPressedThisFrame();
+            JumpPressedThisFrame = _jumpAction.WasPressedThisFrame();
+            JumpHeld = _jumpAction.IsPressed();
+
+            AttackHeld = _attackAction.IsPressed();
+            AttackPressedThisFrame = _attackAction.WasPressedThisFrame();
+            GuardHeld = _guardAction.IsPressed();
+            GuardPressedThisFrame = _guardAction.WasPressedThisFrame();
+
+            Skill1Input = _skill1Pending;
+            _skill1Pending = false;
+
+            Skill2Input = _skill2Pending;
+            _skill2Pending = false;
+
+            StartPressed = _startAction.WasPressedThisFrame();
+            UpdateMenuInput();
+            UpdatePracticeInput();
+            if (_inputLocked) ClearGameplayInput();
+            // 잠금으로 지운 뒤에 센다 (잠금 중 누른 건 안 셈)
+            if (DashPressedThisFrame) DashPressCount++;
+            if (JumpPressedThisFrame) JumpPressCount++;
+            if (GuardPressedThisFrame) GuardPressCount++;
+            if (AttackPressedThisFrame) AttackPressCount++;
+            if (Skill1Input) Skill1PressCount++;
+            if (Skill2Input) Skill2PressCount++;
+
+            if (InputTrace.ShouldLog(this, "2 InputReader"))
+            {
+                InputTrace.Log("2 InputReader", $"{gameObject.name} MoveInput={MoveInput} active={IsMoveInputActive} " +
+                    $"locked={_inputLocked}");
+            }
+        }
+
+        private bool DetectAnyInput()
+        {
+            // 이 플레이어에게 배정된 장치로 들어온 액션만 본다 (페어링 덕분에 다른 사람 패드는 안 섞인다)
+            foreach (InputAction action in _playerInput.actions)
+            {
+                if (action.enabled && action.IsPressed()) return true;
+            }
+            return false;
+        }
+
+        private void UpdateMenuInput()
+        {
+            // 잠금으로 MoveInput이 0이 되기 전에 원래 값을 읽는다 (메뉴는 잠금 중에 쓰인다)
+            float y = _moveAction.ReadValue<Vector2>().y + _menuNavigateAction.ReadValue<Vector2>().y;
+            int direction = y > menuNavigateThreshold ? 1 : y < -menuNavigateThreshold ? -1 : 0;
+            // 기울인 순간 한 번만 (계속 밀고 있으면 한 칸만 움직인다)
+            MenuVertical = direction != 0 && direction != _menuHeldDirection ? direction : 0;
+            _menuHeldDirection = direction;
+
+            MenuConfirmPressed = StartPressed || _submitAction.WasPressedThisFrame();
+        }
+
+        private void UpdatePracticeInput()
+        {
+            BotCyclePressed = _botCycleAction.WasPressedThisFrame();
+            PracticeResetPressed = _practiceResetAction.WasPressedThisFrame();
+
+            // 패드 Select 하나로 두 기능: 짧게 = 순환(뗄 때 판정), 길게 = 리셋(시간이 차는 순간, 뗄 때는 순환 안 함)
+            float now = Time.unscaledTime;
+            if (_selectAction.WasPressedThisFrame())
+            {
+                _selectDownTime = now;
+                _selectHoldFired = false;
+            }
+            if (_selectDownTime >= 0f)
+            {
+                if (_selectAction.IsPressed())
+                {
+                    if (!_selectHoldFired && now - _selectDownTime >= selectHoldTime)
+                    {
+                        _selectHoldFired = true;
+                        PracticeResetPressed = true;
+                    }
+                }
+                else
+                {
+                    if (!_selectHoldFired) BotCyclePressed = true;
+                    _selectDownTime = -1f;
+                }
+            }
+
+            HeatPresetPressed = -1;
+            for (int i = 0; i < _heatPresetActions.Length; i++)
+            {
+                if (_heatPresetActions[i].WasPressedThisFrame()) HeatPresetPressed = i;
+            }
+        }
+
+        /// <summary>이번 프레임 게임 입력을 비운다 (연습 리셋 단축키가 다른 입력과 겹쳐도 같은 프레임에 같이 나가지 않게).</summary>
+        public void ClearFrameInput()
+        {
+            ClearGameplayInput();
+        }
+
+        public void SetInputLocked(bool locked)
+        {
+            _inputLocked = locked;
+            if (locked) ClearGameplayInput();
+            if (_scripted) ApplyScripted();
+        }
+
+        private void ClearGameplayInput()
+        {
+            MoveInput = Vector2.zero;
+            LookInput = Vector2.zero;
+            DashHeld = false;
+            DashPressedThisFrame = false;
+            JumpPressedThisFrame = false;
+            JumpHeld = false;
+            Skill1Input = false;
+            Skill2Input = false;
+            AttackHeld = false;
+            AttackPressedThisFrame = false;
+            GuardHeld = false;
+            GuardPressedThisFrame = false;
+        }
+    }
+}

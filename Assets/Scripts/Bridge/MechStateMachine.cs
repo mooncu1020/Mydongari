@@ -1,0 +1,320 @@
+using System;
+using UnityEngine;
+using MyDongari.Core.VirtualOn;
+using MyDongari.Core.VirtualOn.States;
+using MyDongari.Game.Combat;
+using MyDongari.Game.Input;
+using MyDongari.Game.Knockdown;
+using MyDongari.Game.States;
+using MyDongari.Game.Tuning;
+
+namespace MyDongari.Bridge
+{
+    /// <summary>
+    /// 이동 상태 머신. 이동 상태는 버추얼온식 이동기(V8)의 서기·걷기·근접 스텝·지상 대시·대시 정지·점프·공중 대시·급강하이고,
+    /// 상태는 Update/FixedUpdate가 아니라 MechMotor의 60Hz 틱에서 돈다.
+    /// 그 위에 우리 게임 상태 셋(착지 경직·런지·넉다운)이 있다 — 이동기가 틱마다 대신 돌려 주고, 끝나면 ToStand / ToStandOrWalk로 돌아간다.
+    /// 전투·외형·HUD가 묻는 것(IsDashing·IsAirborne …)도 여기서 답한다.
+    /// (V6.1까지의 Idle/Run/Dash/Air/SideStep 상태와 이동기 선택 스위치는 CL3에서 지웠다.)
+    /// </summary>
+    public class MechStateMachine : MonoBehaviour, IVoMachine
+    {
+        // 연습 봇은 이 컴포넌트들을 런타임에 차례로 붙인다 — 내 Awake 때 아직 없던 짝도 나중에 찾도록 늦게 찾는다
+        public InputReader InputReader
+        {
+            get
+            {
+                if (_inputReader == null) _inputReader = GetComponent<InputReader>();
+                return _inputReader;
+            }
+        }
+        private InputReader _inputReader;
+        public MechController MechController
+        {
+            get
+            {
+                if (_controller == null) _controller = GetComponent<MechController>();
+                return _controller;
+            }
+        }
+        private MechController _controller;
+
+        private MechState _currentState;
+
+        /// <summary>상태가 실제로 바뀌었을 때(Enter에서 곧바로 다른 상태로 튕겨 나간 경우는 제외). 로그용.</summary>
+        public event Action<MechState> OnStateChanged;
+
+        /// <summary>대시(지상·공중)가 실제로 시작됐을 때. 로그·출발 분사 연출용.</summary>
+        public event Action OnDashStarted;
+        /// <summary>대시가 끝났을 때 (이유). 로그용.</summary>
+        public event Action<DashExitReason> OnDashEnded;
+        /// <summary>점프했을 때 (로그·연출용).</summary>
+        public event Action OnJumped;
+
+        /// <summary>대시·점프 상태가 부른다.</summary>
+        public void NotifyDashStarted() => OnDashStarted?.Invoke();
+        public void NotifyDashEnded(DashExitReason reason) => OnDashEnded?.Invoke(reason);
+        public void NotifyJumped() => OnJumped?.Invoke();
+
+        // ---- 게임 상태 (이동기가 틱마다 대신 돌린다) ----
+        public LandingState LandingState { get; private set; }
+        public LungeState LungeState { get; private set; }
+        public KnockdownState KnockdownState { get; private set; }
+        /// <summary>내려찍기 (점프 중 공격 — 우리 규칙).</summary>
+        public DiveStrikeState DiveStrikeState { get; private set; }
+
+        // ---- 이동 상태 ----
+        /// <summary>이동기 (MechController가 붙인다).</summary>
+        public VoMotor Motor
+        {
+            get
+            {
+                if (_motor == null) _motor = GetComponent<VoMotor>();
+                return _motor;
+            }
+        }
+        private VoMotor _motor;
+        public VoStandState VoStand { get; private set; }
+        public VoWalkState VoWalk { get; private set; }
+        public VoCloseStepState VoCloseStep { get; private set; }
+        public VoGroundDashState VoGroundDash { get; private set; }
+        public VoDashStopState VoDashStop { get; private set; }
+        public VoJumpState VoJump { get; private set; }
+        public VoAirDashState VoAirDash { get; private set; }
+        public VoDiveState VoDive { get; private set; }
+        public VoMeleeState VoMelee { get; private set; }
+        /// <summary>지금 상태.</summary>
+        public MechState CurrentState => _currentState;
+        /// <summary>상태가 돌고 있는지 (사망하면 꺼진다). 이동기가 본다.</summary>
+        public bool StatesEnabled => enabled;
+        /// <summary>지상 대시가 쓸 대시 공격 진행기 (우리 대시 어택·차징 태클).</summary>
+        public IVoDashAttack CreateDashAttack()
+        {
+            DashAttack = new DashAttackRunner(this);
+            return DashAttack;
+        }
+        /// <summary>지상 대시의 대시 공격 진행기 (전투 허브가 틱 끝 판정을 부른다).</summary>
+        public DashAttackRunner DashAttack { get; private set; }
+
+        /// <summary>
+        /// 외형·연출용 "대시 모션 중" (V8.2): IsDashing + 앞 대시에서 바뀐 근접 스텝. 전환할 때 호버 활주·숙임·불꽃이 끊기지 않게.
+        /// 가드·히트 같은 규칙은 IsDashing을 그대로 본다.
+        /// </summary>
+        public bool IsDashMotion => IsDashing || (_currentState is VoCloseStepState c && c.FromDash);
+        /// <summary>대시 모션 중 진로 (외형이 몸을 트는 방향, 출발 분사 방향).</summary>
+        public Vector3 DashMotionHeading
+        {
+            get
+            {
+                if (_currentState is VoCloseStepState c) return c.Heading;
+                IDashMove dash = ActiveDash;
+                return dash != null ? dash.Heading : transform.forward;
+            }
+        }
+
+        /// <summary>지금 대시(지상·공중 대시 중이면 그것, 아니면 null). IsDashing과 같이 본다.</summary>
+        public IDashMove ActiveDash => _currentState as IDashMove;
+
+        /// <summary>○ 대시 중 (끝 미끄러짐 제외). 가드 불가·히트 냉각 감소·호버 활주 외형의 기준.</summary>
+        public bool IsDashing => (_currentState is VoGroundDashState g && g.IsDashingPhase) ||
+                                 _currentState is VoAirDashState;
+        /// <summary>대시 끝 단계 중 (종료 16f 선형 감속, 대시 정지 포함). 대시 불가, 점프는 내내·공격은 3f째부터 (땅만).</summary>
+        public bool IsDashStopping => _currentState is VoDashStopState ||
+                                      (_currentState is VoGroundDashState g && g.IsEndPhase);
+        /// <summary>대시 끝 단계·대시 정지에서 지금 공격을 받는지 (3f째부터).</summary>
+        public bool DashEndAllowsAttack =>
+            (_currentState is VoDashStopState s && s.AllowsAttack) ||
+            (_currentState is VoGroundDashState g && g.EndAllowsAttack);
+        /// <summary>공중 (점프·낙하·공중 대시). 가드·패리·앵커 클로·공격 불가, 외형 접지 보정 끔. 대공 판정의 "공중"도 이것.</summary>
+        public bool IsAirborne => (_currentState is VoState vo && vo.IsAirState) || _currentState is DiveStrikeState;
+        /// <summary>착지 경직 중. 이동·공격·대시·점프·가드 불가.</summary>
+        public bool IsLanding => _currentState is LandingState;
+
+        public bool IsStunned => MechController.MeleeSystem != null && MechController.MeleeSystem.IsStunned;
+        public bool IsIdle => _currentState is VoStandState;
+
+        public bool IsRunning => _currentState is VoWalkState;
+        public bool IsLunging => _currentState is LungeState;
+        /// <summary>내려찍기 중 (예비 + 내리꽂기).</summary>
+        public bool IsDiveStrike => _currentState is DiveStrikeState;
+        /// <summary>점프 이륙 준비(2f) 중 — 아직 땅. 이때 누른 공격은 버퍼에 남았다가 뜨면 내려찍기가 된다.</summary>
+        public bool IsJumpTakeoff => _currentState is VoJumpState j && !j.IsAirState;
+        // 이번 체공에서 내려찍기를 이미 썼는지 (점프 한 번에 한 번). 땅에 닿으면 풀린다
+        private bool _diveStrikeUsed;
+        /// <summary>내려찍기를 시작할 수 있는 상태: 점프 중(상승·정점·하강)이고 이번 체공에서 아직 안 썼다. 공중 대시·급강하 중엔 불가.</summary>
+        public bool CanStartDiveStrike => _currentState is VoJumpState jump && jump.IsAirState && !_diveStrikeUsed;
+        /// <summary>지상 근접(펀치 콤보) 중.</summary>
+        public bool IsMelee => _currentState is VoMeleeState;
+
+        private KnockdownController _knockdown;
+        /// <summary>파일 드라이버 넉다운 중 (R1). 컴포넌트는 MeleeSystem이 런타임에 붙이기도 해서 처음 쓸 때 찾는다.</summary>
+        public bool IsKnockedDown
+        {
+            get
+            {
+                if (_knockdown == null) _knockdown = GetComponent<KnockdownController>();
+                return _knockdown != null && _knockdown.IsKnockedDown;
+            }
+        }
+
+        /// <summary>스러스터 런지·펀치를 시작할 수 있는 상태(서기·걷기, 공격을 받는 대시 끝 단계). 다른 기동 중엔 불가.</summary>
+        public bool CanStartLunge => _currentState is VoStandState || _currentState is VoWalkState ||
+                                     // 착지 단계(12f)는 지상 공격으로 취소할 수 있다 (전투 사양서 8장)
+                                     (_currentState is LandingState && LandingState.AllowsAttackCancel) ||
+                                     ((IsDashStopping) && DashEndAllowsAttack);
+
+        public string CurrentStateName => _currentState != null ? _currentState.GetType().Name : "None";
+
+        private void Awake()
+        {
+            _inputReader = GetComponent<InputReader>();
+            _controller = GetComponent<MechController>();
+
+            LandingState = new LandingState(this);
+            LungeState = new LungeState(this);
+            KnockdownState = new KnockdownState(this);
+            DiveStrikeState = new DiveStrikeState(this);
+
+            VoStand = new VoStandState(this);
+            VoWalk = new VoWalkState(this);
+            VoCloseStep = new VoCloseStepState(this);
+            VoGroundDash = new VoGroundDashState(this);
+            VoDashStop = new VoDashStopState(this);
+            VoJump = new VoJumpState(this);
+            VoAirDash = new VoAirDashState(this);
+            VoDive = new VoDiveState(this);
+            VoMelee = new VoMeleeState(this);
+        }
+
+        private void Start()
+        {
+            ToStand();
+        }
+
+        /// <summary>라운드 시작: 사망으로 꺼졌던 상태머신을 켜고 서기로.</summary>
+        public void ResetForRound()
+        {
+            enabled = true;
+            ToStand();
+        }
+
+        /// <summary>
+        /// 착지: 경직이 필요하면(점프·공중 대시·공중 피격) 착지 단계(VoSpec.landingFrames, 12f) 동안 LandingState.
+        /// 그냥 떨어진 착지는 경직 없이 바로 걷기·서기 (먼지·흔들림은 둘 다).
+        /// </summary>
+        public void Land(bool needsLag)
+        {
+            LandFor(needsLag ? Motor.V.landingFrames : 0, attackCancel: true);
+        }
+
+        /// <summary>착지 경직을 frames틱으로 (내려찍기: 맞혔으면 12f, 빗나가면 30f — 빗나간 경직은 공격으로 취소 불가).</summary>
+        public void LandFor(int frames, bool attackCancel)
+        {
+            LandingState.Prepare(frames, attackCancel);
+            if (frames > 0) ChangeState(LandingState);
+            else ToStandOrWalk();
+        }
+
+        // ---- 중립 상태로 돌아가기 ----
+
+        /// <summary>서기로 (런지·넉다운·사망·라운드 리셋에서 돌아올 때).</summary>
+        public void ToStand()
+        {
+            ChangeState(VoStand);
+        }
+
+        /// <summary>이동 입력이 있으면 걷기, 없으면 서기로 (착지 뒤).</summary>
+        public void ToStandOrWalk()
+        {
+            bool moving = InputReader != null && InputReader.IsMoveInputActive;
+            ChangeState(moving ? (MechState)VoWalk : VoStand);
+        }
+
+        // ---- 이동 상태 전환 도우미 ----
+
+        /// <summary>점프 시작 (△). 스턴이면 false.</summary>
+        public bool TryStartJumpV8()
+        {
+            if (IsStunned) return false;
+            VoJump.PrepareJump();
+            ChangeState(VoJump);
+            return true;
+        }
+
+        /// <summary>낙하 (발판 끝·공중 대시 끝·공중 피격). vy는 u/f.</summary>
+        public void V8Fall(float vy, bool landingLag)
+        {
+            VoJump.PrepareFall(vy, landingLag);
+            ChangeState(VoJump);
+        }
+
+        public void V8GroundDash(int code, bool fromWalk, bool closeStepWindow)
+        {
+            VoGroundDash.Prepare(code, fromWalk, closeStepWindow);
+            ChangeState(VoGroundDash);
+        }
+
+        public void V8GroundDashFrom(int code, float basisBearing)
+        {
+            VoGroundDash.Prepare(code, false, false);
+            VoGroundDash.PrepareBasis(basisBearing);
+            ChangeState(VoGroundDash);
+        }
+
+        public void V8CloseStep(int code, bool fromDash)
+        {
+            VoCloseStep.Prepare(code, fromDash);
+            ChangeState(VoCloseStep);
+        }
+
+        public void V8DashStop(Vector3 heading, float offset, bool airborne)
+        {
+            VoDashStop.Prepare(heading, offset, airborne);
+            ChangeState(VoDashStop);
+        }
+
+        public void V8AirDash(int code)
+        {
+            VoAirDash.Prepare(code);
+            ChangeState(VoAirDash);
+        }
+
+        public void V8Dive()
+        {
+            ChangeState(VoDive);
+        }
+
+        /// <summary>내려찍기 시작 (CanStartDiveStrike일 때만 부른다).</summary>
+        public void StartDiveStrike()
+        {
+            _diveStrikeUsed = true;
+            ChangeState(DiveStrikeState);
+        }
+
+        /// <summary>지상 근접 시작 (이동은 코어의 근접 상태가, 판정·충격치는 MeleeSystem이).</summary>
+        public void V8Melee(VoMeleeMove move, int step)
+        {
+            VoMelee.Prepare(move, step);
+            ChangeState(VoMelee);
+        }
+
+        public void ChangeState(MechState newState)
+        {
+            _currentState?.Exit();
+            _currentState = newState;
+            _currentState.Enter();
+            // 땅에 닿았으면(또는 다운되면) 다음 체공에서 내려찍기를 다시 쓸 수 있다
+            if (!IsAirborne) _diveStrikeUsed = false;
+            // Enter 안에서 다른 상태로 넘어갔으면 그쪽 호출이 이미 알렸다
+            if (_currentState == newState) OnStateChanged?.Invoke(newState);
+        }
+
+        /// <summary>
+        /// 넉다운이 시작되면 어느 상태에서든 넉다운 상태로 (입력 무시, 속도는 KnockdownController가). 전투 틱의 정산 단계에서 부른다.
+        /// </summary>
+        public void SyncKnockdownState()
+        {
+            if (enabled && IsKnockedDown && !(_currentState is KnockdownState)) ChangeState(KnockdownState);
+        }
+    }
+}

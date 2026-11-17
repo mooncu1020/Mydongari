@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07bb2a1070449c34ea87025c1a05017c, type: 3}
+  m_Name: StyleOverrides
+  m_EditorClassIdentifier: Assembly-CSharp::MyDongari.Bridge.StyleOverrides
+  fastTurnOnlyTowardOpponent:
+    enabled: 1
+    value: 1
+  turnBlendEndAngle:
+    enabled: 1
+    value: 60
+  neutralTurboDashesForward:
+    enabled: 1
+    value: 1
+  closeStepFromDashFrames:
+    enabled: 1
+    value: 15
+  risingRejump:
+    enabled: 1
+    value: 0
+  stickThreshold: 0.3
+  cameraPositionFollow:
+    enabled: 1
+    value: 0.35
+  cameraMaxScreenOffset:
+    enabled: 1
+    value: 0.25
+  cameraBaseHeightRatio:
+    enabled: 1
+    value: 0.5
+  cameraFov: 35
+  guardTurnInside: 400
+  guardTurnOutside: 1092
+  punchCapsule:
+    start: 0.3
+    range: 1.8
+    radius: 0.5
+  thirdCapsule:
+    start: 0.3
+    range: 2
+    radius: 0.6
+  attackHandHeightRatio: 0.6
+  jumpRisingHurtScale: 0.6
+  jumpFallingHurtScale: 0.45
+  damageScale:
+    enabled: 1
+    value: 0.03448276
+  punch1Impact:
+    enabled: 1
+    value: 280
+  punch2Impact:
+    enabled: 1
+    value: 280
+  punch3Impact:
+    enabled: 1
+    value: 620
+  slamImpact: 1100
+  diveStrikeWindupFrames: 8
+  diveStrikeSpeed: 40
+  diveStrikeHomingRate: 256
+  diveStrikeMaxHorizontal: 15
+  diveStrikeMinAngle: 15
+  diveStrikeCapsule:
+    start: 0.2
+    range: 1.2
+    radius: 0.35
+  diveStrikeMissLandingFrames: 30
